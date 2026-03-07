@@ -17,6 +17,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_agent, get_db, get_redis
@@ -73,14 +74,6 @@ async def tool_call(
     """
     service = ProxyService(db=db, redis=redis)
     return await service.forward_tool_call(request=body, agent=agent)
-
-
-class ToolsListRequest(ToolCallRequest.__class__):
-    """Request body for tools/list — only server_name is required."""
-    pass
-
-
-from pydantic import BaseModel, Field
 
 
 class ToolsListRequest(BaseModel):

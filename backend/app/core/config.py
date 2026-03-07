@@ -9,7 +9,7 @@ Uses pydantic-settings so every field is type-validated at startup.
 
 from __future__ import annotations
 
-from pydantic import AnyUrl, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
