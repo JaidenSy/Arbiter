@@ -49,13 +49,12 @@ def build_engine() -> AsyncEngine:
     Returns:
         AsyncEngine: ready to use, connected lazily on first query.
     """
-    # TODO: return create_async_engine(
-    #     settings.database_url,
-    #     echo=settings.app_debug,
-    #     pool_size=10,
-    #     max_overflow=20,
-    # )
-    raise NotImplementedError("build_engine not yet implemented")
+    return create_async_engine(
+        settings.database_url,
+        echo=settings.app_debug,
+        pool_size=10,
+        max_overflow=20,
+    )
 
 
 engine: AsyncEngine = build_engine()  # type: ignore[assignment]
