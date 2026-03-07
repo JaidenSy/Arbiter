@@ -16,8 +16,10 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import security
 from app.core.dependencies import get_current_agent, get_db
 from app.db.models.agent import Agent
 from app.schemas.agent import AgentCreate, AgentCreateResponse, AgentResponse
@@ -51,11 +53,38 @@ async def create_agent(
     Raises:
         HTTPException 409: If an agent with the same name already exists.
     """
-    # TODO: generate API key via security.generate_api_key()
-    # TODO: hash via security.hash_api_key()
-    # TODO: persist Agent row
-    # TODO: return AgentCreateResponse
-    raise NotImplementedError
+    # Check for name collision.
+    existing = await db.execute(
+        select(Agent).where(Agent.name == body.name)
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"An agent named {body.name!r} already exists",
+        )
+
+    raw_key = security.generate_api_key()
+    key_hash = security.hash_api_key(raw_key)
+
+    agent = Agent(
+        name=body.name,
+        description=body.description,
+        api_key_hash=key_hash,
+        is_active=True,
+    )
+    db.add(agent)
+    await db.commit()
+    await db.refresh(agent)
+
+    return AgentCreateResponse(
+        id=agent.id,
+        name=agent.name,
+        description=agent.description,
+        is_active=agent.is_active,
+        created_at=agent.created_at,
+        updated_at=agent.updated_at,
+        api_key=raw_key,
+    )
 
 
 @router.get(
@@ -81,8 +110,16 @@ async def list_agents(
     Returns:
         list[AgentResponse]: Active agents ordered by created_at DESC.
     """
-    # TODO: SELECT * FROM agents WHERE is_active=True LIMIT limit OFFSET skip
-    raise NotImplementedError
+    limit = min(limit, 200)
+    result = await db.execute(
+        select(Agent)
+        .where(Agent.is_active.is_(True))
+        .order_by(Agent.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    agents = result.scalars().all()
+    return [AgentResponse.model_validate(a) for a in agents]
 
 
 @router.get(
@@ -109,8 +146,16 @@ async def get_agent(
     Raises:
         HTTPException 404: If the agent does not exist or is inactive.
     """
-    # TODO: fetch Agent by id, raise 404 if not found
-    raise NotImplementedError
+    result = await db.execute(
+        select(Agent).where(Agent.id == agent_id, Agent.is_active.is_(True))
+    )
+    agent = result.scalar_one_or_none()
+    if agent is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Agent {agent_id} not found",
+        )
+    return AgentResponse.model_validate(agent)
 
 
 @router.delete(
@@ -136,5 +181,14 @@ async def delete_agent(
     Raises:
         HTTPException 404: If the agent does not exist.
     """
-    # TODO: set agent.is_active = False, commit
-    raise NotImplementedError
+    result = await db.execute(
+        select(Agent).where(Agent.id == agent_id)
+    )
+    agent = result.scalar_one_or_none()
+    if agent is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Agent {agent_id} not found",
+        )
+    agent.is_active = False
+    await db.commit()
