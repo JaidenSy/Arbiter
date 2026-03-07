@@ -31,8 +31,7 @@ def generate_api_key(prefix: str = "nxai") -> str:
     Returns:
         str: The raw API key — shown to the user once, never stored.
     """
-    # TODO: return f"{prefix}_{secrets.token_hex(32)}"
-    raise NotImplementedError("generate_api_key not yet implemented")
+    return f"{prefix}_{secrets.token_hex(32)}"
 
 
 def hash_api_key(raw_key: str) -> str:
@@ -47,8 +46,7 @@ def hash_api_key(raw_key: str) -> str:
     Returns:
         str: 64-character hexadecimal SHA-256 digest.
     """
-    # TODO: return hashlib.sha256(raw_key.encode()).hexdigest()
-    raise NotImplementedError("hash_api_key not yet implemented")
+    return hashlib.sha256(raw_key.encode()).hexdigest()
 
 
 def verify_api_key(raw_key: str, stored_hash: str) -> bool:
@@ -64,6 +62,5 @@ def verify_api_key(raw_key: str, stored_hash: str) -> bool:
     Returns:
         bool: True if the key matches, False otherwise.
     """
-    # TODO: computed = hash_api_key(raw_key)
-    # TODO: return hmac.compare_digest(computed, stored_hash)
-    raise NotImplementedError("verify_api_key not yet implemented")
+    computed = hash_api_key(raw_key)
+    return hmac.compare_digest(computed, stored_hash)
