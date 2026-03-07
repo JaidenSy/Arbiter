@@ -2,98 +2,157 @@
 NexusAI — pytest fixtures (conftest.py).
 
 Shared fixtures available to all test modules.  Provides:
-    - test_client:  Async HTTPX client wired to the FastAPI app
-    - test_db:      In-memory / test-schema async SQLAlchemy session
-    - test_redis:   Fake Redis client (fakeredis or test Redis instance)
+    - test_client:  Async HTTPX client wired to the FastAPI app with mocked deps
+    - fake_redis:   In-memory fakeredis async client
+    - mock_db:      AsyncMock standing in for the SQLAlchemy AsyncSession
     - agent_headers: Auth headers for a pre-created test agent
 
-Usage in tests:
-    async def test_health(test_client):
-        response = await test_client.get("/health")
-        assert response.status_code == 200
+Strategy:
+    Integration tests use FastAPI's dependency_overrides to inject mock DB and
+    fake Redis instead of live Postgres / Redis.  This allows the full HTTP
+    request/response cycle to be exercised without external infrastructure.
 """
 
 from __future__ import annotations
 
+import os
+import secrets
+import uuid
+from datetime import datetime, timezone
 from typing import AsyncGenerator
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
 
-# ── App import (deferred to avoid triggering DB engine at import time) ─────────
-# from app.main import app
+# ── Patch required env vars before any app import ─────────────────────────────
+# Settings are validated at import time, so we must set env vars first.
+_TEST_VAULT_KEY = "b" * 64  # 64 hex chars — valid for pydantic validator
+os.environ.setdefault("APP_SECRET_KEY", "nexusai-test-secret-key-12345678")
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/nexusai_test")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/15")
+os.environ.setdefault("VAULT_ENCRYPTION_KEY", _TEST_VAULT_KEY)
 
-
-@pytest_asyncio.fixture
-async def test_client() -> AsyncGenerator[AsyncClient, None]:
-    """
-    Provide an async HTTPX test client for the FastAPI application.
-
-    Uses ``app.router`` transport so no real HTTP server is started.
-    Database and Redis dependencies are overridden via ``app.dependency_overrides``.
-
-    Yields:
-        AsyncClient: configured for the test app, with base_url="http://test".
-    """
-    # TODO: from app.main import app
-    # TODO: app.dependency_overrides[get_db] = override_get_db
-    # TODO: app.dependency_overrides[get_redis] = override_get_redis
-    # TODO: async with AsyncClient(app=app, base_url="http://test") as client:
-    #           yield client
-    raise NotImplementedError("test_client fixture not yet implemented")
-    yield  # type: ignore[misc]
+# ── Shared test constants ─────────────────────────────────────────────────────
+TEST_AGENT_ID = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")
+TEST_AGENT_NAME = "test-agent"
+TEST_RAW_API_KEY: str = ""  # filled by fixture
+TEST_AGENT_HASH: str = ""   # filled by fixture
 
 
-@pytest_asyncio.fixture
-async def test_db():  # type: ignore[return]
-    """
-    Provide an async SQLAlchemy session connected to the test database.
+def _make_mock_agent(raw_key: str) -> MagicMock:
+    """Build a mock Agent ORM object matching a raw API key."""
+    from app.core.security import hash_api_key
 
-    Creates all tables before the test and drops them after.  Uses a
-    separate test DATABASE_URL (e.g. nexusai_test schema) so it never
-    touches production data.
+    agent = MagicMock()
+    agent.id = TEST_AGENT_ID
+    agent.name = TEST_AGENT_NAME
+    agent.description = "Integration test agent"
+    agent.is_active = True
+    agent.api_key_hash = hash_api_key(raw_key)
+    agent.created_at = datetime.now(tz=timezone.utc)
+    agent.updated_at = datetime.now(tz=timezone.utc)
+    return agent
 
-    Yields:
-        AsyncSession: bound to the test database.
-    """
-    # TODO: create test engine from TEST_DATABASE_URL
-    # TODO: async with engine.begin() as conn:
-    #           await conn.run_sync(Base.metadata.create_all)
-    # TODO: yield session
-    # TODO: drop all tables after test
-    raise NotImplementedError("test_db fixture not yet implemented")
-    yield  # type: ignore[misc]
 
+# ── fakeredis fixture ─────────────────────────────────────────────────────────
 
 @pytest_asyncio.fixture
-async def test_redis():  # type: ignore[return]
+async def fake_redis():
     """
-    Provide a fake Redis client for unit/integration tests.
-
-    Uses ``fakeredis.aioredis.FakeRedis`` so tests run without a real
-    Redis instance.
+    In-memory async Redis client via fakeredis.
 
     Yields:
-        FakeRedis: in-memory async Redis client.
+        fakeredis.aioredis.FakeRedis: ready to use, no server required.
     """
-    # TODO: import fakeredis.aioredis as fakeredis
-    # TODO: async with fakeredis.FakeRedis() as redis:
-    #           yield redis
-    raise NotImplementedError("test_redis fixture not yet implemented")
-    yield  # type: ignore[misc]
+    import fakeredis.aioredis as fakeredis_aioredis
+    redis = fakeredis_aioredis.FakeRedis(decode_responses=False)
+    yield redis
+    await redis.aclose()
 
+
+# ── mock_db fixture ───────────────────────────────────────────────────────────
 
 @pytest.fixture
-def agent_headers() -> dict[str, str]:
+def mock_db() -> AsyncMock:
     """
-    Return HTTP headers with a valid test agent API key.
-
-    The test agent is seeded in test_db.  Use these headers with
-    test_client to make authenticated requests.
-
-    Returns:
-        dict: ``{"Authorization": "Bearer nxai_test_..."}``
+    A minimal AsyncMock that stands in for SQLAlchemy AsyncSession.
+    Tests that need specific query results override execute() themselves.
     """
-    # TODO: return {"Authorization": f"Bearer {TEST_API_KEY}"}
-    raise NotImplementedError("agent_headers fixture not yet implemented")
+    db = AsyncMock()
+    return db
+
+
+# ── test_client factory ───────────────────────────────────────────────────────
+
+@pytest_asyncio.fixture
+async def test_client(fake_redis) -> AsyncGenerator:
+    """
+    Async HTTPX test client with DB and Redis dependencies overridden.
+
+    - get_db → yields a fresh AsyncMock per request
+    - get_redis → returns fake_redis
+    - get_current_agent → raises 401 by default (individual tests override)
+
+    Yields:
+        httpx.AsyncClient: pointed at the FastAPI test app.
+    """
+    from httpx import AsyncClient, ASGITransport
+    from app.main import app
+    from app.core.dependencies import get_db, get_redis
+
+    async def _override_get_db():
+        yield AsyncMock()
+
+    async def _override_get_redis(request=None):
+        return fake_redis
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_redis] = _override_get_redis
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
+
+    app.dependency_overrides.clear()
+
+
+# ── authenticated client fixture ──────────────────────────────────────────────
+
+@pytest_asyncio.fixture
+async def authed_client(fake_redis) -> AsyncGenerator:
+    """
+    Async HTTPX client with a valid mock agent injected via dependency override.
+
+    The get_current_agent dependency is replaced with one that always returns
+    a mock agent — no real DB lookup occurs.
+
+    Yields:
+        tuple[AsyncClient, str, MagicMock]: (client, raw_api_key, mock_agent)
+    """
+    from httpx import AsyncClient, ASGITransport
+    from app.main import app
+    from app.core.dependencies import get_db, get_redis, get_current_agent
+    from app.core.security import generate_api_key
+
+    raw_key = generate_api_key()
+    mock_agent = _make_mock_agent(raw_key)
+
+    async def _override_get_db():
+        yield AsyncMock()
+
+    async def _override_get_redis(request=None):
+        return fake_redis
+
+    async def _override_get_current_agent():
+        return mock_agent
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_redis] = _override_get_redis
+    app.dependency_overrides[get_current_agent] = _override_get_current_agent
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client, raw_key, mock_agent
+
+    app.dependency_overrides.clear()
