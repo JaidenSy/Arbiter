@@ -16,10 +16,13 @@ from __future__ import annotations
 
 from typing import AsyncGenerator
 
-from fastapi import Depends, HTTPException, Security, status
+from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import security
+from app.db.base import async_session_factory
 from app.db.models.agent import Agent
 
 
@@ -35,16 +38,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     Yields:
         AsyncSession: bound to the request lifetime.
     """
-    # TODO: import async_session_factory from app.db.base
-    # TODO: async with async_session_factory() as session:
-    #           yield session
-    raise NotImplementedError("get_db not yet implemented")
-    yield  # make this a generator for type-checking
+    async with async_session_factory() as session:
+        yield session
 
 
 # ── Redis ─────────────────────────────────────────────────────────────────────
 
-async def get_redis():  # type: ignore[return]
+async def get_redis(request: Request):  # type: ignore[return]
     """
     Return an async Redis client.
 
@@ -54,8 +54,7 @@ async def get_redis():  # type: ignore[return]
     Returns:
         redis.asyncio.Redis: connected Redis client.
     """
-    # TODO: retrieve from app.state.redis (requires request context)
-    raise NotImplementedError("get_redis not yet implemented")
+    return request.app.state.redis
 
 
 # ── Authentication ────────────────────────────────────────────────────────────
@@ -83,8 +82,29 @@ async def get_current_agent(
     Raises:
         HTTPException 401: when token is missing or does not match any agent.
     """
-    # TODO: extract token from credentials
-    # TODO: hash token via security.hash_api_key()
-    # TODO: query Agent by api_key_hash
-    # TODO: raise HTTPException(401) if not found
-    raise NotImplementedError("get_current_agent not yet implemented")
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    raw_key = credentials.credentials
+    key_hash = security.hash_api_key(raw_key)
+
+    result = await db.execute(
+        select(Agent).where(
+            Agent.api_key_hash == key_hash,
+            Agent.is_active.is_(True),
+        )
+    )
+    agent = result.scalar_one_or_none()
+
+    if agent is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or inactive API key",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return agent
