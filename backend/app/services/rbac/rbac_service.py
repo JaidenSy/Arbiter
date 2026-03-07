@@ -16,17 +16,24 @@ Permission model:
 Design decisions:
     - No role hierarchy in v1 — permissions are flat per (agent, server, tool).
     - Wildcard support keeps the admin UX simple for development agents.
-    - All permission checks are cached in Redis for hot-path performance.
-    - Cache is invalidated on every grant/revoke.
+    - All permission checks hit the DB directly; Redis caching can be layered
+      on top in Phase 2 if permission-check latency becomes a bottleneck.
+    - grant_permission is idempotent via INSERT ... ON CONFLICT DO NOTHING.
 """
 
 from __future__ import annotations
 
+import logging
 import uuid
 
+from sqlalchemy import delete, exists, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.agent import Agent
+from app.db.models.tool_permission import ToolPermission
+
+logger = logging.getLogger(__name__)
 
 
 class RBACService:
@@ -61,41 +68,71 @@ class RBACService:
 
         Returns:
             bool: True if permitted, False otherwise.
-
-        Raises:
-            NotImplementedError: Until implemented.
         """
-        # TODO: SELECT EXISTS (
-        #           SELECT 1 FROM tool_permissions
-        #           WHERE agent_id = agent.id
-        #             AND mcp_server_id = mcp_server_id
-        #             AND (tool_name = tool_name OR tool_name = '*')
-        #       )
-        raise NotImplementedError("RBACService.check_permission not yet implemented")
+        stmt = select(
+            exists(
+                select(ToolPermission.id).where(
+                    ToolPermission.agent_id == agent.id,
+                    ToolPermission.mcp_server_id == mcp_server_id,
+                    or_(
+                        ToolPermission.tool_name == tool_name,
+                        ToolPermission.tool_name == "*",
+                    ),
+                )
+            )
+        )
+        result = await self.db.execute(stmt)
+        permitted: bool = result.scalar()
+        logger.debug(
+            "rbac: agent=%s server=%s tool=%r permitted=%s",
+            agent.id,
+            mcp_server_id,
+            tool_name,
+            permitted,
+        )
+        return permitted
 
     async def grant_permission(
         self,
         agent_id: uuid.UUID,
         mcp_server_id: uuid.UUID,
         tool_name: str,
-        granted_by: str,
+        granted_by: str = "system",
     ) -> None:
         """
         Grant an agent permission to call a tool on an MCP server.
 
-        Idempotent — does nothing if the permission already exists.
+        Idempotent — does nothing if the permission already exists (ON CONFLICT
+        DO NOTHING via PostgreSQL upsert).
 
         Args:
             agent_id:      UUID of the agent to grant access to.
             mcp_server_id: UUID of the target MCP server.
             tool_name:     Tool name, or ``"*"`` for all tools on this server.
             granted_by:    Human-readable identifier of who approved this.
-
-        Raises:
-            NotImplementedError: Until implemented.
         """
-        # TODO: INSERT INTO tool_permissions ... ON CONFLICT DO NOTHING
-        raise NotImplementedError("RBACService.grant_permission not yet implemented")
+        stmt = (
+            pg_insert(ToolPermission)
+            .values(
+                id=uuid.uuid4(),
+                agent_id=agent_id,
+                mcp_server_id=mcp_server_id,
+                tool_name=tool_name,
+                granted_by=granted_by,
+            )
+            .on_conflict_do_nothing(
+                index_elements=["agent_id", "mcp_server_id", "tool_name"]
+            )
+        )
+        await self.db.execute(stmt)
+        await self.db.commit()
+        logger.info(
+            "rbac: granted agent=%s server=%s tool=%r by=%r",
+            agent_id,
+            mcp_server_id,
+            tool_name,
+            granted_by,
+        )
 
     async def revoke_permission(
         self,
@@ -110,9 +147,69 @@ class RBACService:
             agent_id:      UUID of the agent.
             mcp_server_id: UUID of the MCP server.
             tool_name:     Tool name to revoke (or ``"*"`` to revoke the wildcard).
-
-        Raises:
-            NotImplementedError: Until implemented.
         """
-        # TODO: DELETE FROM tool_permissions WHERE agent_id=... AND tool_name=...
-        raise NotImplementedError("RBACService.revoke_permission not yet implemented")
+        stmt = delete(ToolPermission).where(
+            ToolPermission.agent_id == agent_id,
+            ToolPermission.mcp_server_id == mcp_server_id,
+            ToolPermission.tool_name == tool_name,
+        )
+        await self.db.execute(stmt)
+        await self.db.commit()
+        logger.info(
+            "rbac: revoked agent=%s server=%s tool=%r",
+            agent_id,
+            mcp_server_id,
+            tool_name,
+        )
+
+    async def get_allowed_tools(
+        self,
+        agent_id: uuid.UUID,
+        mcp_server_id: uuid.UUID,
+    ) -> list[str]:
+        """
+        Return all tool names the agent is permitted to call on the MCP server.
+
+        A wildcard ``"*"`` entry is returned as-is; callers must handle it by
+        passing through all tools from tools/list without filtering.
+
+        Args:
+            agent_id:      UUID of the agent.
+            mcp_server_id: UUID of the MCP server.
+
+        Returns:
+            list[str]: Permitted tool names (may include ``"*"``).
+        """
+        result = await self.db.execute(
+            select(ToolPermission.tool_name).where(
+                ToolPermission.agent_id == agent_id,
+                ToolPermission.mcp_server_id == mcp_server_id,
+            )
+        )
+        return list(result.scalars().all())
+
+    async def filter_tools_list(
+        self,
+        agent_id: uuid.UUID,
+        mcp_server_id: uuid.UUID,
+        tools: list[dict],
+    ) -> list[dict]:
+        """
+        Filter a tools/list response to only include RBAC-permitted tools.
+
+        If the agent has a wildcard ``"*"`` permission, all tools are returned.
+        Otherwise only tools whose name appears in tool_permissions are kept.
+
+        Args:
+            agent_id:      UUID of the agent.
+            mcp_server_id: UUID of the MCP server.
+            tools:         List of tool dicts from the upstream tools/list response.
+
+        Returns:
+            list[dict]: Filtered list of tool dicts.
+        """
+        allowed = await self.get_allowed_tools(agent_id, mcp_server_id)
+        if "*" in allowed:
+            return tools
+        allowed_set = set(allowed)
+        return [t for t in tools if t.get("name") in allowed_set]
