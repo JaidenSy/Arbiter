@@ -215,12 +215,23 @@ class ProxyService:
             raise
         except httpx.TimeoutException:
             error = f"MCP server {request.server_name!r} timed out after 30s"
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=error,
+            duration_ms = int((time.monotonic() - start_ms) * 1000)
+            await self._persist_event(
+                session=session, mcp_server=mcp_server,
+                tool_name=request.tool_name, request_payload=request.params,
+                response_payload=None, cache_hit=False,
+                duration_ms=duration_ms, error=error,
             )
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=error)
         except Exception as exc:
             error = str(exc)
+            duration_ms = int((time.monotonic() - start_ms) * 1000)
+            await self._persist_event(
+                session=session, mcp_server=mcp_server,
+                tool_name=request.tool_name, request_payload=request.params,
+                response_payload=None, cache_hit=False,
+                duration_ms=duration_ms, error=error,
+            )
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"MCP server communication error: {exc}",
@@ -228,8 +239,8 @@ class ProxyService:
 
         duration_ms = int((time.monotonic() - start_ms) * 1000)
 
-        # ── 6. Store in cache (only on success) ────────────────────────────────
-        if error is None:
+        # ── 6. Store in cache (only on success and if server allows caching) ──
+        if error is None and getattr(mcp_server, "cache_enabled", True):
             try:
                 await self._cache.store_cached(
                     tool_name=request.tool_name,

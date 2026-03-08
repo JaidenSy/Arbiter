@@ -196,24 +196,27 @@ class VaultService:
         logger.info("vault: stored secret name=%r agent_id=%s", name, agent_id)
         return secret
 
-    async def get_secret(self, name: str) -> str:
+    async def get_secret(self, name: str, agent_id: uuid.UUID | None = None) -> str:
         """
         Retrieve and decrypt a secret by logical name.
 
+        Scoped to agent_id when provided — agents cannot read each other's secrets.
         SECURITY: The decrypted value is NEVER logged.
 
         Args:
-            name: Logical key used when storing the secret.
+            name:     Logical key used when storing the secret.
+            agent_id: Owner agent UUID. If provided, restricts lookup to that agent.
 
         Returns:
             str: Decrypted plaintext secret.
 
         Raises:
-            KeyError: If no secret with the given name exists.
+            KeyError: If no secret with the given name exists for this agent.
         """
-        result = await self.db.execute(
-            select(VaultSecret).where(VaultSecret.name == name)
-        )
+        query = select(VaultSecret).where(VaultSecret.name == name)
+        if agent_id is not None:
+            query = query.where(VaultSecret.agent_id == agent_id)
+        result = await self.db.execute(query)
         secret = result.scalar_one_or_none()
 
         if secret is None:
