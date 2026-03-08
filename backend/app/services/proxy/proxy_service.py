@@ -104,7 +104,7 @@ class ProxyService:
         start_ms = time.monotonic()
 
         # ── 1. Resolve MCP server ──────────────────────────────────────────────
-        mcp_server = await self._resolve_server(request.server_name)
+        mcp_server = await self.resolve_server(request.server_name)
 
         # ── 2. RBAC check ──────────────────────────────────────────────────────
         permitted = await self._rbac.check_permission(
@@ -309,7 +309,7 @@ class ProxyService:
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    async def _resolve_server(self, server_name: str) -> MCPServer:
+    async def resolve_server(self, server_name: str) -> MCPServer:
         """Fetch MCPServer by name or raise 404."""
         result = await self.db.execute(
             select(MCPServer).where(
@@ -386,6 +386,7 @@ class ProxyService:
         agent: Agent,
         server_name: str,
         tools: list[dict],
+        mcp_server: MCPServer | None = None,
     ) -> list[dict]:
         """
         Filter a tools/list response to only RBAC-permitted tools.
@@ -394,11 +395,13 @@ class ProxyService:
             agent:       Authenticated agent.
             server_name: Logical MCP server name.
             tools:       Raw tool list from upstream tools/list response.
+            mcp_server:  Pre-resolved MCPServer to avoid a second DB round-trip.
 
         Returns:
             list[dict]: Filtered tool dicts visible to this agent.
         """
-        mcp_server = await self._resolve_server(server_name)
+        if mcp_server is None:
+            mcp_server = await self.resolve_server(server_name)
         return await self._rbac.filter_tools_list(
             agent_id=agent.id,
             mcp_server_id=mcp_server.id,

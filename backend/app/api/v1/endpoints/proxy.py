@@ -127,8 +127,8 @@ async def tools_list(
     """
     service = ProxyService(db=db, redis=redis)
 
-    # Resolve server (raises 404 if not found).
-    mcp_server = await service._resolve_server(body.server_name)
+    # Resolve server once — pass to filter_tools_list to avoid second DB round-trip.
+    mcp_server = await service.resolve_server(body.server_name)
 
     # Build JSON-RPC tools/list request.
     jsonrpc_body = {
@@ -170,11 +170,12 @@ async def tools_list(
     if "result" in json_body and "tools" in json_body["result"]:
         tools = json_body["result"]["tools"]
 
-    # Filter by RBAC — agent only sees permitted tools.
+    # Filter by RBAC — pass pre-resolved server to avoid second DB round-trip.
     filtered_tools = await service.filter_tools_list(
         agent=agent,
         server_name=body.server_name,
         tools=tools,
+        mcp_server=mcp_server,
     )
 
     return ToolsListResponse(server_name=body.server_name, tools=filtered_tools)

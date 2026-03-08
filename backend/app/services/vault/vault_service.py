@@ -169,9 +169,12 @@ class VaultService:
         """
         ciphertext = self.encrypt(plaintext)
 
-        # Check for existing secret with this name (upsert semantics).
+        # Scope upsert to (name, agent_id) — prevents cross-agent secret collision.
         result = await self.db.execute(
-            select(VaultSecret).where(VaultSecret.name == name)
+            select(VaultSecret).where(
+                VaultSecret.name == name,
+                VaultSecret.agent_id == agent_id,
+            )
         )
         secret = result.scalar_one_or_none()
 
