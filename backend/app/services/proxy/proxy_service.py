@@ -175,15 +175,30 @@ class ProxyService:
         error: str | None = None
         response_payload: dict[str, Any] = {}
 
+        # ── Build outbound headers ─────────────────────────────────────────────
+        outbound_headers: dict[str, str] = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        # Reattach any upstream MCP session ID stored in Redis from a prior call.
+        upstream_session_key = (
+            f"mcp_sessions:{session.id}:{request.server_name}"
+        )
+        try:
+            stored_upstream_id = await self.redis.get(upstream_session_key)
+            if stored_upstream_id:
+                if isinstance(stored_upstream_id, bytes):
+                    stored_upstream_id = stored_upstream_id.decode()
+                outbound_headers["Mcp-Session-Id"] = stored_upstream_id
+        except Exception as exc:
+            logger.warning("proxy: Redis session lookup failed: %s", exc)
+
         try:
             async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
                 http_resp = await client.post(
                     mcp_server.base_url,
                     json=jsonrpc_body,
-                    headers={
-                        "Content-Type": "application/json",
-                        "Accept": "application/json, text/event-stream",
-                    },
+                    headers=outbound_headers,
                 )
 
             if http_resp.status_code >= 400:
@@ -194,6 +209,24 @@ class ProxyService:
                         f"HTTP {http_resp.status_code}"
                     ),
                 )
+
+            # Persist upstream MCP session ID for subsequent requests.
+            upstream_session_id = http_resp.headers.get("Mcp-Session-Id")
+            if upstream_session_id:
+                try:
+                    await self.redis.set(
+                        upstream_session_key,
+                        upstream_session_id,
+                        ex=3600,  # 1-hour TTL
+                    )
+                    logger.debug(
+                        "proxy: stored upstream Mcp-Session-Id %r for nexus_session=%s server=%s",
+                        upstream_session_id,
+                        session.id,
+                        request.server_name,
+                    )
+                except Exception as exc:
+                    logger.warning("proxy: Redis session store failed: %s", exc)
 
             try:
                 json_body = http_resp.json()
