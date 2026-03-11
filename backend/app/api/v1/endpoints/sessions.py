@@ -93,9 +93,7 @@ async def get_session(
         HTTPException 404: If the session does not exist.
     """
     result = await db.execute(
-        select(Session)
-        .where(Session.id == session_id)
-        .options(selectinload(Session.events))
+        select(Session).where(Session.id == session_id).options(selectinload(Session.events))
     )
     session = result.scalar_one_or_none()
     if session is None:
@@ -137,9 +135,7 @@ async def list_session_events(
         HTTPException 404: If the session does not exist.
     """
     # Verify the session exists first.
-    session_result = await db.execute(
-        select(Session).where(Session.id == session_id)
-    )
+    session_result = await db.execute(select(Session).where(Session.id == session_id))
     if session_result.scalar_one_or_none() is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -32,6 +32,7 @@ router = APIRouter(prefix="/vault", tags=["vault"])
 
 # ── Inline schemas ────────────────────────────────────────────────────────────
 
+
 class SecretCreate(BaseModel):
     """Request body for storing a secret."""
 
@@ -56,6 +57,7 @@ class SecretValueResponse(SecretResponse):
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/secrets",
@@ -109,9 +111,7 @@ async def list_secrets(
     Returns:
         list[SecretResponse]: All vault secrets for this agent (no values).
     """
-    result = await db.execute(
-        select(VaultSecret).where(VaultSecret.agent_id == current_agent.id)
-    )
+    result = await db.execute(select(VaultSecret).where(VaultSecret.agent_id == current_agent.id))
     secrets = result.scalars().all()
     return [SecretResponse.model_validate(s) for s in secrets]
 

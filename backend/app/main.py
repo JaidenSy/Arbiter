@@ -9,8 +9,8 @@ and teardown).
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import redis.asyncio as aioredis
 from fastapi import FastAPI, HTTPException, Request, status
@@ -18,8 +18,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.v1.endpoints import agents, mcp_servers, proxy, sessions, vault
-from app.api.v1.endpoints import tool_permissions, stats
+from app.api.v1.endpoints import (
+    agents,
+    mcp_servers,
+    proxy,
+    sessions,
+    stats,
+    tool_permissions,
+    vault,
+)
 from app.core.config import settings
 from app.db.base import engine
 
@@ -58,6 +65,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Warm up embedding model (best-effort; does not block startup on failure).
     try:
         from app.services.cache.cache_service import _get_model
+
         _get_model()
         logger.info("nexusai: embedding model loaded")
     except Exception as exc:
@@ -126,7 +134,9 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_error_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         """Return a consistent validation error shape."""
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

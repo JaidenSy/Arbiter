@@ -30,6 +30,7 @@ router = APIRouter(prefix="/agents", tags=["tool-permissions"])
 
 # ── Inline schemas ────────────────────────────────────────────────────────────
 
+
 class ToolPermissionCreate(BaseModel):
     """Request body for granting a tool permission."""
 
@@ -52,6 +53,7 @@ class ToolPermissionResponse(BaseModel):
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/{agent_id}/permissions",
@@ -115,7 +117,7 @@ async def create_tool_permission(
 
     try:
         await db.commit()
-    except IntegrityError:
+    except IntegrityError as exc:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -123,7 +125,7 @@ async def create_tool_permission(
                 f"Permission for agent {agent_id} on server {body.mcp_server_id} "
                 f"tool {body.tool_name!r} already exists"
             ),
-        )
+        ) from exc
 
     await db.refresh(permission)
     return ToolPermissionResponse.model_validate(permission)
@@ -163,9 +165,7 @@ async def list_tool_permissions(
             detail=f"Agent {agent_id} not found",
         )
 
-    result = await db.execute(
-        select(ToolPermission).where(ToolPermission.agent_id == agent_id)
-    )
+    result = await db.execute(select(ToolPermission).where(ToolPermission.agent_id == agent_id))
     permissions = result.scalars().all()
     return [ToolPermissionResponse.model_validate(p) for p in permissions]
 

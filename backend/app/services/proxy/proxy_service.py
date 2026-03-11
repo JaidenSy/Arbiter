@@ -181,9 +181,7 @@ class ProxyService:
             "Accept": "application/json, text/event-stream",
         }
         # Reattach any upstream MCP session ID stored in Redis from a prior call.
-        upstream_session_key = (
-            f"mcp_sessions:{session.id}:{request.server_name}"
-        )
+        upstream_session_key = f"mcp_sessions:{session.id}:{request.server_name}"
         try:
             stored_upstream_id = await self.redis.get(upstream_session_key)
             if stored_upstream_id:
@@ -205,8 +203,7 @@ class ProxyService:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail=(
-                        f"MCP server {request.server_name!r} returned "
-                        f"HTTP {http_resp.status_code}"
+                        f"MCP server {request.server_name!r} returned HTTP {http_resp.status_code}"
                     ),
                 )
 
@@ -246,24 +243,32 @@ class ProxyService:
 
         except HTTPException:
             raise
-        except httpx.TimeoutException:
+        except httpx.TimeoutException as exc:
             error = f"MCP server {request.server_name!r} timed out after 30s"
             duration_ms = int((time.monotonic() - start_ms) * 1000)
             await self._persist_event(
-                session=session, mcp_server=mcp_server,
-                tool_name=request.tool_name, request_payload=request.params,
-                response_payload=None, cache_hit=False,
-                duration_ms=duration_ms, error=error,
+                session=session,
+                mcp_server=mcp_server,
+                tool_name=request.tool_name,
+                request_payload=request.params,
+                response_payload=None,
+                cache_hit=False,
+                duration_ms=duration_ms,
+                error=error,
             )
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=error)
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=error) from exc
         except Exception as exc:
             error = str(exc)
             duration_ms = int((time.monotonic() - start_ms) * 1000)
             await self._persist_event(
-                session=session, mcp_server=mcp_server,
-                tool_name=request.tool_name, request_payload=request.params,
-                response_payload=None, cache_hit=False,
-                duration_ms=duration_ms, error=error,
+                session=session,
+                mcp_server=mcp_server,
+                tool_name=request.tool_name,
+                request_payload=request.params,
+                response_payload=None,
+                cache_hit=False,
+                duration_ms=duration_ms,
+                error=error,
             )
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -346,9 +351,7 @@ class ProxyService:
                 secret_value = await self._vault.get_secret(secret_name)
                 value = value.replace(f"{{{{{secret_name}}}}}", secret_value)
             except KeyError:
-                logger.warning(
-                    "proxy: secret placeholder {{%s}} not found in vault", secret_name
-                )
+                logger.warning("proxy: secret placeholder {{%s}} not found in vault", secret_name)
         return value
 
     # ── Helpers ───────────────────────────────────────────────────────────────
