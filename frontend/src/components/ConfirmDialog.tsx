@@ -1,13 +1,13 @@
-import React from 'react'
-import Modal from './Modal'
+import React from "react";
+import Modal from "./Modal";
 
 interface ConfirmDialogProps {
-  isOpen: boolean
-  onClose: () => void
-  onConfirm: () => void
-  title: string
-  message: string
-  confirmLabel?: string
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmLabel?: string;
 }
 
 function ConfirmDialog({
@@ -16,12 +16,12 @@ function ConfirmDialog({
   onConfirm,
   title,
   message,
-  confirmLabel = 'Confirm',
+  confirmLabel = "Confirm",
 }: ConfirmDialogProps): React.ReactElement | null {
   const handleConfirm = (): void => {
-    onConfirm()
-    onClose()
-  }
+    onConfirm();
+    onClose();
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
@@ -43,7 +43,7 @@ function ConfirmDialog({
         </button>
       </div>
     </Modal>
-  )
+  );
 }
 
-export default ConfirmDialog
+export default ConfirmDialog;

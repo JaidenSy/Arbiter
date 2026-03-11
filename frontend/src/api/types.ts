@@ -6,65 +6,65 @@
  */
 
 export interface Agent {
-  id: string
-  name: string
-  description: string | null
-  is_active: boolean
-  created_at: string
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
 }
 
 /** Only returned from POST /agents — the api_key is never shown again. */
 export interface AgentCreateResponse extends Agent {
-  api_key: string
+  api_key: string;
 }
 
 export interface MCPServer {
-  id: string
-  name: string
-  base_url: string
-  description: string | null
-  cache_enabled: boolean
-  is_active: boolean
-  created_at: string
+  id: string;
+  name: string;
+  base_url: string;
+  description: string | null;
+  cache_enabled: boolean;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface SessionEvent {
-  id: string
-  tool_name: string
-  cache_hit: boolean
-  duration_ms: number | null
-  error: string | null
-  occurred_at: string
-  metadata: Record<string, unknown>
+  id: string;
+  tool_name: string;
+  cache_hit: boolean;
+  duration_ms: number | null;
+  error: string | null;
+  occurred_at: string;
+  metadata: Record<string, unknown>;
 }
 
 export interface Session {
-  id: string
-  agent_id: string
-  started_at: string
-  events?: SessionEvent[]
+  id: string;
+  agent_id: string;
+  started_at: string;
+  events?: SessionEvent[];
 }
 
 export interface ToolPermission {
-  id: string
-  agent_id: string
-  mcp_server_id: string
-  tool_name: string
+  id: string;
+  agent_id: string;
+  mcp_server_id: string;
+  tool_name: string;
 }
 
 export interface VaultSecret {
-  id: string
-  name: string
-  agent_id: string | null
+  id: string;
+  name: string;
+  agent_id: string | null;
 }
 
 export interface VaultSecretWithValue extends VaultSecret {
-  value: string
+  value: string;
 }
 
 export interface DashboardStats {
-  agents_count: number
-  servers_count: number
-  tool_calls_today: number
-  cache_hit_rate_today: number // 0.0–1.0
+  agents_count: number;
+  servers_count: number;
+  tool_calls_today: number;
+  cache_hit_rate_today: number; // 0.0–1.0
 }

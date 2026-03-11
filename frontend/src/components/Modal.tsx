@@ -1,25 +1,30 @@
-import React, { useEffect } from 'react'
+import React, { useEffect } from "react";
 
 interface ModalProps {
-  isOpen: boolean
-  onClose: () => void
-  title: string
-  children: React.ReactNode
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
 }
 
-function Modal({ isOpen, onClose, title, children }: ModalProps): React.ReactElement | null {
+function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+}: ModalProps): React.ReactElement | null {
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
-    }
+      if (e.key === "Escape") onClose();
+    };
 
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onClose])
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div
@@ -53,7 +58,7 @@ function Modal({ isOpen, onClose, title, children }: ModalProps): React.ReactEle
         {children}
       </div>
     </div>
-  )
+  );
 }
 
-export default Modal
+export default Modal;

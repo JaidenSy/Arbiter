@@ -6,81 +6,91 @@
  *   - Deactivating (deleting) an agent via a confirmation dialog
  */
 
-import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '../api/client'
-import type { Agent, AgentCreateResponse } from '../api/types'
-import Badge from '../components/Badge'
-import CopyButton from '../components/CopyButton'
-import Modal from '../components/Modal'
-import ConfirmDialog from '../components/ConfirmDialog'
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "../api/client";
+import type { Agent, AgentCreateResponse } from "../api/types";
+import Badge from "../components/Badge";
+import CopyButton from "../components/CopyButton";
+import Modal from "../components/Modal";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 // ── Data fetchers / mutators ──────────────────────────────────────────────────
 
 const fetchAgents = (): Promise<Agent[]> =>
-  apiClient.get<Agent[]>('/agents').then((r) => r.data)
+  apiClient.get<Agent[]>("/agents").then((r) => r.data);
 
-const createAgent = (payload: { name: string; description: string }): Promise<AgentCreateResponse> =>
-  apiClient.post<AgentCreateResponse>('/agents', payload).then((r) => r.data)
+const createAgent = (payload: {
+  name: string;
+  description: string;
+}): Promise<AgentCreateResponse> =>
+  apiClient.post<AgentCreateResponse>("/agents", payload).then((r) => r.data);
 
 const deleteAgent = (id: string): Promise<void> =>
-  apiClient.delete(`/agents/${id}`).then(() => undefined)
+  apiClient.delete(`/agents/${id}`).then(() => undefined);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 // ── Register Agent Modal ──────────────────────────────────────────────────────
 
 interface RegisterModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onSuccess: (response: AgentCreateResponse) => void
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (response: AgentCreateResponse) => void;
 }
 
-function RegisterModal({ isOpen, onClose, onSuccess }: RegisterModalProps): React.ReactElement | null {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [error, setError] = useState<string | null>(null)
+function RegisterModal({
+  isOpen,
+  onClose,
+  onSuccess,
+}: RegisterModalProps): React.ReactElement | null {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: createAgent,
     onSuccess: (data) => {
-      setName('')
-      setDescription('')
-      setError(null)
-      onSuccess(data)
+      setName("");
+      setDescription("");
+      setError(null);
+      onSuccess(data);
     },
     onError: () => {
-      setError('Failed to register agent. Please try again.')
+      setError("Failed to register agent. Please try again.");
     },
-  })
+  });
 
   const handleSubmit = (e: React.FormEvent): void => {
-    e.preventDefault()
-    if (!name.trim()) return
-    setError(null)
-    mutation.mutate({ name: name.trim(), description: description.trim() })
-  }
+    e.preventDefault();
+    if (!name.trim()) return;
+    setError(null);
+    mutation.mutate({ name: name.trim(), description: description.trim() });
+  };
 
   const handleClose = (): void => {
-    setName('')
-    setDescription('')
-    setError(null)
-    onClose()
-  }
+    setName("");
+    setDescription("");
+    setError(null);
+    onClose();
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Register Agent">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="agent-name" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="agent-name"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -95,7 +105,10 @@ function RegisterModal({ isOpen, onClose, onSuccess }: RegisterModalProps): Reac
         </div>
 
         <div>
-          <label htmlFor="agent-desc" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="agent-desc"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Description
           </label>
           <textarea
@@ -123,23 +136,27 @@ function RegisterModal({ isOpen, onClose, onSuccess }: RegisterModalProps): Reac
             disabled={mutation.isPending || !name.trim()}
             className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {mutation.isPending ? 'Registering…' : 'Register'}
+            {mutation.isPending ? "Registering…" : "Register"}
           </button>
         </div>
       </form>
     </Modal>
-  )
+  );
 }
 
 // ── API Key Modal ─────────────────────────────────────────────────────────────
 
 interface ApiKeyModalProps {
-  isOpen: boolean
-  apiKey: string | null
-  onDismiss: () => void
+  isOpen: boolean;
+  apiKey: string | null;
+  onDismiss: () => void;
 }
 
-function ApiKeyModal({ isOpen, apiKey, onDismiss }: ApiKeyModalProps): React.ReactElement | null {
+function ApiKeyModal({
+  isOpen,
+  apiKey,
+  onDismiss,
+}: ApiKeyModalProps): React.ReactElement | null {
   return (
     <Modal isOpen={isOpen} onClose={onDismiss} title="Agent Registered">
       <div className="space-y-4">
@@ -153,9 +170,9 @@ function ApiKeyModal({ isOpen, apiKey, onDismiss }: ApiKeyModalProps): React.Rea
           <p className="text-sm text-gray-600 mb-2">API Key</p>
           <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
             <code className="text-xs font-mono text-gray-900 flex-1 break-all">
-              {apiKey ?? ''}
+              {apiKey ?? ""}
             </code>
-            <CopyButton text={apiKey ?? ''} />
+            <CopyButton text={apiKey ?? ""} />
           </div>
         </div>
 
@@ -170,7 +187,7 @@ function ApiKeyModal({ isOpen, apiKey, onDismiss }: ApiKeyModalProps): React.Rea
         </div>
       </div>
     </Modal>
-  )
+  );
 }
 
 // ── Skeleton rows ─────────────────────────────────────────────────────────────
@@ -184,46 +201,46 @@ function SkeletonRow(): React.ReactElement {
         </td>
       ))}
     </tr>
-  )
+  );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function Agents(): React.ReactElement {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
-  const [showRegisterModal, setShowRegisterModal] = useState(false)
-  const [newApiKey, setNewApiKey] = useState<string | null>(null)
-  const [deactivateTarget, setDeactivateTarget] = useState<Agent | null>(null)
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<Agent | null>(null);
 
   const { data: agents, isLoading } = useQuery<Agent[]>({
-    queryKey: ['agents'],
+    queryKey: ["agents"],
     queryFn: fetchAgents,
-  })
+  });
 
   const deactivateMutation = useMutation({
     mutationFn: deleteAgent,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['agents'] })
+      void queryClient.invalidateQueries({ queryKey: ["agents"] });
     },
-  })
+  });
 
   const handleRegisterSuccess = (response: AgentCreateResponse): void => {
-    setShowRegisterModal(false)
-    setNewApiKey(response.api_key)
-  }
+    setShowRegisterModal(false);
+    setNewApiKey(response.api_key);
+  };
 
   const handleApiKeyDismiss = (): void => {
-    setNewApiKey(null)
-    void queryClient.invalidateQueries({ queryKey: ['agents'] })
-  }
+    setNewApiKey(null);
+    void queryClient.invalidateQueries({ queryKey: ["agents"] });
+  };
 
   const handleDeactivateConfirm = (): void => {
     if (deactivateTarget) {
-      deactivateMutation.mutate(deactivateTarget.id)
-      setDeactivateTarget(null)
+      deactivateMutation.mutate(deactivateTarget.id);
+      setDeactivateTarget(null);
     }
-  }
+  };
 
   return (
     <div>
@@ -242,11 +259,21 @@ function Agents(): React.ReactElement {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Name
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Description
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Created
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -264,17 +291,26 @@ function Agents(): React.ReactElement {
               </tr>
             ) : (
               agents.map((agent) => (
-                <tr key={agent.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{agent.name}</td>
+                <tr
+                  key={agent.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    {agent.name}
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {agent.description ?? <span className="text-gray-400">—</span>}
+                    {agent.description ?? (
+                      <span className="text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
-                    <Badge variant={agent.is_active ? 'success' : 'neutral'}>
-                      {agent.is_active ? 'Active' : 'Inactive'}
+                    <Badge variant={agent.is_active ? "success" : "neutral"}>
+                      {agent.is_active ? "Active" : "Inactive"}
                     </Badge>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{formatDate(agent.created_at)}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {formatDate(agent.created_at)}
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <button
                       type="button"
@@ -308,11 +344,11 @@ function Agents(): React.ReactElement {
         onClose={() => setDeactivateTarget(null)}
         onConfirm={handleDeactivateConfirm}
         title="Deactivate Agent"
-        message={`Deactivate agent "${deactivateTarget?.name ?? ''}"? This cannot be undone.`}
+        message={`Deactivate agent "${deactivateTarget?.name ?? ""}"? This cannot be undone.`}
         confirmLabel="Deactivate"
       />
     </div>
-  )
+  );
 }
 
-export default Agents
+export default Agents;

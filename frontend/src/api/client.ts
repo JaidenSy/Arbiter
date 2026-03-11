@@ -11,35 +11,38 @@
  *   const agents = await apiClient.get<Agent[]>('/agents')
  */
 
-import axios, { type AxiosInstance } from 'axios'
+import axios, { type AxiosInstance } from "axios";
 
-const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1'
+const BASE_URL: string =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   timeout: 30_000, // 30 s — matches backend proxy timeout
-})
+});
 
 // ── Request interceptor — attach Bearer token ─────────────────────────────────
 apiClient.interceptors.request.use((config) => {
-  const apiKey = localStorage.getItem('nexusai_api_key')
+  const apiKey = localStorage.getItem("nexusai_api_key");
   if (apiKey) {
-    config.headers.Authorization = `Bearer ${apiKey}`
+    config.headers.Authorization = `Bearer ${apiKey}`;
   }
-  return config
-})
+  return config;
+});
 
 // ── Response interceptor — handle auth errors ─────────────────────────────────
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('nexusai_api_key')
-      console.warn('[NexusAI] 401 received — API key cleared from localStorage')
+      localStorage.removeItem("nexusai_api_key");
+      console.warn(
+        "[NexusAI] 401 received — API key cleared from localStorage",
+      );
     }
-    return Promise.reject(error)
+    return Promise.reject(error);
   },
-)
+);
