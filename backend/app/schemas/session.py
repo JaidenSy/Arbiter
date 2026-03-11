@@ -48,7 +48,7 @@ class SessionResponse(BaseModel):
     agent_id: uuid.UUID
     started_at: datetime
     ended_at: datetime | None
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict, alias="metadata_")
     events: list[SessionEventResponse] = Field(default_factory=list)
 
-    model_config = {"from_attributes": True}
+    model_config = {"populate_by_name": True, "from_attributes": True}
