@@ -4,16 +4,11 @@
  * Creates a pre-configured Axios instance that:
  *   - Points to the NexusAI backend API (configurable via VITE_API_BASE_URL)
  *   - Attaches the Bearer API key from localStorage on every request
- *   - Transforms 401 responses into a redirect to a login/settings page
+ *   - Transforms 401 responses into clearing the stored key + a console warning
  *
  * Usage:
  *   import { apiClient } from './client'
  *   const agents = await apiClient.get<Agent[]>('/agents')
- *
- * TODO (Coder):
- *   - Add request interceptor to read API key from localStorage / auth context
- *   - Add response interceptor to handle 401 (clear key, show toast)
- *   - Add response interceptor to normalise error messages (extract detail field)
  */
 
 import axios, { type AxiosInstance } from 'axios'
@@ -30,8 +25,10 @@ export const apiClient: AxiosInstance = axios.create({
 
 // ── Request interceptor — attach Bearer token ─────────────────────────────────
 apiClient.interceptors.request.use((config) => {
-  // TODO: const apiKey = localStorage.getItem('nexusai_api_key')
-  // TODO: if (apiKey) config.headers.Authorization = `Bearer ${apiKey}`
+  const apiKey = localStorage.getItem('nexusai_api_key')
+  if (apiKey) {
+    config.headers.Authorization = `Bearer ${apiKey}`
+  }
   return config
 })
 
@@ -39,10 +36,10 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // TODO: if (error.response?.status === 401) {
-    //   localStorage.removeItem('nexusai_api_key')
-    //   window.location.href = '/settings'
-    // }
+    if (error.response?.status === 401) {
+      localStorage.removeItem('nexusai_api_key')
+      console.warn('[NexusAI] 401 received — API key cleared from localStorage')
+    }
     return Promise.reject(error)
   },
 )
