@@ -13,11 +13,13 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import redis.asyncio as aioredis
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.v1.endpoints import agents, mcp_servers, proxy, sessions, vault
+from app.api.v1.endpoints import tool_permissions, stats
 from app.core.config import settings
 from app.db.base import engine
 
@@ -99,23 +101,33 @@ def create_app() -> FastAPI:
 
     # ── Exception handlers ────────────────────────────────────────────────────
 
-    @app.exception_handler(401)
-    async def unauthorized_handler(request: Request, exc: Exception) -> JSONResponse:
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+        """
+        Consolidate all HTTPException status codes into one handler.
+
+        Dispatches custom response bodies for 401 (adds WWW-Authenticate header)
+        and 403.  All other status codes echo the exception detail verbatim.
+        """
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "Unauthorized — valid Bearer API key required"},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        if exc.status_code == status.HTTP_403_FORBIDDEN:
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"detail": exc.detail},
+            )
         return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"detail": "Unauthorized — valid Bearer API key required"},
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
         )
 
-    @app.exception_handler(403)
-    async def forbidden_handler(request: Request, exc: Exception) -> JSONResponse:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content={"detail": str(exc)},
-        )
-
-    @app.exception_handler(422)
-    async def validation_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+        """Return a consistent validation error shape."""
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={"detail": "Request validation failed", "errors": str(exc)},
@@ -127,6 +139,8 @@ def create_app() -> FastAPI:
     app.include_router(sessions.router, prefix=settings.api_prefix)
     app.include_router(proxy.router, prefix=settings.api_prefix)
     app.include_router(vault.router, prefix=settings.api_prefix)
+    app.include_router(tool_permissions.router, prefix=settings.api_prefix)
+    app.include_router(stats.router, prefix=settings.api_prefix)
 
     # ── Health check ──────────────────────────────────────────────────────────
     @app.get("/health", tags=["meta"])
