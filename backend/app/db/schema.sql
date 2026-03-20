@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS mcp_servers (
     base_url        TEXT        NOT NULL,
     description     TEXT,
     is_active       BOOLEAN     NOT NULL DEFAULT TRUE,
+    cache_enabled   BOOLEAN     NOT NULL DEFAULT TRUE,  -- FALSE for side-effectful servers
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -87,11 +88,12 @@ CREATE TABLE IF NOT EXISTS cache_entries (
 -- Ciphertext is AES-256-GCM; key lives in VAULT_ENCRYPTION_KEY env var.
 CREATE TABLE IF NOT EXISTS vault_secrets (
     id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    name            TEXT        NOT NULL UNIQUE,    -- logical name, e.g. "GITHUB_TOKEN"
+    name            TEXT        NOT NULL,           -- logical name, e.g. "GITHUB_TOKEN"
     ciphertext      TEXT        NOT NULL,
     agent_id        UUID        REFERENCES agents(id) ON DELETE SET NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (name, agent_id)                         -- per-agent namespace isolation
 );
 
 -- ── Indexes ───────────────────────────────────────────────────────────────────
