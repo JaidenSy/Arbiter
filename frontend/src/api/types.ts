@@ -30,18 +30,23 @@ export interface MCPServer {
 
 export interface SessionEvent {
   id: string;
+  session_id: string;
+  mcp_server_id: string | null;
   tool_name: string;
+  request_payload: Record<string, unknown>;
+  response_payload: Record<string, unknown> | null;
   cache_hit: boolean;
   duration_ms: number | null;
   error: string | null;
   occurred_at: string;
-  metadata: Record<string, unknown>;
 }
 
 export interface Session {
   id: string;
   agent_id: string;
   started_at: string;
+  ended_at: string | null;
+  metadata: Record<string, unknown>;
   events?: SessionEvent[];
 }
 
@@ -50,12 +55,15 @@ export interface ToolPermission {
   agent_id: string;
   mcp_server_id: string;
   tool_name: string;
+  granted_at: string;
+  granted_by: string | null;
 }
 
 export interface VaultSecret {
   id: string;
   name: string;
   agent_id: string | null;
+  created_at: string;
 }
 
 export interface VaultSecretWithValue extends VaultSecret {

@@ -4,7 +4,7 @@
  * Creates a pre-configured Axios instance that:
  *   - Points to the NexusAI backend API (configurable via VITE_API_BASE_URL)
  *   - Attaches the Bearer API key from localStorage on every request
- *   - Transforms 401 responses into clearing the stored key + a console warning
+ *   - Transforms 401 responses into clearing the stored key + redirect to /settings
  *
  * Usage:
  *   import { apiClient } from './client'
@@ -39,9 +39,7 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("nexusai_api_key");
-      console.warn(
-        "[NexusAI] 401 received — API key cleared from localStorage",
-      );
+      window.location.href = "/settings";
     }
     return Promise.reject(error);
   },
