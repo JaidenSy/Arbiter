@@ -59,7 +59,10 @@ class MCPServerResponse(BaseModel):
     base_url: str
     description: str | None
     is_active: bool
-    cache_enabled: bool
+    cache_enabled: bool = Field(
+        ...,
+        description="Set False for side-effectful servers that must never serve cached responses",
+    )
 
     model_config = {"from_attributes": True}
 
