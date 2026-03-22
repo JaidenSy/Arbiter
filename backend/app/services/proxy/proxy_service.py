@@ -122,10 +122,12 @@ class ProxyService:
             )
 
         # ── 3. Cache lookup ────────────────────────────────────────────────────
-        cached_result = await self._cache.get_cached(
-            tool_name=request.tool_name,
-            input_payload=request.params,
-        )
+        cached_result = None
+        if mcp_server.cache_enabled:
+            cached_result = await self._cache.get_cached(
+                tool_name=request.tool_name,
+                input_payload=request.params,
+            )
 
         # Ensure/create session.
         session = await self._ensure_session(
@@ -181,9 +183,7 @@ class ProxyService:
             "Accept": "application/json, text/event-stream",
         }
         # Reattach any upstream MCP session ID stored in Redis from a prior call.
-        upstream_session_key = (
-            f"mcp_sessions:{session.id}:{request.server_name}"
-        )
+        upstream_session_key = f"mcp_sessions:{session.id}:{request.server_name}"
         try:
             stored_upstream_id = await self.redis.get(upstream_session_key)
             if stored_upstream_id:
@@ -205,8 +205,7 @@ class ProxyService:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail=(
-                        f"MCP server {request.server_name!r} returned "
-                        f"HTTP {http_resp.status_code}"
+                        f"MCP server {request.server_name!r} returned HTTP {http_resp.status_code}"
                     ),
                 )
 
@@ -244,10 +243,8 @@ class ProxyService:
             else:
                 response_payload = json_body
 
-        except HTTPException:
-            raise
-        except httpx.TimeoutException:
-            error = f"MCP server {request.server_name!r} timed out after 30s"
+        except HTTPException as http_exc:
+            error = http_exc.detail if isinstance(http_exc.detail, str) else str(http_exc.detail)
             duration_ms = int((time.monotonic() - start_ms) * 1000)
             await self._persist_event(
                 session=session, mcp_server=mcp_server,
@@ -255,15 +252,33 @@ class ProxyService:
                 response_payload=None, cache_hit=False,
                 duration_ms=duration_ms, error=error,
             )
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=error)
+            raise
+        except httpx.TimeoutException as exc:
+            error = f"MCP server {request.server_name!r} timed out after 30s"
+            duration_ms = int((time.monotonic() - start_ms) * 1000)
+            await self._persist_event(
+                session=session,
+                mcp_server=mcp_server,
+                tool_name=request.tool_name,
+                request_payload=request.params,
+                response_payload=None,
+                cache_hit=False,
+                duration_ms=duration_ms,
+                error=error,
+            )
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=error) from exc
         except Exception as exc:
             error = str(exc)
             duration_ms = int((time.monotonic() - start_ms) * 1000)
             await self._persist_event(
-                session=session, mcp_server=mcp_server,
-                tool_name=request.tool_name, request_payload=request.params,
-                response_payload=None, cache_hit=False,
-                duration_ms=duration_ms, error=error,
+                session=session,
+                mcp_server=mcp_server,
+                tool_name=request.tool_name,
+                request_payload=request.params,
+                response_payload=None,
+                cache_hit=False,
+                duration_ms=duration_ms,
+                error=error,
             )
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -273,7 +288,7 @@ class ProxyService:
         duration_ms = int((time.monotonic() - start_ms) * 1000)
 
         # ── 6. Store in cache (only on success and if server allows caching) ──
-        if error is None and getattr(mcp_server, "cache_enabled", True):
+        if error is None and mcp_server.cache_enabled:
             try:
                 await self._cache.store_cached(
                     tool_name=request.tool_name,
@@ -331,23 +346,24 @@ class ProxyService:
         result: dict[str, Any] = {}
         for key, value in params.items():
             if isinstance(value, str):
-                result[key] = await self._inject_secrets(value)
+                result[key] = await self._inject_secrets(value, agent.id)
             else:
                 result[key] = value
         return result
 
-    async def _inject_secrets(self, value: str) -> str:
+    async def _inject_secrets(self, value: str, agent_id: uuid.UUID) -> str:
         """Replace all {{SECRET_NAME}} placeholders in a string value."""
         matches = _SECRET_PLACEHOLDER.findall(value)
         if not matches:
             return value
         for secret_name in set(matches):
             try:
-                secret_value = await self._vault.get_secret(secret_name)
+                secret_value = await self._vault.get_secret(secret_name, agent_id=agent_id)
                 value = value.replace(f"{{{{{secret_name}}}}}", secret_value)
             except KeyError:
                 logger.warning(
-                    "proxy: secret placeholder {{%s}} not found in vault", secret_name
+                    "proxy: secret placeholder {{%s}} not found in vault for agent %s",
+                    secret_name, agent_id,
                 )
         return value
 

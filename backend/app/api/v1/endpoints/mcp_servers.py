@@ -29,13 +29,17 @@ router = APIRouter(prefix="/mcp-servers", tags=["mcp-servers"])
 
 # ── Inline schemas ────────────────────────────────────────────────────────────
 
+
 class MCPServerCreate(BaseModel):
     """Request body for creating an MCP server registration."""
 
     name: str = Field(..., min_length=1, max_length=255)
     base_url: str = Field(..., description="Full HTTP(S) URL of the MCP server")
     description: str | None = None
-    cache_enabled: bool = Field(True, description="Set False for side-effectful servers that must never serve cached responses")
+    cache_enabled: bool = Field(
+        True,
+        description="Set False for side-effectful servers that must never serve cached responses",
+    )
 
 
 class MCPServerUpdate(BaseModel):
@@ -55,12 +59,16 @@ class MCPServerResponse(BaseModel):
     base_url: str
     description: str | None
     is_active: bool
-    cache_enabled: bool
+    cache_enabled: bool = Field(
+        ...,
+        description="Set False for side-effectful servers that must never serve cached responses",
+    )
 
     model_config = {"from_attributes": True}
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
 
 @router.post(
     "",
@@ -264,9 +272,7 @@ async def delete_mcp_server(
     Raises:
         HTTPException 404: If the server does not exist.
     """
-    result = await db.execute(
-        select(MCPServer).where(MCPServer.id == server_id)
-    )
+    result = await db.execute(select(MCPServer).where(MCPServer.id == server_id))
     server = result.scalar_one_or_none()
     if server is None:
         raise HTTPException(

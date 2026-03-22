@@ -25,6 +25,7 @@ router = APIRouter(prefix="/stats", tags=["stats"])
 
 # ── Schema ────────────────────────────────────────────────────────────────────
 
+
 class StatsResponse(BaseModel):
     """Dashboard statistics snapshot."""
 
@@ -35,6 +36,7 @@ class StatsResponse(BaseModel):
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
+
 
 @router.get(
     "",
@@ -67,9 +69,7 @@ async def get_stats(
         StatsResponse: Aggregated dashboard statistics.
     """
     # ── Active agents count ────────────────────────────────────────────────────
-    agents_result = await db.execute(
-        select(func.count(Agent.id)).where(Agent.is_active.is_(True))
-    )
+    agents_result = await db.execute(select(func.count(Agent.id)).where(Agent.is_active.is_(True)))
     agents_count: int = agents_result.scalar_one() or 0
 
     # ── Active MCP servers count ───────────────────────────────────────────────
@@ -85,18 +85,14 @@ async def get_stats(
     calls_result = await db.execute(
         select(
             func.count(SessionEvent.id).label("total"),
-            func.sum(
-                case((SessionEvent.cache_hit.is_(True), 1), else_=0)
-            ).label("hits"),
+            func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
         ).where(SessionEvent.occurred_at >= today_midnight)
     )
     row = calls_result.one()
     tool_calls_today: int = row.total or 0
     hits_today: int = row.hits or 0
 
-    cache_hit_rate_today: float = (
-        hits_today / tool_calls_today if tool_calls_today > 0 else 0.0
-    )
+    cache_hit_rate_today: float = hits_today / tool_calls_today if tool_calls_today > 0 else 0.0
 
     return StatsResponse(
         agents_count=agents_count,
