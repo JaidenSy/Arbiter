@@ -13,6 +13,7 @@ Routes:
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -48,6 +49,8 @@ class ToolPermissionResponse(BaseModel):
     agent_id: uuid.UUID
     mcp_server_id: uuid.UUID
     tool_name: str
+    granted_at: datetime
+    granted_by: str | None
 
     model_config = {"from_attributes": True}
 

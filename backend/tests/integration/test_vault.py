@@ -29,11 +29,14 @@ def _make_vault_secret(
     agent_id: uuid.UUID,
     ciphertext: str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 ) -> MagicMock:
+    from datetime import datetime, timezone
+
     s = MagicMock()
     s.id = secret_id
     s.name = name
     s.agent_id = agent_id
     s.ciphertext = ciphertext
+    s.created_at = datetime.now(timezone.utc)
     return s
 
 
@@ -81,9 +84,12 @@ class TestCreateSecret:
             return result
 
         async def refresh(obj):
+            from datetime import datetime, timezone
+
             obj.id = secret_id
             obj.name = "MY_TOKEN"
             obj.agent_id = mock_agent.id
+            obj.created_at = datetime.now(timezone.utc)
 
         db.execute = execute
         db.refresh = refresh

@@ -16,6 +16,7 @@ Routes:
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -46,6 +47,7 @@ class SecretResponse(BaseModel):
     id: uuid.UUID
     name: str
     agent_id: uuid.UUID | None
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 
@@ -164,6 +166,7 @@ async def get_secret(
         id=secret.id,
         name=secret.name,
         agent_id=secret.agent_id,
+        created_at=secret.created_at,
         value=value,
     )
 

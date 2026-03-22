@@ -46,11 +46,15 @@ def _make_permission_orm(
     mcp_server_id: uuid.UUID,
     tool_name: str,
 ) -> MagicMock:
+    from datetime import datetime, timezone
+
     p = MagicMock()
     p.id = perm_id
     p.agent_id = agent_id
     p.mcp_server_id = mcp_server_id
     p.tool_name = tool_name
+    p.granted_at = datetime.now(timezone.utc)
+    p.granted_by = None
     return p
 
 
@@ -84,7 +88,11 @@ def _make_db_for_create(agent=None, server=None, raises_integrity=False):
         db.commit.return_value = None
 
     async def refresh(obj):
+        from datetime import datetime, timezone
+
         obj.id = uuid.uuid4()
+        obj.granted_at = datetime.now(timezone.utc)
+        obj.granted_by = None
 
     db.refresh = refresh
     return db
