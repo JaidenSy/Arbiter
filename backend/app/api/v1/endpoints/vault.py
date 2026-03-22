@@ -16,13 +16,16 @@ Routes:
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_agent, get_db
 from app.db.models.agent import Agent
+from app.db.models.vault import VaultSecret
 from app.services.vault.vault_service import VaultService
 
 router = APIRouter(prefix="/vault", tags=["vault"])
@@ -30,12 +33,12 @@ router = APIRouter(prefix="/vault", tags=["vault"])
 
 # ── Inline schemas ────────────────────────────────────────────────────────────
 
+
 class SecretCreate(BaseModel):
     """Request body for storing a secret."""
 
     name: str = Field(..., description="Logical key, e.g. GITHUB_TOKEN")
     value: str = Field(..., description="Raw secret value — will be encrypted at rest")
-    agent_id: uuid.UUID | None = Field(None, description="Scope to a specific agent (optional)")
 
 
 class SecretResponse(BaseModel):
@@ -44,6 +47,7 @@ class SecretResponse(BaseModel):
     id: uuid.UUID
     name: str
     agent_id: uuid.UUID | None
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 
@@ -56,6 +60,7 @@ class SecretValueResponse(SecretResponse):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+
 @router.post(
     "/secrets",
     response_model=SecretResponse,
@@ -65,26 +70,25 @@ class SecretValueResponse(SecretResponse):
 async def create_secret(
     body: SecretCreate,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_agent: Agent = Depends(get_current_agent),
 ) -> SecretResponse:
     """
-    Encrypt and store a secret in the vault.
+    Encrypt and store a secret in the vault, scoped to the calling agent.
 
-    If a secret with the same name already exists, it is overwritten
-    (rotation).  The previous ciphertext is not retained.
+    If a secret with the same name already exists for this agent, it is
+    overwritten (rotation).  The previous ciphertext is not retained.
 
     Args:
-        body:     Secret name and plaintext value.
-        db:       Injected DB session.
-        _current: Auth guard.
+        body:          Secret name and plaintext value.
+        db:            Injected DB session.
+        current_agent: Authenticated agent — secret is scoped to this agent.
 
     Returns:
         SecretResponse: Metadata only — value is not echoed back.
     """
-    # TODO: service = VaultService(db)
-    # TODO: secret = await service.store_secret(body.name, body.value, body.agent_id)
-    # TODO: return SecretResponse.model_validate(secret)
-    raise NotImplementedError
+    service = VaultService(db)
+    secret = await service.store_secret(body.name, body.value, current_agent.id)
+    return SecretResponse.model_validate(secret)
 
 
 @router.get(
@@ -94,20 +98,24 @@ async def create_secret(
 )
 async def list_secrets(
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_agent: Agent = Depends(get_current_agent),
 ) -> list[SecretResponse]:
     """
-    Return all secret names and IDs — never the decrypted values.
+    Return all secret names and IDs owned by the calling agent.
+
+    Never exposes decrypted values.  Scoped to current_agent.id for security —
+    agents cannot enumerate each other's secrets.
 
     Args:
-        db:       Injected DB session.
-        _current: Auth guard.
+        db:            Injected DB session.
+        current_agent: Authenticated agent.
 
     Returns:
-        list[SecretResponse]: All vault secrets (no values).
+        list[SecretResponse]: All vault secrets for this agent (no values).
     """
-    # TODO: SELECT id, name, agent_id FROM vault_secrets
-    raise NotImplementedError
+    result = await db.execute(select(VaultSecret).where(VaultSecret.agent_id == current_agent.id))
+    secrets = result.scalars().all()
+    return [SecretResponse.model_validate(s) for s in secrets]
 
 
 @router.get(
@@ -118,30 +126,49 @@ async def list_secrets(
 async def get_secret(
     secret_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_agent: Agent = Depends(get_current_agent),
 ) -> SecretValueResponse:
     """
     Fetch and decrypt a secret by UUID.
 
     Caution: This endpoint returns the plaintext value.  Restrict access
-    via network policy or a separate admin RBAC role.
+    via network policy or a separate admin RBAC role.  The secret must be
+    owned by the calling agent — agents cannot read each other's secrets.
 
     Args:
-        secret_id: UUID of the vault secret.
-        db:        Injected DB session.
-        _current:  Auth guard.
+        secret_id:     UUID of the vault secret.
+        db:            Injected DB session.
+        current_agent: Authenticated agent.
 
     Returns:
         SecretValueResponse: Metadata plus decrypted value.
 
     Raises:
-        HTTPException 404: If the secret does not exist.
+        HTTPException 404: If the secret does not exist or belongs to another agent.
     """
-    # TODO: fetch VaultSecret by id, raise 404 if not found
-    # TODO: service = VaultService(db)
-    # TODO: value = service.decrypt(secret.ciphertext)
-    # TODO: return SecretValueResponse(value=value, ...)
-    raise NotImplementedError
+    result = await db.execute(
+        select(VaultSecret).where(
+            VaultSecret.id == secret_id,
+            VaultSecret.agent_id == current_agent.id,
+        )
+    )
+    secret = result.scalar_one_or_none()
+    if secret is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Secret {secret_id} not found",
+        )
+
+    service = VaultService(db)
+    value = service.decrypt(secret.ciphertext)
+    # SECURITY: value is never logged — only passed to the response serialiser.
+    return SecretValueResponse(
+        id=secret.id,
+        name=secret.name,
+        agent_id=secret.agent_id,
+        created_at=secret.created_at,
+        value=value,
+    )
 
 
 @router.delete(
@@ -152,20 +179,34 @@ async def get_secret(
 async def delete_secret(
     secret_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_agent: Agent = Depends(get_current_agent),
 ) -> None:
     """
     Permanently delete a secret from the vault.
 
     Unlike agents/servers, secrets are hard-deleted (no soft-delete).
+    The secret must be owned by the calling agent.
 
     Args:
-        secret_id: UUID of the secret to delete.
-        db:        Injected DB session.
-        _current:  Auth guard.
+        secret_id:     UUID of the secret to delete.
+        db:            Injected DB session.
+        current_agent: Authenticated agent.
 
     Raises:
-        HTTPException 404: If the secret does not exist.
+        HTTPException 404: If the secret does not exist or belongs to another agent.
     """
-    # TODO: DELETE FROM vault_secrets WHERE id=secret_id
-    raise NotImplementedError
+    result = await db.execute(
+        select(VaultSecret).where(
+            VaultSecret.id == secret_id,
+            VaultSecret.agent_id == current_agent.id,
+        )
+    )
+    secret = result.scalar_one_or_none()
+    if secret is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Secret {secret_id} not found",
+        )
+
+    await db.delete(secret)
+    await db.commit()
