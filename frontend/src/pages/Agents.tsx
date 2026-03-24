@@ -10,7 +10,6 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "../api/client";
 import type { Agent, AgentCreateResponse } from "../api/types";
-import Badge from "../components/Badge";
 import CopyButton from "../components/CopyButton";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -89,9 +88,9 @@ function RegisterModal({
         <div>
           <label
             htmlFor="agent-name"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm text-secondary mb-1"
           >
-            Name <span className="text-red-500">*</span>
+            Name <span className="text-error">*</span>
           </label>
           <input
             id="agent-name"
@@ -100,14 +99,14 @@ function RegisterModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. my-agent"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full bg-elevated border border-white/[0.14] text-primary text-sm px-3 py-1.5 rounded focus:outline-none focus:border-accent focus:ring-0"
           />
         </div>
 
         <div>
           <label
             htmlFor="agent-desc"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm text-secondary mb-1"
           >
             Description
           </label>
@@ -117,24 +116,24 @@ function RegisterModal({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Optional description…"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            className="w-full bg-elevated border border-white/[0.14] text-primary text-sm px-3 py-1.5 rounded focus:outline-none focus:border-accent focus:ring-0 resize-none"
           />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-error">{error}</p>}
 
         <div className="flex justify-end gap-3 pt-2">
           <button
             type="button"
             onClick={handleClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded text-sm transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={mutation.isPending || !name.trim()}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-accent hover:bg-violet-600 text-white text-sm font-medium px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {mutation.isPending ? "Registering…" : "Register"}
           </button>
@@ -160,16 +159,18 @@ function ApiKeyModal({
   return (
     <Modal isOpen={isOpen} onClose={onDismiss} title="Agent Registered">
       <div className="space-y-4">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-          <p className="text-sm font-semibold text-yellow-800">
+        <div className="bg-yellow-950/40 border border-yellow-800/50 rounded p-3">
+          <p className="text-sm font-semibold text-yellow-400">
             This key will not be shown again. Copy it now.
           </p>
         </div>
 
         <div>
-          <p className="text-sm text-gray-600 mb-2">API Key</p>
-          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-            <code className="text-xs font-mono text-gray-900 flex-1 break-all">
+          <p className="text-xs text-secondary mb-2 font-mono uppercase tracking-wider">
+            API Key
+          </p>
+          <div className="bg-base border border-white/10 rounded p-3 flex items-start gap-2">
+            <code className="text-xs font-mono text-accent-light flex-1 break-all">
               {apiKey ?? ""}
             </code>
             <CopyButton text={apiKey ?? ""} />
@@ -180,7 +181,7 @@ function ApiKeyModal({
           <button
             type="button"
             onClick={onDismiss}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+            className="bg-accent hover:bg-violet-600 text-white text-sm font-medium px-3 py-1.5 rounded transition-colors"
           >
             Dismiss
           </button>
@@ -194,10 +195,10 @@ function ApiKeyModal({
 
 function SkeletonRow(): React.ReactElement {
   return (
-    <tr>
+    <tr className="border-b border-white/[0.07]">
       {[1, 2, 3, 4, 5].map((i) => (
-        <td key={i} className="px-6 py-4">
-          <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
+        <td key={i} className="py-2 px-4">
+          <div className="h-3 bg-elevated rounded animate-pulse w-3/4" />
         </td>
       ))}
     </tr>
@@ -223,6 +224,10 @@ function Agents(): React.ReactElement {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["agents"] });
     },
+    onError: (err) => {
+      console.error("Failed to deactivate agent", err);
+      void queryClient.invalidateQueries({ queryKey: ["agents"] });
+    },
   });
 
   const handleRegisterSuccess = (response: AgentCreateResponse): void => {
@@ -243,40 +248,41 @@ function Agents(): React.ReactElement {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Agents</h1>
+    <div className="p-8">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-primary text-lg font-semibold">Agents</h1>
         <button
           type="button"
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+          className="bg-accent hover:bg-violet-600 text-white text-sm font-medium px-3 py-1.5 rounded transition-colors"
           onClick={() => setShowRegisterModal(true)}
         >
           Register Agent
         </button>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      {/* Table */}
+      <div className="border-t border-white/[0.07]">
+        <table className="min-w-full">
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
                 Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
                 Description
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
                 Created
               </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+              <th className="py-2 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {isLoading ? (
               <>
                 <SkeletonRow />
@@ -285,7 +291,10 @@ function Agents(): React.ReactElement {
               </>
             ) : !agents || agents.length === 0 ? (
               <tr>
-                <td className="px-6 py-4 text-sm text-gray-400" colSpan={5}>
+                <td
+                  className="py-4 px-4 text-sm text-secondary font-mono"
+                  colSpan={5}
+                >
                   No agents registered yet.
                 </td>
               </tr>
@@ -293,29 +302,34 @@ function Agents(): React.ReactElement {
               agents.map((agent) => (
                 <tr
                   key={agent.id}
-                  className="hover:bg-gray-50 transition-colors"
+                  className="group border-b border-white/[0.07] hover:bg-elevated transition-colors"
                 >
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                  <td className="py-2 px-4 text-sm text-primary">
                     {agent.name}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="py-2 px-4 text-xs text-secondary">
                     {agent.description ?? (
-                      <span className="text-gray-400">—</span>
+                      <span className="text-muted">—</span>
                     )}
                   </td>
-                  <td className="px-6 py-4">
-                    <Badge variant={agent.is_active ? "success" : "neutral"}>
-                      {agent.is_active ? "Active" : "Inactive"}
-                    </Badge>
+                  <td className="py-2 px-4">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${agent.is_active ? 'bg-green-400' : 'bg-muted'}`}
+                      />
+                      <span className="text-xs text-secondary">
+                        {agent.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="py-2 px-4 font-mono text-xs text-muted">
                     {formatDate(agent.created_at)}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="py-2 px-4 text-right">
                     <button
                       type="button"
                       onClick={() => setDeactivateTarget(agent)}
-                      className="text-sm text-red-600 hover:text-red-800 font-medium transition-colors"
+                      className="opacity-0 group-hover:opacity-100 text-error hover:bg-red-500/10 px-3 py-1.5 rounded text-sm transition-all"
                     >
                       Deactivate
                     </button>

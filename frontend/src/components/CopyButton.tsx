@@ -17,7 +17,11 @@ function CopyButton({ text }: CopyButtonProps): React.ReactElement {
     <button
       type="button"
       onClick={handleCopy}
-      className="ml-2 px-3 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+      className={`text-xs border px-2 py-1 rounded font-mono transition-colors ${
+        copied
+          ? "text-green-400 border-green-400/30"
+          : "text-secondary hover:text-primary border-white/10 hover:border-white/20"
+      }`}
     >
       {copied ? "Copied!" : "Copy"}
     </button>
