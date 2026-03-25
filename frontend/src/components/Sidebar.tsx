@@ -45,6 +45,15 @@ const PermissionsIcon = (): React.ReactElement => (
   </svg>
 )
 
+const VaultIcon = (): React.ReactElement => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="2" y="3" width="20" height="18" rx="1"/>
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 8v1M12 15v1M8 12h1M15 12h1"/>
+    <path d="M18 3v18"/>
+  </svg>
+)
+
 const SettingsIcon = (): React.ReactElement => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
     <circle cx="12" cy="12" r="3"/>
@@ -100,6 +109,7 @@ function Sidebar(): React.ReactElement {
         <NavItem to="/" icon={<DashboardIcon />} title="Dashboard" end />
         <NavItem to="/agents" icon={<AgentsIcon />} title="Agents" />
         <NavItem to="/mcp-servers" icon={<MCPServersIcon />} title="MCP Servers" />
+        <NavItem to="/vault" icon={<VaultIcon />} title="Vault" />
         <NavItem to="/sessions" icon={<SessionsIcon />} title="Sessions" />
         <NavItem to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
       </nav>

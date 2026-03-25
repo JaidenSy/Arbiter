@@ -90,6 +90,11 @@ export interface VaultSecretWithValue extends VaultSecret {
   value: string;
 }
 
+export interface VaultSecretCreate {
+  name: string;
+  value: string;
+}
+
 export interface DashboardStats {
   agents_count: number;
   servers_count: number;

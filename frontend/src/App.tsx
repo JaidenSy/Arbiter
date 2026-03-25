@@ -8,6 +8,7 @@
  *   /sessions    → Sessions     (audit log, event drill-down)
  *   /settings    → Settings     (API key, gateway URL, about)
  *   /permissions → Permissions  (per-agent tool permission grant/revoke)
+ *   /vault       → Vault        (per-agent secret management, AES-256-GCM encrypted)
  */
 
 import React from 'react'
@@ -19,6 +20,7 @@ import MCPServers from './pages/MCPServers'
 import Sessions from './pages/Sessions'
 import Settings from './pages/Settings'
 import Permissions from './pages/Permissions'
+import Vault from './pages/Vault'
 
 function App(): React.ReactElement {
   return (
@@ -32,6 +34,7 @@ function App(): React.ReactElement {
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/permissions" element={<Permissions />} />
+          <Route path="/vault" element={<Vault />} />
         </Routes>
       </main>
     </div>
