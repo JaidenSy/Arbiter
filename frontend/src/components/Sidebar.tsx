@@ -27,6 +27,17 @@ const SessionsIcon = (): React.ReactElement => (
   </svg>
 )
 
+const MCPServersIcon = (): React.ReactElement => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="2" y="3" width="20" height="5" rx="1"/>
+    <rect x="2" y="10" width="20" height="5" rx="1"/>
+    <rect x="2" y="17" width="20" height="5" rx="1"/>
+    <circle cx="18" cy="5.5" r="0.75" fill="currentColor"/>
+    <circle cx="18" cy="12.5" r="0.75" fill="currentColor"/>
+    <circle cx="18" cy="19.5" r="0.75" fill="currentColor"/>
+  </svg>
+)
+
 const SettingsIcon = (): React.ReactElement => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
     <circle cx="12" cy="12" r="3"/>
@@ -81,6 +92,7 @@ function Sidebar(): React.ReactElement {
       <nav className="flex flex-col flex-1 pt-2">
         <NavItem to="/" icon={<DashboardIcon />} title="Dashboard" end />
         <NavItem to="/agents" icon={<AgentsIcon />} title="Agents" />
+        <NavItem to="/mcp-servers" icon={<MCPServersIcon />} title="MCP Servers" />
         <NavItem to="/sessions" icon={<SessionsIcon />} title="Sessions" />
       </nav>
 

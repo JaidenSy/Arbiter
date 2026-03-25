@@ -28,6 +28,20 @@ export interface MCPServer {
   created_at: string;
 }
 
+export interface MCPServerCreate {
+  name: string;
+  base_url: string;
+  description?: string | null;
+  cache_enabled?: boolean;
+}
+
+export interface MCPServerUpdate {
+  name?: string;
+  base_url?: string;
+  description?: string | null;
+  cache_enabled?: boolean;
+}
+
 export interface SessionEvent {
   id: string;
   session_id: string;
