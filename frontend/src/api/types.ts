@@ -73,6 +73,12 @@ export interface ToolPermission {
   granted_by: string | null;
 }
 
+export interface ToolPermissionCreate {
+  mcp_server_id: string
+  tool_name: string
+  granted_by?: string | null
+}
+
 export interface VaultSecret {
   id: string;
   name: string;

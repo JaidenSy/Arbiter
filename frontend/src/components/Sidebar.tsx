@@ -38,6 +38,13 @@ const MCPServersIcon = (): React.ReactElement => (
   </svg>
 )
 
+const PermissionsIcon = (): React.ReactElement => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="3" y="11" width="18" height="11" rx="1"/>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+)
+
 const SettingsIcon = (): React.ReactElement => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
     <circle cx="12" cy="12" r="3"/>
@@ -94,6 +101,7 @@ function Sidebar(): React.ReactElement {
         <NavItem to="/agents" icon={<AgentsIcon />} title="Agents" />
         <NavItem to="/mcp-servers" icon={<MCPServersIcon />} title="MCP Servers" />
         <NavItem to="/sessions" icon={<SessionsIcon />} title="Sessions" />
+        <NavItem to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
       </nav>
 
       {/* Settings at bottom */}
