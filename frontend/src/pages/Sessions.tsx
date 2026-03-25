@@ -12,7 +12,6 @@ import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../api/client";
 import type { Agent, Session, SessionEvent } from "../api/types";
-import Badge from "../components/Badge";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 
@@ -66,8 +65,8 @@ function EventsRows({
 
   if (isLoading) {
     return (
-      <tr>
-        <td colSpan={colSpan} className="px-10 py-4 text-sm text-gray-400">
+      <tr className="bg-highlight/30 border-b border-white/[0.07]">
+        <td colSpan={colSpan} className="pl-8 py-3 text-sm text-secondary font-mono">
           Loading events…
         </td>
       </tr>
@@ -76,8 +75,8 @@ function EventsRows({
 
   if (!events || events.length === 0) {
     return (
-      <tr>
-        <td colSpan={colSpan} className="px-10 py-4 text-sm text-gray-400">
+      <tr className="bg-highlight/30 border-b border-white/[0.07]">
+        <td colSpan={colSpan} className="pl-8 py-3 text-sm text-secondary font-mono">
           No events recorded for this session.
         </td>
       </tr>
@@ -85,64 +84,66 @@ function EventsRows({
   }
 
   return (
-    <>
-      {/* Sub-header */}
-      <tr className="bg-indigo-50">
-        <td colSpan={colSpan} className="px-0 py-0">
-          <table className="min-w-full">
-            <thead>
-              <tr>
-                <th className="pl-10 pr-4 py-2 text-left text-xs font-medium text-indigo-700 uppercase w-1/4">
-                  Tool
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-indigo-700 uppercase">
-                  Cache
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-indigo-700 uppercase">
-                  Duration
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-indigo-700 uppercase">
-                  Error
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-indigo-700 uppercase">
-                  Time
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-indigo-100">
-              {events.map((event) => (
-                <tr
-                  key={event.id}
-                  className="bg-indigo-50 hover:bg-indigo-100 transition-colors"
-                >
-                  <td className="pl-10 pr-4 py-2 text-xs font-mono text-gray-900">
-                    {event.tool_name}
-                  </td>
-                  <td className="px-4 py-2">
-                    <Badge variant={event.cache_hit ? "success" : "neutral"}>
+    <tr className="bg-highlight/30 border-b border-white/[0.07]">
+      <td colSpan={colSpan} className="py-0 px-0">
+        <table className="min-w-full">
+          <thead>
+            <tr>
+              <th className="pl-8 pr-4 py-2 text-left text-xs font-mono text-muted uppercase tracking-wider w-1/4">
+                Tool
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-mono text-muted uppercase tracking-wider">
+                Cache
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-mono text-muted uppercase tracking-wider">
+                Duration
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-mono text-muted uppercase tracking-wider">
+                Error
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-mono text-muted uppercase tracking-wider">
+                Time
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.map((event) => (
+              <tr
+                key={event.id}
+                className="border-t border-white/[0.04] hover:bg-elevated transition-colors"
+              >
+                <td className="pl-8 pr-4 py-2 text-xs font-mono text-primary">
+                  {event.tool_name}
+                </td>
+                <td className="px-4 py-2">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${event.cache_hit ? 'bg-green-400' : 'bg-secondary'}`}
+                    />
+                    <span className="text-xs font-mono text-secondary">
                       {event.cache_hit ? "HIT" : "MISS"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-2 text-xs text-gray-600">
-                    {formatDuration(event.duration_ms)}
-                  </td>
-                  <td className="px-4 py-2 text-xs">
-                    {event.error ? (
-                      <span className="text-red-600">{event.error}</span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-xs text-gray-600">
-                    {relativeTime(event.occurred_at)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </td>
-      </tr>
-    </>
+                    </span>
+                  </div>
+                </td>
+                <td className="px-4 py-2 text-xs font-mono text-secondary">
+                  {formatDuration(event.duration_ms)}
+                </td>
+                <td className="px-4 py-2 text-xs font-mono">
+                  {event.error ? (
+                    <span className="text-error">{event.error}</span>
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-2 text-xs font-mono text-secondary">
+                  {relativeTime(event.occurred_at)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </td>
+    </tr>
   );
 }
 
@@ -172,17 +173,17 @@ function Sessions(): React.ReactElement {
   const TABLE_COLS = 4;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Sessions</h1>
+    <div className="p-8">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-primary text-lg font-semibold">Sessions</h1>
 
         {/* Agent filter */}
         <div className="flex items-center gap-3">
           <label
             htmlFor="agent-filter"
-            className="text-sm text-gray-600 font-medium"
+            className="text-xs text-secondary font-mono"
           >
-            Filter by agent:
+            Filter:
           </label>
           <select
             id="agent-filter"
@@ -191,7 +192,7 @@ function Sessions(): React.ReactElement {
               setAgentId(e.target.value);
               setExpandedId(null);
             }}
-            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="bg-elevated border border-white/[0.14] text-primary text-sm px-3 py-1.5 rounded focus:outline-none focus:border-accent focus:ring-0"
           >
             <option value="">All agents</option>
             {agents?.map((agent) => (
@@ -203,30 +204,30 @@ function Sessions(): React.ReactElement {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="border-t border-white/[0.07]">
+        <table className="min-w-full">
+          <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
                 Session
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
                 Agent
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
                 Started
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
                 Events
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {sessionsLoading ? (
               <tr>
                 <td
                   colSpan={TABLE_COLS}
-                  className="px-6 py-4 text-sm text-gray-400"
+                  className="py-4 px-4 text-sm text-secondary font-mono"
                 >
                   Loading sessions…
                 </td>
@@ -235,7 +236,7 @@ function Sessions(): React.ReactElement {
               <tr>
                 <td
                   colSpan={TABLE_COLS}
-                  className="px-6 py-4 text-sm text-gray-400"
+                  className="py-4 px-4 text-sm text-secondary font-mono"
                 >
                   No sessions recorded yet.
                 </td>
@@ -244,24 +245,24 @@ function Sessions(): React.ReactElement {
               sessions.map((session) => (
                 <React.Fragment key={session.id}>
                   <tr
-                    className="cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="border-b border-white/[0.07] cursor-pointer hover:bg-elevated transition-colors"
                     onClick={() => toggleRow(session.id)}
                   >
-                    <td className="px-6 py-4 text-sm font-mono text-gray-900">
+                    <td className="py-2 px-4 text-sm font-mono text-accent-light">
                       <span className="flex items-center gap-2">
-                        <span className="text-gray-400 text-xs">
+                        <span className="text-muted text-xs">
                           {expandedId === session.id ? "▾" : "▸"}
                         </span>
                         {session.id.slice(0, 8)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm font-mono text-gray-600">
+                    <td className="py-2 px-4 text-sm font-mono text-secondary">
                       {session.agent_id.slice(0, 8)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="py-2 px-4 text-sm text-secondary">
                       {relativeTime(session.started_at)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="py-2 px-4 text-sm font-mono text-secondary">
                       {session.events?.length ?? "—"}
                     </td>
                   </tr>

@@ -28,34 +28,39 @@ function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
       aria-modal="true"
       role="dialog"
       aria-labelledby="modal-title"
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Card */}
-      <div className="relative z-10 bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
+      {/* Dialog */}
+      <div className="relative z-10 bg-surface border border-white/10 rounded w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
+          <h2 id="modal-title" className="text-primary text-sm font-semibold">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-secondary hover:text-primary transition-colors"
             aria-label="Close modal"
           >
             ✕
           </button>
         </div>
-        {children}
+
+        {/* Body */}
+        <div className="px-5 py-4">
+          {children}
+        </div>
       </div>
     </div>
   );

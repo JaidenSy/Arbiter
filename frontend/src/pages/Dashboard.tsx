@@ -2,7 +2,7 @@
  * NexusAI — Dashboard page.
  *
  * Landing page showing a high-level overview of gateway activity:
- *   - 4 stat cards (agents, servers, tool calls, cache hit rate)
+ *   - 4 stat metrics (agents, servers, tool calls, cache hit rate)
  *   - Area chart — mock 7-day series derived from current stats
  *   - Recent sessions table (last 10, click-through to /sessions)
  */
@@ -15,6 +15,7 @@ import {
   Area,
   XAxis,
   YAxis,
+  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
@@ -42,7 +43,6 @@ function buildMockChartData(
   const todayCalls = stats.tool_calls_today;
 
   return days.map((day, i) => {
-    // Vary each day by ±15 pp around today's values to produce a realistic curve
     const jitter = Math.sin(i * 1.8) * 0.15 + Math.cos(i) * 0.08;
     const rate = Math.min(100, Math.max(0, todayRate + jitter * 100));
     const calls = Math.max(
@@ -66,28 +66,30 @@ function relativeTime(iso: string): string {
 
 /** Color class for cache hit rate value. */
 function cacheRateColorClass(rate: number): string {
-  if (rate >= 0.7) return "text-green-600";
-  if (rate >= 0.4) return "text-yellow-600";
-  return "text-red-600";
+  if (rate >= 0.7) return "text-green-400";
+  if (rate >= 0.4) return "text-yellow-400";
+  return "text-red-400";
 }
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
+// ── Stat metric ───────────────────────────────────────────────────────────────
 
-interface StatCardProps {
+interface StatMetricProps {
   label: string;
   value: string | number;
   valueClass?: string;
 }
 
-function StatCard({
+function StatMetric({
   label,
   value,
-  valueClass = "text-gray-900",
-}: StatCardProps): React.ReactElement {
+  valueClass = "text-primary",
+}: StatMetricProps): React.ReactElement {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className={`text-3xl font-bold mt-1 ${valueClass}`}>{value}</p>
+    <div className="flex-1 px-6 py-5">
+      <p className="text-muted text-xs font-mono tracking-wider uppercase mb-1">
+        {label}
+      </p>
+      <p className={`text-3xl font-mono font-light ${valueClass}`}>{value}</p>
     </div>
   );
 }
@@ -116,41 +118,41 @@ function Dashboard(): React.ReactElement {
     : "—%";
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Dashboard</h1>
+    <div className="p-8">
+      <h1 className="text-primary text-lg font-semibold mb-8">Dashboard</h1>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        <StatCard
+      {/* Stat strip */}
+      <div className="flex border border-white/[0.07] rounded mb-8 divide-x divide-white/[0.07]">
+        <StatMetric
           label="Active Agents"
           value={statsLoading ? "…" : (stats?.agents_count ?? "—")}
         />
-        <StatCard
+        <StatMetric
           label="MCP Servers"
           value={statsLoading ? "…" : (stats?.servers_count ?? "—")}
         />
-        <StatCard
+        <StatMetric
           label="Tool Calls Today"
           value={statsLoading ? "…" : (stats?.tool_calls_today ?? "—")}
         />
-        <StatCard
+        <StatMetric
           label="Cache Hit Rate"
           value={statsLoading ? "…" : cacheRatePct}
           valueClass={
             stats
               ? cacheRateColorClass(stats.cache_hit_rate_today)
-              : "text-indigo-600"
+              : "text-primary"
           }
         />
       </div>
 
       {/* Area chart */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">
-          Cache Hit Rate (7 days)
+      <div className="border border-white/[0.07] p-6 mb-8">
+        <h2 className="text-secondary text-xs font-mono tracking-wider uppercase mb-4">
+          Cache Hit Rate — 7 days
         </h2>
         {statsLoading ? (
-          <div className="h-48 flex items-center justify-center text-gray-400 text-sm">
+          <div className="h-48 flex items-center justify-center text-secondary text-sm font-mono">
             Loading chart…
           </div>
         ) : (
@@ -160,20 +162,43 @@ function Dashboard(): React.ReactElement {
               margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
             >
               <defs>
-                <linearGradient id="cacheGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.6} />
+                  <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-              <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(v: number) => [`${v}%`, "Hit Rate"]} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="rgba(255,255,255,0.04)"
+              />
+              <XAxis
+                dataKey="day"
+                stroke="#444"
+                tick={{ fill: '#888', fontSize: 11, fontFamily: 'monospace' }}
+              />
+              <YAxis
+                domain={[0, 100]}
+                unit="%"
+                stroke="#444"
+                tick={{ fill: '#888', fontSize: 11, fontFamily: 'monospace' }}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: '#111111',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 4,
+                  color: '#efefef',
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                }}
+                formatter={(v: number) => [`${v}%`, "Hit Rate"]}
+              />
               <Area
                 type="monotone"
                 dataKey="rate"
-                stroke="#6366f1"
-                strokeWidth={2}
-                fill="url(#cacheGradient)"
+                stroke="#7c3aed"
+                strokeWidth={1.5}
+                fill="url(#colorGradient)"
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -181,61 +206,64 @@ function Dashboard(): React.ReactElement {
       </div>
 
       {/* Recent sessions table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Recent Sessions</h2>
-        </div>
-
-        {sessionsLoading ? (
-          <div className="p-6 text-sm text-gray-400">Loading sessions…</div>
-        ) : !sessions || sessions.length === 0 ? (
-          <div className="p-6 text-sm text-gray-400">
-            No sessions recorded yet.
-          </div>
-        ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Session
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Agent
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Started
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Events
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sessions.map((session) => (
-                <tr
-                  key={session.id}
-                  className="cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() =>
-                    navigate(`/sessions?agent_id=${session.agent_id}`)
-                  }
-                >
-                  <td className="px-6 py-4 text-sm font-mono text-gray-900">
-                    {session.id.slice(0, 8)}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-mono text-gray-600">
-                    {session.agent_id.slice(0, 8)}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {relativeTime(session.started_at)}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {session.events?.length ?? "—"}
-                  </td>
+      <div>
+        <h2 className="text-secondary text-xs font-mono tracking-wider uppercase mb-4">
+          Recent Sessions
+        </h2>
+        <div className="border-t border-white/[0.07]">
+          {sessionsLoading ? (
+            <p className="py-4 text-sm text-secondary font-mono">
+              Loading sessions…
+            </p>
+          ) : !sessions || sessions.length === 0 ? (
+            <p className="py-4 text-sm text-secondary font-mono">
+              No sessions recorded yet.
+            </p>
+          ) : (
+            <table className="min-w-full">
+              <thead>
+                <tr>
+                  <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
+                    Session
+                  </th>
+                  <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
+                    Agent
+                  </th>
+                  <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
+                    Started
+                  </th>
+                  <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
+                    Events
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody>
+                {sessions.map((session) => (
+                  <tr
+                    key={session.id}
+                    className="border-b border-white/[0.07] cursor-pointer hover:bg-elevated transition-colors"
+                    onClick={() =>
+                      navigate(`/sessions?agent_id=${session.agent_id}`)
+                    }
+                  >
+                    <td className="py-2 px-4 text-sm font-mono text-accent-light">
+                      {session.id.slice(0, 8)}
+                    </td>
+                    <td className="py-2 px-4 text-sm font-mono text-secondary">
+                      {session.agent_id.slice(0, 8)}
+                    </td>
+                    <td className="py-2 px-4 text-sm text-secondary">
+                      {relativeTime(session.started_at)}
+                    </td>
+                    <td className="py-2 px-4 text-sm font-mono text-secondary">
+                      {session.events?.length ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
   );

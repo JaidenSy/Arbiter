@@ -25,19 +25,19 @@ function ConfirmDialog({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
-      <p className="text-sm text-gray-600 mb-6">{message}</p>
+      <p className="text-sm text-secondary mb-6">{message}</p>
       <div className="flex justify-end gap-3">
         <button
           type="button"
           onClick={onClose}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded text-sm transition-colors"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={handleConfirm}
-          className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+          className="text-error hover:bg-red-500/10 px-3 py-1.5 rounded text-sm transition-colors"
         >
           {confirmLabel}
         </button>

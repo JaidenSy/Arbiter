@@ -3,9 +3,9 @@ import React from "react";
 export type BadgeVariant = "success" | "neutral" | "error";
 
 const variantClasses: Record<BadgeVariant, string> = {
-  success: "bg-green-100 text-green-800",
-  neutral: "bg-gray-100 text-gray-700",
-  error: "bg-red-100 text-red-800",
+  success: "bg-green-950 text-green-400 border border-green-900",
+  neutral: "bg-white/5 text-secondary border border-white/10",
+  error: "bg-red-950 text-red-400 border border-red-900",
 };
 
 interface BadgeProps {
@@ -16,7 +16,7 @@ interface BadgeProps {
 function Badge({ variant, children }: BadgeProps): React.ReactElement {
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${variantClasses[variant]}`}
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono ${variantClasses[variant]}`}
     >
       {children}
     </span>

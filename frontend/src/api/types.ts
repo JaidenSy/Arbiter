@@ -28,6 +28,20 @@ export interface MCPServer {
   created_at: string;
 }
 
+export interface MCPServerCreate {
+  name: string;
+  base_url: string;
+  description?: string | null;
+  cache_enabled?: boolean;
+}
+
+export interface MCPServerUpdate {
+  name?: string;
+  base_url?: string;
+  description?: string | null;
+  cache_enabled?: boolean;
+}
+
 export interface SessionEvent {
   id: string;
   session_id: string;
@@ -59,6 +73,12 @@ export interface ToolPermission {
   granted_by: string | null;
 }
 
+export interface ToolPermissionCreate {
+  mcp_server_id: string
+  tool_name: string
+  granted_by?: string | null
+}
+
 export interface VaultSecret {
   id: string;
   name: string;
@@ -67,6 +87,11 @@ export interface VaultSecret {
 }
 
 export interface VaultSecretWithValue extends VaultSecret {
+  value: string;
+}
+
+export interface VaultSecretCreate {
+  name: string;
   value: string;
 }
 
