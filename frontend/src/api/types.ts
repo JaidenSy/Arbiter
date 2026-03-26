@@ -46,6 +46,7 @@ export interface SessionEvent {
   id: string;
   session_id: string;
   mcp_server_id: string | null;
+  mcp_server_name: string | null;
   tool_name: string;
   request_payload: Record<string, unknown>;
   response_payload: Record<string, unknown> | null;

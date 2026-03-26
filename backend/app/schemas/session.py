@@ -21,11 +21,15 @@ class SessionEventResponse(BaseModel):
 
     request_payload and response_payload are arbitrary JSON dicts matching
     the MCP protocol.  error is populated only on failed calls.
+
+    mcp_server_name is populated at the endpoint level by joining MCPServer —
+    it is NOT stored on the ORM model and must be set manually after construction.
     """
 
     id: uuid.UUID
     session_id: uuid.UUID
     mcp_server_id: uuid.UUID | None
+    mcp_server_name: str | None = None
     tool_name: str
     request_payload: dict[str, Any]
     response_payload: dict[str, Any] | None
