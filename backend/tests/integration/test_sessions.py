@@ -39,6 +39,9 @@ def _make_session_event(
     e.id = event_id or uuid.uuid4()
     e.session_id = session_id or uuid.uuid4()
     e.mcp_server_id = uuid.uuid4()
+    # mcp_server_name is not an ORM column — explicitly set to None so that
+    # Pydantic's from_attributes mode does not pick up a MagicMock sentinel.
+    e.mcp_server_name = None
     e.tool_name = tool_name
     e.request_payload = {"input": "test"}
     e.response_payload = {"output": "ok"}

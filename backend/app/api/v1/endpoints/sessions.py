@@ -22,6 +22,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.dependencies import get_current_agent, get_db
 from app.db.models.agent import Agent
+from app.db.models.mcp_server import MCPServer
 from app.db.models.session import Session, SessionEvent
 from app.schemas.session import SessionEventResponse, SessionResponse
 
@@ -101,7 +102,24 @@ async def get_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Session {session_id} not found",
         )
-    return SessionResponse.model_validate(session)
+
+    # Build MCP server name lookup for all server IDs referenced by events.
+    server_ids = {e.mcp_server_id for e in session.events if e.mcp_server_id}
+    server_map: dict[uuid.UUID, str] = {}
+    if server_ids:
+        servers_result = await db.execute(
+            select(MCPServer.id, MCPServer.name).where(MCPServer.id.in_(server_ids))
+        )
+        server_map = {row.id: row.name for row in servers_result}
+
+    # Build the response manually so we can inject mcp_server_name per event.
+    session_data = SessionResponse.model_validate(session)
+    enriched_events: list[SessionEventResponse] = []
+    for event, schema_event in zip(session.events, session_data.events):
+        schema_event.mcp_server_name = server_map.get(event.mcp_server_id)
+        enriched_events.append(schema_event)
+    session_data.events = enriched_events
+    return session_data
 
 
 @router.get(
@@ -151,4 +169,19 @@ async def list_session_events(
         .limit(limit)
     )
     events = result.scalars().all()
-    return [SessionEventResponse.model_validate(e) for e in events]
+
+    # Enrich each event with the human-readable MCP server name.
+    server_ids = {e.mcp_server_id for e in events if e.mcp_server_id}
+    server_map: dict[uuid.UUID, str] = {}
+    if server_ids:
+        servers_result = await db.execute(
+            select(MCPServer.id, MCPServer.name).where(MCPServer.id.in_(server_ids))
+        )
+        server_map = {row.id: row.name for row in servers_result}
+
+    enriched: list[SessionEventResponse] = []
+    for event in events:
+        schema_event = SessionEventResponse.model_validate(event)
+        schema_event.mcp_server_name = server_map.get(event.mcp_server_id)
+        enriched.append(schema_event)
+    return enriched

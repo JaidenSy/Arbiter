@@ -1,17 +1,16 @@
 /**
  * NexusAI — Sessions page.
  *
- * Audit log of all agent sessions and their tool call events.
+ * Audit log of all agent sessions.
  *   - Agent filter dropdown
- *   - Sessions table with expandable inline event rows
- *   - Events lazy-loaded per session on row expand
+ *   - Sessions table — rows navigate to /sessions/:id for the full trace view
  */
 
 import React, { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../api/client";
-import type { Agent, Session, SessionEvent } from "../api/types";
+import type { Agent, Session } from "../api/types";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 
@@ -23,11 +22,6 @@ const fetchSessions = (agentId: string): Promise<Session[]> =>
     .get<Session[]>("/sessions", {
       params: agentId ? { agent_id: agentId } : undefined,
     })
-    .then((r) => r.data);
-
-const fetchSessionEvents = (sessionId: string): Promise<SessionEvent[]> =>
-  apiClient
-    .get<SessionEvent[]>(`/sessions/${sessionId}/events`)
     .then((r) => r.data);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -42,119 +36,14 @@ function relativeTime(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function formatDuration(ms: number | null): string {
-  if (ms === null) return "—";
-  return `${ms} ms`;
-}
-
-// ── Events sub-table ──────────────────────────────────────────────────────────
-
-interface EventsRowsProps {
-  sessionId: string;
-  colSpan: number;
-}
-
-function EventsRows({
-  sessionId,
-  colSpan,
-}: EventsRowsProps): React.ReactElement {
-  const { data: events, isLoading } = useQuery<SessionEvent[]>({
-    queryKey: ["events", sessionId],
-    queryFn: () => fetchSessionEvents(sessionId),
-  });
-
-  if (isLoading) {
-    return (
-      <tr className="bg-highlight/30 border-b border-white/[0.07]">
-        <td colSpan={colSpan} className="pl-8 py-3 text-sm text-secondary font-mono">
-          Loading events…
-        </td>
-      </tr>
-    );
-  }
-
-  if (!events || events.length === 0) {
-    return (
-      <tr className="bg-highlight/30 border-b border-white/[0.07]">
-        <td colSpan={colSpan} className="pl-8 py-3 text-sm text-secondary font-mono">
-          No events recorded for this session.
-        </td>
-      </tr>
-    );
-  }
-
-  return (
-    <tr className="bg-highlight/30 border-b border-white/[0.07]">
-      <td colSpan={colSpan} className="py-0 px-0">
-        <table className="min-w-full">
-          <thead>
-            <tr>
-              <th className="pl-8 pr-4 py-2 text-left text-xs font-mono text-muted uppercase tracking-wider w-1/4">
-                Tool
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Cache
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Duration
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Error
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Time
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((event) => (
-              <tr
-                key={event.id}
-                className="border-t border-white/[0.04] hover:bg-elevated transition-colors"
-              >
-                <td className="pl-8 pr-4 py-2 text-xs font-mono text-primary">
-                  {event.tool_name}
-                </td>
-                <td className="px-4 py-2">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${event.cache_hit ? 'bg-green-400' : 'bg-secondary'}`}
-                    />
-                    <span className="text-xs font-mono text-secondary">
-                      {event.cache_hit ? "HIT" : "MISS"}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-2 text-xs font-mono text-secondary">
-                  {formatDuration(event.duration_ms)}
-                </td>
-                <td className="px-4 py-2 text-xs font-mono">
-                  {event.error ? (
-                    <span className="text-error">{event.error}</span>
-                  ) : (
-                    <span className="text-muted">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-2 text-xs font-mono text-secondary">
-                  {relativeTime(event.occurred_at)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </td>
-    </tr>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function Sessions(): React.ReactElement {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [agentId, setAgentId] = useState<string>(
     searchParams.get("agent_id") ?? "",
   );
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data: agents } = useQuery<Agent[]>({
     queryKey: ["agents"],
@@ -165,10 +54,6 @@ function Sessions(): React.ReactElement {
     queryKey: ["sessions", agentId],
     queryFn: () => fetchSessions(agentId),
   });
-
-  const toggleRow = (id: string): void => {
-    setExpandedId((prev) => (prev === id ? null : id));
-  };
 
   const TABLE_COLS = 4;
 
@@ -188,10 +73,7 @@ function Sessions(): React.ReactElement {
           <select
             id="agent-filter"
             value={agentId}
-            onChange={(e) => {
-              setAgentId(e.target.value);
-              setExpandedId(null);
-            }}
+            onChange={(e) => setAgentId(e.target.value)}
             className="bg-elevated border border-white/[0.14] text-primary text-sm px-3 py-1.5 rounded focus:outline-none focus:border-accent focus:ring-0"
           >
             <option value="">All agents</option>
@@ -243,35 +125,24 @@ function Sessions(): React.ReactElement {
               </tr>
             ) : (
               sessions.map((session) => (
-                <React.Fragment key={session.id}>
-                  <tr
-                    className="border-b border-white/[0.07] cursor-pointer hover:bg-elevated transition-colors"
-                    onClick={() => toggleRow(session.id)}
-                  >
-                    <td className="py-2 px-4 text-sm font-mono text-accent-light">
-                      <span className="flex items-center gap-2">
-                        <span className="text-muted text-xs">
-                          {expandedId === session.id ? "▾" : "▸"}
-                        </span>
-                        {session.id.slice(0, 8)}
-                      </span>
-                    </td>
-                    <td className="py-2 px-4 text-sm font-mono text-secondary">
-                      {session.agent_id.slice(0, 8)}
-                    </td>
-                    <td className="py-2 px-4 text-sm text-secondary">
-                      {relativeTime(session.started_at)}
-                    </td>
-                    <td className="py-2 px-4 text-sm font-mono text-secondary">
-                      {session.events?.length ?? "—"}
-                    </td>
-                  </tr>
-
-                  {/* Expandable events */}
-                  {expandedId === session.id && (
-                    <EventsRows sessionId={session.id} colSpan={TABLE_COLS} />
-                  )}
-                </React.Fragment>
+                <tr
+                  key={session.id}
+                  className="border-b border-white/[0.07] cursor-pointer hover:bg-elevated transition-colors"
+                  onClick={() => navigate(`/sessions/${session.id}`)}
+                >
+                  <td className="py-2 px-4 text-sm font-mono text-accent-light">
+                    {session.id.slice(0, 8)}
+                  </td>
+                  <td className="py-2 px-4 text-sm font-mono text-secondary">
+                    {session.agent_id.slice(0, 8)}
+                  </td>
+                  <td className="py-2 px-4 text-sm text-secondary">
+                    {relativeTime(session.started_at)}
+                  </td>
+                  <td className="py-2 px-4 text-sm font-mono text-secondary">
+                    {session.events?.length ?? "—"}
+                  </td>
+                </tr>
               ))
             )}
           </tbody>
