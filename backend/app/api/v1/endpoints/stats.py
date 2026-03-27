@@ -4,13 +4,16 @@ NexusAI — API endpoints: Stats.
 Dashboard statistics endpoint returning aggregated counts and metrics.
 
 Routes:
-    GET    /stats     — return agents_count, servers_count, tool_calls_today,
-                        cache_hit_rate_today
+    GET    /stats         — return agents_count, servers_count, tool_calls_today,
+                            cache_hit_rate_today
+    GET    /stats/history — historical time-series bucketed by hour (24h) or day (7d)
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +36,24 @@ class StatsResponse(BaseModel):
     servers_count: int
     tool_calls_today: int
     cache_hit_rate_today: float  # 0.0–1.0
+
+
+class HistoryBucket(BaseModel):
+    """A single time bucket of aggregated activity metrics."""
+
+    timestamp: str        # ISO format — hour start for 24h, day start for 7d
+    label: str            # "14:00" for 24h, "Mon" / "Tue" etc. for 7d
+    tool_calls: int
+    cache_hits: int
+    cache_hit_rate: float  # 0.0–1.0, 0.0 if no calls
+    errors: int
+
+
+class StatsHistoryResponse(BaseModel):
+    """Historical time-series data for the dashboard chart."""
+
+    period: str
+    buckets: list[HistoryBucket]
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
@@ -100,3 +121,134 @@ async def get_stats(
         tool_calls_today=tool_calls_today,
         cache_hit_rate_today=cache_hit_rate_today,
     )
+
+
+# ── History endpoint ──────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/history",
+    response_model=StatsHistoryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get historical activity stats",
+)
+async def get_stats_history(
+    period: str = Query("7d", description="Time period: '7d' (daily buckets) or '24h' (hourly buckets)"),
+    db: AsyncSession = Depends(get_db),
+    _current: Agent = Depends(get_current_agent),
+) -> StatsHistoryResponse:
+    """
+    Return historical time-series activity data for the dashboard chart.
+
+    For period='7d': 7 daily buckets (one per day, oldest first).
+    For period='24h': 24 hourly buckets (one per hour, oldest first).
+    Buckets with no events are filled with zeros.
+
+    Args:
+        period:   '7d' or '24h'.
+        db:       Injected DB session.
+        _current: Auth guard — valid API key required.
+
+    Returns:
+        StatsHistoryResponse: period + list of HistoryBucket.
+
+    Raises:
+        422: If period is not '7d' or '24h'.
+    """
+    from fastapi import HTTPException
+
+    if period not in ("7d", "24h"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="period must be '7d' or '24h'",
+        )
+
+    now = datetime.now(timezone.utc)
+
+    if period == "7d":
+        cutoff = now - timedelta(days=7)
+        result = await db.execute(
+            select(
+                func.date_trunc("day", SessionEvent.occurred_at).label("bucket"),
+                func.count().label("total"),
+                func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
+                func.sum(case((SessionEvent.error.isnot(None), 1), else_=0)).label("errors"),
+            )
+            .where(SessionEvent.occurred_at >= cutoff)
+            .group_by(func.date_trunc("day", SessionEvent.occurred_at))
+            .order_by(func.date_trunc("day", SessionEvent.occurred_at))
+        )
+        rows = result.all()
+
+        # Key by date string
+        data_by_key: dict[str, object] = {}
+        for row in rows:
+            day_key = row.bucket.date().isoformat()
+            data_by_key[day_key] = row
+
+        buckets: list[HistoryBucket] = []
+        for i in range(6, -1, -1):
+            day = (now - timedelta(days=i)).date()
+            key = day.isoformat()
+            row = data_by_key.get(key)  # type: ignore[assignment]
+            total = int(row.total) if row else 0
+            hits = int(row.hits or 0) if row else 0
+            errors = int(row.errors or 0) if row else 0
+            bucket_dt = datetime.combine(day, datetime.min.time()).replace(tzinfo=timezone.utc)
+            buckets.append(
+                HistoryBucket(
+                    timestamp=bucket_dt.isoformat(),
+                    label=day.strftime("%a"),
+                    tool_calls=total,
+                    cache_hits=hits,
+                    cache_hit_rate=round(hits / total, 3) if total > 0 else 0.0,
+                    errors=errors,
+                )
+            )
+
+    else:  # 24h
+        cutoff = now - timedelta(hours=24)
+        result = await db.execute(
+            select(
+                func.date_trunc("hour", SessionEvent.occurred_at).label("bucket"),
+                func.count().label("total"),
+                func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
+                func.sum(case((SessionEvent.error.isnot(None), 1), else_=0)).label("errors"),
+            )
+            .where(SessionEvent.occurred_at >= cutoff)
+            .group_by(func.date_trunc("hour", SessionEvent.occurred_at))
+            .order_by(func.date_trunc("hour", SessionEvent.occurred_at))
+        )
+        rows = result.all()
+
+        # Key by ISO hour string (e.g. "2024-03-25T14:00:00+00:00")
+        data_by_key = {}
+        for row in rows:
+            hour_dt = row.bucket.replace(minute=0, second=0, microsecond=0)
+            if hour_dt.tzinfo is None:
+                hour_dt = hour_dt.replace(tzinfo=timezone.utc)
+            hour_key = hour_dt.strftime("%Y-%m-%dT%H")
+            data_by_key[hour_key] = row
+
+        buckets = []
+        # Start from the hour that was 23 hours ago, up to the current hour
+        start_hour = now.replace(minute=0, second=0, microsecond=0) - timedelta(hours=23)
+        for i in range(24):
+            hour_dt = start_hour + timedelta(hours=i)
+            hour_key = hour_dt.strftime("%Y-%m-%dT%H")
+            row = data_by_key.get(hour_key)  # type: ignore[assignment]
+            total = int(row.total) if row else 0
+            hits = int(row.hits or 0) if row else 0
+            errors = int(row.errors or 0) if row else 0
+            buckets.append(
+                HistoryBucket(
+                    timestamp=hour_dt.isoformat(),
+                    label=hour_dt.strftime("%H:%M"),
+                    tool_calls=total,
+                    cache_hits=hits,
+                    cache_hit_rate=round(hits / total, 3) if total > 0 else 0.0,
+                    errors=errors,
+                )
+            )
+
+    return StatsHistoryResponse(period=period, buckets=buckets)

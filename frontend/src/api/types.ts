@@ -102,3 +102,17 @@ export interface DashboardStats {
   tool_calls_today: number;
   cache_hit_rate_today: number; // 0.0–1.0
 }
+
+export interface HistoryBucket {
+  timestamp: string;
+  label: string;
+  tool_calls: number;
+  cache_hits: number;
+  cache_hit_rate: number; // 0.0–1.0
+  errors: number;
+}
+
+export interface StatsHistoryResponse {
+  period: string;
+  buckets: HistoryBucket[];
+}

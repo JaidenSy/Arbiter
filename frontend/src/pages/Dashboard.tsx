@@ -3,11 +3,11 @@
  *
  * Landing page showing a high-level overview of gateway activity:
  *   - 4 stat metrics (agents, servers, tool calls, cache hit rate)
- *   - Area chart — mock 7-day series derived from current stats
+ *   - Area chart — real historical data from /stats/history with 7d/24h toggle
  *   - Recent sessions table (last 10, click-through to /sessions)
  */
 
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -20,7 +20,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { apiClient } from "../api/client";
-import type { DashboardStats, Session } from "../api/types";
+import type { DashboardStats, Session, StatsHistoryResponse } from "../api/types";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 
@@ -33,25 +33,6 @@ const fetchRecentSessions = (): Promise<Session[]> =>
     .then((r) => r.data);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Generate mock 7-day time-series seeded from real current-day stats. */
-function buildMockChartData(
-  stats: DashboardStats,
-): Array<{ day: string; rate: number; calls: number }> {
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const todayRate = stats.cache_hit_rate_today * 100;
-  const todayCalls = stats.tool_calls_today;
-
-  return days.map((day, i) => {
-    const jitter = Math.sin(i * 1.8) * 0.15 + Math.cos(i) * 0.08;
-    const rate = Math.min(100, Math.max(0, todayRate + jitter * 100));
-    const calls = Math.max(
-      0,
-      Math.round(todayCalls + jitter * todayCalls * 0.5),
-    );
-    return { day, rate: parseFloat(rate.toFixed(1)), calls };
-  });
-}
 
 /** Format a relative timestamp (e.g. "3 min ago"). */
 function relativeTime(iso: string): string {
@@ -98,6 +79,7 @@ function StatMetric({
 
 function Dashboard(): React.ReactElement {
   const navigate = useNavigate();
+  const [period, setPeriod] = useState<"7d" | "24h">("7d");
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["stats"],
@@ -111,7 +93,17 @@ function Dashboard(): React.ReactElement {
     refetchInterval: 30_000,
   });
 
-  const chartData = stats ? buildMockChartData(stats) : [];
+  const { data: history } = useQuery({
+    queryKey: ["stats-history", period],
+    queryFn: () =>
+      apiClient
+        .get<StatsHistoryResponse>(`/stats/history?period=${period}`)
+        .then((r) => r.data),
+    refetchInterval: 60_000,
+  });
+
+  const chartData = history?.buckets ?? [];
+  const allEmpty = chartData.length > 0 && chartData.every((b) => b.tool_calls === 0);
 
   const cacheRatePct = stats
     ? `${(stats.cache_hit_rate_today * 100).toFixed(1)}%`
@@ -148,57 +140,98 @@ function Dashboard(): React.ReactElement {
 
       {/* Area chart */}
       <div className="border border-white/[0.07] p-6 mb-8">
-        <h2 className="text-secondary text-xs font-mono tracking-wider uppercase mb-4">
-          Cache Hit Rate — 7 days
-        </h2>
-        {statsLoading ? (
-          <div className="h-48 flex items-center justify-center text-secondary text-sm font-mono">
-            Loading chart…
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-secondary text-xs uppercase tracking-widest">
+            Activity
+          </span>
+          <div className="inline-flex border border-white/[0.07] rounded overflow-hidden">
+            {(["7d", "24h"] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-3 py-1 text-xs font-mono transition-colors ${
+                  period === p
+                    ? "bg-elevated border-white/14 text-primary"
+                    : "text-muted hover:text-secondary"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {history === undefined ? (
+          <div className="animate-pulse bg-elevated rounded h-[180px] w-full" />
+        ) : allEmpty ? (
+          <div className="h-[180px] flex items-center justify-center">
+            <span className="text-muted text-xs font-mono">
+              No activity in the last {period}
+            </span>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={192}>
+          <ResponsiveContainer width="100%" height={180}>
             <AreaChart
               data={chartData}
-              margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
+              margin={{ top: 4, right: 0, left: -20, bottom: 0 }}
             >
               <defs>
-                <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.6} />
+                <linearGradient id="gradCalls" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradHits" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
                 stroke="rgba(255,255,255,0.04)"
+                vertical={false}
               />
               <XAxis
-                dataKey="day"
-                stroke="#444"
-                tick={{ fill: '#888', fontSize: 11, fontFamily: 'monospace' }}
+                dataKey="label"
+                stroke="transparent"
+                tick={{ fill: "#444", fontSize: 11, fontFamily: "monospace" }}
+                tickLine={false}
+                axisLine={false}
               />
               <YAxis
-                domain={[0, 100]}
-                unit="%"
-                stroke="#444"
-                tick={{ fill: '#888', fontSize: 11, fontFamily: 'monospace' }}
+                stroke="transparent"
+                tick={{ fill: "#444", fontSize: 11, fontFamily: "monospace" }}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
               />
               <Tooltip
                 contentStyle={{
-                  background: '#111111',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: "#111",
+                  border: "1px solid rgba(255,255,255,0.1)",
                   borderRadius: 4,
-                  color: '#efefef',
                   fontSize: 12,
-                  fontFamily: 'monospace',
+                  fontFamily: "monospace",
                 }}
-                formatter={(v: number) => [`${v}%`, "Hit Rate"]}
+                labelStyle={{ color: "#888", marginBottom: 4 }}
+                itemStyle={{ color: "#efefef" }}
               />
               <Area
                 type="monotone"
-                dataKey="rate"
+                dataKey="tool_calls"
+                name="Tool Calls"
                 stroke="#7c3aed"
                 strokeWidth={1.5}
-                fill="url(#colorGradient)"
+                fill="url(#gradCalls)"
+                dot={false}
+              />
+              <Area
+                type="monotone"
+                dataKey="cache_hits"
+                name="Cache Hits"
+                stroke="#22c55e"
+                strokeWidth={1.5}
+                fill="url(#gradHits)"
+                dot={false}
               />
             </AreaChart>
           </ResponsiveContainer>
