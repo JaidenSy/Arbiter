@@ -1,5 +1,5 @@
 """
-Integration tests for GET /api/v1/stats.
+Integration tests for GET /api/v1/stats and GET /api/v1/stats/history.
 
 Coverage:
     Zero state:
@@ -12,12 +12,18 @@ Coverage:
     - tool_calls_today counts only today's events
     - cache_hit_rate_today computed correctly (hits / total)
     - Yesterday's events NOT counted in tool_calls_today
+
+    History endpoint:
+    - GET /stats/history (default 7d) → 7 buckets
+    - GET /stats/history?period=24h → 24 buckets
+    - With seeded events: correct tool_calls and cache_hits in today's bucket
+    - Invalid period → 422
 """
 
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -292,3 +298,207 @@ class TestStatsWithData:
         """GET /stats without auth → 401."""
         resp = await test_client.get("/api/v1/stats")
         assert resp.status_code == 401
+
+
+# ── History endpoint helpers ───────────────────────────────────────────────────
+
+
+def _make_history_db(rows: list[dict]) -> AsyncMock:
+    """
+    Build a mock DB that returns pre-built rows for the history aggregate query.
+
+    Each dict in ``rows`` should have: bucket (datetime), total, hits, errors.
+    The mock is called once — returning all rows as a result set.
+    """
+    db = AsyncMock()
+
+    async def execute(stmt):
+        result = MagicMock()
+        mock_rows = []
+        for r in rows:
+            row = MagicMock()
+            row.bucket = r["bucket"]
+            row.total = r["total"]
+            row.hits = r["hits"]
+            row.errors = r["errors"]
+            mock_rows.append(row)
+        result.all.return_value = mock_rows
+        return result
+
+    db.execute = execute
+    return db
+
+
+# ── History tests ─────────────────────────────────────────────────────────────
+
+
+class TestStatsHistory:
+    @pytest.mark.asyncio
+    async def test_history_default_7d_returns_7_buckets(self, fake_redis):
+        """GET /stats/history (default period=7d) returns exactly 7 buckets."""
+        from app.main import app
+        from app.core.dependencies import get_db, get_redis, get_current_agent
+        from tests.conftest import _make_mock_agent
+        from app.core.security import generate_api_key
+
+        raw_key = generate_api_key()
+        mock_agent = _make_mock_agent(raw_key)
+        # No rows — all buckets should be zeros
+        db = _make_history_db([])
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_agent():
+            return mock_agent
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_agent] = override_get_current_agent
+
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get(
+                    "/api/v1/stats/history",
+                    headers={"Authorization": f"Bearer {raw_key}"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["period"] == "7d"
+        assert len(data["buckets"]) == 7
+
+    @pytest.mark.asyncio
+    async def test_history_24h_returns_24_buckets(self, fake_redis):
+        """GET /stats/history?period=24h returns exactly 24 buckets."""
+        from app.main import app
+        from app.core.dependencies import get_db, get_redis, get_current_agent
+        from tests.conftest import _make_mock_agent
+        from app.core.security import generate_api_key
+
+        raw_key = generate_api_key()
+        mock_agent = _make_mock_agent(raw_key)
+        db = _make_history_db([])
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_agent():
+            return mock_agent
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_agent] = override_get_current_agent
+
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get(
+                    "/api/v1/stats/history?period=24h",
+                    headers={"Authorization": f"Bearer {raw_key}"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["period"] == "24h"
+        assert len(data["buckets"]) == 24
+
+    @pytest.mark.asyncio
+    async def test_history_seeded_today_bucket_counts(self, fake_redis):
+        """With a seeded row for today, today's bucket has correct tool_calls and cache_hits."""
+        from app.main import app
+        from app.core.dependencies import get_db, get_redis, get_current_agent
+        from tests.conftest import _make_mock_agent
+        from app.core.security import generate_api_key
+
+        raw_key = generate_api_key()
+        mock_agent = _make_mock_agent(raw_key)
+
+        today = datetime.now(timezone.utc).date()
+        today_dt = datetime(today.year, today.month, today.day, tzinfo=timezone.utc)
+
+        db = _make_history_db([
+            {"bucket": today_dt, "total": 10, "hits": 4, "errors": 1},
+        ])
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_agent():
+            return mock_agent
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_agent] = override_get_current_agent
+
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get(
+                    "/api/v1/stats/history",
+                    headers={"Authorization": f"Bearer {raw_key}"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 200, resp.text
+        buckets = resp.json()["buckets"]
+        assert len(buckets) == 7
+
+        # The last bucket is today
+        today_bucket = buckets[-1]
+        assert today_bucket["tool_calls"] == 10
+        assert today_bucket["cache_hits"] == 4
+        assert today_bucket["errors"] == 1
+        assert today_bucket["cache_hit_rate"] == pytest.approx(0.4)
+
+    @pytest.mark.asyncio
+    async def test_history_invalid_period_returns_422(self, fake_redis):
+        """GET /stats/history?period=invalid → 422."""
+        from app.main import app
+        from app.core.dependencies import get_db, get_redis, get_current_agent
+        from tests.conftest import _make_mock_agent
+        from app.core.security import generate_api_key
+
+        raw_key = generate_api_key()
+        mock_agent = _make_mock_agent(raw_key)
+        db = _make_history_db([])
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_agent():
+            return mock_agent
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_agent] = override_get_current_agent
+
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get(
+                    "/api/v1/stats/history?period=invalid",
+                    headers={"Authorization": f"Bearer {raw_key}"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 422, resp.text
