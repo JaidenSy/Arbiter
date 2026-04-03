@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,7 +24,9 @@ class MCPServer(Base):
 
     Columns:
         id:          Auto-generated UUID primary key.
-        name:        Unique slug used in permission rules (e.g. "filesystem").
+        org_id:      FK → organizations.id.
+        name:        Slug used in permission rules (e.g. "filesystem").
+                     Unique per org (two orgs may share the name "filesystem").
         base_url:    Full HTTP(S) URL of the MCP server.
         description: Optional notes about the server's capabilities.
         is_active:   Soft-delete; inactive servers reject all forwarded calls.
@@ -33,13 +35,21 @@ class MCPServer(Base):
     """
 
     __tablename__ = "mcp_servers"
+    __table_args__ = (
+        UniqueConstraint("org_id", "name", name="uq_mcp_server_name_per_org"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
     )
-    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
     base_url: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

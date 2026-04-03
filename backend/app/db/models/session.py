@@ -29,6 +29,7 @@ class Session(Base):
 
     Columns:
         id:         Auto-generated UUID primary key.
+        org_id:     FK → organizations.id (denormalized for fast org-scoped queries).
         agent_id:   FK → agents.id.
         started_at: When the session was opened.
         ended_at:   When the session was closed (NULL = still active).
@@ -41,6 +42,11 @@ class Session(Base):
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
+    )
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
     )
     agent_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -82,6 +88,7 @@ class SessionEvent(Base):
 
     Columns:
         id:               UUID primary key.
+        org_id:           FK → organizations.id (denormalized for fast org audit queries).
         session_id:       FK → sessions.id.
         mcp_server_id:    FK → mcp_servers.id (nullable — server may be deleted).
         tool_name:        Name of the tool that was called.
@@ -99,6 +106,11 @@ class SessionEvent(Base):
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
+    )
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
     )
     session_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

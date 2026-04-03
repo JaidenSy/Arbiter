@@ -9,6 +9,9 @@ Key lifecycle:
     1. generate_api_key() → returns raw key shown once to the user
     2. hash_api_key(raw)  → stores the hash in agents.api_key_hash
     3. verify_api_key(raw, stored_hash) → used at request time
+
+Also provides JWT creation/decoding and refresh token helpers for the
+human-operator auth flow (email/password → JWT + opaque refresh token).
 """
 
 from __future__ import annotations
@@ -16,6 +19,14 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+import jwt
+from fastapi import HTTPException, status
+
+from app.core.config import settings
 
 
 def generate_api_key(prefix: str = "nxai") -> str:
@@ -64,3 +75,116 @@ def verify_api_key(raw_key: str, stored_hash: str) -> bool:
     """
     computed = hash_api_key(raw_key)
     return hmac.compare_digest(computed, stored_hash)
+
+
+# ── JWT helpers ───────────────────────────────────────────────────────────────
+
+
+def create_access_token(
+    user_id: uuid.UUID,
+    org_id: uuid.UUID,
+    role: str,
+) -> str:
+    """
+    Issue a signed HS256 access token.
+
+    Payload claims:
+        sub     — user UUID (string)
+        org_id  — org UUID (string)
+        role    — RBAC role within the org
+        type    — "access" (distinguishes from future service tokens)
+        jti     — unique token ID enabling Redis-based revocation
+        iat     — issued-at (UTC)
+        exp     — expiry (UTC)
+
+    Args:
+        user_id: UUID of the authenticated user.
+        org_id:  UUID of the user's organization.
+        role:    RBAC role string (owner | admin | member).
+
+    Returns:
+        str: Signed JWT string.
+    """
+    now = datetime.now(tz=timezone.utc)
+    expire = now + timedelta(minutes=settings.jwt_access_token_expire_minutes)
+    payload: dict[str, Any] = {
+        "sub": str(user_id),
+        "org_id": str(org_id),
+        "role": role,
+        "type": "access",
+        "jti": str(uuid.uuid4()),
+        "iat": now,
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
+
+def decode_access_token(token: str) -> dict[str, Any]:
+    """
+    Decode and validate a JWT access token.
+
+    Args:
+        token: Raw JWT string from the Authorization header.
+
+    Returns:
+        dict: Verified payload claims.
+
+    Raises:
+        HTTPException 401: On invalid signature, expiry, or malformed token.
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm],
+        )
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return payload
+
+
+# ── Refresh token helpers ─────────────────────────────────────────────────────
+
+
+def generate_refresh_token() -> str:
+    """
+    Generate a cryptographically random opaque refresh token.
+
+    Format: ``rt_<64-char-hex>``
+
+    Returns:
+        str: Raw refresh token — shown to the caller, never stored directly.
+    """
+    return f"rt_{secrets.token_hex(32)}"
+
+
+def hash_refresh_token(raw: str) -> str:
+    """
+    Produce a SHA-256 hex digest of a raw refresh token.
+
+    The digest is stored in refresh_tokens.token_hash.  The raw token
+    is never persisted.
+
+    Args:
+        raw: The plaintext refresh token.
+
+    Returns:
+        str: 64-character hexadecimal SHA-256 digest.
+    """
+    return hashlib.sha256(raw.encode()).hexdigest()

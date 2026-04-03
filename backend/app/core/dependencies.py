@@ -1,22 +1,20 @@
 """
-NexusAI — FastAPI dependency injection stubs.
+NexusAI — FastAPI dependency injection.
 
 Each function here is a FastAPI Depends provider.  They are consumed by
 endpoint functions via:
 
     async def my_endpoint(db: AsyncSession = Depends(get_db)):
         ...
-
-Implementations fill in the connection/auth logic; the signatures here
-define the expected return types so endpoints can be written and type-
-checked before the implementations land.
 """
 
 from __future__ import annotations
 
-from typing import AsyncGenerator
+import uuid
+from collections.abc import Callable
+from typing import AsyncGenerator, Union
 
-from fastapi import Depends, HTTPException, Request, Security, status
+from fastapi import Depends, Header, HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import security
 from app.db.base import async_session_factory
 from app.db.models.agent import Agent
+from app.db.models.user import User
 
 
 # ── Database ─────────────────────────────────────────────────────────────────
@@ -108,3 +107,156 @@ async def get_current_agent(
         )
 
     return agent
+
+
+# ── JWT / User auth ───────────────────────────────────────────────────────────
+
+_oauth2_bearer = HTTPBearer(auto_error=False)
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Security(_oauth2_bearer),
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+) -> User:
+    """
+    Validate a JWT Bearer token and return the authenticated User.
+
+    Steps:
+        1. Extract Bearer token from the Authorization header.
+        2. Decode and validate signature / expiry via security.decode_access_token.
+        3. Check jti against Redis blocklist (populated on logout).
+        4. Load User from DB, verify is_active.
+
+    Args:
+        credentials: HTTP Bearer token.
+        db:          Injected database session.
+        redis:       Injected Redis client.
+
+    Returns:
+        User: The authenticated, active user row.
+
+    Raises:
+        HTTPException 401: On missing/invalid token, revoked jti, or inactive user.
+    """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = security.decode_access_token(credentials.credentials)
+
+    jti: str = payload.get("jti", "")
+    if jti and await redis.exists(f"jti_blocklist:{jti}"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user_id = uuid.UUID(payload["sub"])
+    user = await db.get(User, user_id)
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User inactive or not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
+
+
+async def get_current_principal(
+    authorization: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+) -> Union[User, Agent]:
+    """
+    Accept either a JWT (human user) or an API key (agent).
+
+    Tries JWT first; falls back to API key if the token starts with ``nxai_``.
+    Raises 401 if neither succeeds.
+
+    Args:
+        authorization: Raw Authorization header value (e.g. "Bearer <token>").
+        db:            Injected database session.
+        redis:         Injected Redis client.
+
+    Returns:
+        User | Agent: The resolved principal.
+
+    Raises:
+        HTTPException 401: On missing or unrecognised credential.
+    """
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = authorization.removeprefix("Bearer ").strip()
+
+    if token.startswith("nxai_"):
+        key_hash = security.hash_api_key(token)
+        result = await db.execute(
+            select(Agent).where(
+                Agent.api_key_hash == key_hash,
+                Agent.is_active.is_(True),
+            )
+        )
+        agent = result.scalar_one_or_none()
+        if agent is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or inactive API key",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return agent
+
+    # Assume JWT
+    payload = security.decode_access_token(token)
+    jti: str = payload.get("jti", "")
+    if jti and await redis.exists(f"jti_blocklist:{jti}"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user_id = uuid.UUID(payload["sub"])
+    user = await db.get(User, user_id)
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User inactive or not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+
+def require_role(*roles: str) -> Callable[..., User]:
+    """
+    Dependency factory that enforces RBAC role membership.
+
+    Usage::
+
+        @router.post("/agents", dependencies=[Depends(require_role("admin", "owner"))])
+
+    Args:
+        *roles: Accepted role strings (e.g. "owner", "admin").
+
+    Returns:
+        FastAPI dependency that returns the current User or raises 403.
+    """
+
+    async def _check(user: User = Depends(get_current_user)) -> User:
+        if user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Requires role: {', '.join(roles)}",
+            )
+        return user
+
+    return _check

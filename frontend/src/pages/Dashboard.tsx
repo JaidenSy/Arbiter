@@ -21,6 +21,7 @@ import {
 } from "recharts";
 import { apiClient } from "../api/client";
 import type { DashboardStats, Session, StatsHistoryResponse } from "../api/types";
+import UsageStrip from "../components/UsageStrip";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 
@@ -110,6 +111,8 @@ function Dashboard(): React.ReactElement {
     : "—%";
 
   return (
+    <div>
+      <UsageStrip />
     <div className="p-8">
       <h1 className="text-primary text-lg font-semibold mb-8">Dashboard</h1>
 
@@ -298,6 +301,7 @@ function Dashboard(): React.ReactElement {
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 }

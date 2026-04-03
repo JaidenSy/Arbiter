@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,75 @@ function NavItem({ to, icon, title, end }: NavItemProps): React.ReactElement {
   )
 }
 
+// ── User avatar + popover ─────────────────────────────────────────────────────
+
+function UserAvatar(): React.ReactElement | null {
+  const { user, logout } = useAuth()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent): void {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  if (!user) return null
+
+  const initial = user.email[0]?.toUpperCase() ?? '?'
+  const planLabel = (user.org_plan ?? 'free').charAt(0).toUpperCase() + (user.org_plan ?? 'free').slice(1)
+
+  const handleLogout = (): void => {
+    setOpen(false)
+    void logout().then(() => {
+      window.location.href = '/login'
+    })
+  }
+
+  return (
+    <div ref={ref} className="relative flex items-center justify-center mb-2">
+      <button
+        type="button"
+        title={user.email}
+        onClick={() => setOpen(!open)}
+        className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 text-accent-light font-mono text-xs font-semibold flex items-center justify-center hover:bg-accent/30 transition-colors"
+      >
+        {initial}
+      </button>
+
+      {open && (
+        <div className="absolute left-[52px] bottom-0 ml-1 w-56 bg-surface border border-white/[0.1] rounded shadow-xl z-50 py-2 font-mono text-xs">
+          <div className="px-3 pb-2 border-b border-white/[0.07]">
+            <p className="text-primary truncate">{user.email}</p>
+            <p className="text-secondary mt-0.5 capitalize">{user.role}</p>
+            <p className="text-muted mt-0.5 truncate">{user.org_name}</p>
+          </div>
+          <div className="px-3 pt-2 pb-1">
+            <span className="inline-block text-accent-light border border-accent/30 rounded px-1.5 py-0.5 text-[10px]">
+              {planLabel}
+            </span>
+          </div>
+          <div className="border-t border-white/[0.07] mt-1 pt-1">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full text-left px-3 py-1.5 text-secondary hover:text-red-400 hover:bg-elevated transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 function Sidebar(): React.ReactElement {
@@ -114,9 +184,10 @@ function Sidebar(): React.ReactElement {
         <NavItem to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
       </nav>
 
-      {/* Settings at bottom */}
-      <div className="pb-2">
+      {/* Settings + user at bottom */}
+      <div className="pb-2 flex flex-col items-center">
         <NavItem to="/settings" icon={<SettingsIcon />} title="Settings" />
+        <UserAvatar />
       </div>
     </aside>
   )

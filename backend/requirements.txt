@@ -13,13 +13,14 @@ redis[hiredis]==5.0.8
 # ── Encryption / Security ─────────────────────────────────────────────────────
 cryptography==43.0.1
 passlib[bcrypt]==1.7.4
+PyJWT==2.9.0
 
 # ── Semantic Embeddings (Cache) ───────────────────────────────────────────────
 sentence-transformers==3.1.1
 
 # ── Config ────────────────────────────────────────────────────────────────────
 pydantic-settings==2.5.2
-pydantic==2.9.2
+pydantic[email]==2.9.2
 python-dotenv==1.0.1
 
 # ── HTTP Client (for proxy) ───────────────────────────────────────────────────
