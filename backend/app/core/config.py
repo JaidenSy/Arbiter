@@ -65,6 +65,14 @@ class Settings(BaseSettings):
     # ── Quota ─────────────────────────────────────────────────────────────────
     quota_cache_ttl_seconds: int = 60
 
+    # ── OAuth2 Social Login ────────────────────────────────────────────────────
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    github_client_id: str = ""
+    github_client_secret: str = ""
+    oauth_redirect_base_url: str = "http://localhost:8000"
+    frontend_url: str = "http://localhost:3000"
+
     # ── CORS ──────────────────────────────────────────────────────────────────
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 

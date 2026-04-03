@@ -17,6 +17,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.v1.endpoints import (
     agents,
@@ -25,6 +26,7 @@ from app.api.v1.endpoints import (
     onboarding,
     proxy,
     sessions,
+    sso,
     stats,
     tool_permissions,
     vault,
@@ -100,6 +102,10 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
         lifespan=lifespan,
     )
+
+    # ── Session middleware (required by Authlib for OAuth2 state) ─────────────
+    # Must be added before CORS so it wraps the full request lifecycle.
+    app.add_middleware(SessionMiddleware, secret_key=settings.app_secret_key)
 
     # ── CORS ──────────────────────────────────────────────────────────────────
     app.add_middleware(
@@ -192,6 +198,7 @@ def create_app() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(auth.router, prefix=settings.api_prefix)
+    app.include_router(sso.router, prefix=settings.api_prefix)
     app.include_router(agents.router, prefix=settings.api_prefix)
     app.include_router(mcp_servers.router, prefix=settings.api_prefix)
     app.include_router(sessions.router, prefix=settings.api_prefix)

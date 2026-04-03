@@ -27,6 +27,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.db.models.organization import Organization
     from app.db.models.refresh_token import RefreshToken
+    from app.db.models.social_account import SocialAccount
 
 
 class User(Base):
@@ -63,7 +64,7 @@ class User(Base):
         nullable=False,
     )
     email: Mapped[str] = mapped_column(String(254), nullable=False, unique=True)
-    hashed_password: Mapped[str] = mapped_column(String(72), nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(72), nullable=False, default="")
     role: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
@@ -87,6 +88,11 @@ class User(Base):
     org: Mapped["Organization"] = relationship("Organization", back_populates="users")
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    social_accounts: Mapped[list["SocialAccount"]] = relationship(
+        "SocialAccount",
         back_populates="user",
         cascade="all, delete-orphan",
     )
