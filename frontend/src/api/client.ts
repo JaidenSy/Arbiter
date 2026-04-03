@@ -38,8 +38,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      const hadKey = !!localStorage.getItem("nexusai_api_key");
       localStorage.removeItem("nexusai_api_key");
-      window.location.href = "/agents";
+      if (hadKey) {
+        window.location.href = "/agents";
+      }
     }
     return Promise.reject(error);
   },

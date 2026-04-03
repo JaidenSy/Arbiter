@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -167,7 +167,7 @@ async def delete_agent(
     agent_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _current: Agent = Depends(get_current_agent),
-) -> None:
+) -> Response:
     """
     Soft-delete an agent by setting is_active=False.
 
@@ -192,3 +192,4 @@ async def delete_agent(
         )
     agent.is_active = False
     await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

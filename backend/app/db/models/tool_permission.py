@@ -22,12 +22,14 @@ class ToolPermission(Base):
     RBAC permission record: (agent, mcp_server, tool_name).
 
     Columns:
-        id:            UUID primary key.
-        agent_id:      FK → agents.id (cascades on delete).
-        mcp_server_id: FK → mcp_servers.id (cascades on delete).
-        tool_name:     Exact tool name or ``"*"`` wildcard.
-        granted_at:    Immutable insert timestamp.
-        granted_by:    Human identifier of approver (optional).
+        id:                  UUID primary key.
+        org_id:              FK → organizations.id (denormalized for fast org-scoped queries).
+        agent_id:            FK → agents.id (cascades on delete).
+        mcp_server_id:       FK → mcp_servers.id (cascades on delete).
+        tool_name:           Exact tool name or ``"*"`` wildcard.
+        granted_at:          Immutable insert timestamp.
+        granted_by:          Free-text approver identifier (legacy field).
+        granted_by_user_id:  FK → users.id — human user who granted permission.
     """
 
     __tablename__ = "tool_permissions"
@@ -39,6 +41,11 @@ class ToolPermission(Base):
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
+    )
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
     )
     agent_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -58,6 +65,11 @@ class ToolPermission(Base):
         server_default=func.now(),
     )
     granted_by: Mapped[str | None] = mapped_column(Text, nullable=True)
+    granted_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     def __repr__(self) -> str:
         return (

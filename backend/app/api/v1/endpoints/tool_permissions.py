@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -183,7 +183,7 @@ async def delete_tool_permission(
     permission_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _current: Agent = Depends(get_current_agent),
-) -> None:
+) -> Response:
     """
     Hard-delete a specific tool permission for an agent.
 
@@ -211,3 +211,4 @@ async def delete_tool_permission(
 
     await db.delete(permission)
     await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

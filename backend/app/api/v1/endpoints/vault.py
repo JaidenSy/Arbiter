@@ -18,7 +18,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -180,7 +180,7 @@ async def delete_secret(
     secret_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_agent: Agent = Depends(get_current_agent),
-) -> None:
+) -> Response:
     """
     Permanently delete a secret from the vault.
 
@@ -210,3 +210,4 @@ async def delete_secret(
 
     await db.delete(secret)
     await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

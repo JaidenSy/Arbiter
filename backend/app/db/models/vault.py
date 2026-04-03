@@ -33,25 +33,31 @@ class VaultSecret(Base):
 
     Columns:
         id:          UUID primary key.
+        org_id:      FK → organizations.id.
         name:        Logical key used to retrieve the secret (e.g. "GITHUB_TOKEN").
-                     Must be unique across the vault.
+                     Must be unique within (org_id, agent_id).
         ciphertext:  Base64-encoded AES-256-GCM ciphertext (nonce prepended).
         agent_id:    Optional FK to the agent that owns this secret.
-                     NULL means it is a global secret accessible by any agent
-                     (subject to RBAC).
+                     NULL means it is an org-level secret accessible by any agent
+                     in the org (subject to RBAC).
         created_at:  Immutable insert timestamp.
         updated_at:  Auto-updated on every modification (e.g. secret rotation).
     """
 
     __tablename__ = "vault_secrets"
     __table_args__ = (
-        UniqueConstraint("name", "agent_id", name="uq_vault_secret_name_agent"),
+        UniqueConstraint("org_id", "name", "agent_id", name="uq_vault_secret_name_agent_org"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
+    )
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
