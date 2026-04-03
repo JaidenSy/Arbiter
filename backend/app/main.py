@@ -20,7 +20,9 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1.endpoints import (
     agents,
+    auth,
     mcp_servers,
+    onboarding,
     proxy,
     sessions,
     stats,
@@ -29,6 +31,7 @@ from app.api.v1.endpoints import (
 )
 from app.core.config import settings
 from app.db.base import engine
+from app.services.plan.plan_limits import PlanLimitError, QuotaExceededError
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +146,52 @@ def create_app() -> FastAPI:
             content={"detail": "Request validation failed", "errors": str(exc)},
         )
 
+    @app.exception_handler(PlanLimitError)
+    async def plan_limit_error_handler(
+        request: Request, exc: PlanLimitError
+    ) -> JSONResponse:
+        """
+        Return HTTP 402 when an org's count-based plan limit is reached.
+
+        Response body matches the canonical shape from architect-output.md:
+            { error, resource, current, limit, plan, upgrade_url }
+        """
+        return JSONResponse(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            content={
+                "error": "plan_limit_reached",
+                "resource": exc.resource,
+                "current": exc.current,
+                "limit": exc.limit,
+                "plan": exc.plan,
+                "upgrade_url": "https://nexusai.dev/pricing",
+            },
+        )
+
+    @app.exception_handler(QuotaExceededError)
+    async def quota_exceeded_error_handler(
+        request: Request, exc: QuotaExceededError
+    ) -> JSONResponse:
+        """
+        Return HTTP 429 when an org's monthly tool-call quota is exhausted.
+
+        Response body matches the canonical shape from architect-output.md:
+            { error, resource, used, limit, resets_at, upgrade_url }
+        """
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={
+                "error": "quota_exceeded",
+                "resource": exc.resource,
+                "used": exc.used,
+                "limit": exc.limit,
+                "resets_at": exc.resets_at.isoformat(),
+                "upgrade_url": "https://nexusai.dev/pricing",
+            },
+        )
+
     # ── Routers ───────────────────────────────────────────────────────────────
+    app.include_router(auth.router, prefix=settings.api_prefix)
     app.include_router(agents.router, prefix=settings.api_prefix)
     app.include_router(mcp_servers.router, prefix=settings.api_prefix)
     app.include_router(sessions.router, prefix=settings.api_prefix)
@@ -151,6 +199,7 @@ def create_app() -> FastAPI:
     app.include_router(vault.router, prefix=settings.api_prefix)
     app.include_router(tool_permissions.router, prefix=settings.api_prefix)
     app.include_router(stats.router, prefix=settings.api_prefix)
+    app.include_router(onboarding.router, prefix=settings.api_prefix)
 
     # ── Health check ──────────────────────────────────────────────────────────
     @app.get("/health", tags=["meta"])

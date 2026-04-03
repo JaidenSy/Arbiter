@@ -53,6 +53,18 @@ class Settings(BaseSettings):
     cache_similarity_threshold: float = 0.95
     cache_ttl_seconds: int = 3600
 
+    # ── JWT ───────────────────────────────────────────────────────────────────
+    jwt_secret_key: str = "nexusai_dev_jwt_secret_change_in_production"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 1440  # 24 hours
+    jwt_refresh_token_expire_days: int = 30
+
+    # ── Registration ──────────────────────────────────────────────────────────
+    allow_public_registration: bool = True
+
+    # ── Quota ─────────────────────────────────────────────────────────────────
+    quota_cache_ttl_seconds: int = 60
+
     # ── CORS ──────────────────────────────────────────────────────────────────
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 
