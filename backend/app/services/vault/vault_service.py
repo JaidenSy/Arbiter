@@ -151,31 +151,21 @@ class VaultService:
         name: str,
         plaintext: str,
         agent_id: uuid.UUID | None = None,
+        org_id: uuid.UUID | None = None,
     ) -> VaultSecret:
         """
-        Encrypt and persist a secret.
+        Encrypt and persist a secret, scoped to (org_id, agent_id, name).
 
-        If a secret with the same name already exists it is updated (upsert /
-        key rotation).  The plaintext is encrypted immediately and the raw
-        value is not retained after this method returns.
-
-        Args:
-            name:      Logical key (e.g. "GITHUB_TOKEN").
-            plaintext: Raw secret value — never stored.
-            agent_id:  Optional owner agent UUID.
-
-        Returns:
-            VaultSecret: The persisted ORM row (ciphertext only, no plaintext).
+        If a secret with the same name already exists for this scope it is
+        updated (upsert / key rotation).
         """
         ciphertext = self.encrypt(plaintext)
 
-        # Scope upsert to (name, agent_id) — prevents cross-agent secret collision.
-        result = await self.db.execute(
-            select(VaultSecret).where(
-                VaultSecret.name == name,
-                VaultSecret.agent_id == agent_id,
-            )
-        )
+        filters = [VaultSecret.name == name, VaultSecret.agent_id == agent_id]
+        if org_id is not None:
+            filters.append(VaultSecret.org_id == org_id)
+
+        result = await self.db.execute(select(VaultSecret).where(*filters))
         secret = result.scalar_one_or_none()
 
         if secret is None:
@@ -183,17 +173,16 @@ class VaultService:
                 name=name,
                 ciphertext=ciphertext,
                 agent_id=agent_id,
+                org_id=org_id,
             )
             self.db.add(secret)
         else:
             secret.ciphertext = ciphertext
-            if agent_id is not None:
-                secret.agent_id = agent_id
 
         await self.db.commit()
         await self.db.refresh(secret)
 
-        logger.info("vault: stored secret name=%r agent_id=%s", name, agent_id)
+        logger.info("vault: stored secret name=%r agent_id=%s org_id=%s", name, agent_id, org_id)
         return secret
 
     async def get_secret(self, name: str, agent_id: uuid.UUID | None = None) -> str:

@@ -21,9 +21,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_agent, get_db
+from app.core.dependencies import get_current_user, get_db
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
+from app.db.models.user import User
 from app.db.models.tool_permission import ToolPermission
 
 router = APIRouter(prefix="/agents", tags=["tool-permissions"])
@@ -68,7 +69,7 @@ async def create_tool_permission(
     agent_id: uuid.UUID,
     body: ToolPermissionCreate,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> ToolPermissionResponse:
     """
     Grant an agent permission to call a specific tool (or all tools) on an MCP server.
@@ -88,9 +89,9 @@ async def create_tool_permission(
         HTTPException 404: If agent_id or mcp_server_id does not exist.
         HTTPException 409: If this exact permission already exists.
     """
-    # Verify agent exists.
+    # Verify agent exists and belongs to this org.
     agent_result = await db.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.is_active.is_(True))
+        select(Agent).where(Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True))
     )
     if agent_result.scalar_one_or_none() is None:
         raise HTTPException(
@@ -98,10 +99,11 @@ async def create_tool_permission(
             detail=f"Agent {agent_id} not found",
         )
 
-    # Verify MCP server exists.
+    # Verify MCP server exists and belongs to this org.
     server_result = await db.execute(
         select(MCPServer).where(
             MCPServer.id == body.mcp_server_id,
+            MCPServer.org_id == current_user.org_id,
             MCPServer.is_active.is_(True),
         )
     )
@@ -112,6 +114,7 @@ async def create_tool_permission(
         )
 
     permission = ToolPermission(
+        org_id=current_user.org_id,
         agent_id=agent_id,
         mcp_server_id=body.mcp_server_id,
         tool_name=body.tool_name,
@@ -142,7 +145,7 @@ async def create_tool_permission(
 async def list_tool_permissions(
     agent_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> list[ToolPermissionResponse]:
     """
     Return all tool permissions granted to a specific agent.
@@ -158,9 +161,9 @@ async def list_tool_permissions(
     Raises:
         HTTPException 404: If the agent does not exist.
     """
-    # Verify agent exists.
+    # Verify agent exists and belongs to this org.
     agent_result = await db.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.is_active.is_(True))
+        select(Agent).where(Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True))
     )
     if agent_result.scalar_one_or_none() is None:
         raise HTTPException(
@@ -182,7 +185,7 @@ async def delete_tool_permission(
     agent_id: uuid.UUID,
     permission_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> Response:
     """
     Hard-delete a specific tool permission for an agent.

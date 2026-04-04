@@ -20,9 +20,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.dependencies import get_current_agent, get_db
-from app.db.models.agent import Agent
+from app.core.dependencies import get_current_user, get_db
 from app.db.models.mcp_server import MCPServer
+from app.db.models.user import User
 from app.db.models.session import Session, SessionEvent
 from app.schemas.session import SessionEventResponse, SessionResponse
 
@@ -39,7 +39,7 @@ async def list_sessions(
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> list[SessionResponse]:
     """
     Return a paginated list of sessions, optionally filtered by agent.
@@ -58,7 +58,13 @@ async def list_sessions(
         list[SessionResponse]: Sessions ordered by started_at DESC, no events.
     """
     limit = min(limit, 200)
-    query = select(Session).order_by(Session.started_at.desc()).offset(skip).limit(limit)
+    query = (
+        select(Session)
+        .where(Session.org_id == current_user.org_id)
+        .order_by(Session.started_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
     if agent_id is not None:
         query = query.where(Session.agent_id == agent_id)
 
@@ -75,7 +81,7 @@ async def list_sessions(
 async def get_session(
     session_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> SessionResponse:
     """
     Return a session and all of its audit events.
@@ -94,7 +100,9 @@ async def get_session(
         HTTPException 404: If the session does not exist.
     """
     result = await db.execute(
-        select(Session).where(Session.id == session_id).options(selectinload(Session.events))
+        select(Session)
+        .where(Session.id == session_id, Session.org_id == current_user.org_id)
+        .options(selectinload(Session.events))
     )
     session = result.scalar_one_or_none()
     if session is None:
@@ -132,7 +140,7 @@ async def list_session_events(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> list[SessionEventResponse]:
     """
     Return paginated audit events for a specific session.

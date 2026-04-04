@@ -13,6 +13,7 @@ redis[hiredis]==5.0.8
 # ── Encryption / Security ─────────────────────────────────────────────────────
 cryptography==43.0.1
 passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
 PyJWT==2.9.0
 
 # ── Semantic Embeddings (Cache) ───────────────────────────────────────────────

@@ -20,8 +20,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
-from app.core.dependencies import get_current_agent, get_db
+from app.core.dependencies import get_current_user, get_db
 from app.db.models.agent import Agent
+from app.db.models.user import User
 from app.schemas.agent import AgentCreate, AgentCreateResponse, AgentResponse
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -36,26 +37,13 @@ router = APIRouter(prefix="/agents", tags=["agents"])
 async def create_agent(
     body: AgentCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> AgentCreateResponse:
-    """
-    Register a new agent and return its API key.
-
-    The API key is returned ONCE in this response.  It is not recoverable;
-    if lost the agent must be deleted and re-registered.
-
-    Args:
-        body: Agent name and optional description.
-        db:   Injected database session.
-
-    Returns:
-        AgentCreateResponse: Agent metadata plus the one-time raw API key.
-
-    Raises:
-        HTTPException 409: If an agent with the same name already exists.
-    """
-    # Check for name collision.
     existing = await db.execute(
-        select(Agent).where(Agent.name == body.name)
+        select(Agent).where(
+            Agent.name == body.name,
+            Agent.org_id == current_user.org_id,
+        )
     )
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(
@@ -67,6 +55,7 @@ async def create_agent(
     key_hash = security.hash_api_key(raw_key)
 
     agent = Agent(
+        org_id=current_user.org_id,
         name=body.name,
         description=body.description,
         api_key_hash=key_hash,
@@ -96,24 +85,12 @@ async def list_agents(
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> list[AgentResponse]:
-    """
-    Return a paginated list of all active agents.
-
-    Args:
-        skip:     Number of records to skip (offset).
-        limit:    Maximum records to return (capped at 200).
-        db:       Injected database session.
-        _current: Auth guard — requires a valid API key.
-
-    Returns:
-        list[AgentResponse]: Active agents ordered by created_at DESC.
-    """
     limit = min(limit, 200)
     result = await db.execute(
         select(Agent)
-        .where(Agent.is_active.is_(True))
+        .where(Agent.is_active.is_(True), Agent.org_id == current_user.org_id)
         .order_by(Agent.created_at.desc())
         .offset(skip)
         .limit(limit)
@@ -130,24 +107,14 @@ async def list_agents(
 async def get_agent(
     agent_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> AgentResponse:
-    """
-    Retrieve a single agent by UUID.
-
-    Args:
-        agent_id: UUID of the agent to retrieve.
-        db:       Injected database session.
-        _current: Auth guard.
-
-    Returns:
-        AgentResponse: The agent's metadata.
-
-    Raises:
-        HTTPException 404: If the agent does not exist or is inactive.
-    """
     result = await db.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.is_active.is_(True))
+        select(Agent).where(
+            Agent.id == agent_id,
+            Agent.is_active.is_(True),
+            Agent.org_id == current_user.org_id,
+        )
     )
     agent = result.scalar_one_or_none()
     if agent is None:
@@ -166,23 +133,13 @@ async def get_agent(
 async def delete_agent(
     agent_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> Response:
-    """
-    Soft-delete an agent by setting is_active=False.
-
-    The agent's historical sessions and events are preserved for auditing.
-
-    Args:
-        agent_id: UUID of the agent to deactivate.
-        db:       Injected database session.
-        _current: Auth guard.
-
-    Raises:
-        HTTPException 404: If the agent does not exist.
-    """
     result = await db.execute(
-        select(Agent).where(Agent.id == agent_id)
+        select(Agent).where(
+            Agent.id == agent_id,
+            Agent.org_id == current_user.org_id,
+        )
     )
     agent = result.scalar_one_or_none()
     if agent is None:
