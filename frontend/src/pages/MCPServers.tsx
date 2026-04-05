@@ -9,7 +9,7 @@
 
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '../api/client'
+import { authClient } from '../api/client'
 import type { MCPServer, MCPServerCreate, MCPServerUpdate } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -18,10 +18,10 @@ import Toggle from '../components/Toggle'
 // ── Data fetchers / mutators ───────────────────────────────────────────────────
 
 const fetchMCPServers = (): Promise<MCPServer[]> =>
-  apiClient.get<MCPServer[]>('/mcp_servers').then((r) => r.data)
+  authClient.get<MCPServer[]>('/mcp-servers').then((r) => r.data)
 
 const createMCPServer = (payload: MCPServerCreate): Promise<MCPServer> =>
-  apiClient.post<MCPServer>('/mcp_servers', payload).then((r) => r.data)
+  authClient.post<MCPServer>('/mcp-servers', payload).then((r) => r.data)
 
 const updateMCPServer = ({
   id,
@@ -30,10 +30,10 @@ const updateMCPServer = ({
   id: string
   payload: MCPServerUpdate
 }): Promise<MCPServer> =>
-  apiClient.patch<MCPServer>(`/mcp_servers/${id}`, payload).then((r) => r.data)
+  authClient.patch<MCPServer>(`/mcp-servers/${id}`, payload).then((r) => r.data)
 
 const deleteMCPServer = (id: string): Promise<void> =>
-  apiClient.delete(`/mcp_servers/${id}`).then(() => undefined)
+  authClient.delete(`/mcp-servers/${id}`).then(() => undefined)
 
 // ── Server Form Modal ─────────────────────────────────────────────────────────
 

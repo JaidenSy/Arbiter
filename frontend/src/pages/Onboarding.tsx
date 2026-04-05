@@ -12,7 +12,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '../api/client'
 import { authClient } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import CopyButton from '../components/CopyButton'
@@ -88,7 +87,7 @@ const createAgent = (payload: {
   name: string
   description: string
 }): Promise<AgentCreateResponse> =>
-  apiClient.post<AgentCreateResponse>('/agents', payload).then((r) => r.data)
+  authClient.post<AgentCreateResponse>('/agents', payload).then((r) => r.data)
 
 function Step2({ onNext }: Step2Props): React.ReactElement {
   const [name, setName] = useState('')
@@ -204,7 +203,7 @@ const createServer = (payload: {
   base_url: string
   cache_enabled: boolean
 }): Promise<MCPServer> =>
-  apiClient.post<MCPServer>('/mcp-servers', payload).then((r) => r.data)
+  authClient.post<MCPServer>('/mcp-servers', payload).then((r) => r.data)
 
 function Step3({ onNext }: Step3Props): React.ReactElement {
   const [name, setName] = useState('')

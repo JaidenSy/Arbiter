@@ -9,16 +9,16 @@
 import React, { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "../api/client";
+import { authClient } from "../api/client";
 import type { Agent, Session } from "../api/types";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 
 const fetchAgents = (): Promise<Agent[]> =>
-  apiClient.get<Agent[]>("/agents").then((r) => r.data);
+  authClient.get<Agent[]>("/agents").then((r) => r.data);
 
 const fetchSessions = (agentId: string): Promise<Session[]> =>
-  apiClient
+  authClient
     .get<Session[]>("/sessions", {
       params: agentId ? { agent_id: agentId } : undefined,
     })
