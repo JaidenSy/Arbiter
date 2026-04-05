@@ -275,6 +275,7 @@ class ProxyService:
                     tool_name=request.tool_name,
                     input_payload=request.params,  # original params, not injected
                     response_payload=response_payload,
+                    org_id=agent.org_id,
                 )
             except Exception as exc:
                 # Cache write failure must not prevent the response.

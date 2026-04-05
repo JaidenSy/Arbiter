@@ -219,6 +219,7 @@ class CacheService:
         tool_name: str,
         input_payload: dict[str, Any],
         response_payload: dict[str, Any],
+        org_id: Any = None,
     ) -> None:
         """
         Store a tool call result in both Redis (L1) and Postgres (L2).
@@ -275,6 +276,7 @@ class CacheService:
                 input_embedding=embedding,
                 response_payload=response_payload,
                 expires_at=expires_at,
+                org_id=org_id,
             )
             self.db.add(entry)
 
