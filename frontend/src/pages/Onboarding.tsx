@@ -309,8 +309,8 @@ function Step4({ agentName, agentApiKey, serverName, onFinish }: Step4Props): Re
   -H "Authorization: Bearer ${agentApiKey}" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "server": "${serverName}",
-    "tool": "your_tool_name",
+    "server_name": "${serverName}",
+    "tool_name": "your_tool_name",
     "params": {}
   }'`
 
