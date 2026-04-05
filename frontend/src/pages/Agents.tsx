@@ -8,7 +8,7 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "../api/client";
+import { authClient } from "../api/client";
 import type { Agent, AgentCreateResponse } from "../api/types";
 import CopyButton from "../components/CopyButton";
 import Modal from "../components/Modal";
@@ -17,16 +17,16 @@ import ConfirmDialog from "../components/ConfirmDialog";
 // ── Data fetchers / mutators ──────────────────────────────────────────────────
 
 const fetchAgents = (): Promise<Agent[]> =>
-  apiClient.get<Agent[]>("/agents").then((r) => r.data);
+  authClient.get<Agent[]>("/agents").then((r) => r.data);
 
 const createAgent = (payload: {
   name: string;
   description: string;
 }): Promise<AgentCreateResponse> =>
-  apiClient.post<AgentCreateResponse>("/agents", payload).then((r) => r.data);
+  authClient.post<AgentCreateResponse>("/agents", payload).then((r) => r.data);
 
 const deleteAgent = (id: string): Promise<void> =>
-  apiClient.delete(`/agents/${id}`).then(() => undefined);
+  authClient.delete(`/agents/${id}`).then(() => undefined);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

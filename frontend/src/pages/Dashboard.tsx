@@ -19,17 +19,17 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { apiClient } from "../api/client";
+import { authClient } from "../api/client";
 import type { DashboardStats, Session, StatsHistoryResponse } from "../api/types";
 import UsageStrip from "../components/UsageStrip";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 
 const fetchStats = (): Promise<DashboardStats> =>
-  apiClient.get<DashboardStats>("/stats").then((r) => r.data);
+  authClient.get<DashboardStats>("/stats").then((r) => r.data);
 
 const fetchRecentSessions = (): Promise<Session[]> =>
-  apiClient
+  authClient
     .get<Session[]>("/sessions", { params: { limit: 10 } })
     .then((r) => r.data);
 
@@ -97,7 +97,7 @@ function Dashboard(): React.ReactElement {
   const { data: history } = useQuery({
     queryKey: ["stats-history", period],
     queryFn: () =>
-      apiClient
+      authClient
         .get<StatsHistoryResponse>(`/stats/history?period=${period}`)
         .then((r) => r.data),
     refetchInterval: 60_000,

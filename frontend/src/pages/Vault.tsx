@@ -11,7 +11,7 @@
 
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '../api/client'
+import { authClient } from '../api/client'
 import type { Agent, VaultSecret, VaultSecretWithValue, VaultSecretCreate } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -20,21 +20,21 @@ import CopyButton from '../components/CopyButton'
 // ── Data fetchers / mutators ───────────────────────────────────────────────────
 
 const fetchAgents = (): Promise<Agent[]> =>
-  apiClient.get<Agent[]>('/agents').then((r) => r.data)
+  authClient.get<Agent[]>('/agents').then((r) => r.data)
 
 const fetchSecrets = (agentId: string): Promise<VaultSecret[]> =>
-  apiClient
+  authClient
     .get<VaultSecret[]>('/vault/secrets', { params: { agent_id: agentId } })
     .then((r) => r.data)
 
 const fetchSecretById = (id: string): Promise<VaultSecretWithValue> =>
-  apiClient.get<VaultSecretWithValue>(`/vault/secrets/${id}`).then((r) => r.data)
+  authClient.get<VaultSecretWithValue>(`/vault/secrets/${id}`).then((r) => r.data)
 
 const createSecret = (payload: VaultSecretCreate & { agent_id: string }): Promise<VaultSecret> =>
-  apiClient.post<VaultSecret>('/vault/secrets', payload).then((r) => r.data)
+  authClient.post<VaultSecret>('/vault/secrets', payload).then((r) => r.data)
 
 const deleteSecret = (id: string): Promise<void> =>
-  apiClient.delete(`/vault/secrets/${id}`).then(() => undefined)
+  authClient.delete(`/vault/secrets/${id}`).then(() => undefined)
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 

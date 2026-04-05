@@ -33,6 +33,7 @@ import Vault from './pages/Vault'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Onboarding from './pages/Onboarding'
+import AuthCallback from './pages/AuthCallback'
 import { useAuth } from './context/AuthContext'
 
 // ── Layout wrapper for sidebar pages ─────────────────────────────────────────
@@ -85,6 +86,7 @@ function App(): React.ReactElement {
       {/* ── Public auth routes (no sidebar) ─────────────────────────────── */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
       {/* ── Protected onboarding (no sidebar) ───────────────────────────── */}
       <Route

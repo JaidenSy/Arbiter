@@ -8,7 +8,7 @@
 
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '../api/client'
+import { authClient } from '../api/client'
 import type { Agent, MCPServer, ToolPermission, ToolPermissionCreate } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -16,13 +16,13 @@ import ConfirmDialog from '../components/ConfirmDialog'
 // ── Data fetchers / mutators ───────────────────────────────────────────────────
 
 const fetchAgents = (): Promise<Agent[]> =>
-  apiClient.get<Agent[]>('/agents').then((r) => r.data)
+  authClient.get<Agent[]>('/agents').then((r) => r.data)
 
 const fetchMCPServers = (): Promise<MCPServer[]> =>
-  apiClient.get<MCPServer[]>('/mcp_servers').then((r) => r.data)
+  authClient.get<MCPServer[]>('/mcp-servers').then((r) => r.data)
 
 const fetchPermissions = (agentId: string): Promise<ToolPermission[]> =>
-  apiClient.get<ToolPermission[]>(`/agents/${agentId}/permissions`).then((r) => r.data)
+  authClient.get<ToolPermission[]>(`/agents/${agentId}/permissions`).then((r) => r.data)
 
 const grantPermission = ({
   agentId,
@@ -31,7 +31,7 @@ const grantPermission = ({
   agentId: string
   payload: ToolPermissionCreate
 }): Promise<ToolPermission> =>
-  apiClient
+  authClient
     .post<ToolPermission>(`/agents/${agentId}/permissions`, payload)
     .then((r) => r.data)
 
@@ -42,7 +42,7 @@ const revokePermission = ({
   agentId: string
   permissionId: string
 }): Promise<void> =>
-  apiClient.delete(`/agents/${agentId}/permissions/${permissionId}`).then(() => undefined)
+  authClient.delete(`/agents/${agentId}/permissions/${permissionId}`).then(() => undefined)
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 

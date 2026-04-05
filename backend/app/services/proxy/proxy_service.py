@@ -177,21 +177,12 @@ class ProxyService:
         error: str | None = None
         response_payload: dict[str, Any] = {}
 
-        # ── Build outbound headers ─────────────────────────────────────────────
-        outbound_headers: dict[str, str] = {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-        }
-        # Reattach any upstream MCP session ID stored in Redis from a prior call.
+        # ── Build outbound headers (initialize upstream session if needed) ────
         upstream_session_key = f"mcp_sessions:{session.id}:{request.server_name}"
-        try:
-            stored_upstream_id = await self.redis.get(upstream_session_key)
-            if stored_upstream_id:
-                if isinstance(stored_upstream_id, bytes):
-                    stored_upstream_id = stored_upstream_id.decode()
-                outbound_headers["Mcp-Session-Id"] = stored_upstream_id
-        except Exception as exc:
-            logger.warning("proxy: Redis session lookup failed: %s", exc)
+        outbound_headers = await self._ensure_mcp_session(
+            mcp_server=mcp_server,
+            cache_key=upstream_session_key,
+        )
 
         try:
             async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
@@ -213,17 +204,7 @@ class ProxyService:
             upstream_session_id = http_resp.headers.get("Mcp-Session-Id")
             if upstream_session_id:
                 try:
-                    await self.redis.set(
-                        upstream_session_key,
-                        upstream_session_id,
-                        ex=3600,  # 1-hour TTL
-                    )
-                    logger.debug(
-                        "proxy: stored upstream Mcp-Session-Id %r for nexus_session=%s server=%s",
-                        upstream_session_id,
-                        session.id,
-                        request.server_name,
-                    )
+                    await self.redis.set(upstream_session_key, upstream_session_id, ex=3600)
                 except Exception as exc:
                     logger.warning("proxy: Redis session store failed: %s", exc)
 
@@ -294,6 +275,7 @@ class ProxyService:
                     tool_name=request.tool_name,
                     input_payload=request.params,  # original params, not injected
                     response_payload=response_payload,
+                    org_id=agent.org_id,
                 )
             except Exception as exc:
                 # Cache write failure must not prevent the response.
@@ -385,6 +367,62 @@ class ProxyService:
             )
         return server
 
+    async def _ensure_mcp_session(
+        self,
+        mcp_server: MCPServer,
+        cache_key: str,
+    ) -> dict[str, str]:
+        """
+        Return outbound headers for an upstream MCP server request.
+
+        If a session ID is cached in Redis for this server, attach it.
+        Otherwise, perform the MCP initialize handshake to obtain one,
+        cache it, and attach it.  This handles the Streamable HTTP transport
+        which requires an initialize before any tool calls.
+        """
+        headers: dict[str, str] = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+
+        # Check cache first.
+        try:
+            stored_id = await self.redis.get(cache_key)
+            if stored_id:
+                if isinstance(stored_id, bytes):
+                    stored_id = stored_id.decode()
+                headers["Mcp-Session-Id"] = stored_id
+                return headers
+        except Exception as exc:
+            logger.warning("proxy: Redis session lookup failed: %s", exc)
+
+        # No cached session — do MCP initialize handshake.
+        init_body = {
+            "jsonrpc": "2.0",
+            "id": "nexusai-init",
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "nexusai-gateway", "version": "1.0"},
+            },
+        }
+        try:
+            async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+                resp = await client.post(mcp_server.base_url, json=init_body, headers=headers)
+            session_id = resp.headers.get("Mcp-Session-Id")
+            if session_id:
+                try:
+                    await self.redis.set(cache_key, session_id, ex=3600)
+                except Exception as exc:
+                    logger.warning("proxy: Redis session store (init) failed: %s", exc)
+                headers["Mcp-Session-Id"] = session_id
+                logger.debug("proxy: initialized upstream MCP session %r for %s", session_id, mcp_server.name)
+        except Exception as exc:
+            logger.warning("proxy: MCP initialize handshake failed for %s: %s", mcp_server.name, exc)
+
+        return headers
+
     async def _ensure_session(
         self,
         agent: Agent,
@@ -407,7 +445,7 @@ class ProxyService:
             if session is not None:
                 return session
 
-        session = Session(agent_id=agent.id, metadata_={})
+        session = Session(agent_id=agent.id, org_id=agent.org_id, metadata_={})
         self.db.add(session)
         await self.db.flush()  # get session.id before persisting events
         return session
@@ -426,6 +464,7 @@ class ProxyService:
         """Append an immutable audit record to the session."""
         event = SessionEvent(
             session_id=session.id,
+            org_id=session.org_id,
             mcp_server_id=mcp_server.id,
             tool_name=tool_name,
             request_payload=request_payload,

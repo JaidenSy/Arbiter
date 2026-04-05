@@ -23,8 +23,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_agent, get_db
-from app.db.models.agent import Agent
+from app.core.dependencies import get_current_user, get_db
+from app.db.models.user import User
 from app.db.models.vault import VaultSecret
 from app.services.vault.vault_service import VaultService
 
@@ -70,24 +70,10 @@ class SecretValueResponse(SecretResponse):
 async def create_secret(
     body: SecretCreate,
     db: AsyncSession = Depends(get_db),
-    current_agent: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> SecretResponse:
-    """
-    Encrypt and store a secret in the vault, scoped to the calling agent.
-
-    If a secret with the same name already exists for this agent, it is
-    overwritten (rotation).  The previous ciphertext is not retained.
-
-    Args:
-        body:          Secret name and plaintext value.
-        db:            Injected DB session.
-        current_agent: Authenticated agent — secret is scoped to this agent.
-
-    Returns:
-        SecretResponse: Metadata only — value is not echoed back.
-    """
     service = VaultService(db)
-    secret = await service.store_secret(body.name, body.value, current_agent.id)
+    secret = await service.store_secret(body.name, body.value, None, current_user.org_id)
     return SecretResponse.model_validate(secret)
 
 
@@ -98,22 +84,9 @@ async def create_secret(
 )
 async def list_secrets(
     db: AsyncSession = Depends(get_db),
-    current_agent: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> list[SecretResponse]:
-    """
-    Return all secret names and IDs owned by the calling agent.
-
-    Never exposes decrypted values.  Scoped to current_agent.id for security —
-    agents cannot enumerate each other's secrets.
-
-    Args:
-        db:            Injected DB session.
-        current_agent: Authenticated agent.
-
-    Returns:
-        list[SecretResponse]: All vault secrets for this agent (no values).
-    """
-    result = await db.execute(select(VaultSecret).where(VaultSecret.agent_id == current_agent.id))
+    result = await db.execute(select(VaultSecret).where(VaultSecret.org_id == current_user.org_id))
     secrets = result.scalars().all()
     return [SecretResponse.model_validate(s) for s in secrets]
 
@@ -126,30 +99,12 @@ async def list_secrets(
 async def get_secret(
     secret_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_agent: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> SecretValueResponse:
-    """
-    Fetch and decrypt a secret by UUID.
-
-    Caution: This endpoint returns the plaintext value.  Restrict access
-    via network policy or a separate admin RBAC role.  The secret must be
-    owned by the calling agent — agents cannot read each other's secrets.
-
-    Args:
-        secret_id:     UUID of the vault secret.
-        db:            Injected DB session.
-        current_agent: Authenticated agent.
-
-    Returns:
-        SecretValueResponse: Metadata plus decrypted value.
-
-    Raises:
-        HTTPException 404: If the secret does not exist or belongs to another agent.
-    """
     result = await db.execute(
         select(VaultSecret).where(
             VaultSecret.id == secret_id,
-            VaultSecret.agent_id == current_agent.id,
+            VaultSecret.org_id == current_user.org_id,
         )
     )
     secret = result.scalar_one_or_none()
@@ -179,26 +134,12 @@ async def get_secret(
 async def delete_secret(
     secret_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_agent: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> Response:
-    """
-    Permanently delete a secret from the vault.
-
-    Unlike agents/servers, secrets are hard-deleted (no soft-delete).
-    The secret must be owned by the calling agent.
-
-    Args:
-        secret_id:     UUID of the secret to delete.
-        db:            Injected DB session.
-        current_agent: Authenticated agent.
-
-    Raises:
-        HTTPException 404: If the secret does not exist or belongs to another agent.
-    """
     result = await db.execute(
         select(VaultSecret).where(
             VaultSecret.id == secret_id,
-            VaultSecret.agent_id == current_agent.id,
+            VaultSecret.org_id == current_user.org_id,
         )
     )
     secret = result.scalar_one_or_none()

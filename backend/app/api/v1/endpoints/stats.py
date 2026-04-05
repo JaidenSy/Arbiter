@@ -15,13 +15,14 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_agent, get_db
+from app.core.dependencies import get_current_user, get_db
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
-from app.db.models.session import SessionEvent
+from app.db.models.session import Session, SessionEvent
+from app.db.models.user import User
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -67,7 +68,7 @@ class StatsHistoryResponse(BaseModel):
 )
 async def get_stats(
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> StatsResponse:
     """
     Return a snapshot of key gateway metrics for dashboard display.
@@ -90,24 +91,26 @@ async def get_stats(
         StatsResponse: Aggregated dashboard statistics.
     """
     # ── Active agents count ────────────────────────────────────────────────────
-    agents_result = await db.execute(select(func.count(Agent.id)).where(Agent.is_active.is_(True)))
+    agents_result = await db.execute(
+        select(func.count(Agent.id)).where(Agent.is_active.is_(True), Agent.org_id == current_user.org_id)
+    )
     agents_count: int = agents_result.scalar_one() or 0
 
     # ── Active MCP servers count ───────────────────────────────────────────────
     servers_result = await db.execute(
-        select(func.count(MCPServer.id)).where(MCPServer.is_active.is_(True))
+        select(func.count(MCPServer.id)).where(MCPServer.is_active.is_(True), MCPServer.org_id == current_user.org_id)
     )
     servers_count: int = servers_result.scalar_one() or 0
 
     # ── Today's tool calls and cache hit rate ──────────────────────────────────
-    # DATE_TRUNC('day', NOW()) truncates to UTC midnight.
     today_midnight = func.date_trunc("day", func.now())
 
+    org_session_ids_today = select(Session.id).where(Session.org_id == current_user.org_id).scalar_subquery()
     calls_result = await db.execute(
         select(
             func.count(SessionEvent.id).label("total"),
             func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
-        ).where(SessionEvent.occurred_at >= today_midnight)
+        ).where(SessionEvent.occurred_at >= today_midnight, SessionEvent.session_id.in_(org_session_ids_today))
     )
     row = calls_result.one()
     tool_calls_today: int = row.total or 0
@@ -135,7 +138,7 @@ async def get_stats(
 async def get_stats_history(
     period: str = Query("7d", description="Time period: '7d' (daily buckets) or '24h' (hourly buckets)"),
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> StatsHistoryResponse:
     """
     Return historical time-series activity data for the dashboard chart.
@@ -167,16 +170,18 @@ async def get_stats_history(
 
     if period == "7d":
         cutoff = now - timedelta(days=7)
+        org_session_ids = select(Session.id).where(Session.org_id == current_user.org_id).scalar_subquery()
+        day_bucket = literal_column("date_trunc('day', session_events.occurred_at)")
         result = await db.execute(
             select(
-                func.date_trunc("day", SessionEvent.occurred_at).label("bucket"),
+                day_bucket.label("bucket"),
                 func.count().label("total"),
                 func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
                 func.sum(case((SessionEvent.error.isnot(None), 1), else_=0)).label("errors"),
             )
-            .where(SessionEvent.occurred_at >= cutoff)
-            .group_by(func.date_trunc("day", SessionEvent.occurred_at))
-            .order_by(func.date_trunc("day", SessionEvent.occurred_at))
+            .where(SessionEvent.occurred_at >= cutoff, SessionEvent.session_id.in_(org_session_ids))
+            .group_by(day_bucket)
+            .order_by(day_bucket)
         )
         rows = result.all()
 
@@ -208,16 +213,18 @@ async def get_stats_history(
 
     else:  # 24h
         cutoff = now - timedelta(hours=24)
+        org_session_ids = select(Session.id).where(Session.org_id == current_user.org_id).scalar_subquery()
+        hour_bucket = literal_column("date_trunc('hour', session_events.occurred_at)")
         result = await db.execute(
             select(
-                func.date_trunc("hour", SessionEvent.occurred_at).label("bucket"),
+                hour_bucket.label("bucket"),
                 func.count().label("total"),
                 func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
                 func.sum(case((SessionEvent.error.isnot(None), 1), else_=0)).label("errors"),
             )
-            .where(SessionEvent.occurred_at >= cutoff)
-            .group_by(func.date_trunc("hour", SessionEvent.occurred_at))
-            .order_by(func.date_trunc("hour", SessionEvent.occurred_at))
+            .where(SessionEvent.occurred_at >= cutoff, SessionEvent.session_id.in_(org_session_ids))
+            .group_by(hour_bucket)
+            .order_by(hour_bucket)
         )
         rows = result.all()
 

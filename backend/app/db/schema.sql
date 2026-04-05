@@ -192,3 +192,22 @@ CREATE TABLE IF NOT EXISTS usage_events (
 
 CREATE INDEX IF NOT EXISTS idx_usage_events_org_id     ON usage_events(org_id);
 CREATE INDEX IF NOT EXISTS idx_usage_events_event_date ON usage_events(event_date DESC);
+
+-- ── social_accounts ────────────────────────────────────────────────────────────
+-- Links a user to an OAuth2 identity from an external provider (Google, GitHub).
+-- A user may have multiple social accounts (one per provider).
+CREATE TABLE IF NOT EXISTS social_accounts (
+    id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id          UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    org_id           UUID        NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    provider         TEXT        NOT NULL CHECK (provider IN ('google', 'github')),
+    provider_user_id TEXT        NOT NULL,
+    email            TEXT,
+    name             TEXT,
+    avatar_url       TEXT,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (provider, provider_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_social_accounts_user_id  ON social_accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_social_accounts_provider ON social_accounts(provider, provider_user_id);

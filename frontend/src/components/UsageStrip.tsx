@@ -11,7 +11,6 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
 import { authClient } from '../api/client'
-import { apiClient } from '../api/client'
 import type { DashboardStats } from '../api/types'
 
 // ── Plan limit constants (mirrors backend plan_limits.py) ────────────────────
@@ -37,7 +36,7 @@ const fetchUsageSummary = (): Promise<UsageSummary> =>
   authClient.get<UsageSummary>('/usage/summary').then((r) => r.data)
 
 const fetchStats = (): Promise<DashboardStats> =>
-  apiClient.get<DashboardStats>('/stats').then((r) => r.data)
+  authClient.get<DashboardStats>('/stats').then((r) => r.data)
 
 // ── Component ─────────────────────────────────────────────────────────────────
 

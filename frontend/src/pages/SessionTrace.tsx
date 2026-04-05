@@ -13,7 +13,7 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "../api/client";
+import { authClient } from "../api/client";
 import type { Agent, Session, SessionEvent } from "../api/types";
 import JsonViewer from "../components/JsonViewer";
 
@@ -206,13 +206,13 @@ function SessionTrace(): React.ReactElement {
 
   const { data: session, isLoading } = useQuery<Session>({
     queryKey: ["session", id],
-    queryFn: () => apiClient.get<Session>(`/sessions/${id}`).then((r) => r.data),
+    queryFn: () => authClient.get<Session>(`/sessions/${id}`).then((r) => r.data),
     enabled: !!id,
   });
 
   const { data: agents } = useQuery<Agent[]>({
     queryKey: ["agents"],
-    queryFn: () => apiClient.get<Agent[]>("/agents").then((r) => r.data),
+    queryFn: () => authClient.get<Agent[]>("/agents").then((r) => r.data),
   });
 
   const agent = agents?.find((a) => a.id === session?.agent_id);

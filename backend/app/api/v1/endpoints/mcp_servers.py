@@ -20,9 +20,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_agent, get_db
-from app.db.models.agent import Agent
+from app.core.dependencies import get_current_user, get_db
 from app.db.models.mcp_server import MCPServer
+from app.db.models.user import User
 
 router = APIRouter(prefix="/mcp-servers", tags=["mcp-servers"])
 
@@ -79,7 +79,7 @@ class MCPServerResponse(BaseModel):
 async def create_mcp_server(
     body: MCPServerCreate,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> MCPServerResponse:
     """
     Register a new MCP server so agents can route tool calls to it.
@@ -98,6 +98,7 @@ async def create_mcp_server(
     existing = await db.execute(
         select(MCPServer).where(
             MCPServer.name == body.name,
+            MCPServer.org_id == current_user.org_id,
             MCPServer.is_active.is_(True),
         )
     )
@@ -108,6 +109,7 @@ async def create_mcp_server(
         )
 
     server = MCPServer(
+        org_id=current_user.org_id,
         name=body.name,
         base_url=body.base_url,
         description=body.description,
@@ -129,7 +131,7 @@ async def list_mcp_servers(
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> list[MCPServerResponse]:
     """
     Return a paginated list of active MCP servers.
@@ -146,7 +148,7 @@ async def list_mcp_servers(
     limit = min(limit, 200)
     result = await db.execute(
         select(MCPServer)
-        .where(MCPServer.is_active.is_(True))
+        .where(MCPServer.is_active.is_(True), MCPServer.org_id == current_user.org_id)
         .order_by(MCPServer.created_at.desc())
         .offset(skip)
         .limit(limit)
@@ -163,7 +165,7 @@ async def list_mcp_servers(
 async def get_mcp_server(
     server_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> MCPServerResponse:
     """
     Return a single active MCP server by UUID.
@@ -182,6 +184,7 @@ async def get_mcp_server(
     result = await db.execute(
         select(MCPServer).where(
             MCPServer.id == server_id,
+            MCPServer.org_id == current_user.org_id,
             MCPServer.is_active.is_(True),
         )
     )
@@ -203,7 +206,7 @@ async def update_mcp_server(
     server_id: uuid.UUID,
     body: MCPServerUpdate,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> MCPServerResponse:
     """
     Partially update name, URL, description, or cache_enabled flag of an MCP server.
@@ -225,6 +228,7 @@ async def update_mcp_server(
     result = await db.execute(
         select(MCPServer).where(
             MCPServer.id == server_id,
+            MCPServer.org_id == current_user.org_id,
             MCPServer.is_active.is_(True),
         )
     )
@@ -257,7 +261,7 @@ async def update_mcp_server(
 async def delete_mcp_server(
     server_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _current: Agent = Depends(get_current_agent),
+    current_user: User = Depends(get_current_user),
 ) -> Response:
     """
     Soft-delete an MCP server by setting is_active=False.
@@ -272,7 +276,7 @@ async def delete_mcp_server(
     Raises:
         HTTPException 404: If the server does not exist.
     """
-    result = await db.execute(select(MCPServer).where(MCPServer.id == server_id))
+    result = await db.execute(select(MCPServer).where(MCPServer.id == server_id, MCPServer.org_id == current_user.org_id))
     server = result.scalar_one_or_none()
     if server is None:
         raise HTTPException(
