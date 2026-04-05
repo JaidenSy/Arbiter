@@ -407,7 +407,7 @@ class ProxyService:
             if session is not None:
                 return session
 
-        session = Session(agent_id=agent.id, metadata_={})
+        session = Session(agent_id=agent.id, org_id=agent.org_id, metadata_={})
         self.db.add(session)
         await self.db.flush()  # get session.id before persisting events
         return session
