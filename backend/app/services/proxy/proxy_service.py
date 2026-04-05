@@ -426,6 +426,7 @@ class ProxyService:
         """Append an immutable audit record to the session."""
         event = SessionEvent(
             session_id=session.id,
+            org_id=session.org_id,
             mcp_server_id=mcp_server.id,
             tool_name=tool_name,
             request_payload=request_payload,
