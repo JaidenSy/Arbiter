@@ -24,14 +24,14 @@ from app.core.dependencies import get_current_user, get_db
 from app.db.models.mcp_server import MCPServer
 from app.db.models.user import User
 from app.db.models.session import Session, SessionEvent
-from app.schemas.session import SessionEventResponse, SessionResponse
+from app.schemas.session import SessionEventResponse, SessionListResponse, SessionResponse
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
 @router.get(
     "",
-    response_model=list[SessionResponse],
+    response_model=list[SessionListResponse],
     summary="List sessions",
 )
 async def list_sessions(
@@ -40,7 +40,7 @@ async def list_sessions(
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[SessionResponse]:
+) -> list[SessionListResponse]:
     """
     Return a paginated list of sessions, optionally filtered by agent.
 
@@ -70,7 +70,7 @@ async def list_sessions(
 
     result = await db.execute(query)
     sessions = result.scalars().all()
-    return [SessionResponse.model_validate(s) for s in sessions]
+    return [SessionListResponse.model_validate(s) for s in sessions]
 
 
 @router.get(

@@ -32,6 +32,7 @@ class OnboardingStatus(BaseModel):
     has_server: bool
     has_permission: bool
     first_call_made: bool
+    complete: bool  # True when the user has at least one agent and one server
 
 
 @router.get(
@@ -84,9 +85,12 @@ async def get_onboarding_status(
         select(func.sum(UsageEvent.tool_calls)).where(UsageEvent.org_id == org_id)
     )
 
+    has_agent = bool(agent_count)
+    has_server = bool(server_count)
     return OnboardingStatus(
-        has_agent=bool(agent_count),
-        has_server=bool(server_count),
+        has_agent=has_agent,
+        has_server=has_server,
         has_permission=bool(permission_count),
         first_call_made=bool(call_count and call_count > 0),
+        complete=has_agent and has_server,
     )

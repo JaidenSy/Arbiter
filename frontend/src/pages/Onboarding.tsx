@@ -381,6 +381,7 @@ function Onboarding(): React.ReactElement {
   const handleStep2Next = (name: string, key: string): void => {
     setAgentName(name)
     setAgentApiKey(key)
+    localStorage.setItem('nexusai_api_key', key)
     void syncStatus()
     setStep(2)
   }

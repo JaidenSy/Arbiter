@@ -9,7 +9,7 @@
  * via GET /vault/secrets/{id}. Revealed values are held only in local state.
  */
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
 import type { Agent, VaultSecret, VaultSecretWithValue, VaultSecretCreate } from '../api/types'
@@ -488,6 +488,13 @@ function Vault(): React.ReactElement {
     queryFn: fetchAgents,
   })
 
+  // Auto-select first agent when list loads and nothing is selected
+  useEffect(() => {
+    if (!selectedAgentId && agents && agents.length > 0) {
+      setSelectedAgentId(agents[0].id)
+    }
+  }, [agents, selectedAgentId])
+
   const selectedAgent = agents?.find((a) => a.id === selectedAgentId) ?? null
 
   return (
@@ -511,18 +518,26 @@ function Vault(): React.ReactElement {
                     key={agent.id}
                     type="button"
                     onClick={() => setSelectedAgentId(agent.id)}
-                    className={`w-full text-left flex items-center gap-2 px-3 py-2 transition-colors ${
+                    className={`w-full text-left flex items-start gap-2 px-3 py-2.5 transition-colors ${
                       isSelected
                         ? 'bg-highlight border-l-2 border-accent'
                         : 'border-l-2 border-transparent hover:bg-elevated'
                     }`}
                   >
                     <span
-                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${
                         agent.is_active ? 'bg-green-400' : 'bg-muted'
                       }`}
                     />
-                    <span className="text-primary text-sm truncate">{agent.name}</span>
+                    <div className="min-w-0">
+                      <span className="text-primary text-sm truncate block">{agent.name}</span>
+                      {agent.description && (
+                        <span className="text-muted text-xs truncate block">{agent.description}</span>
+                      )}
+                      <span className="text-muted text-[10px] font-mono">
+                        {new Date(agent.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
                   </button>
                 )
               })
