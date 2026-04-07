@@ -26,6 +26,11 @@ const fetchSessions = (agentId: string): Promise<Session[]> =>
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function agentDisplayName(agentId: string, agents: Agent[] | undefined): string {
+  const match = agents?.find((a) => a.id === agentId)
+  return match ? match.name : agentId.slice(0, 8)
+}
+
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diff / 60_000);
@@ -116,11 +121,16 @@ function Sessions(): React.ReactElement {
               </tr>
             ) : !sessions || sessions.length === 0 ? (
               <tr>
-                <td
-                  colSpan={TABLE_COLS}
-                  className="py-4 px-4 text-sm text-secondary font-mono"
-                >
-                  No sessions recorded yet.
+                <td colSpan={TABLE_COLS} className="py-16 px-4 text-center">
+                  <svg className="mx-auto mb-3 text-muted" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                  <p className="text-secondary text-sm font-mono mb-1">No sessions recorded yet.</p>
+                  <p className="text-muted text-xs">Sessions appear here once an agent makes its first tool call.</p>
                 </td>
               </tr>
             ) : (
@@ -134,13 +144,13 @@ function Sessions(): React.ReactElement {
                     {session.id.slice(0, 8)}
                   </td>
                   <td className="py-2 px-4 text-sm font-mono text-secondary">
-                    {session.agent_id.slice(0, 8)}
+                    {agentDisplayName(session.agent_id, agents)}
                   </td>
                   <td className="py-2 px-4 text-sm text-secondary">
                     {relativeTime(session.started_at)}
                   </td>
                   <td className="py-2 px-4 text-sm font-mono text-secondary">
-                    {session.events?.length ?? "—"}
+                    {session.events?.length ?? 0}
                   </td>
                 </tr>
               ))

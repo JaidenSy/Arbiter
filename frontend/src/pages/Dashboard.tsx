@@ -20,7 +20,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { authClient } from "../api/client";
-import type { DashboardStats, Session, StatsHistoryResponse } from "../api/types";
+import type { Agent, DashboardStats, Session, StatsHistoryResponse } from "../api/types";
 import UsageStrip from "../components/UsageStrip";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
@@ -32,6 +32,9 @@ const fetchRecentSessions = (): Promise<Session[]> =>
   authClient
     .get<Session[]>("/sessions", { params: { limit: 10 } })
     .then((r) => r.data);
+
+const fetchAgents = (): Promise<Agent[]> =>
+  authClient.get<Agent[]>("/agents").then((r) => r.data);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -92,6 +95,12 @@ function Dashboard(): React.ReactElement {
     queryKey: ["sessions-recent"],
     queryFn: fetchRecentSessions,
     refetchInterval: 30_000,
+  });
+
+  const { data: agents } = useQuery<Agent[]>({
+    queryKey: ["agents"],
+    queryFn: fetchAgents,
+    staleTime: 60_000,
   });
 
   const { data: history } = useQuery({
@@ -278,21 +287,19 @@ function Dashboard(): React.ReactElement {
                   <tr
                     key={session.id}
                     className="border-b border-white/[0.07] cursor-pointer hover:bg-elevated transition-colors"
-                    onClick={() =>
-                      navigate(`/sessions?agent_id=${session.agent_id}`)
-                    }
+                    onClick={() => navigate(`/sessions/${session.id}`)}
                   >
                     <td className="py-2 px-4 text-sm font-mono text-accent-light">
                       {session.id.slice(0, 8)}
                     </td>
                     <td className="py-2 px-4 text-sm font-mono text-secondary">
-                      {session.agent_id.slice(0, 8)}
+                      {agents?.find((a) => a.id === session.agent_id)?.name ?? session.agent_id.slice(0, 8)}
                     </td>
                     <td className="py-2 px-4 text-sm text-secondary">
                       {relativeTime(session.started_at)}
                     </td>
                     <td className="py-2 px-4 text-sm font-mono text-secondary">
-                      {session.events?.length ?? "—"}
+                      {session.events?.length ?? 0}
                     </td>
                   </tr>
                 ))}

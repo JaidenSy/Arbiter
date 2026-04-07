@@ -33,7 +33,7 @@ interface UsageSummary {
 }
 
 const fetchUsageSummary = (): Promise<UsageSummary> =>
-  authClient.get<UsageSummary>('/usage/summary').then((r) => r.data)
+  authClient.get<UsageSummary>('/stats/usage/summary').then((r) => r.data)
 
 const fetchStats = (): Promise<DashboardStats> =>
   authClient.get<DashboardStats>('/stats').then((r) => r.data)
@@ -63,6 +63,7 @@ function UsageStrip(): React.ReactElement | null {
 
   const toolCallsUsed = usage?.tool_calls_month ?? stats?.tool_calls_today ?? 0
   const agentsCount = stats?.agents_count ?? 0
+  const isOverAgentLimit = limits.agents !== null && agentsCount > limits.agents
   const cacheRatePct = stats
     ? `${(stats.cache_hit_rate_today * 100).toFixed(0)}%`
     : '—'
@@ -82,9 +83,10 @@ function UsageStrip(): React.ReactElement | null {
       <span className="text-white/20">•</span>
       <span>
         agents:{' '}
-        <span className="text-primary">{agentsCount}</span>
+        <span className={isOverAgentLimit ? 'text-red-400 font-semibold' : 'text-primary'}>{agentsCount}</span>
         {' / '}
         <span>{formatLimit(limits.agents)}</span>
+        {isOverAgentLimit && <span className="text-red-400 ml-1">↑ over limit</span>}
       </span>
       <span className="text-white/20">•</span>
       <span>

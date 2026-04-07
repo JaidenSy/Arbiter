@@ -16,6 +16,7 @@
 import React, { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authClient } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 
 const ACCESS_KEY = 'nexusai_access_token'
 const REFRESH_KEY = 'nexusai_refresh_token'
@@ -27,18 +28,14 @@ interface TokenResponse {
   expires_in: number
 }
 
-interface MeResponse {
-  id: string
-  email: string
-  role: string
-  org_id: string
-  org_name: string
-  org_plan: string
+interface OnboardingStatus {
+  complete: boolean
 }
 
 function AuthCallback(): React.ReactElement {
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const { refreshUser } = useAuth()
   const didRun = useRef(false)
 
   useEffect(() => {
@@ -60,18 +57,18 @@ function AuthCallback(): React.ReactElement {
         localStorage.setItem(ACCESS_KEY, res.data.access_token)
         localStorage.setItem(REFRESH_KEY, res.data.refresh_token)
 
-        // Verify account and check onboarding
-        try {
-          const me = await authClient.get<MeResponse>('/auth/me')
-          if (!me.data) throw new Error('no user')
+        // Hydrate auth context so ProtectedRoute / RootRedirect see the user immediately
+        await refreshUser()
 
-          const onb = await authClient.get<{ complete: boolean }>('/onboarding/status')
+        // Check onboarding status
+        try {
+          const onb = await authClient.get<OnboardingStatus>('/onboarding/status')
           if (!onb.data.complete) {
             void navigate('/onboarding', { replace: true })
             return
           }
         } catch {
-          // /onboarding/status missing or error → go to dashboard
+          // /onboarding/status error → go to dashboard
         }
 
         void navigate('/', { replace: true })
@@ -79,7 +76,7 @@ function AuthCallback(): React.ReactElement {
         void navigate('/login?error=sso_failed', { replace: true })
       }
     })()
-  }, [navigate, params])
+  }, [navigate, params, refreshUser])
 
   return (
     <div className="min-h-screen bg-base flex items-center justify-center font-mono">

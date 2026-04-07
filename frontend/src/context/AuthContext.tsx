@@ -30,6 +30,7 @@ export interface AuthState {
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   register: (orgName: string, email: string, password: string) => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -120,6 +121,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       })
   }, [])
 
+  const refreshUser = useCallback(async (): Promise<void> => {
+    const stored = localStorage.getItem(ACCESS_KEY)
+    if (!stored) {
+      setUser(null)
+      setAccessToken(null)
+      return
+    }
+    try {
+      const me = await authClient.get<MeResponse>('/auth/me')
+      setUser(me.data)
+      setAccessToken(stored)
+    } catch {
+      clearTokens()
+      setUser(null)
+      setAccessToken(null)
+    }
+  }, [])
+
   const login = useCallback(async (email: string, password: string): Promise<void> => {
     const res = await authClient.post<TokenResponse>('/auth/login', { email, password })
     storeTokens(res.data.access_token, res.data.refresh_token)
@@ -155,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   )
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, isLoading, login, logout, register }}>
+    <AuthContext.Provider value={{ user, accessToken, isLoading, login, logout, register, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

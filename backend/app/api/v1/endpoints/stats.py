@@ -22,6 +22,7 @@ from app.core.dependencies import get_current_user, get_db
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
 from app.db.models.session import Session, SessionEvent
+from app.db.models.usage_event import UsageEvent
 from app.db.models.user import User
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -55,6 +56,12 @@ class StatsHistoryResponse(BaseModel):
 
     period: str
     buckets: list[HistoryBucket]
+
+
+class UsageSummaryResponse(BaseModel):
+    """Monthly usage summary for the usage strip."""
+
+    tool_calls_month: int
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
@@ -124,6 +131,36 @@ async def get_stats(
         tool_calls_today=tool_calls_today,
         cache_hit_rate_today=cache_hit_rate_today,
     )
+
+
+# ── Usage summary endpoint ────────────────────────────────────────────────────
+
+
+@router.get(
+    "/usage/summary",
+    response_model=UsageSummaryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get monthly usage summary",
+)
+async def get_usage_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UsageSummaryResponse:
+    """
+    Return the total tool calls for the current calendar month.
+
+    Reads from the usage_events table which is updated via upsert on each
+    proxied tool call.  Returns 0 when no events exist for the month yet.
+    """
+    month_start = func.date_trunc("month", func.now())
+    result = await db.execute(
+        select(func.coalesce(func.sum(UsageEvent.tool_calls), 0).label("total")).where(
+            UsageEvent.org_id == current_user.org_id,
+            UsageEvent.event_date >= month_start,
+        )
+    )
+    total: int = result.scalar_one() or 0
+    return UsageSummaryResponse(tool_calls_month=total)
 
 
 # ── History endpoint ──────────────────────────────────────────────────────────
