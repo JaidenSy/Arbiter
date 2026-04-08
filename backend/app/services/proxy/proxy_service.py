@@ -753,7 +753,9 @@ class ProxyService:
 
         session = Session(agent_id=agent.id, org_id=agent.org_id, metadata_={})
         self.db.add(session)
-        await self.db.flush()  # get session.id before persisting events
+        await self.db.flush()   # populate session.id
+        await self.db.commit()  # commit so the row is visible to the streaming generator's finally block
+        await self.db.refresh(session)
         return session
 
     async def _persist_event(

@@ -34,6 +34,7 @@ class SessionEventResponse(BaseModel):
     request_payload: dict[str, Any]
     response_payload: dict[str, Any] | None
     cache_hit: bool
+    is_streaming: bool | None = None
     duration_ms: int | None
     error: str | None
     occurred_at: datetime
@@ -42,14 +43,14 @@ class SessionEventResponse(BaseModel):
 
 
 class SessionListResponse(BaseModel):
-    """
-    Response schema for a Session in list context — no events loaded."""
+    """Response schema for a Session in list context — no events loaded."""
 
     id: uuid.UUID
     agent_id: uuid.UUID
     started_at: datetime
     ended_at: datetime | None
     metadata: dict[str, Any] = Field(default_factory=dict, alias="metadata_")
+    event_count: int = 0
 
     model_config = {"populate_by_name": True, "from_attributes": True}
 

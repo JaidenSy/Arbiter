@@ -79,7 +79,8 @@ export interface Session {
   started_at: string;
   ended_at: string | null;
   metadata: Record<string, unknown>;
-  events?: SessionEvent[];
+  event_count?: number;   // present in list responses
+  events?: SessionEvent[]; // present in detail response
 }
 
 export interface ToolPermission {

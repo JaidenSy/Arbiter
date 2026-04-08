@@ -16,7 +16,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -58,8 +58,16 @@ async def list_sessions(
         list[SessionResponse]: Sessions ordered by started_at DESC, no events.
     """
     limit = min(limit, 200)
+
+    event_count_sq = (
+        select(func.count(SessionEvent.id))
+        .where(SessionEvent.session_id == Session.id)
+        .correlate(Session)
+        .scalar_subquery()
+    )
+
     query = (
-        select(Session)
+        select(Session, event_count_sq.label("event_count"))
         .where(Session.org_id == current_user.org_id)
         .order_by(Session.started_at.desc())
         .offset(skip)
@@ -69,8 +77,20 @@ async def list_sessions(
         query = query.where(Session.agent_id == agent_id)
 
     result = await db.execute(query)
-    sessions = result.scalars().all()
-    return [SessionListResponse.model_validate(s) for s in sessions]
+    rows = result.all()
+    return [
+        SessionListResponse(
+            **{
+                "id": session.id,
+                "agent_id": session.agent_id,
+                "started_at": session.started_at,
+                "ended_at": session.ended_at,
+                "metadata_": session.metadata_,
+                "event_count": count,
+            }
+        )
+        for session, count in rows
+    ]
 
 
 @router.get(
