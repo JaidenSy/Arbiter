@@ -51,9 +51,26 @@ export interface SessionEvent {
   request_payload: Record<string, unknown>;
   response_payload: Record<string, unknown> | null;
   cache_hit: boolean;
+  is_streaming: boolean | null;
   duration_ms: number | null;
   error: string | null;
   occurred_at: string;
+}
+
+export interface ToolCallRequest {
+  server_name: string;
+  tool_name: string;
+  params: Record<string, unknown>;
+  session_id?: string | null;
+}
+
+export interface ToolCallResponse {
+  session_id: string;
+  event_id: string;
+  tool_name: string;
+  result: Record<string, unknown>;
+  cache_hit: boolean;
+  duration_ms: number | null;
 }
 
 export interface Session {

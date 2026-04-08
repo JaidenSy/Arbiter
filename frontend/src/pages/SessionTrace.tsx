@@ -81,17 +81,22 @@ function TraceRow({
 }: TraceRowProps): React.ReactElement {
   const isError = !!event.error;
   const isCacheHit = event.cache_hit;
+  const isStreaming = !!event.is_streaming;
 
   const dotColor = isError
     ? "text-red-400"
     : isCacheHit
     ? "text-green-400"
+    : isStreaming
+    ? "text-sky-400"
     : "text-violet-400";
 
   const barColor = isError
     ? "bg-red-500/60"
     : isCacheHit
     ? "bg-green-800"
+    : isStreaming
+    ? "bg-sky-600/60"
     : "bg-violet-600/60";
 
   return (
@@ -150,6 +155,13 @@ function TraceRow({
               {isCacheHit ? "HIT" : "MISS"}
             </span>
 
+            {/* Streaming badge */}
+            {isStreaming && (
+              <span className="font-mono text-[10px] px-1.5 py-0.5 border bg-sky-900/50 border-sky-700/50 text-sky-400">
+                SSE
+              </span>
+            )}
+
             {/* Secret placeholder indicator */}
             {hasSecretPlaceholder(event.request_payload) && (
               <span title="Secret injected" className="text-amber-400 text-xs select-none">
@@ -182,6 +194,13 @@ function TraceRow({
                 </p>
                 <JsonViewer data={event.response_payload} />
               </div>
+              {event.is_streaming && (
+                <div className="col-span-2">
+                  <p className="text-sky-400 text-xs font-mono">
+                    SSE stream — {String((event.response_payload as Record<string, unknown>)?.byte_count ?? "?")} bytes received
+                  </p>
+                </div>
+              )}
               {event.error && (
                 <div className="col-span-2">
                   <p className="text-red-400 text-xs font-mono">

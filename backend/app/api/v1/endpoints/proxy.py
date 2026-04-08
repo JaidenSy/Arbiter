@@ -17,6 +17,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,11 +28,12 @@ from app.services.proxy.proxy_service import ProxyService
 
 router = APIRouter(prefix="/proxy", tags=["proxy"])
 
+_HTTP_TIMEOUT = httpx.Timeout(30.0)
+
 
 @router.post(
     "/tool-call",
-    response_model=ToolCallResponse,
-    status_code=status.HTTP_200_OK,
+    response_model=None,
     summary="Invoke an MCP tool through the NexusAI gateway",
 )
 async def tool_call(
@@ -39,23 +41,25 @@ async def tool_call(
     db: AsyncSession = Depends(get_db),
     redis: object = Depends(get_redis),
     agent: Agent = Depends(get_current_agent),
-) -> ToolCallResponse:
+) -> ToolCallResponse | StreamingResponse:
     """
     The central gateway endpoint for all MCP tool calls.
 
-    This endpoint is the single entry point for all agent tool invocations.
-    It delegates to ProxyService which implements the full pipeline.
+    Opens a single upstream connection using ``httpx`` streaming mode,
+    inspects the ``Content-Type`` response header, and branches:
 
-    Request flow:
-        1. get_current_agent() validates the Bearer API key.
-        2. ProxyService.forward_tool_call() orchestrates:
-            a. RBAC check (403 if denied)
-            b. Semantic cache lookup (return early on hit)
-            c. Vault secret injection into params
-            d. HTTP POST to the target MCP server (JSON-RPC tools/call)
-            e. Cache the response
-            f. Persist SessionEvent audit record
-        3. Return ToolCallResponse with result + metadata.
+    - ``application/json``    → buffers the full response body, runs cache
+                                 write + audit, returns ``ToolCallResponse``.
+    - ``text/event-stream``   → yields raw SSE bytes to the client via
+                                 ``StreamingResponse``; audit is persisted on
+                                 stream completion.
+
+    The ``httpx.AsyncClient`` is kept alive for the duration of the SSE stream
+    and closed by the generator's ``finally`` block.  This guarantees exactly
+    one upstream HTTP call regardless of response type.
+
+    Pre-flight (RBAC, cache lookup, vault injection) always runs before any
+    bytes are forwarded to the client.
 
     Args:
         body:  Validated request body with server, tool, and params.
@@ -64,7 +68,7 @@ async def tool_call(
         agent: Authenticated agent (from Bearer token).
 
     Returns:
-        ToolCallResponse: Tool result, cache metadata, session/event UUIDs.
+        ``ToolCallResponse`` (JSON) or ``StreamingResponse`` (SSE).
 
     Raises:
         HTTPException 401: Missing or invalid API key.
@@ -73,7 +77,96 @@ async def tool_call(
         HTTPException 502: MCP server returned an error response.
     """
     service = ProxyService(db=db, redis=redis)
-    return await service.forward_tool_call(request=body, agent=agent)
+
+    # ── Pre-flight (RBAC + cache + vault) ─────────────────────────────────────
+    cache_hit_response, prepared = await service.prepare_tool_call(
+        request=body, agent=agent
+    )
+    if cache_hit_response is not None:
+        return cache_hit_response
+
+    # ── Open upstream with streaming so we can inspect Content-Type first ────
+    # The client is NOT used as a context manager here: for the SSE path the
+    # generator must keep the client alive after this function returns.
+    client = httpx.AsyncClient(timeout=_HTTP_TIMEOUT)
+    try:
+        resp = await client.send(
+            client.build_request(
+                "POST",
+                prepared.mcp_server.base_url,
+                json=prepared.jsonrpc_body,
+                headers=prepared.outbound_headers,
+            ),
+            stream=True,
+        )
+    except httpx.TimeoutException as exc:
+        await client.aclose()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"MCP server {body.server_name!r} timed out after 30s",
+        ) from exc
+    except Exception as exc:
+        await client.aclose()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"MCP server communication error: {exc}",
+        ) from exc
+
+    content_type = resp.headers.get("content-type", "application/json")
+
+    # ── SSE path ──────────────────────────────────────────────────────────────
+    if "text/event-stream" in content_type:
+        if resp.status_code >= 400:
+            await resp.aclose()
+            await client.aclose()
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"MCP server {body.server_name!r} returned HTTP {resp.status_code}",
+            )
+
+        async def _sse_gen():
+            try:
+                async for chunk in service.iter_sse_stream(
+                    prepared=prepared,
+                    tool_name=body.tool_name,
+                    resp=resp,
+                ):
+                    yield chunk
+            finally:
+                await resp.aclose()
+                await client.aclose()
+
+        return StreamingResponse(
+            _sse_gen(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    # ── JSON (buffered) path ──────────────────────────────────────────────────
+    try:
+        await resp.aread()
+    except Exception as exc:
+        await resp.aclose()
+        await client.aclose()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"MCP server communication error: {exc}",
+        ) from exc
+
+    try:
+        result = await service.finalize_json_call(
+            prepared=prepared,
+            tool_name=body.tool_name,
+            http_resp=resp,
+        )
+    finally:
+        await resp.aclose()
+        await client.aclose()
+
+    return result
 
 
 class ToolsListRequest(BaseModel):

@@ -30,6 +30,8 @@ import logging
 import re
 import time
 import uuid
+from collections.abc import AsyncGenerator
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -49,6 +51,24 @@ logger = logging.getLogger(__name__)
 
 _SECRET_PLACEHOLDER = re.compile(r"\{\{([A-Za-z0-9_]+)\}\}")
 _HTTP_TIMEOUT = httpx.Timeout(30.0)
+
+
+@dataclass
+class PreparedCall:
+    """
+    Output of ``ProxyService.prepare_tool_call``.
+
+    Contains everything needed to make the upstream HTTP call and finalise
+    the audit record, without any HTTP I/O having occurred yet.
+    """
+
+    mcp_server: MCPServer
+    session: Session
+    jsonrpc_body: dict[str, Any]
+    outbound_headers: dict[str, str]
+    upstream_session_key: str
+    raw_params: dict[str, Any]       # original (pre-injection) params for audit
+    start_ms: float = field(default_factory=time.monotonic)
 
 
 class ProxyService:
@@ -302,6 +322,292 @@ class ProxyService:
             duration_ms=duration_ms,
         )
 
+    # ── Preparation layer (shared by buffered + streaming paths) ─────────────
+
+    async def prepare_tool_call(
+        self,
+        request: ToolCallRequest,
+        agent: Agent,
+    ) -> tuple[ToolCallResponse | None, PreparedCall | None]:
+        """
+        Run all pre-flight steps without making the upstream HTTP call.
+
+        Steps executed:
+            1. Resolve MCPServer.
+            2. RBAC permission check.
+            3. Semantic cache lookup (returns early on hit).
+            4. Session ensure/create.
+            5. Vault secret injection into params.
+
+        Returns:
+            ``(ToolCallResponse, None)`` when the cache was hit — the caller
+            can return the response immediately without opening an upstream
+            connection.
+
+            ``(None, PreparedCall)`` on a cache miss — the caller should open
+            the upstream connection and call ``finalize_json_call`` or use the
+            streaming generator.
+        """
+        start_ms = time.monotonic()
+
+        mcp_server = await self.resolve_server(request.server_name)
+
+        permitted = await self._rbac.check_permission(
+            agent=agent,
+            mcp_server_id=mcp_server.id,
+            tool_name=request.tool_name,
+        )
+        if not permitted:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Agent {agent.name!r} does not have permission to call "
+                    f"tool {request.tool_name!r} on server {request.server_name!r}"
+                ),
+            )
+
+        # Cache lookup.
+        cached_result = None
+        if mcp_server.cache_enabled:
+            cached_result = await self._cache.get_cached(
+                tool_name=request.tool_name,
+                input_payload=request.params,
+            )
+
+        session = await self._ensure_session(agent=agent, session_id=request.session_id)
+
+        if cached_result is not None:
+            duration_ms = int((time.monotonic() - start_ms) * 1000)
+            event = await self._persist_event(
+                session=session,
+                mcp_server=mcp_server,
+                tool_name=request.tool_name,
+                request_payload=request.params,
+                response_payload=cached_result,
+                cache_hit=True,
+                duration_ms=duration_ms,
+                error=None,
+            )
+            return (
+                ToolCallResponse(
+                    session_id=session.id,
+                    event_id=event.id,
+                    tool_name=request.tool_name,
+                    result=cached_result,
+                    cache_hit=True,
+                    duration_ms=duration_ms,
+                ),
+                None,
+            )
+
+        # Vault injection.
+        injected_params = await self.intercept_request(
+            tool_name=request.tool_name,
+            params=request.params,
+            agent=agent,
+        )
+
+        jsonrpc_body: dict[str, Any] = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": "tools/call",
+            "params": {
+                "name": request.tool_name,
+                "arguments": injected_params,
+            },
+        }
+
+        upstream_session_key = f"mcp_sessions:{session.id}:{request.server_name}"
+        outbound_headers = await self._ensure_mcp_session(
+            mcp_server=mcp_server,
+            cache_key=upstream_session_key,
+        )
+
+        return (
+            None,
+            PreparedCall(
+                mcp_server=mcp_server,
+                session=session,
+                jsonrpc_body=jsonrpc_body,
+                outbound_headers=outbound_headers,
+                upstream_session_key=upstream_session_key,
+                raw_params=request.params,
+                start_ms=start_ms,
+            ),
+        )
+
+    async def finalize_json_call(
+        self,
+        prepared: PreparedCall,
+        tool_name: str,
+        http_resp: httpx.Response,
+    ) -> ToolCallResponse:
+        """
+        Complete the non-streaming pipeline after reading an upstream JSON response.
+
+        Steps:
+            6. Parse JSON-RPC response body.
+            7. Store in cache (if server allows caching and no error).
+            8. Persist SessionEvent audit record.
+
+        Args:
+            prepared:   Context from ``prepare_tool_call``.
+            tool_name:  Tool name from the original request.
+            http_resp:  Fully-read httpx response (body already in memory).
+        """
+        mcp_server = prepared.mcp_server
+        session = prepared.session
+        start_ms = prepared.start_ms
+
+        # Persist upstream MCP session ID if returned.
+        upstream_session_id = http_resp.headers.get("Mcp-Session-Id")
+        if upstream_session_id:
+            try:
+                await self.redis.set(prepared.upstream_session_key, upstream_session_id, ex=3600)
+            except Exception as exc:
+                logger.warning("proxy: Redis session store (json) failed: %s", exc)
+
+        error: str | None = None
+        response_payload: dict[str, Any] = {}
+
+        if http_resp.status_code >= 400:
+            error = f"MCP server {mcp_server.name!r} returned HTTP {http_resp.status_code}"
+            duration_ms = int((time.monotonic() - start_ms) * 1000)
+            await self._persist_event(
+                session=session, mcp_server=mcp_server,
+                tool_name=tool_name, request_payload=prepared.raw_params,
+                response_payload=None, cache_hit=False,
+                duration_ms=duration_ms, error=error,
+            )
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=error)
+
+        try:
+            json_body = http_resp.json()
+        except Exception:
+            json_body = {"content": [{"type": "text", "text": http_resp.text}]}
+
+        if "result" in json_body:
+            response_payload = json_body["result"]
+        elif "error" in json_body:
+            error = json.dumps(json_body["error"])
+            response_payload = json_body["error"]
+        else:
+            response_payload = json_body
+
+        duration_ms = int((time.monotonic() - start_ms) * 1000)
+
+        if error is None and mcp_server.cache_enabled:
+            try:
+                await self._cache.store_cached(
+                    tool_name=tool_name,
+                    input_payload=prepared.raw_params,
+                    response_payload=response_payload,
+                    org_id=session.org_id,
+                )
+            except Exception as exc:
+                logger.warning("proxy: cache store failed: %s", exc)
+
+        event = await self._persist_event(
+            session=session,
+            mcp_server=mcp_server,
+            tool_name=tool_name,
+            request_payload=prepared.raw_params,
+            response_payload=response_payload if error is None else None,
+            cache_hit=False,
+            duration_ms=duration_ms,
+            error=error,
+        )
+
+        return ToolCallResponse(
+            session_id=session.id,
+            event_id=event.id,
+            tool_name=tool_name,
+            result=response_payload,
+            cache_hit=False,
+            duration_ms=duration_ms,
+        )
+
+    # ── Streaming entry point ─────────────────────────────────────────────────
+
+    async def iter_sse_stream(
+        self,
+        prepared: PreparedCall,
+        tool_name: str,
+        resp: httpx.Response,
+    ) -> AsyncGenerator[bytes, None]:
+        """
+        Yield raw SSE bytes from an already-open upstream ``httpx.Response``.
+
+        Caller is responsible for opening (and ultimately closing) the
+        ``httpx.AsyncClient`` and ``httpx.Response``.  This method owns only
+        the audit-persist side-effect on completion.
+
+        Cache is intentionally skipped — SSE chunks are not individually
+        cacheable.
+
+        A ``SessionEvent`` with ``is_streaming=True`` is always persisted in a
+        ``try/finally`` block so the audit record survives client disconnects.
+
+        Args:
+            prepared:  Context from ``prepare_tool_call``.
+            tool_name: Tool name from the original request (for audit).
+            resp:      Open upstream response with ``text/event-stream`` content.
+
+        Yields:
+            Raw SSE bytes from the upstream server.
+        """
+        error: str | None = None
+        byte_count = 0
+        first_chunk: bytes | None = None
+
+        # Persist upstream MCP session ID if returned in response headers.
+        upstream_session_id = resp.headers.get("Mcp-Session-Id")
+        if upstream_session_id:
+            try:
+                await self.redis.set(
+                    prepared.upstream_session_key, upstream_session_id, ex=3600
+                )
+            except Exception as exc:
+                logger.warning("proxy: Redis session store (stream) failed: %s", exc)
+
+        try:
+            async for chunk in resp.aiter_bytes():
+                if chunk:
+                    byte_count += len(chunk)
+                    if first_chunk is None:
+                        first_chunk = chunk
+                    yield chunk
+        except Exception as exc:
+            error = str(exc)
+            logger.warning("proxy: SSE stream interrupted: %s", exc)
+        finally:
+            duration_ms = int((time.monotonic() - prepared.start_ms) * 1000)
+            try:
+                response_meta: dict[str, Any] = {
+                    "streaming": True,
+                    "byte_count": byte_count,
+                }
+                if first_chunk is not None:
+                    try:
+                        response_meta["first_chunk"] = first_chunk.decode(
+                            "utf-8", errors="replace"
+                        )
+                    except Exception:
+                        pass
+                await self._persist_event(
+                    session=prepared.session,
+                    mcp_server=prepared.mcp_server,
+                    tool_name=tool_name,
+                    request_payload=prepared.raw_params,
+                    response_payload=response_meta,
+                    cache_hit=False,
+                    is_streaming=True,
+                    duration_ms=duration_ms,
+                    error=error,
+                )
+            except Exception as exc:
+                logger.warning("proxy: SSE audit persist failed: %s", exc)
+
     # ── Secret injection ──────────────────────────────────────────────────────
 
     async def intercept_request(
@@ -460,6 +766,7 @@ class ProxyService:
         cache_hit: bool,
         duration_ms: int,
         error: str | None,
+        is_streaming: bool = False,
     ) -> SessionEvent:
         """Append an immutable audit record to the session."""
         event = SessionEvent(
@@ -470,6 +777,7 @@ class ProxyService:
             request_payload=request_payload,
             response_payload=response_payload,
             cache_hit=cache_hit,
+            is_streaming=is_streaming,
             duration_ms=duration_ms,
             error=error,
         )
