@@ -2,12 +2,92 @@
  * NexusAI — Settings page.
  *
  * Sections:
- *   - Gateway API Key (stored in localStorage)
- *   - Gateway URL (base URL for Axios client)
- *   - About (version, MCP spec, license)
+ *   - Profile     (org name, email, role, plan — from GET /auth/me)
+ *   - API Key     (agent key stored in localStorage)
+ *   - Gateway URL (backend base URL stored in localStorage)
+ *   - About       (version, MCP spec, license)
  */
 
 import React, { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { authClient } from '../api/client'
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface MeResponse {
+  id: string
+  email: string
+  role: string
+  org_id: string
+  org_name: string
+  org_plan: string
+}
+
+// ── Profile Section ───────────────────────────────────────────────────────────
+
+function ProfileSection(): React.ReactElement {
+  const { data: me, isLoading, isError } = useQuery<MeResponse>({
+    queryKey: ['me'],
+    queryFn: () => authClient.get<MeResponse>('/auth/me').then((r) => r.data),
+    staleTime: 60_000,
+  })
+
+  const rows: Array<{ label: string; value: string }> = me
+    ? [
+        { label: 'Email', value: me.email },
+        { label: 'Role', value: me.role },
+        { label: 'Org', value: me.org_name },
+        { label: 'Plan', value: me.org_plan },
+        { label: 'Org ID', value: me.org_id },
+      ]
+    : []
+
+  return (
+    <div>
+      <h2 className="text-secondary text-xs font-semibold uppercase tracking-widest mb-4">
+        Profile
+      </h2>
+
+      {isLoading && (
+        <div className="space-y-2 max-w-xl">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="animate-pulse bg-elevated h-6 rounded" />
+          ))}
+        </div>
+      )}
+
+      {isError && (
+        <p className="text-error text-sm font-mono">Failed to load profile.</p>
+      )}
+
+      {me && (
+        <div className="max-w-xl border border-white/[0.07] divide-y divide-white/[0.07]">
+          {rows.map(({ label, value }) => (
+            <div
+              key={label}
+              className="flex items-center gap-6 px-4 py-2.5"
+            >
+              <span className="text-muted text-xs font-mono w-16 shrink-0">
+                {label}
+              </span>
+              <span
+                className={`text-sm font-mono truncate ${
+                  label === 'Plan'
+                    ? me.org_plan === 'free'
+                      ? 'text-secondary'
+                      : 'text-green-400'
+                    : 'text-primary'
+                }`}
+              >
+                {label === 'Plan' ? value.toUpperCase() : value}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ── API Key Section ───────────────────────────────────────────────────────────
 
@@ -42,10 +122,11 @@ function ApiKeySection(): React.ReactElement {
             htmlFor="api-key-input"
             className="block text-primary text-sm font-medium mb-1"
           >
-            Gateway API Key
+            Agent API Key
           </label>
           <p className="text-secondary text-xs mb-2">
-            Stored locally in your browser. Required to authenticate with the NexusAI API.
+            Stored locally in your browser. Required to call the proxy gateway as an agent.
+            Generate one on the <span className="text-accent-light font-mono">Agents</span> page.
           </p>
           <div className="flex gap-2">
             <input
@@ -53,7 +134,7 @@ function ApiKeySection(): React.ReactElement {
               type={showKey ? 'text' : 'password'}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="nx_..."
+              placeholder="nxai_..."
               className="flex-1 bg-elevated border border-white/[0.14] text-primary text-sm font-mono px-3 py-1.5 rounded focus:outline-none focus:border-accent focus:ring-0"
             />
             <button
@@ -82,7 +163,6 @@ function ApiKeySection(): React.ReactElement {
             Clear
           </button>
 
-          {/* Status indicator */}
           <div className="flex items-center gap-1.5 ml-2">
             <span
               className={`w-1.5 h-1.5 rounded-full ${hasKey ? 'bg-green-400' : 'bg-secondary'}`}
@@ -110,7 +190,6 @@ function GatewayUrlSection(): React.ReactElement {
     setSaved(true)
     setTimeout(() => {
       setSaved(false)
-      // Reload so the Axios client picks up the new base URL
       window.location.reload()
     }, 1000)
   }
@@ -126,7 +205,7 @@ function GatewayUrlSection(): React.ReactElement {
             htmlFor="gateway-url-input"
             className="block text-primary text-sm font-medium mb-1"
           >
-            Gateway URL
+            Backend URL
           </label>
           <p className="text-secondary text-xs mb-2">
             Base URL of the NexusAI backend. Defaults to{' '}
@@ -169,12 +248,9 @@ function AboutSection(): React.ReactElement {
       <h2 className="text-secondary text-xs font-semibold uppercase tracking-widest mb-4">
         About
       </h2>
-      <div className="font-mono text-sm">
+      <div className="font-mono text-sm max-w-xl border border-white/[0.07] divide-y divide-white/[0.07]">
         {info.map(([label, value]) => (
-          <div
-            key={label}
-            className="flex gap-8 py-1.5 border-b border-white/[0.07] last:border-0"
-          >
+          <div key={label} className="flex items-center gap-6 px-4 py-2.5">
             <span className="text-muted w-24 shrink-0">{label}</span>
             <span className="text-primary">{value}</span>
           </div>
@@ -188,9 +264,11 @@ function AboutSection(): React.ReactElement {
 
 function Settings(): React.ReactElement {
   return (
-    <div className="p-8">
+    <div className="p-8 max-w-2xl">
       <h1 className="text-primary text-lg font-semibold mb-8">Settings</h1>
 
+      <ProfileSection />
+      <hr className="border-white/[0.07] my-8" />
       <ApiKeySection />
       <hr className="border-white/[0.07] my-8" />
       <GatewayUrlSection />
