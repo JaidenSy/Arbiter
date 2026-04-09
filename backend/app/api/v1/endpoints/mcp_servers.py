@@ -111,6 +111,11 @@ async def create_mcp_server(
         )
 
     org = await db.get(Organization, current_user.org_id)
+    if org is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Org not found",
+        )
     await check_resource_limit(
         db=db,
         org=org,

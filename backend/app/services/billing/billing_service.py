@@ -18,7 +18,6 @@ import asyncio
 import logging
 
 import stripe
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -240,15 +239,3 @@ class BillingService:
         await db.commit()
         logger.info("billing: org %s downgraded to free (subscription deleted)", org_id)
 
-    async def _get_org_by_customer_id(
-        self,
-        db: AsyncSession,
-        stripe_customer_id: str,
-    ) -> Organization | None:
-        """Look up an org by its Stripe customer ID."""
-        result = await db.execute(
-            select(Organization).where(
-                Organization.stripe_customer_id == stripe_customer_id
-            )
-        )
-        return result.scalar_one_or_none()

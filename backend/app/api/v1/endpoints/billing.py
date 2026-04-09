@@ -13,6 +13,8 @@ Routes:
 
 from __future__ import annotations
 
+import logging
+
 import stripe
 import stripe.error
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -30,6 +32,8 @@ from app.db.models.user import User
 from app.db.models.vault import VaultSecret
 from app.services.billing.billing_service import BillingService
 from app.services.plan.plan_limits import PLAN_LIMITS
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -190,12 +194,19 @@ async def create_checkout(
     success_url = f"{settings.frontend_url}/settings?tab=billing&status=success"
     cancel_url = f"{settings.frontend_url}/settings?tab=billing"
 
-    url = await billing_service.create_checkout_session(
-        org=org,
-        price_id=body.price_id,
-        success_url=success_url,
-        cancel_url=cancel_url,
-    )
+    try:
+        url = await billing_service.create_checkout_session(
+            org=org,
+            price_id=body.price_id,
+            success_url=success_url,
+            cancel_url=cancel_url,
+        )
+    except stripe.error.StripeError as exc:
+        logger.error("billing: Stripe error creating checkout session: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Billing provider error — please try again",
+        ) from exc
     return {"url": url}
 
 
@@ -240,10 +251,17 @@ async def create_portal(
             detail="No active subscription",
         )
 
-    url = await billing_service.create_portal_session(
-        org=org,
-        return_url=body.return_url,
-    )
+    try:
+        url = await billing_service.create_portal_session(
+            org=org,
+            return_url=body.return_url,
+        )
+    except stripe.error.StripeError as exc:
+        logger.error("billing: Stripe error creating portal session: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Billing provider error — please try again",
+        ) from exc
     return {"url": url}
 
 
