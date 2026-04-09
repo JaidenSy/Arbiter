@@ -22,6 +22,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.api.v1.endpoints import (
     agents,
     auth,
+    billing,
     mcp_servers,
     onboarding,
     proxy,
@@ -207,6 +208,7 @@ def create_app() -> FastAPI:
     app.include_router(tool_permissions.router, prefix=settings.api_prefix)
     app.include_router(stats.router, prefix=settings.api_prefix)
     app.include_router(onboarding.router, prefix=settings.api_prefix)
+    app.include_router(billing.router, prefix=settings.api_prefix)
 
     # ── Health check ──────────────────────────────────────────────────────────
     @app.get("/health", tags=["meta"])

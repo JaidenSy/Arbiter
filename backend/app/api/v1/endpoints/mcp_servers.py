@@ -22,7 +22,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db
 from app.db.models.mcp_server import MCPServer
+from app.db.models.organization import Organization
 from app.db.models.user import User
+from app.services.plan.plan_service import check_resource_limit
 
 router = APIRouter(prefix="/mcp-servers", tags=["mcp-servers"])
 
@@ -107,6 +109,15 @@ async def create_mcp_server(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"An MCP server named {body.name!r} already exists",
         )
+
+    org = await db.get(Organization, current_user.org_id)
+    await check_resource_limit(
+        db=db,
+        org=org,
+        resource="mcp_servers",
+        model=MCPServer,
+        filter_col=MCPServer.org_id,
+    )
 
     server = MCPServer(
         org_id=current_user.org_id,

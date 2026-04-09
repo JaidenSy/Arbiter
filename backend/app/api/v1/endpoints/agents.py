@@ -22,8 +22,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import security
 from app.core.dependencies import get_current_user, get_db
 from app.db.models.agent import Agent
+from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.schemas.agent import AgentCreate, AgentCreateResponse, AgentResponse
+from app.services.plan.plan_service import check_resource_limit
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -50,6 +52,15 @@ async def create_agent(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"An agent named {body.name!r} already exists",
         )
+
+    org = await db.get(Organization, current_user.org_id)
+    await check_resource_limit(
+        db=db,
+        org=org,
+        resource="agents",
+        model=Agent,
+        filter_col=Agent.org_id,
+    )
 
     raw_key = security.generate_api_key()
     key_hash = security.hash_api_key(raw_key)

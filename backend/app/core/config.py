@@ -73,6 +73,11 @@ class Settings(BaseSettings):
     oauth_redirect_base_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:3000"
 
+    # ── Stripe ────────────────────────────────────────────────────────────────
+    stripe_secret_key: str = ""       # required in production — sk_live_... or sk_test_...
+    stripe_webhook_secret: str = ""   # required — whsec_... from Stripe dashboard or CLI
+    stripe_pro_price_id: str = ""     # required — price_... from Stripe product catalog
+
     # ── CORS ──────────────────────────────────────────────────────────────────
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 

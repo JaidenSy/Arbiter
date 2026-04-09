@@ -28,6 +28,13 @@ from app.db.models.user import User
 from app.db.models.vault import VaultSecret
 from app.services.vault.vault_service import VaultService
 
+# TODO(billing): Enforce vault_secrets plan limit here once check_resource_limit
+# supports models without an is_active column. VaultSecret has org_id but no
+# is_active — calling check_resource_limit(model=VaultSecret, ...) would raise
+# AttributeError on the model.is_active clause in plan_service.py.
+# Options: (a) add is_active to VaultSecret, (b) add a separate count helper
+# to plan_service that omits the is_active filter for non-soft-delete models.
+
 router = APIRouter(prefix="/vault", tags=["vault"])
 
 

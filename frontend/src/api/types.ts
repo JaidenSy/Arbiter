@@ -116,3 +116,16 @@ export interface StatsHistoryResponse {
   period: string;
   buckets: HistoryBucket[];
 }
+
+export interface BillingStatus {
+  plan: string;
+  tool_calls_month: number;
+  tool_calls_limit: number | null;
+  agents_count: number;
+  agents_limit: number | null;
+  servers_count: number;
+  servers_limit: number | null;
+  vault_secrets_count: number;
+  vault_secrets_limit: number | null;
+  stripe_subscription_id: string | null;
+}

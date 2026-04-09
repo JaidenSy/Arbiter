@@ -26,7 +26,7 @@ PLAN_LIMITS: dict[str, dict[str, int | None]] = {
         "max_agents": 25,
         "max_mcp_servers": 50,
         "max_tool_calls_mo": 100_000,
-        "max_vault_secrets": 500,
+        "max_vault_secrets": 100,
     },
     "enterprise": {
         "max_agents": None,
