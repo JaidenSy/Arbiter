@@ -36,19 +36,23 @@ async def check_resource_limit(
     resource: str,
     model,
     filter_col,
+    count_active_only: bool = True,
 ) -> None:
     """
     Enforce a count-based plan limit before an INSERT.
 
     Args:
-        db:         Async database session.
-        org:        The organization whose limits are being checked.
-        resource:   Limit key suffix, e.g. ``"agents"``, ``"mcp_servers"``,
-                    ``"vault_secrets"``.  Used to look up ``max_{resource}``
-                    in PLAN_LIMITS.
-        model:      The SQLAlchemy ORM model to count (e.g. ``Agent``).
-        filter_col: Column expression scoping the count to this org
-                    (e.g. ``Agent.org_id``).
+        db:               Async database session.
+        org:              The organization whose limits are being checked.
+        resource:         Limit key suffix, e.g. ``"agents"``, ``"mcp_servers"``,
+                          ``"vault_secrets"``.  Used to look up ``max_{resource}``
+                          in PLAN_LIMITS.
+        model:            The SQLAlchemy ORM model to count (e.g. ``Agent``).
+        filter_col:       Column expression scoping the count to this org
+                          (e.g. ``Agent.org_id``).
+        count_active_only: When True (default), adds ``model.is_active IS TRUE``
+                          filter.  Pass False for models without an is_active
+                          column (e.g. VaultSecret).
 
     Raises:
         PlanLimitError: When the org is at or above the plan cap.
@@ -57,12 +61,11 @@ async def check_resource_limit(
     if limit is None:
         return  # enterprise = unlimited
 
-    current = await db.scalar(
-        select(func.count()).where(
-            filter_col == org.id,
-            model.is_active.is_(True),
-        )
-    )
+    query = select(func.count()).where(filter_col == org.id)
+    if count_active_only:
+        query = query.where(model.is_active.is_(True))
+
+    current = await db.scalar(query)
     current = current or 0
 
     if current >= limit:

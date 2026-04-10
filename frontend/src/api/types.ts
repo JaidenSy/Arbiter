@@ -127,5 +127,5 @@ export interface BillingStatus {
   servers_limit: number | null;
   vault_secrets_count: number;
   vault_secrets_limit: number | null;
-  stripe_subscription_id: string | null;
+  has_active_subscription: boolean;
 }

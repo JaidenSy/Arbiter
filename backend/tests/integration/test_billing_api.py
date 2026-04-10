@@ -163,7 +163,7 @@ class TestBillingStatus:
         assert data["servers_limit"] == PLAN_LIMITS["free"]["max_mcp_servers"]
         assert data["vault_secrets_count"] == 0
         assert data["vault_secrets_limit"] == PLAN_LIMITS["free"]["max_vault_secrets"]
-        assert data["stripe_subscription_id"] is None
+        assert data["has_active_subscription"] is False
 
     @pytest.mark.asyncio
     async def test_returns_correct_usage_counts(self, billing_client):
@@ -225,8 +225,8 @@ class TestBillingStatus:
         assert data["vault_secrets_limit"] is None
 
     @pytest.mark.asyncio
-    async def test_includes_stripe_subscription_id_when_set(self, billing_client):
-        """Org with an active subscription should return its stripe_subscription_id."""
+    async def test_has_active_subscription_true_when_subscription_set(self, billing_client):
+        """Org with a stripe_subscription_id should return has_active_subscription=True."""
         from app.main import app
         from app.core.dependencies import get_db
 
@@ -249,7 +249,7 @@ class TestBillingStatus:
 
         assert resp.status_code == 200
         data = resp.json()
-        assert data["stripe_subscription_id"] == "sub_abc123"
+        assert data["has_active_subscription"] is True
 
     @pytest.mark.asyncio
     async def test_requires_auth(self, test_client):

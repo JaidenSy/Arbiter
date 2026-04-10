@@ -55,7 +55,7 @@ class BillingStatus(BaseModel):
     servers_limit: int | None
     vault_secrets_count: int
     vault_secrets_limit: int | None
-    stripe_subscription_id: str | None
+    has_active_subscription: bool
 
 
 class CheckoutRequest(BaseModel):
@@ -141,7 +141,7 @@ async def get_billing_status(
         servers_limit=limits["max_mcp_servers"],
         vault_secrets_count=vault_secrets_count,
         vault_secrets_limit=limits["max_vault_secrets"],
-        stripe_subscription_id=org.stripe_subscription_id,
+        has_active_subscription=org.stripe_subscription_id is not None,
     )
 
 
