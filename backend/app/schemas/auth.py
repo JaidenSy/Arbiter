@@ -17,6 +17,7 @@ class RegisterRequest(BaseModel):
     org_name: str
     email: EmailStr
     password: str
+    invite_code: str = ""
 
     @field_validator("org_name")
     @classmethod

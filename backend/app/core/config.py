@@ -61,6 +61,9 @@ class Settings(BaseSettings):
 
     # ── Registration ──────────────────────────────────────────────────────────
     allow_public_registration: bool = True
+    # When allow_public_registration=False, users may still register if they
+    # supply this code. Leave empty to fully disable self-serve registration.
+    invite_code: str = ""
 
     # ── Quota ─────────────────────────────────────────────────────────────────
     quota_cache_ttl_seconds: int = 60
