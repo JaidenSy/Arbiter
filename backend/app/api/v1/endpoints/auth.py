@@ -62,10 +62,12 @@ async def register(
         HTTPException 409: If the email is already in use.
     """
     if not settings.allow_public_registration:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Public registration is disabled",
-        )
+        # Allow if a valid invite code is provided
+        if not settings.invite_code or body.invite_code != settings.invite_code:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Registration requires a valid invite code",
+            )
 
     _user, access_token, refresh_token = await auth_service.register(
         db=db,

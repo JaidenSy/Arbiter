@@ -29,7 +29,7 @@ export interface AuthState {
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
-  register: (orgName: string, email: string, password: string) => Promise<void>
+  register: (orgName: string, email: string, password: string, inviteCode?: string) => Promise<void>
   refreshUser: () => Promise<void>
 }
 
@@ -159,11 +159,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   }, [])
 
   const register = useCallback(
-    async (orgName: string, email: string, password: string): Promise<void> => {
+    async (orgName: string, email: string, password: string, inviteCode = ''): Promise<void> => {
       const res = await authClient.post<TokenResponse>('/auth/register', {
         org_name: orgName,
         email,
         password,
+        invite_code: inviteCode,
       })
       storeTokens(res.data.access_token, res.data.refresh_token)
       setAccessToken(res.data.access_token)

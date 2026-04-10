@@ -13,10 +13,13 @@ function Register(): React.ReactElement {
   const { register } = useAuth()
   const navigate = useNavigate()
 
+  const inviteRequired = import.meta.env.VITE_INVITE_REQUIRED === 'true'
+
   const [orgName, setOrgName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -25,6 +28,7 @@ function Register(): React.ReactElement {
     if (!email.trim()) return 'Email is required.'
     if (password.length < 8) return 'Password must be at least 8 characters.'
     if (password !== confirmPassword) return 'Passwords do not match.'
+    if (inviteRequired && !inviteCode.trim()) return 'An invite code is required.'
     return null
   }
 
@@ -39,7 +43,7 @@ function Register(): React.ReactElement {
     setIsSubmitting(true)
 
     try {
-      await register(orgName.trim(), email.trim(), password)
+      await register(orgName.trim(), email.trim(), password, inviteCode.trim())
       navigate('/onboarding')
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number; data?: { detail?: string } } })?.response
@@ -127,6 +131,23 @@ function Register(): React.ReactElement {
               className="w-full bg-elevated border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
           </div>
+
+          {inviteRequired && (
+            <div>
+              <label htmlFor="invite-code" className="block text-xs text-secondary mb-1 uppercase tracking-wider">
+                Invite Code
+              </label>
+              <input
+                id="invite-code"
+                type="text"
+                required
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                placeholder="Enter your invite code"
+                className="w-full bg-elevated border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+              />
+            </div>
+          )}
 
           {error && (
             <p className="text-red-400 text-xs font-mono">{error}</p>
