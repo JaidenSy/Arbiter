@@ -22,7 +22,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_agent, get_db, get_redis
 from app.db.models.agent import Agent
+from app.db.models.organization import Organization
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
+from app.services.plan.plan_service import check_tool_call_quota
 from app.services.proxy.proxy_service import ProxyService
 
 router = APIRouter(prefix="/proxy", tags=["proxy"])
@@ -72,6 +74,13 @@ async def tool_call(
         HTTPException 404: MCP server not found or inactive.
         HTTPException 502: MCP server returned an error response.
     """
+    # ── Quota check (before RBAC) ─────────────────────────────────────────────
+    org = await db.get(Organization, agent.org_id)
+    if org is None:
+        raise HTTPException(status_code=500, detail="Agent org not found")
+    await check_tool_call_quota(redis=redis, db=db, org=org)
+    # ── End quota check ───────────────────────────────────────────────────────
+
     service = ProxyService(db=db, redis=redis)
     return await service.forward_tool_call(request=body, agent=agent)
 

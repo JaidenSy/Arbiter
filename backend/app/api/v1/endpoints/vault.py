@@ -24,8 +24,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db
+from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.db.models.vault import VaultSecret
+from app.services.plan.plan_service import check_resource_limit
 from app.services.vault.vault_service import VaultService
 
 router = APIRouter(prefix="/vault", tags=["vault"])
@@ -72,6 +74,18 @@ async def create_secret(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SecretResponse:
+    org = await db.get(Organization, current_user.org_id)
+    if org is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail="Org not found")
+    await check_resource_limit(
+        db=db,
+        org=org,
+        resource="vault_secrets",
+        model=VaultSecret,
+        filter_col=VaultSecret.org_id,
+        count_active_only=False,
+    )
     service = VaultService(db)
     secret = await service.store_secret(body.name, body.value, None, current_user.org_id)
     return SecretResponse.model_validate(secret)
