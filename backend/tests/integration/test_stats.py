@@ -80,12 +80,13 @@ class TestStatsZeroState:
     async def test_stats_all_zeros_when_no_data(self, fake_redis):
         """GET /stats with no data → all zeros, no crash."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
         db = _make_stats_db(
             agents_count=0,
             servers_count=0,
@@ -102,9 +103,13 @@ class TestStatsZeroState:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -127,8 +132,8 @@ class TestStatsZeroState:
     async def test_stats_no_division_by_zero(self, fake_redis):
         """cache_hit_rate_today must be 0.0 (not NaN/error) when tool_calls_today=0."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
@@ -170,8 +175,8 @@ class TestStatsWithData:
     async def test_stats_agents_and_servers_count(self, fake_redis):
         """GET /stats returns correct agents_count and servers_count."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
@@ -210,8 +215,8 @@ class TestStatsWithData:
     async def test_stats_cache_hit_rate_50_percent(self, fake_redis):
         """GET /stats with 4 calls (2 hits, 2 misses) → cache_hit_rate_today=0.5."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
@@ -256,8 +261,8 @@ class TestStatsWithData:
         real SQL excludes via DATE_TRUNC) is not counted.
         """
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
@@ -337,8 +342,8 @@ class TestStatsHistory:
     async def test_history_default_7d_returns_7_buckets(self, fake_redis):
         """GET /stats/history (default period=7d) returns exactly 7 buckets."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
@@ -378,8 +383,8 @@ class TestStatsHistory:
     async def test_history_24h_returns_24_buckets(self, fake_redis):
         """GET /stats/history?period=24h returns exactly 24 buckets."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
@@ -418,8 +423,8 @@ class TestStatsHistory:
     async def test_history_seeded_today_bucket_counts(self, fake_redis):
         """With a seeded row for today, today's bucket has correct tool_calls and cache_hits."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
@@ -470,8 +475,8 @@ class TestStatsHistory:
     async def test_history_invalid_period_returns_422(self, fake_redis):
         """GET /stats/history?period=invalid → 422."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()

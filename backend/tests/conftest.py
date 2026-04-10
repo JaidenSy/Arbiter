@@ -55,6 +55,23 @@ def _make_mock_agent(raw_key: str) -> MagicMock:
     return agent
 
 
+def _make_mock_user() -> MagicMock:
+    """Build a mock User ORM object for JWT-authenticated endpoints."""
+    user = MagicMock()
+    user.id = uuid.UUID("cccccccc-0000-0000-0000-000000000001")
+    user.email = "test@nexusai.test"
+    user.is_active = True
+    return user
+
+
+def _make_mock_org() -> MagicMock:
+    """Build a mock Organization ORM object with a valid plan_tier for quota checks."""
+    org = MagicMock()
+    org.id = uuid.UUID("dddddddd-0000-0000-0000-000000000001")
+    org.plan_tier = "free"
+    return org
+
+
 # ── fakeredis fixture ─────────────────────────────────────────────────────────
 
 @pytest_asyncio.fixture
@@ -101,8 +118,12 @@ async def test_client(fake_redis) -> AsyncGenerator:
     from app.main import app
     from app.core.dependencies import get_db, get_redis
 
+    mock_org = _make_mock_org()
+
     async def _override_get_db():
-        yield AsyncMock()
+        db = AsyncMock()
+        db.get = AsyncMock(return_value=mock_org)
+        yield db
 
     async def _override_get_redis(request=None):
         return fake_redis
@@ -132,14 +153,18 @@ async def authed_client(fake_redis) -> AsyncGenerator:
     """
     from httpx import AsyncClient, ASGITransport
     from app.main import app
-    from app.core.dependencies import get_db, get_redis, get_current_agent
+    from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
     from app.core.security import generate_api_key
 
     raw_key = generate_api_key()
     mock_agent = _make_mock_agent(raw_key)
+    mock_user = _make_mock_user()
+    mock_org = _make_mock_org()
 
     async def _override_get_db():
-        yield AsyncMock()
+        db = AsyncMock()
+        db.get = AsyncMock(return_value=mock_org)
+        yield db
 
     async def _override_get_redis(request=None):
         return fake_redis
@@ -147,9 +172,13 @@ async def authed_client(fake_redis) -> AsyncGenerator:
     async def _override_get_current_agent():
         return mock_agent
 
+    async def _override_get_current_user():
+        return mock_user
+
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_redis] = _override_get_redis
     app.dependency_overrides[get_current_agent] = _override_get_current_agent
+    app.dependency_overrides[get_current_user] = _override_get_current_user
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
