@@ -1,5 +1,5 @@
 """
-NexusAI — Pydantic schemas for the auth endpoints.
+Nexvault — Pydantic schemas for the auth endpoints.
 
 All request/response bodies for /auth/* routes are defined here.
 """

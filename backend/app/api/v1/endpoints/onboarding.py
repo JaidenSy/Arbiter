@@ -1,5 +1,5 @@
 """
-NexusAI — API endpoints: Onboarding.
+Nexvault — API endpoints: Onboarding.
 
 Provides a lightweight status check so the dashboard can show a step-by-step
 onboarding checklist after first login.

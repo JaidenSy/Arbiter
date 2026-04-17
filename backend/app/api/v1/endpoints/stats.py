@@ -1,5 +1,5 @@
 """
-NexusAI — API endpoints: Stats.
+Nexvault — API endpoints: Stats.
 
 Dashboard statistics endpoint returning aggregated counts and metrics.
 

@@ -1,7 +1,7 @@
 /**
- * NexusAI Frontend — shared TypeScript types for API responses.
+ * Nexvault Frontend — shared TypeScript types for API responses.
  *
- * These types mirror the Pydantic schemas exposed by the NexusAI backend.
+ * These types mirror the Pydantic schemas exposed by the Nexvault backend.
  * Keep in sync with CODER-A's backend contracts.
  */
 

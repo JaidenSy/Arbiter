@@ -1,5 +1,5 @@
 """
-NexusAI — SQLAlchemy ORM model: SocialAccount.
+Nexvault — SQLAlchemy ORM model: SocialAccount.
 
 Links a User to an OAuth2 identity from an external provider (Google or GitHub).
 A user may have at most one social account per provider.
@@ -26,11 +26,11 @@ if TYPE_CHECKING:
 
 class SocialAccount(Base):
     """
-    OAuth2 identity linked to a NexusAI user.
+    OAuth2 identity linked to a Nexvault user.
 
     Columns:
         id:               Auto-generated UUID primary key.
-        user_id:          FK → users.id.  The linked NexusAI user.
+        user_id:          FK → users.id.  The linked Nexvault user.
         org_id:           FK → organizations.id.  Denormalised for fast org queries.
         provider:         OAuth2 provider name: "google" | "github".
         provider_user_id: Opaque user identifier returned by the provider (sub / id).

@@ -1,8 +1,8 @@
 # Agent Integration
 
-## What is an "agent" in NexusAI?
+## What is an "agent" in Nexvault?
 
-An agent is any programmatic client that calls MCP tools through the NexusAI gateway — a Claude script, a LangChain workflow, a cron job, a FastAPI service, anything that makes HTTP requests. NexusAI assigns each agent:
+An agent is any programmatic client that calls MCP tools through the Nexvault gateway — a Claude script, a LangChain workflow, a cron job, a FastAPI service, anything that makes HTTP requests. Nexvault assigns each agent:
 
 - A unique UUID
 - An API key (`nxai_<64-hex-chars>`) used to authenticate every request
@@ -90,7 +90,7 @@ def call_tool(server: str, tool: str, arguments: dict, session_id: str | None = 
         "Content-Type": "application/json",
     }
     if session_id:
-        headers["X-NexusAI-Session-ID"] = session_id
+        headers["X-Nexvault-Session-ID"] = session_id
 
     response = httpx.post(
         f"{NEXUS_URL}/proxy/tool-call",
@@ -149,13 +149,13 @@ The upstream MCP server receives `"token": "ghp_actual_token_here"`. The agent's
 
 ## Session IDs
 
-`X-NexusAI-Session-ID` is an optional header. When you send it, all tool calls with the same session ID are grouped into a single session in the audit log, which makes it easier to trace a complete agent run.
+`X-Nexvault-Session-ID` is an optional header. When you send it, all tool calls with the same session ID are grouped into a single session in the audit log, which makes it easier to trace a complete agent run.
 
 ```
 Agent run starts → no session ID exists yet
-First tool call  → omit X-NexusAI-Session-ID
+First tool call  → omit X-Nexvault-Session-ID
                  → gateway creates a new session, returns session ID in response header
-Subsequent calls → include X-NexusAI-Session-ID: <id from first response>
+Subsequent calls → include X-Nexvault-Session-ID: <id from first response>
                  → all events attached to same session
 ```
 
@@ -168,7 +168,7 @@ Use sessions when:
 
 ### Claude with tool use
 
-Claude does not natively speak MCP. The typical pattern is to define your tools as Claude function definitions, receive tool call requests from Claude, and forward them through NexusAI:
+Claude does not natively speak MCP. The typical pattern is to define your tools as Claude function definitions, receive tool call requests from Claude, and forward them through Nexvault:
 
 ```python
 import anthropic
@@ -226,7 +226,7 @@ while True:
 
 ### OpenAI function calling
 
-Same pattern: catch `finish_reason: "tool_calls"`, forward each call to NexusAI, return results.
+Same pattern: catch `finish_reason: "tool_calls"`, forward each call to Nexvault, return results.
 
 ```python
 import openai, httpx

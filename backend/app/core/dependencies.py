@@ -1,5 +1,5 @@
 """
-NexusAI — FastAPI dependency injection.
+Nexvault — FastAPI dependency injection.
 
 Each function here is a FastAPI Depends provider.  They are consumed by
 endpoint functions via:

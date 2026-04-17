@@ -1,5 +1,5 @@
 /**
- * NexusAI Frontend — Axios HTTP clients.
+ * Nexvault Frontend — Axios HTTP clients.
  *
  * apiClient  — attaches the agent API key (Bearer nxai_<hex>). Used by all
  *              existing pages that interact with agent/MCP resource endpoints.
@@ -28,7 +28,7 @@ export const apiClient: AxiosInstance = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const apiKey = localStorage.getItem("nexusai_api_key");
+  const apiKey = localStorage.getItem("nexvault_api_key");
   if (apiKey) {
     config.headers.Authorization = `Bearer ${apiKey}`;
   }
@@ -39,8 +39,8 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      const hadKey = !!localStorage.getItem("nexusai_api_key");
-      localStorage.removeItem("nexusai_api_key");
+      const hadKey = !!localStorage.getItem("nexvault_api_key");
+      localStorage.removeItem("nexvault_api_key");
       if (hadKey) {
         window.location.href = "/agents";
       }
@@ -70,7 +70,7 @@ export const authClient: AxiosInstance = axios.create({
 
 // Attach JWT from localStorage before every request
 authClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("nexusai_access_token");
+  const token = localStorage.getItem("nexvault_access_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -107,11 +107,11 @@ authClient.interceptors.response.use(
     }
 
     isRefreshing = true;
-    const refreshToken = localStorage.getItem("nexusai_refresh_token");
+    const refreshToken = localStorage.getItem("nexvault_refresh_token");
 
     if (!refreshToken) {
       isRefreshing = false;
-      localStorage.removeItem("nexusai_access_token");
+      localStorage.removeItem("nexvault_access_token");
       window.location.href = "/login";
       return Promise.reject(error);
     }
@@ -123,16 +123,16 @@ authClient.interceptors.response.use(
       }>("/auth/refresh", { refresh_token: refreshToken });
 
       const newAccess = res.data.access_token;
-      localStorage.setItem("nexusai_access_token", newAccess);
-      localStorage.setItem("nexusai_refresh_token", res.data.refresh_token);
+      localStorage.setItem("nexvault_access_token", newAccess);
+      localStorage.setItem("nexvault_refresh_token", res.data.refresh_token);
 
       drainQueue(newAccess, null);
       originalRequest.headers.Authorization = `Bearer ${newAccess}`;
       return authClient(originalRequest);
     } catch (refreshErr) {
       drainQueue(null, refreshErr);
-      localStorage.removeItem("nexusai_access_token");
-      localStorage.removeItem("nexusai_refresh_token");
+      localStorage.removeItem("nexvault_access_token");
+      localStorage.removeItem("nexvault_refresh_token");
       window.location.href = "/login";
       return Promise.reject(refreshErr);
     } finally {

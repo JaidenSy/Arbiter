@@ -3,3 +3,4 @@
 /e2e/.auth/
 /playwright-report/
 /test-results/
+.vercel

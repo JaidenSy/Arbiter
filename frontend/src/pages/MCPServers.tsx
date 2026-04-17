@@ -1,5 +1,5 @@
 /**
- * NexusAI — MCP Servers page.
+ * Nexvault — MCP Servers page.
  *
  * Lists registered MCP servers and allows:
  *   - Adding a new server (form modal)

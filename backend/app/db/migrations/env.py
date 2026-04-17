@@ -1,5 +1,5 @@
 """
-Alembic migration environment for NexusAI.
+Alembic migration environment for Nexvault.
 
 Configured for async SQLAlchemy (asyncpg driver).  Uses the application's
 own settings and Base.metadata so autogenerate discovers all model tables.

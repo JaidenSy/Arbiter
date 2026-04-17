@@ -1,5 +1,5 @@
 /**
- * NexusAI Frontend — Root application component.
+ * Nexvault Frontend — Root application component.
  *
  * Routes:
  *   /            → Dashboard    (stats, cache hit rate, recent sessions)
@@ -69,7 +69,7 @@ function RootRedirect(): React.ReactElement {
   }
 
   if (!user) {
-    const apiKey = localStorage.getItem('nexusai_api_key')
+    const apiKey = localStorage.getItem('nexvault_api_key')
     if (!apiKey) return <Navigate to="/login" replace />
   }
 

@@ -1,5 +1,5 @@
 """
-NexusAI — Application configuration.
+Nexvault — Application configuration.
 
 All settings are read from environment variables (or a .env file when
 APP_ENV=development). No secrets are hardcoded here — see .env.example.
@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = 3600
 
     # ── JWT ───────────────────────────────────────────────────────────────────
-    jwt_secret_key: str = "nexusai_dev_jwt_secret_change_in_production"
+    jwt_secret_key: str = "nexvault_dev_jwt_secret_change_in_production"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 1440  # 24 hours
     jwt_refresh_token_expire_days: int = 30

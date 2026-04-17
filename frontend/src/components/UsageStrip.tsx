@@ -1,5 +1,5 @@
 /**
- * NexusAI — UsageStrip component.
+ * Nexvault — UsageStrip component.
  *
  * Horizontal strip shown at the top of Dashboard when user is authenticated via JWT.
  * Displays: plan name · tool calls used / limit · agents count / limit · cache hit rate

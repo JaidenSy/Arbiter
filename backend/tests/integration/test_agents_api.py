@@ -7,7 +7,7 @@ Coverage:
     - POST /api/v1/agents creates agent, returns API key starting with "nxai_"
     - API key only returned once — GET /api/v1/agents does not include key
     - DELETE /api/v1/agents/{id} sets is_active=False
-    - Request without X-NexusAI-Key header returns 401
+    - Request without X-Nexvault-Key header returns 401
     - Request with invalid key returns 401
 """
 

@@ -1,5 +1,5 @@
 """
-NexusAI — API endpoints: MCP Servers.
+Nexvault — API endpoints: MCP Servers.
 
 CRUD management of MCP server registrations.
 

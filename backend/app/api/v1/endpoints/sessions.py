@@ -1,5 +1,5 @@
 """
-NexusAI — API endpoints: Sessions.
+Nexvault — API endpoints: Sessions.
 
 Sessions are created automatically by the proxy when a tool call is
 received without a session_id.  These endpoints expose read-only access

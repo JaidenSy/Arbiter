@@ -1,5 +1,5 @@
 /**
- * NexusAI E2E — Sessions + Session Trace tests.
+ * Nexvault E2E — Sessions + Session Trace tests.
  *
  * Covers: sessions list, clicking through to trace, badge rendering,
  * event row expand, stat pills.

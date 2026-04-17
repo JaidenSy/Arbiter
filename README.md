@@ -1,4 +1,4 @@
-# NexusAI
+# Nexvault
 
 A self-hosted MCP (Model Context Protocol) gateway that gives teams centralized control over AI tool access: secret management, semantic caching, RBAC, and full audit logging.
 
@@ -21,7 +21,7 @@ curl http://localhost:8000/health
 Client (Claude / any MCP agent)
         |
         v
-  [NexusAI API Gateway]  :8000
+  [Nexvault API Gateway]  :8000
         |
   +-----------+----------+-----------+
   |           |          |           |
@@ -51,7 +51,7 @@ Client (Claude / any MCP agent)
 ## Project Structure
 
 ```
-nexusai/
+nexvault/
   backend/          FastAPI application
     app/
       api/v1/       REST endpoints

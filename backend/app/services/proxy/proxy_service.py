@@ -1,5 +1,5 @@
 """
-NexusAI — ProxyService.
+Nexvault — ProxyService.
 
 The core gateway component.  Every tool call from an agent passes through
 here before reaching an MCP server.
@@ -399,12 +399,12 @@ class ProxyService:
         # No cached session — do MCP initialize handshake.
         init_body = {
             "jsonrpc": "2.0",
-            "id": "nexusai-init",
+            "id": "nexvault-init",
             "method": "initialize",
             "params": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "clientInfo": {"name": "nexusai-gateway", "version": "1.0"},
+                "clientInfo": {"name": "nexvault-gateway", "version": "1.0"},
             },
         }
         try:

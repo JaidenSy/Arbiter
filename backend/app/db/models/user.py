@@ -1,5 +1,5 @@
 """
-NexusAI — SQLAlchemy ORM model: User.
+Nexvault — SQLAlchemy ORM model: User.
 
 A User represents a human operator who logs in to the dashboard with an
 email/password and receives a JWT.  Users are NOT the same as Agents;

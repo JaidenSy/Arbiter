@@ -1,5 +1,5 @@
 /**
- * NexusAI — Settings page.
+ * Nexvault — Settings page.
  *
  * Sections:
  *   - Gateway API Key (stored in localStorage)
@@ -186,7 +186,7 @@ function BillingSection(): React.ReactElement {
             <p className="text-secondary text-sm">
               Enterprise plan —{' '}
               <a
-                href="mailto:sales@nexusai.dev"
+                href="mailto:sales@nexvault.dev"
                 className="text-accent-light hover:underline"
               >
                 contact us
@@ -210,19 +210,19 @@ function BillingSection(): React.ReactElement {
 
 function ApiKeySection(): React.ReactElement {
   const [apiKey, setApiKey] = useState<string>(
-    localStorage.getItem('nexusai_api_key') ?? '',
+    localStorage.getItem('nexvault_api_key') ?? '',
   )
   const [showKey, setShowKey] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const handleSave = (): void => {
-    localStorage.setItem('nexusai_api_key', apiKey)
+    localStorage.setItem('nexvault_api_key', apiKey)
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
   }
 
   const handleClear = (): void => {
-    localStorage.removeItem('nexusai_api_key')
+    localStorage.removeItem('nexvault_api_key')
     setApiKey('')
   }
 
@@ -242,7 +242,7 @@ function ApiKeySection(): React.ReactElement {
             Gateway API Key
           </label>
           <p className="text-secondary text-xs mb-2">
-            Stored locally in your browser. Required to authenticate with the NexusAI API.
+            Stored locally in your browser. Required to authenticate with the Nexvault API.
           </p>
           <div className="flex gap-2">
             <input
@@ -298,12 +298,12 @@ function ApiKeySection(): React.ReactElement {
 
 function GatewayUrlSection(): React.ReactElement {
   const [url, setUrl] = useState<string>(
-    localStorage.getItem('nexusai_gateway_url') ?? 'http://localhost:8000/api/v1',
+    localStorage.getItem('nexvault_gateway_url') ?? 'http://localhost:8000/api/v1',
   )
   const [saved, setSaved] = useState(false)
 
   const handleSave = (): void => {
-    localStorage.setItem('nexusai_gateway_url', url)
+    localStorage.setItem('nexvault_gateway_url', url)
     setSaved(true)
     setTimeout(() => {
       setSaved(false)
@@ -326,7 +326,7 @@ function GatewayUrlSection(): React.ReactElement {
             Gateway URL
           </label>
           <p className="text-secondary text-xs mb-2">
-            Base URL of the NexusAI backend. Defaults to{' '}
+            Base URL of the Nexvault backend. Defaults to{' '}
             <code className="font-mono text-accent-light">http://localhost:8000/api/v1</code>.
             Saving will reload the page to apply the change.
           </p>

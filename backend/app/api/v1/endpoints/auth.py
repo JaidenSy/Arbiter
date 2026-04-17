@@ -1,5 +1,5 @@
 """
-NexusAI — API endpoints: Auth.
+Nexvault — API endpoints: Auth.
 
 Human-operator authentication via email/password + JWT + rotating refresh tokens.
 

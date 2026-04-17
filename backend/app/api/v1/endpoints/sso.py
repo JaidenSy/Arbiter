@@ -1,5 +1,5 @@
 """
-NexusAI — API endpoints: SSO (Social Login).
+Nexvault — API endpoints: SSO (Social Login).
 
 Implements Google (OIDC) and GitHub (OAuth2) social login via Authlib.
 The full OAuth2 dance is handled server-side; the React frontend only

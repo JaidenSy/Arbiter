@@ -1,5 +1,5 @@
 /**
- * NexusAI — Session Trace View.
+ * Nexvault — Session Trace View.
  *
  * Full waterfall timeline for a single session.
  * Route: /sessions/:id

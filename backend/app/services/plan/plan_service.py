@@ -1,5 +1,5 @@
 """
-NexusAI — Plan enforcement service.
+Nexvault — Plan enforcement service.
 
 Provides two check functions called from the service/endpoint layer:
 

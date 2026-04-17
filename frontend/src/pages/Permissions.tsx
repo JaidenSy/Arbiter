@@ -1,5 +1,5 @@
 /**
- * NexusAI — Tool Permissions page.
+ * Nexvault — Tool Permissions page.
  *
  * Two-panel layout:
  *   Left:  Agent selector list

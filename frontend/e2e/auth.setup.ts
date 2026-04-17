@@ -1,5 +1,5 @@
 /**
- * NexusAI E2E — Auth setup.
+ * Nexvault E2E — Auth setup.
  *
  * Registers a shared test user (once per test run), logs in via the UI,
  * and saves the browser storage state to e2e/.auth/user.json.
@@ -12,7 +12,7 @@ import path from 'path'
 const AUTH_FILE = path.join(__dirname, '.auth/user.json')
 
 // Stable test credentials — use unique email to avoid conflicts across runs
-const EMAIL = `e2e-${process.env.TEST_RUN_ID ?? Date.now()}@nexusai.test`
+const EMAIL = `e2e-${process.env.TEST_RUN_ID ?? Date.now()}@nexvault.test`
 const PASSWORD = 'TestPass123!'
 const ORG_NAME = 'E2E Test Org'
 

@@ -1,12 +1,12 @@
 /**
- * NexusAI — Auth context.
+ * Nexvault — Auth context.
  *
  * Provides JWT-based authentication state for the dashboard UI.
  * Agent API key auth remains separate (apiClient in api/client.ts).
  *
  * Storage keys:
- *   nexusai_access_token  — JWT (24h)
- *   nexusai_refresh_token — opaque rt_<64hex> (30d)
+ *   nexvault_access_token  — JWT (24h)
+ *   nexvault_refresh_token — opaque rt_<64hex> (30d)
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
@@ -39,8 +39,8 @@ const AuthContext = createContext<AuthState | null>(null)
 
 // ── Storage helpers ───────────────────────────────────────────────────────────
 
-const ACCESS_KEY = 'nexusai_access_token'
-const REFRESH_KEY = 'nexusai_refresh_token'
+const ACCESS_KEY = 'nexvault_access_token'
+const REFRESH_KEY = 'nexvault_refresh_token'
 
 function storeTokens(access: string, refresh: string): void {
   localStorage.setItem(ACCESS_KEY, access)

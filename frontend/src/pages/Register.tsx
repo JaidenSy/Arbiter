@@ -1,5 +1,5 @@
 /**
- * NexusAI — Register page.
+ * Nexvault — Register page.
  *
  * Route: /register (public, no sidebar)
  * On success: auto-logged in (tokens from backend), navigates to /onboarding.
@@ -64,7 +64,7 @@ function Register(): React.ReactElement {
       <div className="w-full max-w-sm px-4">
         {/* Wordmark */}
         <div className="text-center mb-10">
-          <span className="font-mono text-2xl text-white tracking-tight">NexusAI</span>
+          <span className="font-mono text-2xl text-white tracking-tight">Nexvault</span>
           <p className="text-secondary text-xs mt-2">create your organization</p>
         </div>
 

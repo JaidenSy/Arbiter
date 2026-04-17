@@ -1,5 +1,5 @@
 /**
- * NexusAI — Agents page.
+ * Nexvault — Agents page.
  *
  * Lists registered agents and allows:
  *   - Registering a new agent (form modal → one-time API key modal)
@@ -298,7 +298,7 @@ function Agents(): React.ReactElement {
                     <circle cx="12" cy="10" r="3"/>
                   </svg>
                   <p className="text-secondary text-sm font-mono mb-1">No agents registered yet.</p>
-                  <p className="text-muted text-xs">Register your first agent to start routing tool calls through NexusAI.</p>
+                  <p className="text-muted text-xs">Register your first agent to start routing tool calls through Nexvault.</p>
                 </td>
               </tr>
             ) : (

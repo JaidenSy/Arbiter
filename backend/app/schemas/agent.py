@@ -1,5 +1,5 @@
 """
-NexusAI — Pydantic schemas for Agent resources.
+Nexvault — Pydantic schemas for Agent resources.
 
 Separating request/response schemas from ORM models keeps the API contract
 stable even when internal DB columns change.  Raw api_key_hash is never

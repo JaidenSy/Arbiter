@@ -1,5 +1,5 @@
 /**
- * NexusAI E2E — Agents page tests.
+ * Nexvault E2E — Agents page tests.
  *
  * Covers: create agent, API key reveal/copy/hide, delete agent, empty state.
  */

@@ -1,4 +1,4 @@
-# Self-Hosting NexusAI
+# Self-Hosting Nexvault
 
 ## Prerequisites
 
@@ -10,8 +10,8 @@
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-org/nexusai
-cd nexusai
+git clone https://github.com/your-org/nexvault
+cd nexvault
 ```
 
 ### 2. Generate a vault encryption key
@@ -41,7 +41,7 @@ Edit `.env` and fill in every `CHANGE_ME` value:
 | `API_PREFIX` | No | URL prefix for all API routes. Default: `/api/v1` |
 | `POSTGRES_HOST` | No | Postgres hostname. When using Docker Compose, this is `postgres` (the service name). Default: `localhost` |
 | `POSTGRES_PORT` | No | Postgres port. Default: `5432` |
-| `POSTGRES_DB` | **Yes** | Database name. Default in example: `nexusai` |
+| `POSTGRES_DB` | **Yes** | Database name. Default in example: `nexvault` |
 | `POSTGRES_USER` | **Yes** | Postgres username. |
 | `POSTGRES_PASSWORD` | **Yes** | Postgres password. Use a strong random value in production. |
 | `DATABASE_URL` | **Yes** | Full asyncpg connection string. Docker Compose overrides this automatically to use the internal `postgres` hostname. |

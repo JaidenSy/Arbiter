@@ -1,5 +1,5 @@
 """
-NexusAI — pytest fixtures (conftest.py).
+Nexvault — pytest fixtures (conftest.py).
 
 Shared fixtures available to all test modules.  Provides:
     - test_client:  Async HTTPX client wired to the FastAPI app with mocked deps
@@ -28,8 +28,8 @@ import pytest_asyncio
 # ── Patch required env vars before any app import ─────────────────────────────
 # Settings are validated at import time, so we must set env vars first.
 _TEST_VAULT_KEY = "b" * 64  # 64 hex chars — valid for pydantic validator
-os.environ.setdefault("APP_SECRET_KEY", "nexusai-test-secret-key-12345678")
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/nexusai_test")
+os.environ.setdefault("APP_SECRET_KEY", "nexvault-test-secret-key-12345678")
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/nexvault_test")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/15")
 os.environ.setdefault("VAULT_ENCRYPTION_KEY", _TEST_VAULT_KEY)
 
@@ -59,7 +59,7 @@ def _make_mock_user() -> MagicMock:
     """Build a mock User ORM object for JWT-authenticated endpoints."""
     user = MagicMock()
     user.id = uuid.UUID("cccccccc-0000-0000-0000-000000000001")
-    user.email = "test@nexusai.test"
+    user.email = "test@nexvault.test"
     user.is_active = True
     return user
 

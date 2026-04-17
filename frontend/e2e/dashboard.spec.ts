@@ -1,5 +1,5 @@
 /**
- * NexusAI E2E — Dashboard tests.
+ * Nexvault E2E — Dashboard tests.
  *
  * Covers: stat cards render, chart renders, session row click navigates
  * to trace, UsageStrip visible.

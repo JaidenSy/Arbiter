@@ -1,5 +1,5 @@
 """
-NexusAI — SQLAlchemy ORM model: ToolPermission.
+Nexvault — SQLAlchemy ORM model: ToolPermission.
 
 Join table that enforces which agent may call which tool on which MCP server.
 The wildcard tool_name ``"*"`` grants access to all tools on the server.

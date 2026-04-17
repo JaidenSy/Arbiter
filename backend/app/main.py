@@ -1,5 +1,5 @@
 """
-NexusAI Backend — Application entry point.
+Nexvault Backend — Application entry point.
 
 Initialises the FastAPI app, registers all API routers, configures CORS,
 and manages application lifespan (database pool + Redis connection setup
@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         - Dispose SQLAlchemy async engine connection pool
     """
     # ── Startup ───────────────────────────────────────────────────────────────
-    logger.info("nexusai: starting up")
+    logger.info("nexvault: starting up")
 
     # Redis
     redis_client = aioredis.from_url(
@@ -64,19 +64,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.redis = redis_client
     try:
         await redis_client.ping()
-        logger.info("nexusai: Redis connected at %s", settings.redis_url)
+        logger.info("nexvault: Redis connected at %s", settings.redis_url)
     except Exception as exc:
-        logger.warning("nexusai: Redis ping failed at startup: %s", exc)
+        logger.warning("nexvault: Redis ping failed at startup: %s", exc)
 
     # Warm up embedding model (best-effort; does not block startup on failure).
     try:
         from app.services.cache.cache_service import _get_model
 
         _get_model()
-        logger.info("nexusai: embedding model loaded")
+        logger.info("nexvault: embedding model loaded")
     except Exception as exc:
         logger.warning(
-            "nexusai: embedding model could not be pre-loaded: %s — "
+            "nexvault: embedding model could not be pre-loaded: %s — "
             "it will be loaded on first semantic cache call",
             exc,
         )
@@ -84,16 +84,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
-    logger.info("nexusai: shutting down")
+    logger.info("nexvault: shutting down")
     await redis_client.aclose()
     await engine.dispose()
-    logger.info("nexusai: shutdown complete")
+    logger.info("nexvault: shutdown complete")
 
 
 def create_app() -> FastAPI:
     """Construct and configure the FastAPI application instance."""
     app = FastAPI(
-        title="NexusAI",
+        title="Nexvault",
         description=(
             "Self-hosted MCP gateway with secret management, "
             "semantic caching, RBAC, and audit logging."
@@ -171,7 +171,7 @@ def create_app() -> FastAPI:
                 "current": exc.current,
                 "limit": exc.limit,
                 "plan": exc.plan,
-                "upgrade_url": "https://nexusai.dev/pricing",
+                "upgrade_url": "https://nexvault.dev/pricing",
             },
         )
 
@@ -193,7 +193,7 @@ def create_app() -> FastAPI:
                 "used": exc.used,
                 "limit": exc.limit,
                 "resets_at": exc.resets_at.isoformat(),
-                "upgrade_url": "https://nexusai.dev/pricing",
+                "upgrade_url": "https://nexvault.dev/pricing",
             },
         )
 

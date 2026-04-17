@@ -1,5 +1,5 @@
 /**
- * NexusAI E2E — Permissions (RBAC) page tests.
+ * Nexvault E2E — Permissions (RBAC) page tests.
  *
  * Covers: grant permission, revoke permission, empty state.
  */

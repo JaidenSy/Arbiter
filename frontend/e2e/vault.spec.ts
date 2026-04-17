@@ -1,5 +1,5 @@
 /**
- * NexusAI E2E — Vault page tests.
+ * Nexvault E2E — Vault page tests.
  *
  * Covers: create secret, value hidden after creation, agent selector,
  * cross-agent isolation, delete secret.

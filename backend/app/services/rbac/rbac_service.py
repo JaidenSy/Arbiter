@@ -1,5 +1,5 @@
 """
-NexusAI — RBACService.
+Nexvault — RBACService.
 
 Role-Based Access Control for tool call permissions.
 

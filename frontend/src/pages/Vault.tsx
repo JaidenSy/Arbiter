@@ -1,5 +1,5 @@
 /**
- * NexusAI — Vault page.
+ * Nexvault — Vault page.
  *
  * Two-panel layout:
  *   Left:  Agent selector list

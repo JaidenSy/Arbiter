@@ -1,11 +1,11 @@
 # Vault
 
-The NexusAI vault stores secrets for your agents — API keys, tokens, passwords — encrypted at rest using AES-256-GCM. Secrets are scoped per-agent: an agent cannot read or overwrite another agent's secrets, even if it knows the name.
+The Nexvault vault stores secrets for your agents — API keys, tokens, passwords — encrypted at rest using AES-256-GCM. Secrets are scoped per-agent: an agent cannot read or overwrite another agent's secrets, even if it knows the name.
 
 ## How it works
 
 1. You write a secret via the API — a name/value pair tied to a specific agent.
-2. NexusAI encrypts the value using AES-256-GCM with a 96-bit random nonce. The nonce is prepended to the ciphertext and stored together in the database. The plaintext is discarded.
+2. Nexvault encrypts the value using AES-256-GCM with a 96-bit random nonce. The nonce is prepended to the ciphertext and stored together in the database. The plaintext is discarded.
 3. In your tool call arguments, you reference the secret as `{{SECRET_NAME}}`.
 4. At request time, the proxy scans `params.arguments` for `{{...}}` placeholders, decrypts each matched secret in-memory, substitutes the plaintext value, and forwards the request to the upstream MCP server.
 5. The plaintext value never touches disk, never appears in logs, and is never returned to the calling agent.
