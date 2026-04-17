@@ -1,5 +1,5 @@
 """
-Nexvault — API endpoints: Vault.
+NexVault — API endpoints: Vault.
 
 Manages encrypted secrets stored in the vault.  Raw secret values are
 accepted on write and returned on read — the gateway handles encryption

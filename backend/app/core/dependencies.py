@@ -1,5 +1,5 @@
 """
-Nexvault — FastAPI dependency injection.
+NexVault — FastAPI dependency injection.
 
 Each function here is a FastAPI Depends provider.  They are consumed by
 endpoint functions via:

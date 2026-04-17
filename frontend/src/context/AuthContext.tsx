@@ -1,5 +1,5 @@
 /**
- * Nexvault — Auth context.
+ * NexVault — Auth context.
  *
  * Provides JWT-based authentication state for the dashboard UI.
  * Agent API key auth remains separate (apiClient in api/client.ts).

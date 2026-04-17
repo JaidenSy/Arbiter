@@ -1,5 +1,5 @@
 """
-Nexvault — SQLAlchemy async engine and session factory.
+NexVault — SQLAlchemy async engine and session factory.
 
 This module owns the single async engine and the session factory used
 throughout the application.  All models must import ``Base`` from here

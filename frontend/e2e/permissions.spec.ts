@@ -1,5 +1,5 @@
 /**
- * Nexvault E2E — Permissions (RBAC) page tests.
+ * NexVault E2E — Permissions (RBAC) page tests.
  *
  * Covers: grant permission, revoke permission, empty state.
  */

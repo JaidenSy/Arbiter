@@ -1,7 +1,7 @@
 [project]
 name = "nexvault-backend"
 version = "0.1.0"
-description = "Nexvault MCP Gateway — backend API"
+description = "NexVault MCP Gateway — backend API"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Private" }

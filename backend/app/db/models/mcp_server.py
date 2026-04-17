@@ -1,5 +1,5 @@
 """
-Nexvault — SQLAlchemy ORM model: MCPServer.
+NexVault — SQLAlchemy ORM model: MCPServer.
 
 An MCPServer is a registered Model Context Protocol server that the gateway
 can forward tool calls to.  Access is controlled via the tool_permissions
@@ -20,7 +20,7 @@ from app.db.base import Base
 
 class MCPServer(Base):
     """
-    Registered MCP server reachable through the Nexvault proxy.
+    Registered MCP server reachable through the NexVault proxy.
 
     Columns:
         id:          Auto-generated UUID primary key.

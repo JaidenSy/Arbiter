@@ -1,6 +1,6 @@
 # Comparison
 
-Nexvault is not the only tool in this space. Here is an honest assessment of the alternatives — where they are strong, where they fall short, and when Nexvault is (and is not) the right choice.
+NexVault is not the only tool in this space. Here is an honest assessment of the alternatives — where they are strong, where they fall short, and when NexVault is (and is not) the right choice.
 
 ---
 
@@ -12,14 +12,14 @@ Nexvault is not the only tool in this space. Here is an honest assessment of the
 
 - **No encrypted secrets vault.** LiteLLM stores OAuth client credentials in config files. There is no AES-encrypted per-agent secret store with runtime injection.
 - **No per-agent API key identity.** LiteLLM uses "virtual keys" but they are generic API keys, not first-class agent identity artifacts with a `nxai_`-style prefix, SHA-256-only storage, and per-agent scoping.
-- **No tool call semantic cache.** LiteLLM caches LLM completions. MCP tool call results — file reads, database queries, search results — are not cached. Nexvault caches at the tool response layer.
+- **No tool call semantic cache.** LiteLLM caches LLM completions. MCP tool call results — file reads, database queries, search results — are not cached. NexVault caches at the tool response layer.
 - **RBAC requires Enterprise ($250/month).** Free and open-source tiers have no RBAC. SSO and audit logs are also Enterprise-only.
 - **`tools/list` not filtered by RBAC.** Tools not granted to an agent are still returned in `tools/list` — agents can enumerate capabilities they cannot use.
 - **Security incident in 2025.** LiteLLM's npm package ecosystem was compromised in a supply chain attack. The Python package was not directly affected, but it highlighted the project's attack surface.
 
-LiteLLM MCP support was added in late 2025 and is improving, but it is LLM-first tooling with MCP bolted on. Nexvault is MCP-first.
+LiteLLM MCP support was added in late 2025 and is improving, but it is LLM-first tooling with MCP bolted on. NexVault is MCP-first.
 
-**When to use LiteLLM over Nexvault**: You need multi-provider LLM routing, spend tracking across model providers, or you're doing prompt caching across OpenAI/Anthropic/Gemini. Nexvault does not do any of that.
+**When to use LiteLLM over NexVault**: You need multi-provider LLM routing, spend tracking across model providers, or you're doing prompt caching across OpenAI/Anthropic/Gemini. NexVault does not do any of that.
 
 ---
 
@@ -30,13 +30,13 @@ LiteLLM MCP support was added in late 2025 and is improving, but it is LLM-first
 **Where it falls short**:
 
 - **No encrypted secrets vault.** Portkey manages upstream MCP server credentials at the platform level, but there is no AES-encrypted per-agent secret store. Credentials are not cryptographically scoped per-agent with `{{SECRET_NAME}}` injection at runtime.
-- **Semantic cache is for LLM completions, not tool calls.** Portkey caches the LLM response layer. Nexvault caches what the MCP server returned — file contents, query results, search hits. These are different things.
+- **Semantic cache is for LLM completions, not tool calls.** Portkey caches the LLM response layer. NexVault caches what the MCP server returned — file contents, query results, search hits. These are different things.
 - **Agent identity is workspace-scoped, not agent-scoped.** Portkey service account keys are not per-agent identity artifacts. There is no per-agent API key with isolated permissions and an isolated vault namespace.
 - **MCP support was added late 2025** — Portkey is an LLM gateway that added MCP. The architecture is LLM-first.
 - **Enterprise features require custom pricing.** RBAC, SSO, VPC deployment, and HIPAA compliance are not self-serve. Free and Production tiers ($49/mo) do not include VPC or SSO.
 - **Open-sourcing (March 2026) creates self-hosted competition.** Portkey's self-hosted gateway is now free. But it still lacks an encrypted vault and MCP tool call caching, and it's a more complex deployment than a single Docker Compose.
 
-**When to use Portkey over Nexvault**: You want a managed SaaS LLM gateway with a polished trace UI across Claude, GPT-4, Gemini, and you don't need per-agent encrypted credentials or MCP tool call caching. Portkey's $49/month tier is a good value for LLM-layer observability.
+**When to use Portkey over NexVault**: You want a managed SaaS LLM gateway with a polished trace UI across Claude, GPT-4, Gemini, and you don't need per-agent encrypted credentials or MCP tool call caching. Portkey's $49/month tier is a good value for LLM-layer observability.
 
 ---
 
@@ -52,7 +52,7 @@ LiteLLM MCP support was added in late 2025 and is improving, but it is LLM-first
 - **Agent identity is OAuth-scoped**, tied to enterprise IdP (Okta, Entra). There is no lightweight API key system for programmatic agent clients.
 - **MCP semantic cache is for LLM tokens**, not tool call results.
 
-**When to use Kong over Nexvault**: You are a large enterprise with an existing Kong deployment, a Kubernetes infrastructure team, and $5,000+/month API management budget. Nexvault is explicitly not competing at this price point and complexity level.
+**When to use Kong over NexVault**: You are a large enterprise with an existing Kong deployment, a Kubernetes infrastructure team, and $5,000+/month API management budget. NexVault is explicitly not competing at this price point and complexity level.
 
 ---
 
@@ -81,15 +81,15 @@ The honest cost of doing this right:
 
 That's engineering time at $75–150/hour = $36,000–$96,000 in labor, plus ongoing maintenance. A security review of a DIY vault implementation at an enterprise is typically $15,000–$40,000 separately.
 
-Nexvault on the free tier costs $0. On Pro it costs $29/month. The math is not close.
+NexVault on the free tier costs $0. On Pro it costs $29/month. The math is not close.
 
-The counterargument for DIY: you own the code, you understand every decision, there is no dependency on an external project. That is a legitimate concern. Nexvault is MIT licensed and self-hostable — you can fork it, audit it, and never depend on the hosted version.
+The counterargument for DIY: you own the code, you understand every decision, there is no dependency on an external project. That is a legitimate concern. NexVault is MIT licensed and self-hostable — you can fork it, audit it, and never depend on the hosted version.
 
 ---
 
 ## Summary
 
-| | Nexvault | LiteLLM | Portkey | Kong/Gravitee | DIY |
+| | NexVault | LiteLLM | Portkey | Kong/Gravitee | DIY |
 |---|---|---|---|---|---|
 | MCP-native | Yes | Partial | Partial | Partial | N/A |
 | Per-agent encrypted vault | Yes | No | No | No (external) | You build it |
@@ -100,4 +100,4 @@ The counterargument for DIY: you own the code, you understand every decision, th
 | Single Docker Compose | Yes | Yes | Complex | No | N/A |
 | Price floor | $0 | $0 | $0 | $2,500/mo | Labor cost |
 
-Nexvault's defensible position: the only MCP-native gateway with all four differentiators — per-agent encrypted vault, per-agent API key identity, tool call semantic cache, and single `docker compose up` deployment — at a price accessible to individual developers and small teams.
+NexVault's defensible position: the only MCP-native gateway with all four differentiators — per-agent encrypted vault, per-agent API key identity, tool call semantic cache, and single `docker compose up` deployment — at a price accessible to individual developers and small teams.

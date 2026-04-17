@@ -1,6 +1,6 @@
 # Use Cases
 
-Four types of people buy or adopt Nexvault. Here is who they are, what their specific problem looks like, and how Nexvault solves it.
+Four types of people buy or adopt NexVault. Here is who they are, what their specific problem looks like, and how NexVault solves it.
 
 ---
 
@@ -14,7 +14,7 @@ They have API keys — GitHub, Notion, Slack, maybe a Postgres database — and 
 
 They know the right thing to do is to put secrets in a vault and add access control. They don't want to spend a week building that infrastructure for a side project.
 
-**How Nexvault solves it**:
+**How NexVault solves it**:
 
 ```bash
 docker compose up -d
@@ -38,9 +38,9 @@ Their product creates an agent per customer. That agent calls MCP servers using 
 
 They are talking to a Fortune 500 prospect. The prospect's security team asks: "How do you ensure that Customer A's credentials cannot be accessed by Customer B's agent?" Current answer: "We trust the application code." That answer is not going to close the deal.
 
-**How Nexvault solves it**:
+**How NexVault solves it**:
 
-Register one agent per customer in Nexvault. Each agent has its own `nxai_` key. Store each customer's credentials in the vault scoped to their agent — `SALESFORCE_TOKEN`, `GITHUB_PAT`. Use `{{SALESFORCE_TOKEN}}` in tool arguments. Grant each customer's agent only the tools their subscription tier permits.
+Register one agent per customer in NexVault. Each agent has its own `nxai_` key. Store each customer's credentials in the vault scoped to their agent — `SALESFORCE_TOKEN`, `GITHUB_PAT`. Use `{{SALESFORCE_TOKEN}}` in tool arguments. Grant each customer's agent only the tools their subscription tier permits.
 
 Now the answer to the prospect's security team: "Customer A's credentials are AES-256-GCM encrypted, stored under a per-agent namespace, and cryptographically inaccessible to Customer B's agent. Audit logs record every tool call with full request and response payloads, retention 30 days." That closes deals.
 
@@ -60,9 +60,9 @@ API keys for AI agents are scattered across 10 repositories in `.env` files, CI/
 
 The security team is asking about secrets rotation policy. The current policy is: "we rotate when we remember." Last rotation was 14 months ago, and even then, two services missed the update.
 
-**How Nexvault solves it**:
+**How NexVault solves it**:
 
-Deploy Nexvault as the centralized MCP gateway. All 20+ agents register through it. All MCP servers register through it. Secrets rotation now happens in one place — update the vault, the next tool call gets the new value. Permission changes for an agent happen through the Nexvault API, not by editing config files across 10 repos.
+Deploy NexVault as the centralized MCP gateway. All 20+ agents register through it. All MCP servers register through it. Secrets rotation now happens in one place — update the vault, the next tool call gets the new value. Permission changes for an agent happen through the NexVault API, not by editing config files across 10 repos.
 
 The "list of all tools agents can call" is now a single API query:
 
@@ -88,12 +88,12 @@ Legal's specific requirements: (1) credentials must be encrypted at rest with do
 
 Kong or Gravitee would technically meet the requirements, but the procurement and deployment timeline is 3–6 months, and the annual cost is $60,000+. The AI team needs this operational within 6 weeks.
 
-**How Nexvault solves it**:
+**How NexVault solves it**:
 
-Self-host Nexvault inside the company's VPC. Data never leaves their infrastructure. The vault encryption (AES-256-GCM with documented key management in `Decisions.md`) is SOC2-compatible. The audit log records every outcome — success, permission denial, error, timeout — satisfying the gapless requirement. SIEM export is available at the Enterprise tier via audit log export to S3 or a webhook.
+Self-host NexVault inside the company's VPC. Data never leaves their infrastructure. The vault encryption (AES-256-GCM with documented key management in `Decisions.md`) is SOC2-compatible. The audit log records every outcome — success, permission denial, error, timeout — satisfying the gapless requirement. SIEM export is available at the Enterprise tier via audit log export to S3 or a webhook.
 
 The deployment timeline is measured in days, not months. The cost is a fraction of Kong or Gravitee.
 
-For the SOC2 audit, Nexvault provides: documented encryption decisions, a gapless audit log schema, per-agent access control that is reviewable by the auditor, and separation between the master encryption key (env var) and the encrypted data (database).
+For the SOC2 audit, NexVault provides: documented encryption decisions, a gapless audit log schema, per-agent access control that is reviewable by the auditor, and separation between the master encryption key (env var) and the encrypted data (database).
 
 **Which tier fits**: Enterprise (custom pricing). Dedicated infra, SLA, audit log export, SSO integration, and a documented security review process. [Contact us](mailto:enterprise@nexvault.dev) to discuss.

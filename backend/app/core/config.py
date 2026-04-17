@@ -1,5 +1,5 @@
 """
-Nexvault — Application configuration.
+NexVault — Application configuration.
 
 All settings are read from environment variables (or a .env file when
 APP_ENV=development). No secrets are hardcoded here — see .env.example.

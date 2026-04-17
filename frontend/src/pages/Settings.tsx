@@ -1,5 +1,5 @@
 /**
- * Nexvault — Settings page.
+ * NexVault — Settings page.
  *
  * Sections:
  *   - Gateway API Key (stored in localStorage)
@@ -242,7 +242,7 @@ function ApiKeySection(): React.ReactElement {
             Gateway API Key
           </label>
           <p className="text-secondary text-xs mb-2">
-            Stored locally in your browser. Required to authenticate with the Nexvault API.
+            Stored locally in your browser. Required to authenticate with the NexVault API.
           </p>
           <div className="flex gap-2">
             <input
@@ -326,7 +326,7 @@ function GatewayUrlSection(): React.ReactElement {
             Gateway URL
           </label>
           <p className="text-secondary text-xs mb-2">
-            Base URL of the Nexvault backend. Defaults to{' '}
+            Base URL of the NexVault backend. Defaults to{' '}
             <code className="font-mono text-accent-light">http://localhost:8000/api/v1</code>.
             Saving will reload the page to apply the change.
           </p>

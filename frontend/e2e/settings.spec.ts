@@ -1,5 +1,5 @@
 /**
- * Nexvault E2E — Settings page tests.
+ * NexVault E2E — Settings page tests.
  *
  * Covers: profile section, API key save/show/hide/clear,
  * gateway URL save, billing section (plan badge, usage bars, upgrade CTA).

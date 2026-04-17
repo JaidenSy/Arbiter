@@ -1,5 +1,5 @@
 /**
- * Nexvault — Vault page.
+ * NexVault — Vault page.
  *
  * Two-panel layout:
  *   Left:  Agent selector list

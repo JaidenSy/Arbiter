@@ -1,5 +1,5 @@
 """
-Nexvault — ProxyService.
+NexVault — ProxyService.
 
 The core gateway component.  Every tool call from an agent passes through
 here before reaching an MCP server.

@@ -1,7 +1,7 @@
 /**
- * Nexvault Frontend — shared TypeScript types for API responses.
+ * NexVault Frontend — shared TypeScript types for API responses.
  *
- * These types mirror the Pydantic schemas exposed by the Nexvault backend.
+ * These types mirror the Pydantic schemas exposed by the NexVault backend.
  * Keep in sync with CODER-A's backend contracts.
  */
 

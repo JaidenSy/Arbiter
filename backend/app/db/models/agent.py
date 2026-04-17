@@ -1,8 +1,8 @@
 """
-Nexvault — SQLAlchemy ORM model: Agent.
+NexVault — SQLAlchemy ORM model: Agent.
 
 An Agent represents an AI assistant (Claude instance, automation script,
-etc.) that authenticates to the Nexvault gateway with an API key and is
+etc.) that authenticates to the NexVault gateway with an API key and is
 subject to RBAC-controlled tool access.
 """
 

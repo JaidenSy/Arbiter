@@ -26,7 +26,7 @@
 The free tier is not a crippled trial. 3 agents, 5 MCP servers, and 1,000 tool calls per month covers:
 
 - A solo developer's personal agent setup
-- A team evaluating Nexvault before committing
+- A team evaluating NexVault before committing
 - An open source project with a small number of automated agents
 - A student or hobbyist building agent tooling
 
@@ -47,7 +47,7 @@ At scale, you are making repeated or near-duplicate tool calls. The semantic cac
 | Upstream calls made | 100,000 | 70,000 |
 | Calls saved | 0 | 30,000 |
 | Cost saved at $0.01/call avg | $0 | $300/month |
-| Nexvault Pro cost | — | $29/month |
+| NexVault Pro cost | — | $29/month |
 | **Net savings** | — | **$271/month** |
 
 30% is a conservative hit rate for typical agent workloads. Agents running similar queries repeatedly — file reads, database lookups, search queries — commonly hit 40–60%.
@@ -58,7 +58,7 @@ The Pro tier costs $29/month. The cache pays for itself at roughly 3,000 avoided
 
 ## Comparison
 
-| | Nexvault Free | Nexvault Pro | Nexvault Team | LiteLLM OSS | LiteLLM Enterprise | Portkey Production | Kong AI |
+| | NexVault Free | NexVault Pro | NexVault Team | LiteLLM OSS | LiteLLM Enterprise | Portkey Production | Kong AI |
 |---|---|---|---|---|---|---|---|
 | **Price** | $0 | $29/mo | $99/mo | $0 | $250/mo | $49/mo | $2,500+/mo |
 | **MCP-native** | Yes | Yes | Yes | Partial | Partial | Partial | Add-on |
@@ -97,4 +97,4 @@ Enterprise is the right choice for teams with data residency requirements, SOC2 
 - Tool call counts reset at the start of each billing cycle.
 - Overages on the Free tier result in rate limiting (not charges).
 - Overages on Pro and Team result in per-call charges at $0.0005/call above the limit, or you can upgrade tiers mid-cycle.
-- Self-hosted deployments on any tier do not report usage to Nexvault servers. Honor system for Free; Pro and Team self-hosted plans use a license key.
+- Self-hosted deployments on any tier do not report usage to NexVault servers. Honor system for Free; Pro and Team self-hosted plans use a license key.

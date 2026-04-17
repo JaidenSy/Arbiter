@@ -1,5 +1,5 @@
 """
-Nexvault — API endpoints: Agents.
+NexVault — API endpoints: Agents.
 
 Manages agent registration and lifecycle.  API keys are generated on
 creation and returned ONCE; the hash is stored, never the raw key.

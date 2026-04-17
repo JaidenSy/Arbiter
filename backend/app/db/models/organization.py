@@ -1,5 +1,5 @@
 """
-Nexvault — SQLAlchemy ORM model: Organization.
+NexVault — SQLAlchemy ORM model: Organization.
 
 An Organization is the top-level multi-tenancy boundary.  All resources
 (agents, MCP servers, vault secrets, sessions) belong to exactly one org.
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 class Organization(Base):
     """
-    A tenant organization in the Nexvault gateway.
+    A tenant organization in the NexVault gateway.
 
     Columns:
         id:                    Auto-generated UUID primary key.

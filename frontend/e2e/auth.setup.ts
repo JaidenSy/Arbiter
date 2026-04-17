@@ -1,5 +1,5 @@
 /**
- * Nexvault E2E — Auth setup.
+ * NexVault E2E — Auth setup.
  *
  * Registers a shared test user (once per test run), logs in via the UI,
  * and saves the browser storage state to e2e/.auth/user.json.

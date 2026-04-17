@@ -1,5 +1,5 @@
 /**
- * Nexvault E2E — Vault page tests.
+ * NexVault E2E — Vault page tests.
  *
  * Covers: create secret, value hidden after creation, agent selector,
  * cross-agent isolation, delete secret.

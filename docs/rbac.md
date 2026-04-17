@@ -1,6 +1,6 @@
 # RBAC
 
-Nexvault uses a flat permission model: every tool call is checked against a `tool_permissions` table keyed on `(agent_id, mcp_server_id, tool_name)`. No roles, no groups, no hierarchy in Phase 1.
+NexVault uses a flat permission model: every tool call is checked against a `tool_permissions` table keyed on `(agent_id, mcp_server_id, tool_name)`. No roles, no groups, no hierarchy in Phase 1.
 
 ## Permission model
 

@@ -1,5 +1,5 @@
 /**
- * Nexvault — Tool Permissions page.
+ * NexVault — Tool Permissions page.
  *
  * Two-panel layout:
  *   Left:  Agent selector list

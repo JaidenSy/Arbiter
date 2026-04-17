@@ -1,4 +1,4 @@
-# Self-Hosting Nexvault
+# Self-Hosting NexVault
 
 ## Prerequisites
 

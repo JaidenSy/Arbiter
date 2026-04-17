@@ -1,5 +1,5 @@
 /**
- * Nexvault — Dashboard page.
+ * NexVault — Dashboard page.
  *
  * Landing page showing a high-level overview of gateway activity:
  *   - 4 stat metrics (agents, servers, tool calls, cache hit rate)

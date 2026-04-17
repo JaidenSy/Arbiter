@@ -1,5 +1,5 @@
 """
-Nexvault — API endpoints: Auth.
+NexVault — API endpoints: Auth.
 
 Human-operator authentication via email/password + JWT + rotating refresh tokens.
 

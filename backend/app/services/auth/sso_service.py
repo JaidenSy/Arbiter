@@ -1,5 +1,5 @@
 """
-Nexvault — SSO service.
+NexVault — SSO service.
 
 Handles the user-provisioning side of OAuth2 social login:
 
@@ -58,7 +58,7 @@ async def get_or_create_user(
     avatar_url: str | None,
 ) -> User:
     """
-    Resolve a social login to a Nexvault User, creating records as needed.
+    Resolve a social login to a NexVault User, creating records as needed.
 
     Lookup order:
         1. Find existing SocialAccount by (provider, provider_user_id).

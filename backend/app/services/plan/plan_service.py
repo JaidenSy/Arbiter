@@ -1,5 +1,5 @@
 """
-Nexvault — Plan enforcement service.
+NexVault — Plan enforcement service.
 
 Provides two check functions called from the service/endpoint layer:
 

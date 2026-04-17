@@ -1,5 +1,5 @@
 """
-Nexvault — API endpoints: MCP Servers.
+NexVault — API endpoints: MCP Servers.
 
 CRUD management of MCP server registrations.
 

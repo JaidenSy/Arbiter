@@ -1,5 +1,5 @@
 """
-Nexvault — Pydantic schemas for the Proxy (tool call gateway) endpoint.
+NexVault — Pydantic schemas for the Proxy (tool call gateway) endpoint.
 
 These schemas define the public contract for POST /proxy/tool-call — the
 central gateway endpoint that agents call to invoke MCP tools.

@@ -1,5 +1,5 @@
 /**
- * Nexvault — MCP Servers page.
+ * NexVault — MCP Servers page.
  *
  * Lists registered MCP servers and allows:
  *   - Adding a new server (form modal)

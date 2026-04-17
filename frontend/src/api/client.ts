@@ -1,5 +1,5 @@
 /**
- * Nexvault Frontend — Axios HTTP clients.
+ * NexVault Frontend — Axios HTTP clients.
  *
  * apiClient  — attaches the agent API key (Bearer nxai_<hex>). Used by all
  *              existing pages that interact with agent/MCP resource endpoints.

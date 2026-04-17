@@ -1,4 +1,4 @@
-# Nexvault
+# NexVault
 
 A self-hosted MCP (Model Context Protocol) gateway that gives teams centralized control over AI tool access: secret management, semantic caching, RBAC, and full audit logging.
 
@@ -21,7 +21,7 @@ curl http://localhost:8000/health
 Client (Claude / any MCP agent)
         |
         v
-  [Nexvault API Gateway]  :8000
+  [NexVault API Gateway]  :8000
         |
   +-----------+----------+-----------+
   |           |          |           |

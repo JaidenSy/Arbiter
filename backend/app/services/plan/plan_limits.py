@@ -1,5 +1,5 @@
 """
-Nexvault — Plan limit constants and quota-related exceptions.
+NexVault — Plan limit constants and quota-related exceptions.
 
 PLAN_LIMITS is the single source of truth for per-tier resource caps.
 None means unlimited (Enterprise tier).

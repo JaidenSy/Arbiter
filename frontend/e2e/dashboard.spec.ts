@@ -1,5 +1,5 @@
 /**
- * Nexvault E2E — Dashboard tests.
+ * NexVault E2E — Dashboard tests.
  *
  * Covers: stat cards render, chart renders, session row click navigates
  * to trace, UsageStrip visible.

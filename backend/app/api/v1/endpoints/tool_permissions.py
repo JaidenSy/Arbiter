@@ -1,5 +1,5 @@
 """
-Nexvault — API endpoints: Tool Permissions.
+NexVault — API endpoints: Tool Permissions.
 
 Manages RBAC permission records that control which agents may call which
 tools on which MCP servers.  Permissions are agent-scoped sub-resources.

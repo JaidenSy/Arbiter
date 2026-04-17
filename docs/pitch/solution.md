@@ -1,6 +1,6 @@
 # The Solution
 
-Nexvault sits between your AI agents and your MCP servers. Every tool call passes through it. In exchange for that position, it gives you agent identity, encrypted secrets, per-tool access control, a semantic cache, and a gapless audit log.
+NexVault sits between your AI agents and your MCP servers. Every tool call passes through it. In exchange for that position, it gives you agent identity, encrypted secrets, per-tool access control, a semantic cache, and a gapless audit log.
 
 ---
 
@@ -8,7 +8,7 @@ Nexvault sits between your AI agents and your MCP servers. Every tool call passe
 
 ### Agent identity: `nxai_` prefixed API keys
 
-Each agent gets a unique API key in the format `nxai_<64-hex-chars>`. The raw key is shown once and never stored. What Nexvault stores is `SHA-256(raw_key)` — a one-way hash. When a request arrives, the bearer token is hashed and compared with `hmac.compare_digest` (timing-safe) against stored hashes.
+Each agent gets a unique API key in the format `nxai_<64-hex-chars>`. The raw key is shown once and never stored. What NexVault stores is `SHA-256(raw_key)` — a one-way hash. When a request arrives, the bearer token is hashed and compared with `hmac.compare_digest` (timing-safe) against stored hashes.
 
 The `nxai_` prefix is intentional. It makes keys grep-able. If a key leaks into a log file, a GitHub Actions log, or a Slack message, you can search for `nxai_` and find it. Generic UUIDs are invisible in noisy output.
 
@@ -71,7 +71,7 @@ Every tool call produces a `SessionEvent` row:
 
 Every outcome is logged. Permission denials, timeouts, and upstream errors are not filtered out. An audit log with gaps is not an audit log.
 
-Sessions group related calls. If your agent sends `X-Nexvault-Session-ID` across calls, they appear as a single trace in the dashboard — you can see the full tool call sequence for one agent run.
+Sessions group related calls. If your agent sends `X-NexVault-Session-ID` across calls, they appear as a single trace in the dashboard — you can see the full tool call sequence for one agent run.
 
 ### Semantic cache: 3-layer, MCP tool call-specific
 

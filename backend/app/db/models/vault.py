@@ -1,5 +1,5 @@
 """
-Nexvault — SQLAlchemy ORM model: VaultSecret.
+NexVault — SQLAlchemy ORM model: VaultSecret.
 
 Stores encrypted secrets that the proxy can inject into MCP tool calls at
 runtime.  The ciphertext is AES-256-GCM encrypted using the key from

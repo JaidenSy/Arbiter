@@ -1,5 +1,5 @@
 /**
- * Nexvault — Login page.
+ * NexVault — Login page.
  *
  * Route: /login (public, no sidebar)
  * On success: navigates to / or /onboarding (if onboarding incomplete).
@@ -88,7 +88,7 @@ function Login(): React.ReactElement {
       <div className="w-full max-w-sm px-4">
         {/* Wordmark */}
         <div className="text-center mb-10">
-          <span className="font-mono text-2xl text-white tracking-tight">Nexvault</span>
+          <span className="font-mono text-2xl text-white tracking-tight">NexVault</span>
           <p className="text-secondary text-xs mt-2">developer-first MCP gateway</p>
         </div>
 

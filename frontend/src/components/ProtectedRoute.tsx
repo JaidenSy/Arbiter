@@ -1,5 +1,5 @@
 /**
- * Nexvault — ProtectedRoute component.
+ * NexVault — ProtectedRoute component.
  *
  * Wraps routes that require authentication.
  * - Loading: shows centered violet pulse spinner

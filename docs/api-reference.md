@@ -536,7 +536,7 @@ The core gateway endpoint. Every MCP tool call from an agent goes through here.
 | Header | Required | Description |
 |--------|----------|-------------|
 | `Authorization` | Yes | `Bearer nxai_<key>` |
-| `X-Nexvault-Session-ID` | No | Attach this call to an existing session. If omitted, a new session is started. |
+| `X-NexVault-Session-ID` | No | Attach this call to an existing session. If omitted, a new session is started. |
 | `X-MCP-Server` | Yes | Name (slug) of the registered MCP server to forward to |
 
 **Request body**: A valid JSON-RPC 2.0 object per the MCP spec:

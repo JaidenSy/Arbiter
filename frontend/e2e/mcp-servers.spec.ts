@@ -1,5 +1,5 @@
 /**
- * Nexvault E2E — MCP Servers page tests.
+ * NexVault E2E — MCP Servers page tests.
  *
  * Covers: create server, edit server, delete server, cache toggle.
  */

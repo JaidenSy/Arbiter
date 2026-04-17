@@ -1,5 +1,5 @@
 """
-Nexvault Backend — Application entry point.
+NexVault Backend — Application entry point.
 
 Initialises the FastAPI app, registers all API routers, configures CORS,
 and manages application lifespan (database pool + Redis connection setup
@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 def create_app() -> FastAPI:
     """Construct and configure the FastAPI application instance."""
     app = FastAPI(
-        title="Nexvault",
+        title="NexVault",
         description=(
             "Self-hosted MCP gateway with secret management, "
             "semantic caching, RBAC, and audit logging."

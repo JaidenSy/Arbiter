@@ -1,5 +1,5 @@
 """
-Nexvault — API endpoints: Stats.
+NexVault — API endpoints: Stats.
 
 Dashboard statistics endpoint returning aggregated counts and metrics.
 

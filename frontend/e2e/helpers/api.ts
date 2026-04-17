@@ -1,5 +1,5 @@
 /**
- * Nexvault E2E — Direct API helpers for test setup.
+ * NexVault E2E — Direct API helpers for test setup.
  *
  * These helpers call the backend API directly (bypassing the UI) to set up
  * test data quickly. Use them in beforeEach/beforeAll hooks.

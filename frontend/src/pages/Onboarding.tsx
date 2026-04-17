@@ -1,5 +1,5 @@
 /**
- * Nexvault — Onboarding wizard.
+ * NexVault — Onboarding wizard.
  *
  * Route: /onboarding (protected, no sidebar)
  * 4-step wizard that walks a new user through:
@@ -58,10 +58,10 @@ function Step1({ orgName, onNext }: Step1Props): React.ReactElement {
   return (
     <div className="text-center space-y-6">
       <h1 className="text-white text-2xl font-mono font-semibold">
-        Welcome to Nexvault, {orgName}
+        Welcome to NexVault, {orgName}
       </h1>
       <p className="text-secondary text-sm font-mono leading-relaxed max-w-sm mx-auto">
-        Nexvault is a developer-first MCP gateway that gives your agents identity,
+        NexVault is a developer-first MCP gateway that gives your agents identity,
         tool-level access control, a secrets vault, and full observability — all in one place.
       </p>
       <p className="text-secondary text-sm font-mono leading-relaxed max-w-sm mx-auto">

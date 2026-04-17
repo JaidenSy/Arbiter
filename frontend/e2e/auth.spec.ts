@@ -1,5 +1,5 @@
 /**
- * Nexvault E2E — Auth tests.
+ * NexVault E2E — Auth tests.
  *
  * Covers: login, logout, auth guard (unauthenticated redirect).
  * Registration is covered in auth.setup.ts.

@@ -1,5 +1,5 @@
 /**
- * Nexvault Frontend — Root application component.
+ * NexVault Frontend — Root application component.
  *
  * Routes:
  *   /            → Dashboard    (stats, cache hit rate, recent sessions)

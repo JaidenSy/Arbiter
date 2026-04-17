@@ -1,5 +1,5 @@
 """
-Nexvault — Auth service.
+NexVault — Auth service.
 
 Handles user registration, login, token refresh, and logout.  Business
 logic lives here; HTTP concerns stay in the endpoint layer.

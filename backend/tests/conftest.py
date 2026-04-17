@@ -1,5 +1,5 @@
 """
-Nexvault — pytest fixtures (conftest.py).
+NexVault — pytest fixtures (conftest.py).
 
 Shared fixtures available to all test modules.  Provides:
     - test_client:  Async HTTPX client wired to the FastAPI app with mocked deps

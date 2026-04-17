@@ -1,5 +1,5 @@
 """
-Nexvault — Security utilities.
+NexVault — Security utilities.
 
 Provides deterministic hashing of API keys for storage and constant-time
 comparison for verification.  Raw API keys are NEVER stored in the database;

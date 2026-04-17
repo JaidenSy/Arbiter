@@ -1,5 +1,5 @@
 """
-Nexvault — VaultService.
+NexVault — VaultService.
 
 Provides AES-256-GCM encryption/decryption and CRUD operations for secrets
 stored in the vault_secrets table.

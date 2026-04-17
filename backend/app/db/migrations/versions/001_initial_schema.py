@@ -4,7 +4,7 @@ Revision ID: 001
 Revises:
 Create Date: 2026-03-10
 
-Baseline migration that creates all Nexvault tables from scratch.
+Baseline migration that creates all NexVault tables from scratch.
 Matches the ORM models in app/db/models/.  Run ``alembic upgrade head``
 against a fresh PostgreSQL database to initialise the schema.
 """

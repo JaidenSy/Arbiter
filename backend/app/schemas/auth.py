@@ -1,5 +1,5 @@
 """
-Nexvault — Pydantic schemas for the auth endpoints.
+NexVault — Pydantic schemas for the auth endpoints.
 
 All request/response bodies for /auth/* routes are defined here.
 """

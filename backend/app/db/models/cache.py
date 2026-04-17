@@ -1,5 +1,5 @@
 """
-Nexvault — SQLAlchemy ORM model: CacheEntry.
+NexVault — SQLAlchemy ORM model: CacheEntry.
 
 Stores the results of tool calls for semantic deduplication.  When a new
 tool call arrives, the CacheService computes its embedding and searches

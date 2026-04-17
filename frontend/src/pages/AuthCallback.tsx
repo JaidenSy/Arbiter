@@ -1,5 +1,5 @@
 /**
- * Nexvault — SSO Callback page.
+ * NexVault — SSO Callback page.
  *
  * Route: /auth/callback (public)
  *
