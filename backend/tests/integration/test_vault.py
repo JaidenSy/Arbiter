@@ -67,12 +67,14 @@ class TestCreateSecret:
     async def test_create_secret_returns_201_no_value(self, fake_redis):
         """POST /vault/secrets → 201, response has id/name/agent_id but NOT value."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user, _make_mock_org
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
+        mock_org = _make_mock_org()
         secret_id = uuid.uuid4()
 
         # store_secret calls db.execute (upsert lookup) then db.commit + db.refresh
@@ -93,6 +95,8 @@ class TestCreateSecret:
 
         db.execute = execute
         db.refresh = refresh
+        db.get = AsyncMock(return_value=mock_org)
+        db.scalar = AsyncMock(return_value=0)
 
         async def override_get_db():
             yield db
@@ -103,9 +107,13 @@ class TestCreateSecret:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -208,13 +216,14 @@ class TestGetSecret:
     async def test_get_secret_returns_decrypted_value(self, fake_redis):
         """GET /vault/secrets/{id} returns id/name/value with plaintext."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
         from app.services.vault.vault_service import VaultService
-        from tests.conftest import _make_mock_agent
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
         secret_id = uuid.uuid4()
 
         # Encrypt a real value using VaultService so decrypt works
@@ -234,9 +243,13 @@ class TestGetSecret:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -346,14 +359,15 @@ class TestCrossAgentIsolation:
         see Agent A's secrets — DB mock returns empty list when Agent B is the caller.
         """
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         # Agent B
         raw_key_b = generate_api_key()
         mock_agent_b = _make_mock_agent(raw_key_b)
         mock_agent_b.id = uuid.UUID("bbbbbbbb-0000-0000-0000-000000000002")
+        mock_user = _make_mock_user()
 
         # DB returns empty list (Agent B has no secrets)
         db = AsyncMock()
@@ -376,9 +390,13 @@ class TestCrossAgentIsolation:
         async def override_get_current_agent():
             return mock_agent_b
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -402,13 +420,14 @@ class TestCrossAgentIsolation:
         so a secret owned by Agent A returns None → 404.
         """
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key_b = generate_api_key()
         mock_agent_b = _make_mock_agent(raw_key_b)
         mock_agent_b.id = uuid.UUID("bbbbbbbb-0000-0000-0000-000000000002")
+        mock_user = _make_mock_user()
 
         agent_a_secret_id = uuid.uuid4()
 
@@ -424,9 +443,13 @@ class TestCrossAgentIsolation:
         async def override_get_current_agent():
             return mock_agent_b
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)

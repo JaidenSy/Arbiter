@@ -138,6 +138,7 @@ class TestStatsZeroState:
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
         # Explicitly: 0 calls, 0 hits
         db = _make_stats_db(tool_calls_today=0, cache_hits_today=0)
 
@@ -150,9 +151,13 @@ class TestStatsZeroState:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -181,6 +186,7 @@ class TestStatsWithData:
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
         db = _make_stats_db(agents_count=2, servers_count=1)
 
         async def override_get_db():
@@ -192,9 +198,13 @@ class TestStatsWithData:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -221,6 +231,7 @@ class TestStatsWithData:
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
         db = _make_stats_db(tool_calls_today=4, cache_hits_today=2)
 
         async def override_get_db():
@@ -232,9 +243,13 @@ class TestStatsWithData:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -267,6 +282,7 @@ class TestStatsWithData:
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
         # tool_calls_today=4 means DB returned 4 — yesterday's event is excluded
         # by the SQL filter DATE_TRUNC('day', NOW()). Mock simulates post-filter result.
         db = _make_stats_db(tool_calls_today=4, cache_hits_today=2)
@@ -280,9 +296,13 @@ class TestStatsWithData:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -348,6 +368,7 @@ class TestStatsHistory:
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
         # No rows — all buckets should be zeros
         db = _make_history_db([])
 
@@ -360,9 +381,13 @@ class TestStatsHistory:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -389,6 +414,7 @@ class TestStatsHistory:
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
         db = _make_history_db([])
 
         async def override_get_db():
@@ -400,9 +426,13 @@ class TestStatsHistory:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -429,6 +459,7 @@ class TestStatsHistory:
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
 
         today = datetime.now(timezone.utc).date()
         today_dt = datetime(today.year, today.month, today.day, tzinfo=timezone.utc)
@@ -446,9 +477,13 @@ class TestStatsHistory:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -481,6 +516,7 @@ class TestStatsHistory:
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
         db = _make_history_db([])
 
         async def override_get_db():
@@ -492,9 +528,13 @@ class TestStatsHistory:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)

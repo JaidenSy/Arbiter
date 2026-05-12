@@ -87,13 +87,20 @@ class TestValidationErrorHandler:
         which wraps them in {"detail": "Request validation failed", "errors": ...}.
         """
         from app.main import app
-        from app.core.dependencies import get_db, get_redis
+        from app.core.dependencies import get_db, get_current_user
+        from tests.conftest import _make_mock_user
         from unittest.mock import AsyncMock
+
+        mock_user = _make_mock_user()
 
         async def override_get_db():
             yield AsyncMock()
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             # POST without 'name' field — required by AgentCreate schema
@@ -103,6 +110,7 @@ class TestValidationErrorHandler:
             )
         finally:
             app.dependency_overrides.pop(get_db, None)
+            app.dependency_overrides.pop(get_current_user, None)
 
         assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
 
@@ -110,13 +118,20 @@ class TestValidationErrorHandler:
     async def test_422_response_has_detail_key(self, test_client):
         """422 response from custom handler must include 'detail' key."""
         from app.main import app
-        from app.core.dependencies import get_db
+        from app.core.dependencies import get_db, get_current_user
+        from tests.conftest import _make_mock_user
         from unittest.mock import AsyncMock
+
+        mock_user = _make_mock_user()
 
         async def override_get_db():
             yield AsyncMock()
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             resp = await test_client.post(
@@ -125,6 +140,7 @@ class TestValidationErrorHandler:
             )
         finally:
             app.dependency_overrides.pop(get_db, None)
+            app.dependency_overrides.pop(get_current_user, None)
 
         assert resp.status_code == 422
         data = resp.json()
