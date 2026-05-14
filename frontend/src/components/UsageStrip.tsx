@@ -92,7 +92,7 @@ function UsageStrip(): React.ReactElement | null {
       <span>
         cache hit rate: <span className="text-primary">{cacheRatePct}</span>
       </span>
-      {plan !== 'enterprise' && (
+      {plan === 'free' && (
         <>
           <span className="text-white/20">•</span>
           <Link

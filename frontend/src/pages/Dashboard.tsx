@@ -70,11 +70,11 @@ function StatMetric({
   valueClass = "text-primary",
 }: StatMetricProps): React.ReactElement {
   return (
-    <div className="flex-1 px-6 py-5">
-      <p className="text-muted text-xs font-mono tracking-wider uppercase mb-1">
+    <div className="flex-1 px-6 py-5 group hover:bg-elevated/60 transition-colors">
+      <p className="text-muted text-xs font-mono tracking-wider uppercase mb-2">
         {label}
       </p>
-      <p className={`text-3xl font-mono font-light ${valueClass}`}>{value}</p>
+      <p className={`text-3xl font-mono font-light tabular-nums ${valueClass}`}>{value}</p>
     </div>
   );
 }
@@ -122,11 +122,11 @@ function Dashboard(): React.ReactElement {
   return (
     <div>
       <UsageStrip />
-    <div className="p-8">
-      <h1 className="text-primary text-lg font-semibold mb-8">Dashboard</h1>
+    <div className="p-6 md:p-8 max-w-[1400px]">
+      <h1 className="text-primary text-lg font-semibold mb-6">Dashboard</h1>
 
       {/* Stat strip */}
-      <div className="flex border border-white/[0.07] rounded mb-8 divide-x divide-white/[0.07]">
+      <div className="flex border border-white/[0.07] rounded-lg mb-6 divide-x divide-white/[0.07] overflow-hidden">
         <StatMetric
           label="Active Agents"
           value={statsLoading ? "…" : (stats?.agents_count ?? "—")}
@@ -151,20 +151,20 @@ function Dashboard(): React.ReactElement {
       </div>
 
       {/* Area chart */}
-      <div className="border border-white/[0.07] p-6 mb-8">
+      <div className="border border-white/[0.07] rounded-lg p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <span className="text-secondary text-xs uppercase tracking-widest">
+          <span className="text-secondary text-xs uppercase tracking-widest font-mono">
             Activity
           </span>
-          <div className="inline-flex border border-white/[0.07] rounded overflow-hidden">
+          <div className="inline-flex border border-white/[0.07] rounded-md overflow-hidden">
             {(["7d", "24h"] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`px-3 py-1 text-xs font-mono transition-colors ${
+                className={`px-3 py-1 text-xs font-mono transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${
                   period === p
-                    ? "bg-elevated border-white/14 text-primary"
-                    : "text-muted hover:text-secondary"
+                    ? "bg-elevated text-primary"
+                    : "text-muted hover:text-secondary hover:bg-elevated/50"
                 }`}
               >
                 {p}
@@ -252,18 +252,32 @@ function Dashboard(): React.ReactElement {
 
       {/* Recent sessions table */}
       <div>
-        <h2 className="text-secondary text-xs font-mono tracking-wider uppercase mb-4">
+        <h2 className="text-secondary text-xs font-mono tracking-wider uppercase mb-3">
           Recent Sessions
         </h2>
         <div className="border-t border-white/[0.07]">
           {sessionsLoading ? (
-            <p className="py-4 text-sm text-secondary font-mono">
-              Loading sessions…
-            </p>
+            <div className="space-y-2 py-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse flex gap-4 px-4 py-2">
+                  <div className="h-3 bg-elevated rounded w-20" />
+                  <div className="h-3 bg-elevated rounded w-24" />
+                  <div className="h-3 bg-elevated rounded w-16" />
+                  <div className="h-3 bg-elevated rounded w-8" />
+                </div>
+              ))}
+            </div>
           ) : !sessions || sessions.length === 0 ? (
-            <p className="py-4 text-sm text-secondary font-mono">
-              No sessions recorded yet.
-            </p>
+            <div className="py-12 text-center">
+              <svg className="mx-auto mb-3 text-muted" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              <p className="text-secondary text-sm font-mono mb-1">No sessions yet.</p>
+              <p className="text-muted text-xs">Sessions appear once an agent makes its first tool call.</p>
+            </div>
           ) : (
             <table className="min-w-full">
               <thead>
@@ -286,19 +300,19 @@ function Dashboard(): React.ReactElement {
                 {sessions.map((session) => (
                   <tr
                     key={session.id}
-                    className="border-b border-white/[0.07] cursor-pointer hover:bg-elevated transition-colors"
+                    className="border-b border-white/[0.07] cursor-pointer hover:bg-elevated/70 transition-colors group"
                     onClick={() => navigate(`/sessions/${session.id}`)}
                   >
-                    <td className="py-2 px-4 text-sm font-mono text-accent-light">
+                    <td className="py-2.5 px-4 text-sm font-mono text-accent-light group-hover:text-white transition-colors">
                       {session.id.slice(0, 8)}
                     </td>
-                    <td className="py-2 px-4 text-sm font-mono text-secondary">
+                    <td className="py-2.5 px-4 text-sm font-mono text-secondary">
                       {agents?.find((a) => a.id === session.agent_id)?.name ?? session.agent_id.slice(0, 8)}
                     </td>
-                    <td className="py-2 px-4 text-sm text-secondary">
+                    <td className="py-2.5 px-4 text-sm text-secondary">
                       {relativeTime(session.started_at)}
                     </td>
-                    <td className="py-2 px-4 text-sm font-mono text-secondary">
+                    <td className="py-2.5 px-4 text-sm font-mono text-secondary tabular-nums">
                       {session.events?.length ?? 0}
                     </td>
                   </tr>

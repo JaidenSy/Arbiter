@@ -319,13 +319,17 @@ function MCPServers(): React.ReactElement {
               </>
             ) : !servers || servers.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-12 px-4 text-center">
-                  <p className="text-secondary text-sm">
-                    No MCP servers registered.
-                  </p>
-                  <p className="text-muted text-xs mt-1">
-                    Add a server to start routing tool calls.
-                  </p>
+                <td colSpan={6} className="py-16 px-4 text-center">
+                  <svg className="mx-auto mb-3 text-muted" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                    <rect x="2" y="3" width="20" height="5" rx="1"/>
+                    <rect x="2" y="10" width="20" height="5" rx="1"/>
+                    <rect x="2" y="17" width="20" height="5" rx="1"/>
+                    <circle cx="18" cy="5.5" r="0.75" fill="currentColor"/>
+                    <circle cx="18" cy="12.5" r="0.75" fill="currentColor"/>
+                    <circle cx="18" cy="19.5" r="0.75" fill="currentColor"/>
+                  </svg>
+                  <p className="text-secondary text-sm font-mono mb-1">No MCP servers registered.</p>
+                  <p className="text-muted text-xs">Add a server to start routing tool calls through NexVault.</p>
                 </td>
               </tr>
             ) : (

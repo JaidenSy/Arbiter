@@ -321,8 +321,13 @@ function PermissionsTable({
               </>
             ) : !permissions || permissions.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-12 px-4 text-center">
-                  <p className="text-secondary text-sm">No permissions granted.</p>
+                <td colSpan={5} className="py-16 px-4 text-center">
+                  <svg className="mx-auto mb-3 text-muted" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                    <rect x="3" y="11" width="18" height="11" rx="1"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  <p className="text-secondary text-sm font-mono mb-1">No permissions granted.</p>
+                  <p className="text-muted text-xs">Grant a permission to allow this agent to call specific tools.</p>
                 </td>
               </tr>
             ) : (

@@ -77,11 +77,12 @@ function NavItem({ to, icon, title, end }: NavItemProps): React.ReactElement {
       to={to}
       end={end}
       title={title}
+      aria-label={title}
       className={({ isActive }) =>
-        `flex items-center justify-center w-full h-10 transition-colors ${
+        `flex items-center justify-center w-full h-10 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent ${
           isActive
-            ? 'text-primary bg-highlight'
-            : 'text-secondary hover:text-primary hover:bg-elevated'
+            ? 'text-primary bg-highlight border-r-2 border-accent'
+            : 'text-secondary hover:text-primary hover:bg-elevated border-r-2 border-transparent'
         }`
       }
     >
