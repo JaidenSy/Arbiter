@@ -31,35 +31,46 @@ function UsageBar({
   const isAtLimit = limit !== null && pct >= 100
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <div className="flex justify-between text-xs font-mono text-secondary">
         <span>{label}</span>
         <span
           className={
             isAtLimit
-              ? 'text-red-400'
+              ? 'text-error font-semibold'
               : isNearLimit
-              ? 'text-yellow-400'
+              ? 'text-warning font-semibold'
               : 'text-primary'
           }
         >
-          {used.toLocaleString()} / {limit === null ? '\u221e' : limit.toLocaleString()}
+          {used.toLocaleString()} / {limit === null ? '∞' : limit.toLocaleString()}
         </span>
       </div>
       {limit !== null && (
-        <div className="h-1 bg-elevated rounded-full overflow-hidden">
+        <div className="h-1.5 bg-elevated rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${
+            className={`h-full rounded-full transition-all duration-500 ${
               isAtLimit
-                ? 'bg-red-500'
+                ? 'bg-error'
                 : isNearLimit
-                ? 'bg-yellow-400'
-                : 'bg-accent'
+                ? 'bg-warning'
+                : 'bg-gradient-to-r from-accent to-violet-500'
             }`}
             style={{ width: `${pct}%` }}
           />
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Section header ────────────────────────────────────────────────────────────
+
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }): React.ReactElement {
+  return (
+    <div className="mb-5">
+      <h2 className="text-primary text-sm font-semibold">{title}</h2>
+      {subtitle && <p className="text-secondary text-xs mt-0.5">{subtitle}</p>}
     </div>
   )
 }
@@ -100,43 +111,45 @@ function BillingSection(): React.ReactElement {
 
   return (
     <div>
-      <h2 className="text-secondary text-xs font-semibold uppercase tracking-widest mb-4">
-        Billing
-      </h2>
+      <SectionHeader title="Billing" subtitle="Manage your plan and usage limits" />
 
       {isLoading && (
         <div className="space-y-2 max-w-xl">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="animate-pulse bg-elevated h-6 rounded" />
+            <div key={i} className="skeleton-shimmer h-6 rounded-lg" />
           ))}
         </div>
       )}
 
       {isError && (
-        <p className="text-error text-sm font-mono">Failed to load billing status.</p>
+        <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2 max-w-xl">
+          <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
+          <p className="text-error text-sm">Failed to load billing status.</p>
+        </div>
       )}
 
       {data && (
-        <div className="max-w-xl space-y-4">
+        <div className="max-w-xl space-y-5">
           {/* Plan badge */}
           <div className="flex items-center gap-3">
-            <span className="text-muted text-xs font-mono">Plan</span>
+            <span className="text-secondary text-xs font-mono">Current plan</span>
             <span
-              className={`text-xs font-mono font-semibold px-2 py-0.5 rounded uppercase tracking-wider ${
+              className={`text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider ${
                 data.plan === 'enterprise'
-                  ? 'bg-violet-500/20 text-violet-300'
+                  ? 'bg-violet-500/15 text-violet-300 border border-violet-500/25'
                   : data.plan === 'pro'
-                  ? 'bg-green-500/20 text-green-300'
-                  : 'bg-white/[0.07] text-secondary'
+                  ? 'bg-teal/10 text-teal-light border border-teal/20'
+                  : 'bg-accent/10 text-accent-light border border-accent/20'
               }`}
             >
               {data.plan}
             </span>
           </div>
 
-          {/* Usage bars — skip for enterprise (unlimited) */}
+          {/* Usage bars */}
           {data.plan !== 'enterprise' && (
-            <div className="space-y-3 border border-white/[0.07] rounded p-4">
+            <div className="space-y-4 bg-surface border border-white/[0.07] rounded-xl p-5">
+              <p className="text-xs font-semibold text-secondary uppercase tracking-widest mb-1">Usage</p>
               <UsageBar
                 label="Tool calls this month"
                 used={data.tool_calls_month}
@@ -166,7 +179,7 @@ function BillingSection(): React.ReactElement {
               type="button"
               disabled={checkoutMutation.isPending}
               onClick={() => checkoutMutation.mutate()}
-              className="bg-accent hover:bg-violet-600 disabled:opacity-60 text-white text-sm font-medium px-4 py-1.5 rounded transition-colors"
+              className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
             >
               {checkoutMutation.isPending ? 'Redirecting…' : 'Upgrade to Pro'}
             </button>
@@ -177,7 +190,7 @@ function BillingSection(): React.ReactElement {
               type="button"
               disabled={portalMutation.isPending}
               onClick={() => portalMutation.mutate()}
-              className="bg-elevated hover:bg-white/[0.07] border border-white/[0.14] text-primary text-sm font-medium px-4 py-1.5 rounded transition-colors"
+              className="bg-elevated hover:bg-white/[0.07] border border-white/[0.12] hover:border-white/[0.2] text-primary text-sm font-medium px-5 py-2 rounded-lg transition-all"
             >
               {portalMutation.isPending ? 'Redirecting…' : 'Manage Subscription'}
             </button>
@@ -188,7 +201,7 @@ function BillingSection(): React.ReactElement {
               Enterprise plan —{' '}
               <a
                 href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Enterprise Subscription`}
-                className="text-accent-light hover:underline"
+                className="text-accent-light hover:text-white transition-colors"
               >
                 contact us
               </a>{' '}
@@ -197,9 +210,10 @@ function BillingSection(): React.ReactElement {
           )}
 
           {(checkoutMutation.isError || portalMutation.isError) && (
-            <p className="text-error text-xs font-mono">
-              Billing action failed. Please try again.
-            </p>
+            <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
+              <p className="text-error text-xs">Billing action failed. Please try again.</p>
+            </div>
           )}
         </div>
       )}
@@ -231,19 +245,14 @@ function ApiKeySection(): React.ReactElement {
 
   return (
     <div>
-      <h2 className="text-secondary text-xs font-semibold uppercase tracking-widest mb-4">
-        API Key
-      </h2>
-      <div className="max-w-xl space-y-3">
+      <SectionHeader title="API Key" subtitle="Gateway key stored locally in your browser" />
+      <div className="max-w-xl space-y-4">
         <div>
-          <label
-            htmlFor="api-key-input"
-            className="block text-primary text-sm font-medium mb-1"
-          >
+          <label htmlFor="api-key-input" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
             Gateway API Key
           </label>
-          <p className="text-secondary text-xs mb-2">
-            Stored locally in your browser. Required to authenticate with the NexVault API.
+          <p className="text-secondary text-xs mb-2.5">
+            Required to authenticate agent requests with the NexVault gateway.
           </p>
           <div className="flex gap-2">
             <input
@@ -252,12 +261,12 @@ function ApiKeySection(): React.ReactElement {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="nx_..."
-              className="flex-1 bg-elevated border border-white/[0.14] text-primary text-sm font-mono px-3 py-1.5 rounded focus:outline-none focus:border-accent focus:ring-0"
+              className="flex-1 bg-elevated border border-white/[0.1] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
             />
             <button
               type="button"
               onClick={() => setShowKey((v) => !v)}
-              className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded text-sm transition-colors border border-white/[0.07]"
+              className="text-secondary hover:text-primary bg-elevated hover:bg-white/[0.07] border border-white/[0.1] hover:border-white/[0.18] px-3 py-2 rounded-lg text-sm transition-all"
             >
               {showKey ? 'Hide' : 'Show'}
             </button>
@@ -268,25 +277,26 @@ function ApiKeySection(): React.ReactElement {
           <button
             type="button"
             onClick={handleSave}
-            className="bg-accent hover:bg-violet-600 text-white text-sm font-medium px-3 py-1.5 rounded transition-colors"
+            className={`text-sm font-semibold px-4 py-2 rounded-lg transition-all ${
+              saved
+                ? 'bg-success/15 text-success border border-success/25'
+                : 'bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]'
+            }`}
           >
             {saved ? 'Saved' : 'Save'}
           </button>
           <button
             type="button"
             onClick={handleClear}
-            className="text-error hover:bg-red-500/10 px-3 py-1.5 rounded text-sm transition-colors"
+            className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-4 py-2 rounded-lg text-sm font-medium transition-all"
           >
             Clear
           </button>
 
-          {/* Status indicator */}
-          <div className="flex items-center gap-1.5 ml-2">
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${hasKey ? 'bg-green-400' : 'bg-secondary'}`}
-            />
+          <div className="flex items-center gap-1.5 ml-1">
+            <span className={`w-1.5 h-1.5 rounded-full ${hasKey ? 'bg-success' : 'bg-secondary'}`} />
             <span className="text-xs text-secondary font-mono">
-              {hasKey ? 'Connected' : 'No key set'}
+              {hasKey ? 'Key set' : 'No key'}
             </span>
           </div>
         </div>
@@ -308,28 +318,22 @@ function GatewayUrlSection(): React.ReactElement {
     setSaved(true)
     setTimeout(() => {
       setSaved(false)
-      // Reload so the Axios client picks up the new base URL
       window.location.reload()
     }, 1000)
   }
 
   return (
     <div>
-      <h2 className="text-secondary text-xs font-semibold uppercase tracking-widest mb-4">
-        Gateway URL
-      </h2>
-      <div className="max-w-xl space-y-3">
+      <SectionHeader title="Gateway URL" subtitle="Base URL of the NexVault backend API" />
+      <div className="max-w-xl space-y-4">
         <div>
-          <label
-            htmlFor="gateway-url-input"
-            className="block text-primary text-sm font-medium mb-1"
-          >
+          <label htmlFor="gateway-url-input" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
             Gateway URL
           </label>
-          <p className="text-secondary text-xs mb-2">
-            Base URL of the NexVault backend. Defaults to{' '}
-            <code className="font-mono text-accent-light">http://localhost:8000/api/v1</code>.
-            Saving will reload the page to apply the change.
+          <p className="text-secondary text-xs mb-2.5">
+            Defaults to{' '}
+            <code className="font-mono text-accent-light bg-accent/8 px-1 rounded">http://localhost:8000/api/v1</code>.
+            Saving will reload the page.
           </p>
           <input
             id="gateway-url-input"
@@ -337,14 +341,14 @@ function GatewayUrlSection(): React.ReactElement {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="http://localhost:8000/api/v1"
-            className="w-full bg-elevated border border-white/[0.14] text-primary text-sm font-mono px-3 py-1.5 rounded focus:outline-none focus:border-accent focus:ring-0"
+            className="w-full bg-elevated border border-white/[0.1] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
           />
         </div>
 
         <button
           type="button"
           onClick={handleSave}
-          className="bg-accent hover:bg-violet-600 text-white text-sm font-medium px-3 py-1.5 rounded transition-colors"
+          className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
         >
           {saved ? 'Saving…' : 'Save'}
         </button>
@@ -364,17 +368,15 @@ function AboutSection(): React.ReactElement {
 
   return (
     <div>
-      <h2 className="text-secondary text-xs font-semibold uppercase tracking-widest mb-4">
-        About
-      </h2>
-      <div className="font-mono text-sm">
-        {info.map(([label, value]) => (
+      <SectionHeader title="About" />
+      <div className="max-w-xl bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+        {info.map(([label, value], idx) => (
           <div
             key={label}
-            className="flex gap-8 py-1.5 border-b border-white/[0.07] last:border-0"
+            className={`flex items-center gap-8 px-5 py-3 ${idx < info.length - 1 ? 'border-b border-white/[0.05]' : ''}`}
           >
-            <span className="text-muted w-24 shrink-0">{label}</span>
-            <span className="text-primary">{value}</span>
+            <span className="text-muted text-xs font-mono w-24 shrink-0">{label}</span>
+            <span className="text-primary text-sm font-mono">{value}</span>
           </div>
         ))}
       </div>
@@ -386,16 +388,26 @@ function AboutSection(): React.ReactElement {
 
 function Settings(): React.ReactElement {
   return (
-    <div className="p-8">
-      <h1 className="text-primary text-lg font-semibold mb-8">Settings</h1>
+    <div className="p-8 animate-fade-in">
+      <div className="mb-8">
+        <h1 className="gradient-text-purple text-xl font-bold">Settings</h1>
+        <p className="text-secondary text-sm mt-1">Configure your NexVault gateway</p>
+      </div>
 
-      <BillingSection />
-      <hr className="border-white/[0.07] my-8" />
-      <ApiKeySection />
-      <hr className="border-white/[0.07] my-8" />
-      <GatewayUrlSection />
-      <hr className="border-white/[0.07] my-8" />
-      <AboutSection />
+      <div className="max-w-2xl space-y-0">
+        <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
+          <BillingSection />
+        </div>
+        <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
+          <ApiKeySection />
+        </div>
+        <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
+          <GatewayUrlSection />
+        </div>
+        <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+          <AboutSection />
+        </div>
+      </div>
     </div>
   )
 }

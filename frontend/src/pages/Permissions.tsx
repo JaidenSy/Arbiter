@@ -120,28 +120,25 @@ function GrantModal({
     onClose()
   }
 
+  const inputClass = "w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
+
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Grant Permission">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* MCP Server */}
         <div>
-          <label
-            htmlFor="perm-server"
-            className="block text-sm text-secondary mb-1"
-          >
-            MCP Server <span className="text-error">*</span>
+          <label htmlFor="perm-server" className={labelClass}>
+            MCP Server <span className="text-error normal-case">*</span>
           </label>
           <select
             id="perm-server"
             required
             value={mcpServerId}
             onChange={(e) => setMcpServerId(e.target.value)}
-            className="bg-elevated border border-white/[0.14] text-primary text-sm rounded px-3 py-2 w-full focus:border-accent focus:outline-none"
+            className={inputClass}
           >
             {servers.length === 0 && (
-              <option value="" disabled>
-                No servers available
-              </option>
+              <option value="" disabled>No servers available</option>
             )}
             {servers.map((s) => (
               <option key={s.id} value={s.id}>
@@ -151,13 +148,9 @@ function GrantModal({
           </select>
         </div>
 
-        {/* Tool Name */}
         <div>
-          <label
-            htmlFor="perm-tool"
-            className="block text-sm text-secondary mb-1"
-          >
-            Tool Name <span className="text-error">*</span>
+          <label htmlFor="perm-tool" className={labelClass}>
+            Tool Name <span className="text-error normal-case">*</span>
           </label>
           <input
             id="perm-tool"
@@ -166,19 +159,15 @@ function GrantModal({
             value={toolName}
             onChange={(e) => setToolName(e.target.value)}
             placeholder="e.g. read_file or *"
-            className="w-full bg-elevated border border-white/[0.14] text-primary text-sm px-3 py-2 rounded font-mono focus:outline-none focus:border-accent focus:ring-0"
+            className={`${inputClass} font-mono`}
           />
-          <p className="text-xs text-muted mt-1">
-            Use <span className="font-mono">*</span> to grant access to all tools on this server.
+          <p className="text-xs text-muted mt-1.5">
+            Use <code className="font-mono text-accent-light">*</code> to grant access to all tools on this server.
           </p>
         </div>
 
-        {/* Granted By */}
         <div>
-          <label
-            htmlFor="perm-granted-by"
-            className="block text-sm text-secondary mb-1"
-          >
+          <label htmlFor="perm-granted-by" className={labelClass}>
             Granted By
           </label>
           <input
@@ -187,24 +176,29 @@ function GrantModal({
             value={grantedBy}
             onChange={(e) => setGrantedBy(e.target.value)}
             placeholder="your name or team"
-            className="w-full bg-elevated border border-white/[0.14] text-primary text-sm px-3 py-2 rounded focus:outline-none focus:border-accent focus:ring-0"
+            className={inputClass}
           />
         </div>
 
-        {error && <p className="text-sm text-error">{error}</p>}
+        {error && (
+          <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
+            <p className="text-error text-xs">{error}</p>
+          </div>
+        )}
 
         <div className="flex justify-end gap-3 pt-2">
           <button
             type="button"
             onClick={handleClose}
-            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded text-sm transition-colors"
+            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-white/[0.08] hover:border-white/[0.15]"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={mutation.isPending || !mcpServerId || !toolName.trim()}
-            className="bg-accent hover:bg-violet-600 text-white text-sm font-medium px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
           >
             {mutation.isPending ? 'Granting…' : 'Grant Permission'}
           </button>
@@ -218,10 +212,10 @@ function GrantModal({
 
 function SkeletonRow(): React.ReactElement {
   return (
-    <tr className="border-b border-white/[0.07]">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <td key={i} className="py-2 px-4">
-          <div className="animate-pulse bg-elevated h-4 rounded w-3/4" />
+    <tr className="border-b border-white/[0.05]">
+      {[5, 4, 4, 4, 2].map((w, i) => (
+        <td key={i} className="py-3 px-4">
+          <div className="skeleton-shimmer h-4 rounded" style={{ width: `${w * 14}px` }} />
         </td>
       ))}
     </tr>
@@ -270,46 +264,37 @@ function PermissionsTable({
     }
   }
 
-  // Resolve MCP server name from id
   const serverName = (id: string): string =>
     servers.find((s) => s.id === id)?.name ?? id
 
   return (
     <div className="flex-1">
       {/* Header row */}
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-primary text-sm font-semibold">
-          Permissions for {agentName}
-        </p>
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <p className="text-primary text-sm font-semibold">
+            Permissions for <span className="text-accent-light">{agentName}</span>
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setGrantOpen(true)}
-          className="bg-accent hover:bg-violet-600 text-white text-sm font-medium px-3 py-1.5 rounded transition-colors"
+          className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
         >
           Grant Permission
         </button>
       </div>
 
       {/* Table */}
-      <div className="border-t border-white/[0.07]">
+      <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
         <table className="min-w-full">
           <thead>
-            <tr>
-              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                MCP Server
-              </th>
-              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Tool
-              </th>
-              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Granted At
-              </th>
-              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Granted By
-              </th>
-              <th className="py-2 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">
-                Actions
-              </th>
+            <tr className="border-b border-white/[0.06]">
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">MCP Server</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Tool</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Granted At</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Granted By</th>
+              <th className="py-3 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -321,46 +306,48 @@ function PermissionsTable({
               </>
             ) : !permissions || permissions.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-16 px-4 text-center">
-                  <svg className="mx-auto mb-3 text-muted" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
-                    <rect x="3" y="11" width="18" height="11" rx="1"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
-                  <p className="text-secondary text-sm font-mono mb-1">No permissions granted.</p>
-                  <p className="text-muted text-xs">Grant a permission to allow this agent to call specific tools.</p>
+                <td colSpan={5} className="py-20 px-4 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                    <svg className="text-accent-light" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <rect x="3" y="11" width="18" height="11" rx="1"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  </div>
+                  <p className="text-primary text-sm font-medium mb-1">No permissions granted</p>
+                  <p className="text-secondary text-xs max-w-xs mx-auto">Grant a permission to allow this agent to call specific tools.</p>
                 </td>
               </tr>
             ) : (
-              permissions.map((perm) => (
+              permissions.map((perm, idx) => (
                 <tr
                   key={perm.id}
-                  className="group border-b border-white/[0.07] hover:bg-elevated transition-colors"
+                  className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-colors ${idx % 2 === 1 ? 'bg-white/[0.01]' : ''}`}
                 >
-                  <td className="py-2 px-4 text-sm text-primary">
+                  <td className="py-3 px-4 text-sm text-primary font-medium">
                     {serverName(perm.mcp_server_id)}
                   </td>
-                  <td className="py-2 px-4">
+                  <td className="py-3 px-4">
                     {perm.tool_name === '*' ? (
-                      <span className="font-mono text-xs text-secondary italic">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono text-secondary bg-elevated border border-white/[0.08] italic">
                         all tools
                       </span>
                     ) : (
-                      <span className="font-mono text-xs text-accent-light">
+                      <span className="font-mono text-xs text-accent-light bg-accent/8 border border-accent/15 px-2 py-0.5 rounded-md">
                         {perm.tool_name}
                       </span>
                     )}
                   </td>
-                  <td className="py-2 px-4 font-mono text-xs text-muted">
+                  <td className="py-3 px-4 font-mono text-xs text-muted">
                     {formatDate(perm.granted_at)}
                   </td>
-                  <td className="py-2 px-4 text-xs text-muted">
-                    {perm.granted_by ?? <span className="text-muted">—</span>}
+                  <td className="py-3 px-4 text-xs text-secondary">
+                    {perm.granted_by ?? <span className="text-muted italic">—</span>}
                   </td>
-                  <td className="py-2 px-4 text-right">
+                  <td className="py-3 px-4 text-right">
                     <button
                       type="button"
                       onClick={() => setRevokeTarget(perm)}
-                      className="opacity-0 group-hover:opacity-100 text-error hover:bg-error/10 px-3 py-1.5 rounded text-sm transition-all"
+                      className="opacity-0 group-hover:opacity-100 text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                     >
                       Revoke
                     </button>
@@ -409,18 +396,21 @@ function Permissions(): React.ReactElement {
   const selectedAgent = agents?.find((a) => a.id === selectedAgentId) ?? null
 
   return (
-    <div className="p-8">
-      <h1 className="text-primary text-lg font-semibold mb-8">Tool Permissions</h1>
+    <div className="p-8 animate-fade-in">
+      <div className="mb-8">
+        <h1 className="gradient-text-purple text-xl font-bold">Tool Permissions</h1>
+        <p className="text-secondary text-sm mt-1">Control which tools each agent is allowed to invoke</p>
+      </div>
 
       <div className="grid gap-6" style={{ gridTemplateColumns: '240px 1fr' }}>
         {/* Left panel — agent selector */}
         <div>
-          <p className="text-muted text-xs uppercase tracking-widest mb-3">
+          <p className="text-muted text-xs font-semibold uppercase tracking-widest mb-3">
             Agents
           </p>
-          <div>
+          <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
             {!agents || agents.length === 0 ? (
-              <p className="text-secondary text-sm">No agents registered.</p>
+              <p className="text-secondary text-xs px-4 py-4">No agents registered.</p>
             ) : (
               agents.map((agent) => {
                 const isSelected = agent.id === selectedAgentId
@@ -429,18 +419,18 @@ function Permissions(): React.ReactElement {
                     key={agent.id}
                     type="button"
                     onClick={() => setSelectedAgentId(agent.id)}
-                    className={`w-full text-left flex items-center gap-2 px-3 py-2 transition-colors ${
+                    className={`w-full text-left flex items-center gap-2.5 px-4 py-3 transition-all duration-150 border-b border-white/[0.05] last:border-0 ${
                       isSelected
-                        ? 'bg-highlight border-l-2 border-accent'
-                        : 'border-l-2 border-transparent hover:bg-elevated'
+                        ? 'bg-accent/8 border-l-2 border-l-accent'
+                        : 'border-l-2 border-l-transparent hover:bg-white/[0.025]'
                     }`}
                   >
                     <span
                       className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                        agent.is_active ? 'bg-green-400' : 'bg-muted'
+                        agent.is_active ? 'bg-success' : 'bg-muted'
                       }`}
                     />
-                    <span className="text-primary text-sm truncate">{agent.name}</span>
+                    <span className="text-primary text-sm truncate font-medium">{agent.name}</span>
                   </button>
                 )
               })
@@ -456,10 +446,17 @@ function Permissions(): React.ReactElement {
             servers={servers}
           />
         ) : (
-          <div className="flex items-center justify-center">
-            <p className="text-secondary text-sm">
-              Select an agent to view permissions
-            </p>
+          <div className="flex flex-col items-center justify-center gap-3 text-center py-20 bg-surface border border-white/[0.07] rounded-xl">
+            <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
+              <svg className="text-accent-light" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="11" width="18" height="11" rx="1"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-primary text-sm font-medium">Select an agent</p>
+              <p className="text-secondary text-xs mt-1">to view and manage tool permissions</p>
+            </div>
           </div>
         )}
       </div>
