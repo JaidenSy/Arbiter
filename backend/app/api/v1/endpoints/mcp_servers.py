@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, require_role
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
 from app.db.models.user import User
@@ -101,7 +101,7 @@ class MCPServerResponse(BaseModel):
 async def create_mcp_server(
     body: MCPServerCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> MCPServerResponse:
     """
     Register a new MCP server so agents can route tool calls to it.
@@ -242,7 +242,7 @@ async def update_mcp_server(
     server_id: uuid.UUID,
     body: MCPServerUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> MCPServerResponse:
     """
     Partially update name, URL, description, or cache_enabled flag of an MCP server.
@@ -297,7 +297,7 @@ async def update_mcp_server(
 async def delete_mcp_server(
     server_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> Response:
     """
     Soft-delete an MCP server by setting is_active=False.
