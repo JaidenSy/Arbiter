@@ -27,6 +27,7 @@ Design decisions:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -99,21 +100,14 @@ class CacheService:
         self.redis = redis
 
     def compute_embedding(self, text: str) -> list[float]:
-        """
-        Compute a sentence-transformer embedding for a text string.
-
-        The model is loaded once at app startup and reused.  This method is
-        synchronous because the sentence-transformers library is CPU-bound;
-        callers may offload to a thread pool if needed.
-
-        Args:
-            text: The canonical string of a tool call input (tool_name:json).
-
-        Returns:
-            list[float]: Dense float vector (384-dim for MiniLM-L6-v2).
-        """
+        """Synchronous embedding — call via _compute_embedding_async from async context."""
         model = _get_model()
         return model.encode(text).tolist()
+
+    async def _compute_embedding_async(self, text: str) -> list[float]:
+        """Offload CPU-bound embedding to thread pool to avoid blocking the event loop."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.compute_embedding, text)
 
     async def get_cached(
         self, tool_name: str, input_payload: dict[str, Any]
@@ -174,7 +168,7 @@ class CacheService:
 
         # ── Phase 2: Postgres semantic similarity ─────────────────────────────
         try:
-            query_embedding = self.compute_embedding(canonical)
+            query_embedding = await self._compute_embedding_async(canonical)
         except Exception as exc:
             logger.warning("cache: embedding failed, skipping semantic search: %s", exc)
             return None
@@ -242,7 +236,7 @@ class CacheService:
         # Compute embedding (best-effort; proceed even if it fails).
         embedding: list[float] | None = None
         try:
-            embedding = self.compute_embedding(canonical)
+            embedding = await self._compute_embedding_async(canonical)
         except Exception as exc:
             logger.warning("cache: embedding failed during store: %s", exc)
 

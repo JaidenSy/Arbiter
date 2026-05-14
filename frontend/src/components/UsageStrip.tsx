@@ -13,6 +13,8 @@ import { useAuth } from '../context/AuthContext'
 import { authClient } from '../api/client'
 import type { DashboardStats } from '../api/types'
 
+const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
+
 // ── Plan limit constants (mirrors backend plan_limits.py) ────────────────────
 
 const PLAN_LIMITS: Record<string, { agents: number | null; toolCalls: number | null }> = {
@@ -92,7 +94,7 @@ function UsageStrip(): React.ReactElement | null {
       <span>
         cache hit rate: <span className="text-primary">{cacheRatePct}</span>
       </span>
-      {plan !== 'enterprise' && (
+      {plan === 'free' && (
         <>
           <span className="text-white/20">•</span>
           <Link
@@ -101,6 +103,17 @@ function UsageStrip(): React.ReactElement | null {
           >
             Upgrade →
           </Link>
+        </>
+      )}
+      {plan === 'enterprise' && (
+        <>
+          <span className="text-white/20">•</span>
+          <a
+            href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Enterprise`}
+            className="text-accent-light hover:text-white transition-colors"
+          >
+            Contact Sales →
+          </a>
         </>
       )}
     </div>

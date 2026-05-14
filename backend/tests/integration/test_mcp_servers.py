@@ -103,15 +103,20 @@ class TestCreateMCPServer:
     async def test_create_mcp_server_returns_201_with_cache_enabled_true(self, fake_redis):
         """POST /mcp-servers → 201, cache_enabled defaults to True."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user, _make_mock_org
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
+        mock_org = _make_mock_org()
         server_id = uuid.uuid4()
         created = _make_mcp_server(server_id=server_id, name="my-mcp", cache_enabled=True)
         db = _make_db_for_create(existing_server=None, created_server=created)
+        from unittest.mock import AsyncMock as _AsyncMock
+        db.get = _AsyncMock(return_value=mock_org)
+        db.scalar = _AsyncMock(return_value=0)
 
         async def override_get_db():
             yield db
@@ -122,9 +127,13 @@ class TestCreateMCPServer:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -146,15 +155,20 @@ class TestCreateMCPServer:
     async def test_create_mcp_server_cache_enabled_false(self, fake_redis):
         """POST /mcp-servers with cache_enabled=False → persisted as False."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user, _make_mock_org
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
+        mock_org = _make_mock_org()
         server_id = uuid.uuid4()
         created = _make_mcp_server(server_id=server_id, name="side-effectful", cache_enabled=False)
         db = _make_db_for_create(existing_server=None, created_server=created)
+        from unittest.mock import AsyncMock as _AsyncMock
+        db.get = _AsyncMock(return_value=mock_org)
+        db.scalar = _AsyncMock(return_value=0)
 
         async def override_get_db():
             yield db
@@ -165,9 +179,13 @@ class TestCreateMCPServer:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -187,12 +205,13 @@ class TestCreateMCPServer:
     async def test_create_duplicate_name_returns_409(self, fake_redis):
         """POST /mcp-servers with duplicate name → 409 Conflict."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user, _make_mock_org
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
         existing = _make_mcp_server(name="existing-server")
         db = _make_db_for_create(existing_server=existing)
 
@@ -205,9 +224,13 @@ class TestCreateMCPServer:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)

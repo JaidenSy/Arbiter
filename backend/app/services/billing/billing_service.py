@@ -68,8 +68,6 @@ class BillingService:
         }
         if org.stripe_customer_id:
             kwargs["customer"] = org.stripe_customer_id
-        else:
-            kwargs["customer_creation"] = "always"
 
         session = await asyncio.to_thread(
             stripe.checkout.Session.create, **kwargs

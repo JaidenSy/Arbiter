@@ -24,6 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db
+from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.db.models.vault import VaultSecret
@@ -41,6 +42,7 @@ class SecretCreate(BaseModel):
 
     name: str = Field(..., description="Logical key, e.g. GITHUB_TOKEN")
     value: str = Field(..., description="Raw secret value — will be encrypted at rest")
+    agent_id: uuid.UUID | None = Field(None, description="Scope the secret to a specific agent")
 
 
 class SecretResponse(BaseModel):
@@ -76,8 +78,26 @@ async def create_secret(
 ) -> SecretResponse:
     org = await db.get(Organization, current_user.org_id)
     if org is None:
-        from fastapi import HTTPException
         raise HTTPException(status_code=500, detail="Org not found")
+
+    # If agent_id provided, verify it belongs to this org (prevent cross-org secret injection)
+    agent_id: uuid.UUID | None = None
+    if body.agent_id is not None:
+        agent_result = await db.execute(
+            select(Agent).where(
+                Agent.id == body.agent_id,
+                Agent.org_id == current_user.org_id,
+                Agent.is_active.is_(True),
+            )
+        )
+        agent = agent_result.scalar_one_or_none()
+        if agent is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Agent {body.agent_id} not found",
+            )
+        agent_id = body.agent_id
+
     await check_resource_limit(
         db=db,
         org=org,
@@ -87,7 +107,7 @@ async def create_secret(
         count_active_only=False,
     )
     service = VaultService(db)
-    secret = await service.store_secret(body.name, body.value, None, current_user.org_id)
+    secret = await service.store_secret(body.name, body.value, agent_id, current_user.org_id)
     return SecretResponse.model_validate(secret)
 
 
@@ -97,10 +117,14 @@ async def create_secret(
     summary="List secret names",
 )
 async def list_secrets(
+    agent_id: uuid.UUID | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[SecretResponse]:
-    result = await db.execute(select(VaultSecret).where(VaultSecret.org_id == current_user.org_id))
+    filters = [VaultSecret.org_id == current_user.org_id]
+    if agent_id is not None:
+        filters.append(VaultSecret.agent_id == agent_id)
+    result = await db.execute(select(VaultSecret).where(*filters))
     secrets = result.scalars().all()
     return [SecretResponse.model_validate(s) for s in secrets]
 

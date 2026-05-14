@@ -18,7 +18,7 @@ import logging
 import stripe
 import stripe.error
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -67,7 +67,16 @@ class CheckoutRequest(BaseModel):
 class PortalRequest(BaseModel):
     """Request body for POST /billing/portal."""
 
-    return_url: str  # where Stripe portal sends user back
+    return_url: str  # where Stripe portal sends user back — must be a valid https:// or http://localhost URL
+
+    @field_validator("return_url")
+    @classmethod
+    def validate_return_url(cls, v: str) -> str:
+        """Prevent open redirect: only allow http(s) URLs, no javascript: or data: schemes."""
+        stripped = v.strip().lower()
+        if not (stripped.startswith("https://") or stripped.startswith("http://localhost") or stripped.startswith("http://127.0.0.1")):
+            raise ValueError("return_url must be a valid https:// URL")
+        return v
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
