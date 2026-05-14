@@ -75,21 +75,36 @@ interface NavItemProps {
 
 function NavItem({ to, icon, title, end }: NavItemProps): React.ReactElement {
   return (
-    <NavLink
-      to={to}
-      end={end}
-      title={title}
-      aria-label={title}
-      className={({ isActive }) =>
-        `flex items-center justify-center w-full h-10 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent ${
-          isActive
-            ? 'text-primary bg-highlight border-r-2 border-accent'
-            : 'text-secondary hover:text-primary hover:bg-elevated border-r-2 border-transparent'
-        }`
-      }
-    >
-      {icon}
-    </NavLink>
+    <div className="relative group/nav px-2 py-0.5">
+      <NavLink
+        to={to}
+        end={end}
+        aria-label={title}
+        className={({ isActive }) =>
+          `relative flex items-center justify-center w-full h-9 rounded-lg transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent ${
+            isActive
+              ? 'text-accent-light bg-accent/10 shadow-[0_0_12px_rgba(124,58,237,0.2)]'
+              : 'text-secondary hover:text-primary hover:bg-white/[0.05]'
+          }`
+        }
+      >
+        {({ isActive }) => (
+          <>
+            {isActive && (
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent-light rounded-full -ml-2 shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
+            )}
+            {icon}
+          </>
+        )}
+      </NavLink>
+      {/* Tooltip */}
+      <div className="pointer-events-none absolute left-[52px] top-1/2 -translate-y-1/2 ml-1 z-50 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150">
+        <div className="bg-overlay border border-white/[0.12] text-primary text-xs font-medium px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap">
+          {title}
+          <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-overlay" />
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -100,7 +115,6 @@ function UserAvatar(): React.ReactElement | null {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent): void {
@@ -125,39 +139,41 @@ function UserAvatar(): React.ReactElement | null {
   }
 
   return (
-    <div ref={ref} className="relative flex items-center justify-center mb-2">
+    <div ref={ref} className="relative flex items-center justify-center mb-2 px-2">
       <button
         type="button"
         title={user.email}
         onClick={() => setOpen(!open)}
-        className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 text-accent-light font-mono text-xs font-semibold flex items-center justify-center hover:bg-accent/30 transition-colors"
+        className="w-8 h-8 rounded-full bg-gradient-to-br from-accent/30 to-teal/20 border border-accent/40 text-accent-light font-mono text-xs font-semibold flex items-center justify-center hover:border-accent/70 hover:shadow-[0_0_12px_rgba(124,58,237,0.25)] transition-all duration-150"
       >
         {initial}
       </button>
 
       {open && (
-        <div className="absolute left-[52px] bottom-0 ml-1 w-56 bg-surface border border-white/[0.1] rounded shadow-xl z-50 py-2 font-mono text-xs">
-          <div className="px-3 pb-2 border-b border-white/[0.07]">
-            <p className="text-primary truncate">{user.email}</p>
-            <p className="text-secondary mt-0.5 capitalize">{user.role}</p>
-            <p className="text-muted mt-0.5 truncate">{user.org_name}</p>
+        <div className="animate-fade-in absolute left-[52px] bottom-0 ml-2 w-60 bg-overlay border border-white/[0.12] rounded-xl shadow-2xl z-50 py-2 overflow-hidden backdrop-blur-sm">
+          {/* Subtle top gradient accent */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
+          <div className="px-3 pb-2.5 border-b border-white/[0.07]">
+            <p className="text-primary text-sm font-medium truncate">{user.email}</p>
+            <p className="text-secondary text-xs mt-0.5 capitalize">{user.role}</p>
+            <p className="text-muted text-xs mt-0.5 truncate font-mono">{user.org_name}</p>
           </div>
           <div className="px-3 pt-2 pb-1">
-            <span className="inline-block text-accent-light border border-accent/30 rounded px-1.5 py-0.5 text-[10px]">
+            <span className="inline-flex items-center gap-1 text-accent-light bg-accent/10 border border-accent/25 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
               {planLabel}
             </span>
           </div>
           <div className="border-t border-white/[0.07] mt-1 pt-1">
             <a
               href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Support`}
-              className="block w-full text-left px-3 py-1.5 text-secondary hover:text-primary hover:bg-elevated transition-colors"
+              className="flex items-center w-full px-3 py-1.5 text-xs text-secondary hover:text-primary hover:bg-white/[0.05] transition-colors rounded-md mx-0"
             >
               Contact Support
             </a>
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full text-left px-3 py-1.5 text-secondary hover:text-red-400 hover:bg-elevated transition-colors"
+              className="w-full text-left px-3 py-1.5 text-xs text-secondary hover:text-error hover:bg-error/5 transition-colors"
             >
               Sign out
             </button>
@@ -172,19 +188,24 @@ function UserAvatar(): React.ReactElement | null {
 
 function Sidebar(): React.ReactElement {
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[52px] bg-surface border-r border-white/[0.07] flex flex-col z-40">
+    <aside className="fixed left-0 top-0 h-screen w-[52px] bg-gradient-to-b from-surface to-base border-r border-white/[0.06] flex flex-col z-40">
+      {/* Subtle vertical accent line at top */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
+
       {/* Logo */}
-      <div className="bg-gradient-to-b from-violet-950/20 to-transparent">
-        <NavLink
-          to="/"
-          className="flex items-center justify-center h-[52px] font-mono font-bold text-accent text-lg"
-        >
-          NX
-        </NavLink>
-      </div>
+      <NavLink
+        to="/"
+        className="flex items-center justify-center h-[52px] font-mono font-bold text-lg select-none"
+        aria-label="NexVault home"
+      >
+        <span className="gradient-text tracking-tight">NX</span>
+      </NavLink>
+
+      {/* Top divider */}
+      <div className="mx-3 border-t border-white/[0.06]" />
 
       {/* Main nav */}
-      <nav className="flex flex-col flex-1 pt-2">
+      <nav className="flex flex-col flex-1 pt-2 gap-0.5">
         <NavItem to="/" icon={<DashboardIcon />} title="Dashboard" end />
         <NavItem to="/agents" icon={<AgentsIcon />} title="Agents" />
         <NavItem to="/mcp-servers" icon={<MCPServersIcon />} title="MCP Servers" />
@@ -193,8 +214,11 @@ function Sidebar(): React.ReactElement {
         <NavItem to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
       </nav>
 
+      {/* Bottom divider */}
+      <div className="mx-3 border-t border-white/[0.06]" />
+
       {/* Settings + user at bottom */}
-      <div className="pb-2 flex flex-col items-center">
+      <div className="pb-2 flex flex-col items-center gap-0.5 pt-2">
         <NavItem to="/settings" icon={<SettingsIcon />} title="Settings" />
         <UserAvatar />
       </div>
