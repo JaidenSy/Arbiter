@@ -165,6 +165,13 @@ function UserAvatar(): React.ReactElement | null {
           </div>
           <div className="border-t border-white/[0.07] mt-1 pt-1">
             <a
+              href="/account"
+              onClick={() => setOpen(false)}
+              className="flex items-center w-full px-3 py-1.5 text-xs text-secondary hover:text-primary hover:bg-white/[0.05] transition-colors"
+            >
+              My Account
+            </a>
+            <a
               href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Support`}
               className="flex items-center w-full px-3 py-1.5 text-xs text-secondary hover:text-primary hover:bg-white/[0.05] transition-colors rounded-md mx-0"
             >

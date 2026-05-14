@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
 import type { Agent, VaultSecret, VaultSecretWithValue, VaultSecretCreate } from '../api/types'
@@ -503,7 +504,15 @@ function Vault(): React.ReactElement {
           </p>
           <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
             {!agents || agents.length === 0 ? (
-              <p className="text-secondary text-xs px-4 py-4">No agents registered yet.</p>
+              <div className="px-4 py-5 flex flex-col items-start gap-3">
+                <p className="text-secondary text-xs">No agents registered yet.</p>
+                <Link
+                  to="/agents"
+                  className="border border-white/[0.1] hover:border-accent/50 text-secondary hover:text-accent-light px-4 py-2 rounded-lg text-sm transition-all"
+                >
+                  Register Agent
+                </Link>
+              </div>
             ) : (
               agents.map((agent) => {
                 const isSelected = agent.id === selectedAgentId
