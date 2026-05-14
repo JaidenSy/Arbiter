@@ -19,7 +19,7 @@
  */
 
 import React, { Suspense, lazy } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import ProtectedRoute from './components/ProtectedRoute'
 import { useAuth } from './context/AuthContext'
@@ -38,6 +38,8 @@ const Login        = lazy(() => import('./pages/Login'))
 const Register     = lazy(() => import('./pages/Register'))
 const Onboarding   = lazy(() => import('./pages/Onboarding'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback'))
+const Landing      = lazy(() => import('./pages/Landing'))
+const Docs         = lazy(() => import('./pages/Docs'))
 
 // ── Shared loading fallback ───────────────────────────────────────────────────
 
@@ -75,9 +77,8 @@ function RootRedirect(): React.ReactElement {
 
   if (isLoading) return <PageLoader />
 
-  if (!user) {
-    const apiKey = localStorage.getItem('nexvault_api_key')
-    if (!apiKey) return <Navigate to="/login" replace />
+  if (!user && !isLoading) {
+    return <Landing />
   }
 
   return (
@@ -91,10 +92,11 @@ function App(): React.ReactElement {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
-        {/* ── Public auth routes (no sidebar) ─────────────────────────────── */}
+        {/* ── Public routes (no sidebar) ──────────────────────────────────── */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/docs" element={<Docs />} />
 
         {/* ── Protected onboarding (no sidebar) ───────────────────────────── */}
         <Route
