@@ -18,23 +18,42 @@
  *   /onboarding  → Onboarding wizard (new users only)
  */
 
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import ProtectedRoute from './components/ProtectedRoute'
-import Dashboard from './pages/Dashboard'
-import Agents from './pages/Agents'
-import MCPServers from './pages/MCPServers'
-import Sessions from './pages/Sessions'
-import SessionTrace from './pages/SessionTrace'
-import Settings from './pages/Settings'
-import Permissions from './pages/Permissions'
-import Vault from './pages/Vault'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Onboarding from './pages/Onboarding'
-import AuthCallback from './pages/AuthCallback'
 import { useAuth } from './context/AuthContext'
+
+// ── Lazy page imports — each page becomes its own chunk ───────────────────────
+
+const Dashboard    = lazy(() => import('./pages/Dashboard'))
+const Agents       = lazy(() => import('./pages/Agents'))
+const MCPServers   = lazy(() => import('./pages/MCPServers'))
+const Sessions     = lazy(() => import('./pages/Sessions'))
+const SessionTrace = lazy(() => import('./pages/SessionTrace'))
+const Settings     = lazy(() => import('./pages/Settings'))
+const Permissions  = lazy(() => import('./pages/Permissions'))
+const Vault        = lazy(() => import('./pages/Vault'))
+const Login        = lazy(() => import('./pages/Login'))
+const Register     = lazy(() => import('./pages/Register'))
+const Onboarding   = lazy(() => import('./pages/Onboarding'))
+const AuthCallback = lazy(() => import('./pages/AuthCallback'))
+
+// ── Shared loading fallback ───────────────────────────────────────────────────
+
+function PageLoader(): React.ReactElement {
+  return (
+    <div className="min-h-screen bg-base flex items-center justify-center gap-2">
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="w-2 h-2 rounded-full bg-accent animate-pulse"
+          style={{ animationDelay: `${i * 150}ms` }}
+        />
+      ))}
+    </div>
+  )
+}
 
 // ── Layout wrapper for sidebar pages ─────────────────────────────────────────
 
@@ -54,19 +73,7 @@ function AppLayout({ children }: { children: React.ReactNode }): React.ReactElem
 function RootRedirect(): React.ReactElement {
   const { user, isLoading } = useAuth()
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-base flex items-center justify-center gap-2">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="w-2 h-2 rounded-full bg-accent animate-pulse"
-            style={{ animationDelay: `${i * 150}ms` }}
-          />
-        ))}
-      </div>
-    )
-  }
+  if (isLoading) return <PageLoader />
 
   if (!user) {
     const apiKey = localStorage.getItem('nexvault_api_key')
@@ -82,83 +89,85 @@ function RootRedirect(): React.ReactElement {
 
 function App(): React.ReactElement {
   return (
-    <Routes>
-      {/* ── Public auth routes (no sidebar) ─────────────────────────────── */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/auth/callback" element={<AuthCallback />} />
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        {/* ── Public auth routes (no sidebar) ─────────────────────────────── */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
 
-      {/* ── Protected onboarding (no sidebar) ───────────────────────────── */}
-      <Route
-        path="/onboarding"
-        element={
-          <ProtectedRoute>
-            <Onboarding />
-          </ProtectedRoute>
-        }
-      />
+        {/* ── Protected onboarding (no sidebar) ───────────────────────────── */}
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <Onboarding />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* ── Root — smart redirect ────────────────────────────────────────── */}
-      <Route path="/" element={<RootRedirect />} />
+        {/* ── Root — smart redirect ────────────────────────────────────────── */}
+        <Route path="/" element={<RootRedirect />} />
 
-      {/* ── Protected app routes (with sidebar) ─────────────────────────── */}
-      <Route
-        path="/agents"
-        element={
-          <ProtectedRoute>
-            <AppLayout><Agents /></AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/mcp-servers"
-        element={
-          <ProtectedRoute>
-            <AppLayout><MCPServers /></AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/sessions"
-        element={
-          <ProtectedRoute>
-            <AppLayout><Sessions /></AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/sessions/:id"
-        element={
-          <ProtectedRoute>
-            <AppLayout><SessionTrace /></AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <AppLayout><Settings /></AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/permissions"
-        element={
-          <ProtectedRoute>
-            <AppLayout><Permissions /></AppLayout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/vault"
-        element={
-          <ProtectedRoute>
-            <AppLayout><Vault /></AppLayout>
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
+        {/* ── Protected app routes (with sidebar) ─────────────────────────── */}
+        <Route
+          path="/agents"
+          element={
+            <ProtectedRoute>
+              <AppLayout><Agents /></AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mcp-servers"
+          element={
+            <ProtectedRoute>
+              <AppLayout><MCPServers /></AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sessions"
+          element={
+            <ProtectedRoute>
+              <AppLayout><Sessions /></AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sessions/:id"
+          element={
+            <ProtectedRoute>
+              <AppLayout><SessionTrace /></AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <AppLayout><Settings /></AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/permissions"
+          element={
+            <ProtectedRoute>
+              <AppLayout><Permissions /></AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vault"
+          element={
+            <ProtectedRoute>
+              <AppLayout><Vault /></AppLayout>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Suspense>
   )
 }
 
