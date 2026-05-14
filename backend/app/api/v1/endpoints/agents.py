@@ -5,10 +5,11 @@ Manages agent registration and lifecycle.  API keys are generated on
 creation and returned ONCE; the hash is stored, never the raw key.
 
 Routes:
-    POST   /agents          — register a new agent, returns raw API key once
-    GET    /agents          — list all active agents (paginated)
-    GET    /agents/{id}     — get a single agent by UUID
-    DELETE /agents/{id}     — soft-delete (sets is_active=False)
+    POST   /agents               — register a new agent, returns raw API key once
+    GET    /agents               — list all active agents (paginated)
+    GET    /agents/{id}          — get a single agent by UUID
+    DELETE /agents/{id}          — soft-delete (sets is_active=False)
+    POST   /agents/{id}/rotate-key — invalidate old key, issue new one (returned once)
 """
 
 from __future__ import annotations
@@ -166,3 +167,44 @@ async def delete_agent(
     agent.is_active = False
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{agent_id}/rotate-key",
+    response_model=AgentCreateResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Rotate API key — old key is immediately invalidated",
+)
+async def rotate_api_key(
+    agent_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AgentCreateResponse:
+    result = await db.execute(
+        select(Agent).where(
+            Agent.id == agent_id,
+            Agent.is_active.is_(True),
+            Agent.org_id == current_user.org_id,
+        )
+    )
+    agent = result.scalar_one_or_none()
+    if agent is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Agent {agent_id} not found",
+        )
+
+    raw_key = security.generate_api_key()
+    agent.api_key_hash = security.hash_api_key(raw_key)
+    await db.commit()
+    await db.refresh(agent)
+
+    return AgentCreateResponse(
+        id=agent.id,
+        name=agent.name,
+        description=agent.description,
+        is_active=agent.is_active,
+        created_at=agent.created_at,
+        updated_at=agent.updated_at,
+        api_key=raw_key,
+    )

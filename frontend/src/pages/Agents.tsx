@@ -28,6 +28,9 @@ const createAgent = (payload: {
 const deleteAgent = (id: string): Promise<void> =>
   authClient.delete(`/agents/${id}`).then(() => undefined);
 
+const rotateAgentKey = (id: string): Promise<AgentCreateResponse> =>
+  authClient.post<AgentCreateResponse>(`/agents/${id}/rotate-key`).then((r) => r.data);
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string): string {
@@ -147,16 +150,18 @@ function RegisterModal({
 interface ApiKeyModalProps {
   isOpen: boolean;
   apiKey: string | null;
+  title: string;
   onDismiss: () => void;
 }
 
 function ApiKeyModal({
   isOpen,
   apiKey,
+  title,
   onDismiss,
 }: ApiKeyModalProps): React.ReactElement | null {
   return (
-    <Modal isOpen={isOpen} onClose={onDismiss} title="Agent Registered">
+    <Modal isOpen={isOpen} onClose={onDismiss} title={title}>
       <div className="space-y-4">
         <div className="bg-warning/8 border border-warning/25 rounded-lg p-3 flex items-start gap-2">
           <span className="text-warning mt-0.5">⚠</span>
@@ -212,7 +217,9 @@ function Agents(): React.ReactElement {
 
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
+  const [newApiKeyTitle, setNewApiKeyTitle] = useState('Agent Registered');
   const [deactivateTarget, setDeactivateTarget] = useState<Agent | null>(null);
+  const [rotateTarget, setRotateTarget] = useState<Agent | null>(null);
 
   const { data: agents, isLoading } = useQuery<Agent[]>({
     queryKey: ["agents"],
@@ -230,8 +237,21 @@ function Agents(): React.ReactElement {
     },
   });
 
+  const rotateMutation = useMutation({
+    mutationFn: rotateAgentKey,
+    onSuccess: (data) => {
+      setRotateTarget(null);
+      setNewApiKeyTitle('New API Key');
+      setNewApiKey(data.api_key);
+    },
+    onError: (err) => {
+      console.error("Failed to rotate key", err);
+    },
+  });
+
   const handleRegisterSuccess = (response: AgentCreateResponse): void => {
     setShowRegisterModal(false);
+    setNewApiKeyTitle('Agent Registered');
     setNewApiKey(response.api_key);
   };
 
@@ -244,6 +264,12 @@ function Agents(): React.ReactElement {
     if (deactivateTarget) {
       deactivateMutation.mutate(deactivateTarget.id);
       setDeactivateTarget(null);
+    }
+  };
+
+  const handleRotateConfirm = (): void => {
+    if (rotateTarget) {
+      rotateMutation.mutate(rotateTarget.id);
     }
   };
 
@@ -332,13 +358,22 @@ function Agents(): React.ReactElement {
                     {formatDate(agent.created_at)}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setDeactivateTarget(agent)}
-                      className="opacity-0 group-hover:opacity-100 text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                    >
-                      Deactivate
-                    </button>
+                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                      <button
+                        type="button"
+                        onClick={() => setRotateTarget(agent)}
+                        className="text-secondary hover:text-warning hover:bg-warning/10 border border-transparent hover:border-warning/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      >
+                        Rotate Key
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeactivateTarget(agent)}
+                        className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      >
+                        Deactivate
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -356,6 +391,7 @@ function Agents(): React.ReactElement {
       <ApiKeyModal
         isOpen={newApiKey !== null}
         apiKey={newApiKey}
+        title={newApiKeyTitle}
         onDismiss={handleApiKeyDismiss}
       />
 
@@ -366,6 +402,15 @@ function Agents(): React.ReactElement {
         title="Deactivate Agent"
         message={`Deactivate agent "${deactivateTarget?.name ?? ""}"? This cannot be undone.`}
         confirmLabel="Deactivate"
+      />
+
+      <ConfirmDialog
+        isOpen={rotateTarget !== null}
+        onClose={() => setRotateTarget(null)}
+        onConfirm={handleRotateConfirm}
+        title="Rotate API Key"
+        message={`Rotate the key for "${rotateTarget?.name ?? ""}"? The current key will stop working immediately.`}
+        confirmLabel="Rotate Key"
       />
     </div>
   );
