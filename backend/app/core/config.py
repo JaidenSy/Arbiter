@@ -60,11 +60,11 @@ class Settings(BaseSettings):
     # ── JWT ───────────────────────────────────────────────────────────────────
     jwt_secret_key: str = "nexvault_dev_jwt_secret_change_in_production"
     jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 1440  # 24 hours
+    jwt_access_token_expire_minutes: int = 60  # 1 hour — keep short; refresh token handles persistence
     jwt_refresh_token_expire_days: int = 30
 
     # ── Registration ──────────────────────────────────────────────────────────
-    allow_public_registration: bool = True
+    allow_public_registration: bool = False  # set True or provide INVITE_CODE to enable
     # When allow_public_registration=False, users may still register if they
     # supply this code. Leave empty to fully disable self-serve registration.
     invite_code: str = ""

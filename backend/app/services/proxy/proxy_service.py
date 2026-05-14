@@ -30,16 +30,19 @@ import logging
 import re
 import time
 import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
 from app.db.models.session import Session, SessionEvent
+from app.db.models.usage_event import UsageEvent
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.services.cache.cache_service import CacheService
 from app.services.rbac.rbac_service import RBACService
@@ -103,8 +106,8 @@ class ProxyService:
         """
         start_ms = time.monotonic()
 
-        # ── 1. Resolve MCP server ──────────────────────────────────────────────
-        mcp_server = await self.resolve_server(request.server_name)
+        # ── 1. Resolve MCP server (org-scoped) ────────────────────────────────
+        mcp_server = await self.resolve_server(request.server_name, agent.org_id)
 
         # ── 2. RBAC check ──────────────────────────────────────────────────────
         permitted = await self._rbac.check_permission(
@@ -121,12 +124,13 @@ class ProxyService:
                 ),
             )
 
-        # ── 3. Cache lookup ────────────────────────────────────────────────────
+        # ── 3. Cache lookup (org-scoped) ───────────────────────────────────────
         cached_result = None
         if mcp_server.cache_enabled:
             cached_result = await self._cache.get_cached(
                 tool_name=request.tool_name,
                 input_payload=request.params,
+                org_id=agent.org_id,
             )
 
         # Ensure/create session.
@@ -351,11 +355,12 @@ class ProxyService:
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    async def resolve_server(self, server_name: str) -> MCPServer:
-        """Fetch MCPServer by name or raise 404."""
+    async def resolve_server(self, server_name: str, org_id: uuid.UUID) -> MCPServer:
+        """Fetch MCPServer by name scoped to the calling agent's org, or raise 404."""
         result = await self.db.execute(
             select(MCPServer).where(
                 MCPServer.name == server_name,
+                MCPServer.org_id == org_id,
                 MCPServer.is_active.is_(True),
             )
         )
@@ -461,7 +466,7 @@ class ProxyService:
         duration_ms: int,
         error: str | None,
     ) -> SessionEvent:
-        """Append an immutable audit record to the session."""
+        """Append an immutable audit record and increment daily usage counters."""
         event = SessionEvent(
             session_id=session.id,
             org_id=session.org_id,
@@ -474,6 +479,23 @@ class ProxyService:
             error=error,
         )
         self.db.add(event)
+
+        # Upsert daily usage counters — enforces quota on subsequent calls.
+        today = datetime.now(tz=timezone.utc).date()
+        stmt = pg_insert(UsageEvent).values(
+            org_id=session.org_id,
+            event_date=today,
+            tool_calls=1,
+            cache_hits=1 if cache_hit else 0,
+        ).on_conflict_do_update(
+            constraint="uq_usage_events_org_date",
+            set_={
+                "tool_calls": UsageEvent.tool_calls + 1,
+                "cache_hits": UsageEvent.cache_hits + (1 if cache_hit else 0),
+            },
+        )
+        await self.db.execute(stmt)
+
         await self.db.commit()
         await self.db.refresh(event)
         return event
@@ -500,7 +522,7 @@ class ProxyService:
             list[dict]: Filtered tool dicts visible to this agent.
         """
         if mcp_server is None:
-            mcp_server = await self.resolve_server(server_name)
+            mcp_server = await self.resolve_server(server_name, agent.org_id)
         return await self._rbac.filter_tools_list(
             agent_id=agent.id,
             mcp_server_id=mcp_server.id,

@@ -8,9 +8,11 @@ and teardown).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 import redis.asyncio as aioredis
 from fastapi import FastAPI, HTTPException, Request, status
@@ -18,6 +20,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
+
+from sqlalchemy import delete, text
 
 from app.api.v1.endpoints import (
     agents,
@@ -33,10 +37,39 @@ from app.api.v1.endpoints import (
     vault,
 )
 from app.core.config import settings
-from app.db.base import engine
+from app.db.base import async_session_factory, engine
+from app.db.models.cache import CacheEntry
+from app.db.models.refresh_token import RefreshToken
 from app.services.plan.plan_limits import PlanLimitError, QuotaExceededError
 
 logger = logging.getLogger(__name__)
+
+_EVICTION_INTERVAL = 3600  # run every hour
+
+
+async def _eviction_loop() -> None:
+    """Background task: delete expired cache_entries and revoked/expired refresh_tokens."""
+    while True:
+        await asyncio.sleep(_EVICTION_INTERVAL)
+        try:
+            async with async_session_factory() as db:
+                now = datetime.now(tz=timezone.utc)
+                cache_result = await db.execute(
+                    delete(CacheEntry).where(CacheEntry.expires_at <= now)
+                )
+                token_result = await db.execute(
+                    delete(RefreshToken).where(
+                        RefreshToken.expires_at <= now,
+                    )
+                )
+                await db.commit()
+                logger.info(
+                    "eviction: removed %d expired cache entries, %d expired refresh tokens",
+                    cache_result.rowcount,
+                    token_result.rowcount,
+                )
+        except Exception as exc:
+            logger.warning("eviction: sweep failed: %s", exc)
 
 
 @asynccontextmanager
@@ -81,7 +114,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             exc,
         )
 
+    # Warn if public registration is open in production.
+    if settings.is_production and settings.allow_public_registration:
+        logger.warning(
+            "SECURITY: ALLOW_PUBLIC_REGISTRATION=true in production — "
+            "set to false and provide INVITE_CODE to restrict sign-ups."
+        )
+
+    # Start background eviction task.
+    eviction_task = asyncio.create_task(_eviction_loop())
+    logger.info("nexvault: eviction task started (interval=%ds)", _EVICTION_INTERVAL)
+
     yield
+
+    # Shutdown: cancel the eviction task cleanly.
+    eviction_task.cancel()
+    try:
+        await eviction_task
+    except asyncio.CancelledError:
+        pass
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     logger.info("nexvault: shutting down")

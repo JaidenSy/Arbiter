@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, require_role
 from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.db.models.user import User
@@ -40,7 +40,7 @@ router = APIRouter(prefix="/agents", tags=["agents"])
 async def create_agent(
     body: AgentCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> AgentCreateResponse:
     existing = await db.execute(
         select(Agent).where(
@@ -150,7 +150,7 @@ async def get_agent(
 async def delete_agent(
     agent_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> Response:
     result = await db.execute(
         select(Agent).where(
@@ -178,7 +178,7 @@ async def delete_agent(
 async def rotate_api_key(
     agent_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> AgentCreateResponse:
     result = await db.execute(
         select(Agent).where(

@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, require_role
 from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.db.models.user import User
@@ -74,7 +74,7 @@ class SecretValueResponse(SecretResponse):
 async def create_secret(
     body: SecretCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> SecretResponse:
     org = await db.get(Organization, current_user.org_id)
     if org is None:
@@ -172,7 +172,7 @@ async def get_secret(
 async def delete_secret(
     secret_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> Response:
     result = await db.execute(
         select(VaultSecret).where(
