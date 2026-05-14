@@ -139,12 +139,13 @@ class TestCreateToolPermission:
     async def test_create_permission_returns_201(self, fake_redis):
         """POST /agents/{id}/permissions → 201 with permission record."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
 
         target_agent_id = uuid.uuid4()
         server_id = uuid.uuid4()
@@ -162,9 +163,13 @@ class TestCreateToolPermission:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -186,12 +191,13 @@ class TestCreateToolPermission:
     async def test_create_permission_wildcard_tool_name(self, fake_redis):
         """POST /agents/{id}/permissions with tool_name='*' → 201."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
 
         target_agent_id = uuid.uuid4()
         server_id = uuid.uuid4()
@@ -209,9 +215,13 @@ class TestCreateToolPermission:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -231,12 +241,13 @@ class TestCreateToolPermission:
     async def test_create_permission_nonexistent_agent_returns_404(self, fake_redis):
         """POST /agents/{non_existent_id}/permissions → 404."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
 
         db = _make_db_for_create(agent=None, server=_make_server_orm(uuid.uuid4()))
 
@@ -249,9 +260,13 @@ class TestCreateToolPermission:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -270,12 +285,13 @@ class TestCreateToolPermission:
     async def test_create_permission_nonexistent_server_returns_404(self, fake_redis):
         """POST /agents/{id}/permissions with non-existent mcp_server_id → 404."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
 
         target_agent_id = uuid.uuid4()
         agent_orm = _make_agent_orm(target_agent_id)
@@ -290,9 +306,13 @@ class TestCreateToolPermission:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -311,12 +331,13 @@ class TestCreateToolPermission:
     async def test_create_duplicate_permission_returns_409(self, fake_redis):
         """POST duplicate (same agent+server+tool) → 409 Conflict."""
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
-        from tests.conftest import _make_mock_agent
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
         from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
 
         target_agent_id = uuid.uuid4()
         server_id = uuid.uuid4()
@@ -333,9 +354,13 @@ class TestCreateToolPermission:
         async def override_get_current_agent():
             return mock_agent
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
         app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)

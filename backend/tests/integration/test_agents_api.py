@@ -69,11 +69,15 @@ class TestCreateAgent:
         """POST /api/v1/agents → 201 with api_key starting with nxai_"""
         from httpx import AsyncClient, ASGITransport
         from app.main import app
-        from app.core.dependencies import get_db, get_redis
+        from app.core.dependencies import get_db, get_redis, get_current_user
+        from tests.conftest import _make_mock_user, _make_mock_org
+        from unittest.mock import AsyncMock as _AsyncMock
 
         agent_id = uuid.uuid4()
         now = datetime.now(tz=timezone.utc)
 
+        mock_user = _make_mock_user()
+        mock_org = _make_mock_org()
         db = _make_db_for_create_agent(
             existing_agent=None,
             created_agent={
@@ -84,6 +88,8 @@ class TestCreateAgent:
                 "updated_at": now,
             },
         )
+        db.get = _AsyncMock(return_value=mock_org)
+        db.scalar = _AsyncMock(return_value=0)
 
         async def override_get_db():
             yield db
@@ -91,8 +97,12 @@ class TestCreateAgent:
         async def override_get_redis(request=None):
             return fake_redis
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
@@ -116,11 +126,14 @@ class TestCreateAgent:
         """POST /api/v1/agents with duplicate name → 409"""
         from httpx import AsyncClient, ASGITransport
         from app.main import app
-        from app.core.dependencies import get_db, get_redis
+        from app.core.dependencies import get_db, get_redis, get_current_user
+        from tests.conftest import _make_mock_user
+        from unittest.mock import AsyncMock as _AsyncMock
 
         # Simulate existing agent with same name
         existing = MagicMock()
         existing.name = "existing-agent"
+        mock_user = _make_mock_user()
         db = _make_db_for_create_agent(existing_agent=existing)
 
         async def override_get_db():
@@ -129,8 +142,12 @@ class TestCreateAgent:
         async def override_get_redis(request=None):
             return fake_redis
 
+        async def override_get_current_user():
+            return mock_user
+
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
             transport = ASGITransport(app=app)
