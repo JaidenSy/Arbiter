@@ -59,115 +59,140 @@ function Register(): React.ReactElement {
     }
   }
 
+  const inputClass = "w-full bg-elevated/80 border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 focus:border-accent/60 transition-all duration-150 placeholder:text-muted"
+  const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
+
   return (
-    <div className="min-h-screen bg-base flex items-center justify-center font-mono">
-      <div className="w-full max-w-sm px-4">
-        {/* Wordmark */}
-        <div className="text-center mb-10">
-          <span className="font-mono text-2xl text-white tracking-tight">NexVault</span>
-          <p className="text-secondary text-xs mt-2">create your organization</p>
-        </div>
+    <div className="min-h-screen bg-base flex items-center justify-center relative overflow-hidden py-10">
+      {/* Background glows */}
+      <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-accent/10 blur-[120px] pointer-events-none" />
+      <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-teal/8 blur-[120px] pointer-events-none" />
 
-        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-          <div>
-            <label htmlFor="org-name" className="block text-xs text-secondary mb-1 uppercase tracking-wider">
-              Organization Name
-            </label>
-            <input
-              id="org-name"
-              type="text"
-              required
-              value={orgName}
-              onChange={(e) => setOrgName(e.target.value)}
-              placeholder="Acme Corp"
-              className="w-full bg-elevated border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
-            />
+      {/* Dot grid texture */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.035]"
+        style={{
+          backgroundImage: 'radial-gradient(circle, #A78BFA 1px, transparent 1px)',
+          backgroundSize: '28px 28px',
+        }}
+      />
+
+      <div className="relative w-full max-w-sm px-4 animate-fade-in">
+        {/* Card */}
+        <div className="bg-surface/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-8 shadow-2xl">
+          {/* Subtle top gradient line */}
+          <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-teal/50 to-transparent rounded-full" />
+
+          {/* Wordmark */}
+          <div className="text-center mb-8">
+            <span className="gradient-text font-bold text-3xl tracking-tight">NexVault</span>
+            <p className="text-secondary text-sm mt-2 font-medium">Create your organization</p>
           </div>
 
-          <div>
-            <label htmlFor="email" className="block text-xs text-secondary mb-1 uppercase tracking-wider">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full bg-elevated border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-xs text-secondary mb-1 uppercase tracking-wider">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="min 8 characters"
-              className="w-full bg-elevated border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="confirm-password" className="block text-xs text-secondary mb-1 uppercase tracking-wider">
-              Confirm Password
-            </label>
-            <input
-              id="confirm-password"
-              type="password"
-              required
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="repeat password"
-              className="w-full bg-elevated border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
-            />
-          </div>
-
-          {inviteRequired && (
+          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
             <div>
-              <label htmlFor="invite-code" className="block text-xs text-secondary mb-1 uppercase tracking-wider">
-                Invite Code
+              <label htmlFor="org-name" className={labelClass}>
+                Organization Name
               </label>
               <input
-                id="invite-code"
+                id="org-name"
                 type="text"
                 required
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
-                placeholder="Enter your invite code"
-                className="w-full bg-elevated border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
+                placeholder="Acme Corp"
+                className={inputClass}
               />
             </div>
-          )}
 
-          {error && (
-            <p className="text-red-400 text-xs font-mono">{error}</p>
-          )}
+            <div>
+              <label htmlFor="email" className={labelClass}>
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className={inputClass}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-accent hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-mono text-sm py-2 rounded transition-colors mt-2"
-          >
-            {isSubmitting ? 'Creating account…' : 'Create account'}
-          </button>
-        </form>
+            <div>
+              <label htmlFor="password" className={labelClass}>
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                required
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="min 8 characters"
+                className={inputClass}
+              />
+            </div>
 
-        <p className="text-center text-xs text-secondary mt-6">
-          Already have an account?{' '}
-          <Link to="/login" className="text-accent-light hover:text-white transition-colors">
-            Sign in
-          </Link>
-        </p>
+            <div>
+              <label htmlFor="confirm-password" className={labelClass}>
+                Confirm Password
+              </label>
+              <input
+                id="confirm-password"
+                type="password"
+                required
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="repeat password"
+                className={inputClass}
+              />
+            </div>
+
+            {inviteRequired && (
+              <div>
+                <label htmlFor="invite-code" className={labelClass}>
+                  Invite Code
+                </label>
+                <input
+                  id="invite-code"
+                  type="text"
+                  required
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  placeholder="Enter your invite code"
+                  className={inputClass}
+                />
+              </div>
+            )}
+
+            {error && (
+              <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
+                <p className="text-error text-xs">{error}</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-lg transition-all duration-150 hover:shadow-[0_0_20px_rgba(124,58,237,0.35)] mt-2"
+            >
+              {isSubmitting ? 'Creating account…' : 'Create account'}
+            </button>
+          </form>
+
+          <p className="text-center text-xs text-secondary mt-5">
+            Already have an account?{' '}
+            <Link to="/login" className="text-accent-light hover:text-white font-medium transition-colors">
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   )

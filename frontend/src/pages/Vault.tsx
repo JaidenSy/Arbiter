@@ -149,16 +149,18 @@ function SecretFormModal({
     onClose()
   }
 
+  const inputClass = "w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
+
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={isRotating ? 'Rotate Secret' : 'Add Secret'}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Name */}
         <div>
-          <label htmlFor="secret-name" className="block text-sm text-secondary mb-1">
-            Name <span className="text-error">*</span>
+          <label htmlFor="secret-name" className={labelClass}>
+            Name <span className="text-error normal-case">*</span>
           </label>
           {isRotating ? (
-            <div className="px-3 py-2 bg-elevated border border-white/[0.07] rounded">
+            <div className="px-3 py-2 bg-elevated border border-white/[0.07] rounded-lg">
               <span className="font-mono text-sm text-accent-light">{rotateTarget?.name}</span>
             </div>
           ) : (
@@ -169,15 +171,14 @@ function SecretFormModal({
               value={name}
               onChange={(e) => setName(e.target.value.toUpperCase())}
               placeholder="GITHUB_TOKEN"
-              className="w-full bg-elevated border border-white/[0.14] text-primary text-sm px-3 py-2 rounded font-mono focus:outline-none focus:border-accent focus:ring-0 uppercase"
+              className={`${inputClass} font-mono uppercase`}
             />
           )}
         </div>
 
-        {/* Value */}
         <div>
-          <label htmlFor="secret-value" className="block text-sm text-secondary mb-1">
-            Value <span className="text-error">*</span>
+          <label htmlFor="secret-value" className={labelClass}>
+            Value <span className="text-error normal-case">*</span>
           </label>
           <div className="relative">
             <input
@@ -187,7 +188,7 @@ function SecretFormModal({
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder="••••••••"
-              className="w-full bg-elevated border border-white/[0.14] text-primary text-sm px-3 py-2 pr-9 rounded font-mono focus:outline-none focus:border-accent focus:ring-0"
+              className={`${inputClass} pr-9 font-mono`}
             />
             <button
               type="button"
@@ -199,34 +200,35 @@ function SecretFormModal({
             </button>
           </div>
           {isRotating && (
-            <p className="text-xs text-muted mt-1">
+            <p className="text-xs text-muted mt-1.5">
               Submitting will overwrite the existing value.
             </p>
           )}
         </div>
 
-        {error && <p className="text-sm text-error">{error}</p>}
+        {error && (
+          <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
+            <p className="text-error text-xs">{error}</p>
+          </div>
+        )}
 
         <div className="flex justify-end gap-3 pt-2">
           <button
             type="button"
             onClick={handleClose}
-            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded text-sm transition-colors"
+            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-white/[0.08] hover:border-white/[0.15]"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={mutation.isPending || !name.trim() || !value.trim()}
-            className="bg-accent hover:bg-violet-600 text-white text-sm font-medium px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
           >
             {mutation.isPending
-              ? isRotating
-                ? 'Rotating…'
-                : 'Adding…'
-              : isRotating
-                ? 'Rotate Secret'
-                : 'Add Secret'}
+              ? isRotating ? 'Rotating…' : 'Adding…'
+              : isRotating ? 'Rotate Secret' : 'Add Secret'}
           </button>
         </div>
       </form>
@@ -238,10 +240,10 @@ function SecretFormModal({
 
 function SkeletonRow(): React.ReactElement {
   return (
-    <tr className="border-b border-white/[0.07]">
-      {[1, 2, 3, 4].map((i) => (
-        <td key={i} className="py-2 px-4">
-          <div className="animate-pulse bg-elevated h-4 rounded w-3/4" />
+    <tr className="border-b border-white/[0.05]">
+      {[5, 3, 6, 2].map((w, i) => (
+        <td key={i} className="py-3 px-4">
+          <div className="skeleton-shimmer h-4 rounded" style={{ width: `${w * 14}px` }} />
         </td>
       ))}
     </tr>
@@ -290,7 +292,6 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
 
   const handleReveal = async (secret: VaultSecret): Promise<void> => {
     if (revealedValues.has(secret.id)) {
-      // Hide
       setRevealedValues((prev) => {
         const next = new Map(prev)
         next.delete(secret.id)
@@ -315,14 +316,16 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
   return (
     <div className="flex-1">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-primary text-sm font-semibold">
-          Vault — {agentName}
-        </p>
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <p className="text-primary text-sm font-semibold">
+            Vault — <span className="text-accent-light">{agentName}</span>
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setAddOpen(true)}
-          className="bg-accent hover:bg-violet-600 text-white text-sm font-medium px-3 py-1.5 rounded transition-colors"
+          className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
         >
           Add Secret
         </button>
@@ -330,29 +333,21 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
 
       {/* Security banner */}
       {hasSecrets && (
-        <div className="flex items-center gap-2 text-xs text-muted mb-6">
+        <div className="flex items-center gap-2 text-xs text-muted mb-5 bg-elevated/50 border border-white/[0.06] rounded-lg px-3 py-2">
           <LockIcon />
-          Values are AES-256-GCM encrypted at rest. Revealed values are never stored by this interface.
+          <span>Values are AES-256-GCM encrypted at rest. Revealed values are never stored by this interface.</span>
         </div>
       )}
 
       {/* Table */}
-      <div className="border-t border-white/[0.07]">
+      <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
         <table className="min-w-full">
           <thead>
-            <tr>
-              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Name
-              </th>
-              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Stored
-              </th>
-              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Value
-              </th>
-              <th className="py-2 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">
-                Actions
-              </th>
+            <tr className="border-b border-white/[0.06]">
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Name</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Stored</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Value</th>
+              <th className="py-3 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -364,16 +359,19 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
               </>
             ) : !secrets || secrets.length === 0 ? (
               <tr>
-                <td colSpan={4} className="py-12 px-4 text-center">
-                  <p className="text-secondary text-sm">No secrets stored.</p>
-                  <p className="text-muted text-xs mt-1">
+                <td colSpan={4} className="py-16 px-4 text-center">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center mx-auto mb-3">
+                    <LockIcon />
+                  </div>
+                  <p className="text-primary text-sm font-medium mb-1">No secrets stored</p>
+                  <p className="text-secondary text-xs mt-1">
                     Add a secret to inject into tool calls using{' '}
-                    <span className="font-mono">{'{{SECRET_NAME}}'}</span>.
+                    <code className="font-mono text-accent-light bg-accent/10 px-1 rounded">{'{{SECRET_NAME}}'}</code>.
                   </p>
                 </td>
               </tr>
             ) : (
-              secrets.map((secret) => {
+              secrets.map((secret, idx) => {
                 const revealedValue = revealedValues.get(secret.id)
                 const isRevealed = revealedValue !== undefined
                 const isRevealing = revealingId === secret.id
@@ -381,26 +379,23 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                 return (
                   <tr
                     key={secret.id}
-                    className="group border-b border-white/[0.07] hover:bg-elevated transition-colors"
+                    className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-colors ${idx % 2 === 1 ? 'bg-white/[0.01]' : ''}`}
                   >
-                    {/* Name */}
-                    <td className="py-2 px-4">
+                    <td className="py-3 px-4">
                       <span className="font-mono text-sm text-accent-light">
                         {secret.name}
                       </span>
                     </td>
 
-                    {/* Stored */}
-                    <td className="py-2 px-4 font-mono text-xs text-muted">
+                    <td className="py-3 px-4 font-mono text-xs text-muted">
                       {relativeTime(secret.created_at)}
                     </td>
 
-                    {/* Value */}
-                    <td className="py-2 px-4">
+                    <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         {isRevealed ? (
                           <>
-                            <span className="font-mono text-xs text-accent-light break-all">
+                            <span className="font-mono text-xs text-teal-light break-all">
                               {revealedValue}
                             </span>
                             <CopyButton text={revealedValue} />
@@ -414,22 +409,21 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                           type="button"
                           onClick={() => void handleReveal(secret)}
                           disabled={isRevealing}
-                          className="opacity-0 group-hover:opacity-100 text-secondary hover:text-primary hover:bg-elevated px-2 py-1 rounded text-xs transition-all disabled:cursor-wait flex items-center gap-1"
+                          className="opacity-0 group-hover:opacity-100 text-secondary hover:text-primary border border-white/[0.08] hover:border-white/[0.18] px-2 py-1 rounded-md text-xs transition-all disabled:cursor-wait flex items-center gap-1"
                           aria-label={isRevealed ? 'Hide value' : 'Reveal value'}
                         >
                           {isRevealed ? <EyeClosedIcon /> : <EyeOpenIcon />}
-                          <span className="text-xs">{isRevealed ? 'Hide' : 'Reveal'}</span>
+                          <span>{isRevealed ? 'Hide' : 'Reveal'}</span>
                         </button>
                       </div>
                     </td>
 
-                    {/* Actions */}
-                    <td className="py-2 px-4 text-right">
+                    <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           type="button"
                           onClick={() => setRotateTarget(secret)}
-                          className="text-secondary hover:text-primary hover:bg-elevated px-2 py-1.5 rounded text-sm transition-colors flex items-center gap-1"
+                          className="text-secondary hover:text-primary border border-white/[0.08] hover:border-white/[0.18] px-2 py-1.5 rounded-md text-xs transition-all flex items-center gap-1"
                           aria-label="Rotate secret"
                           title="Rotate"
                         >
@@ -438,7 +432,7 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(secret)}
-                          className="text-error hover:bg-error/10 px-2 py-1.5 rounded text-sm transition-colors flex items-center gap-1"
+                          className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-2 py-1.5 rounded-md text-xs transition-all flex items-center gap-1"
                           aria-label="Delete secret"
                           title="Delete"
                         >
@@ -454,7 +448,6 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
         </table>
       </div>
 
-      {/* Add / Rotate modal (shared) */}
       <SecretFormModal
         isOpen={addOpen || rotateTarget !== null}
         onClose={() => {
@@ -465,7 +458,6 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
         rotateTarget={rotateTarget}
       />
 
-      {/* Delete confirm */}
       <ConfirmDialog
         isOpen={deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
@@ -488,7 +480,6 @@ function Vault(): React.ReactElement {
     queryFn: fetchAgents,
   })
 
-  // Auto-select first agent when list loads and nothing is selected
   useEffect(() => {
     if (!selectedAgentId && agents && agents.length > 0) {
       setSelectedAgentId(agents[0].id)
@@ -498,18 +489,21 @@ function Vault(): React.ReactElement {
   const selectedAgent = agents?.find((a) => a.id === selectedAgentId) ?? null
 
   return (
-    <div className="p-8">
-      <h1 className="text-primary text-lg font-semibold mb-8">Vault</h1>
+    <div className="p-8 animate-fade-in">
+      <div className="mb-8">
+        <h1 className="gradient-text-purple text-xl font-bold">Vault</h1>
+        <p className="text-secondary text-sm mt-1">AES-256-GCM encrypted secrets per agent</p>
+      </div>
 
       <div className="grid gap-6" style={{ gridTemplateColumns: '240px 1fr' }}>
         {/* Left panel — agent selector */}
         <div>
-          <p className="text-muted text-xs uppercase tracking-widest mb-3">
+          <p className="text-muted text-xs font-semibold uppercase tracking-widest mb-3">
             Agents
           </p>
-          <div>
+          <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
             {!agents || agents.length === 0 ? (
-              <p className="text-secondary text-xs font-mono">No agents registered yet.</p>
+              <p className="text-secondary text-xs px-4 py-4">No agents registered yet.</p>
             ) : (
               agents.map((agent) => {
                 const isSelected = agent.id === selectedAgentId
@@ -518,19 +512,19 @@ function Vault(): React.ReactElement {
                     key={agent.id}
                     type="button"
                     onClick={() => setSelectedAgentId(agent.id)}
-                    className={`w-full text-left flex items-start gap-2 px-3 py-2.5 transition-colors ${
+                    className={`w-full text-left flex items-start gap-2.5 px-4 py-3 transition-all duration-150 border-b border-white/[0.05] last:border-0 ${
                       isSelected
-                        ? 'bg-highlight border-l-2 border-accent'
-                        : 'border-l-2 border-transparent hover:bg-elevated'
+                        ? 'bg-accent/8 border-l-2 border-l-accent'
+                        : 'border-l-2 border-l-transparent hover:bg-white/[0.025]'
                     }`}
                   >
                     <span
                       className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${
-                        agent.is_active ? 'bg-green-400' : 'bg-muted'
+                        agent.is_active ? 'bg-success' : 'bg-muted'
                       }`}
                     />
                     <div className="min-w-0">
-                      <span className="text-primary text-sm truncate block">{agent.name}</span>
+                      <span className="text-primary text-sm truncate block font-medium">{agent.name}</span>
                       {agent.description && (
                         <span className="text-muted text-xs truncate block">{agent.description}</span>
                       )}
@@ -549,15 +543,19 @@ function Vault(): React.ReactElement {
         {selectedAgent ? (
           <SecretsTable agentId={selectedAgent.id} agentName={selectedAgent.name} />
         ) : (
-          <div className="flex flex-col items-center justify-center gap-2 text-center py-16">
-            <svg className="text-muted mb-1" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
-              <rect x="2" y="3" width="20" height="18" rx="1"/>
-              <circle cx="12" cy="12" r="4"/>
-              <path d="M12 8v1M12 15v1M8 12h1M15 12h1"/>
-              <path d="M18 3v18"/>
-            </svg>
-            <p className="text-secondary text-sm">Select an agent to manage secrets</p>
-            <p className="text-muted text-xs max-w-[200px]">Secrets are encrypted at rest with AES-256-GCM</p>
+          <div className="flex flex-col items-center justify-center gap-3 text-center py-20 bg-surface border border-white/[0.07] rounded-xl">
+            <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
+              <svg className="text-accent-light" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="2" y="3" width="20" height="18" rx="1"/>
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 8v1M12 15v1M8 12h1M15 12h1"/>
+                <path d="M18 3v18"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-primary text-sm font-medium">Select an agent</p>
+              <p className="text-secondary text-xs mt-1 max-w-[200px]">Secrets are encrypted at rest with AES-256-GCM</p>
+            </div>
           </div>
         )}
       </div>
