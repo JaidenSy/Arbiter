@@ -7,7 +7,7 @@
  *   - Recent sessions table (last 10, click-through to /sessions)
  */
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -114,6 +114,12 @@ function Dashboard(): React.ReactElement {
 
   const chartData = history?.buckets ?? [];
   const allEmpty = chartData.length > 0 && chartData.every((b) => b.tool_calls === 0);
+
+  // Memoised agent lookup map to avoid O(n*m) find() on every render
+  const agentMap = useMemo(
+    () => new Map(agents?.map((a) => [a.id, a.name]) ?? []),
+    [agents]
+  );
 
   const cacheRatePct = stats
     ? `${(stats.cache_hit_rate_today * 100).toFixed(1)}%`
@@ -307,7 +313,7 @@ function Dashboard(): React.ReactElement {
                       {session.id.slice(0, 8)}
                     </td>
                     <td className="py-2.5 px-4 text-sm font-mono text-secondary">
-                      {agents?.find((a) => a.id === session.agent_id)?.name ?? session.agent_id.slice(0, 8)}
+                      {agentMap.get(session.agent_id) ?? session.agent_id.slice(0, 8)}
                     </td>
                     <td className="py-2.5 px-4 text-sm text-secondary">
                       {relativeTime(session.started_at)}
