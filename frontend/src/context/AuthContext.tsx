@@ -17,10 +17,14 @@ import { authClient } from '../api/client'
 export interface AuthUser {
   id: string
   email: string
+  display_name: string | null
   role: string
   org_id: string
   org_name: string
   org_plan: string
+  has_password: boolean
+  linked_providers: string[]
+  avatar_url: string | null
 }
 
 export interface AuthState {
@@ -64,10 +68,14 @@ interface TokenResponse {
 interface MeResponse {
   id: string
   email: string
+  display_name: string | null
   role: string
   org_id: string
   org_name: string
   org_plan: string
+  has_password: boolean
+  linked_providers: string[]
+  avatar_url: string | null
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }): React.ReactElement {

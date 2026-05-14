@@ -64,6 +64,7 @@ class User(Base):
         nullable=False,
     )
     email: Mapped[str] = mapped_column(String(254), nullable=False, unique=True)
+    display_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
     hashed_password: Mapped[str] = mapped_column(String(72), nullable=False, default="")
     role: Mapped[str] = mapped_column(
         String(20),

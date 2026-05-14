@@ -40,6 +40,7 @@ const Onboarding   = lazy(() => import('./pages/Onboarding'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback'))
 const Landing      = lazy(() => import('./pages/Landing'))
 const Docs         = lazy(() => import('./pages/Docs'))
+const Account      = lazy(() => import('./pages/Account'))
 
 // ── Shared loading fallback ───────────────────────────────────────────────────
 
@@ -165,6 +166,14 @@ function App(): React.ReactElement {
           element={
             <ProtectedRoute>
               <AppLayout><Vault /></AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <ProtectedRoute>
+              <AppLayout><Account /></AppLayout>
             </ProtectedRoute>
           }
         />
