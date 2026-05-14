@@ -13,6 +13,7 @@ import { authClient } from '../api/client'
 import type { BillingStatus } from '../api/types'
 
 const STRIPE_PRO_PRICE_ID: string = import.meta.env.VITE_STRIPE_PRO_PRICE_ID ?? ''
+const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
 
 // ── Usage progress bar ────────────────────────────────────────────────────────
 
@@ -186,7 +187,7 @@ function BillingSection(): React.ReactElement {
             <p className="text-secondary text-sm">
               Enterprise plan —{' '}
               <a
-                href="mailto:sales@nexvault.dev"
+                href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Enterprise Subscription`}
                 className="text-accent-light hover:underline"
               >
                 contact us

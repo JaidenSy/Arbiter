@@ -15,6 +15,7 @@ export default {
         primary: '#efefef',
         secondary: '#888888',
         muted: '#444444',
+        error: '#f87171',
       },
       fontFamily: {
         mono: ['ui-monospace', 'JetBrains Mono', 'Fira Code', 'monospace'],

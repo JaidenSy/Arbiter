@@ -16,7 +16,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,6 +43,15 @@ class MCPServerCreate(BaseModel):
         description="Set False for side-effectful servers that must never serve cached responses",
     )
 
+    @field_validator("base_url")
+    @classmethod
+    def validate_base_url(cls, v: str) -> str:
+        """Ensure base_url is a valid HTTP(S) URL to prevent SSRF with unexpected schemes."""
+        stripped = v.strip().lower()
+        if not (stripped.startswith("http://") or stripped.startswith("https://")):
+            raise ValueError("base_url must be a valid http:// or https:// URL")
+        return v.strip()
+
 
 class MCPServerUpdate(BaseModel):
     """Partial update body — all fields optional."""
@@ -51,6 +60,17 @@ class MCPServerUpdate(BaseModel):
     base_url: str | None = None
     description: str | None = None
     cache_enabled: bool | None = None
+
+    @field_validator("base_url")
+    @classmethod
+    def validate_base_url(cls, v: str | None) -> str | None:
+        """Ensure base_url is a valid HTTP(S) URL when provided."""
+        if v is None:
+            return v
+        stripped = v.strip().lower()
+        if not (stripped.startswith("http://") or stripped.startswith("https://")):
+            raise ValueError("base_url must be a valid http:// or https:// URL")
+        return v.strip()
 
 
 class MCPServerResponse(BaseModel):

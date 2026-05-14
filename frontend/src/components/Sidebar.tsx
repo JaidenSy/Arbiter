@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
+const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
+
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
 const DashboardIcon = (): React.ReactElement => (
@@ -77,11 +79,12 @@ function NavItem({ to, icon, title, end }: NavItemProps): React.ReactElement {
       to={to}
       end={end}
       title={title}
+      aria-label={title}
       className={({ isActive }) =>
-        `flex items-center justify-center w-full h-10 transition-colors ${
+        `flex items-center justify-center w-full h-10 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent ${
           isActive
-            ? 'text-primary bg-highlight'
-            : 'text-secondary hover:text-primary hover:bg-elevated'
+            ? 'text-primary bg-highlight border-r-2 border-accent'
+            : 'text-secondary hover:text-primary hover:bg-elevated border-r-2 border-transparent'
         }`
       }
     >
@@ -145,6 +148,12 @@ function UserAvatar(): React.ReactElement | null {
             </span>
           </div>
           <div className="border-t border-white/[0.07] mt-1 pt-1">
+            <a
+              href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Support`}
+              className="block w-full text-left px-3 py-1.5 text-secondary hover:text-primary hover:bg-elevated transition-colors"
+            >
+              Contact Support
+            </a>
             <button
               type="button"
               onClick={handleLogout}

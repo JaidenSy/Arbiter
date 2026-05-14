@@ -160,8 +160,13 @@ async def list_session_events(
     Raises:
         HTTPException 404: If the session does not exist.
     """
-    # Verify the session exists first.
-    session_result = await db.execute(select(Session).where(Session.id == session_id))
+    # Verify the session exists AND belongs to the current user's org.
+    session_result = await db.execute(
+        select(Session).where(
+            Session.id == session_id,
+            Session.org_id == current_user.org_id,
+        )
+    )
     if session_result.scalar_one_or_none() is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

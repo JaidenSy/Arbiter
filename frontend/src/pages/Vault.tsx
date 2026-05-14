@@ -509,7 +509,7 @@ function Vault(): React.ReactElement {
           </p>
           <div>
             {!agents || agents.length === 0 ? (
-              <p className="text-secondary text-sm">No agents registered.</p>
+              <p className="text-secondary text-xs font-mono">No agents registered yet.</p>
             ) : (
               agents.map((agent) => {
                 const isSelected = agent.id === selectedAgentId
@@ -549,10 +549,15 @@ function Vault(): React.ReactElement {
         {selectedAgent ? (
           <SecretsTable agentId={selectedAgent.id} agentName={selectedAgent.name} />
         ) : (
-          <div className="flex items-center justify-center">
-            <p className="text-secondary text-sm">
-              Select an agent to manage their vault secrets
-            </p>
+          <div className="flex flex-col items-center justify-center gap-2 text-center py-16">
+            <svg className="text-muted mb-1" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+              <rect x="2" y="3" width="20" height="18" rx="1"/>
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 8v1M12 15v1M8 12h1M15 12h1"/>
+              <path d="M18 3v18"/>
+            </svg>
+            <p className="text-secondary text-sm">Select an agent to manage secrets</p>
+            <p className="text-muted text-xs max-w-[200px]">Secrets are encrypted at rest with AES-256-GCM</p>
           </div>
         )}
       </div>

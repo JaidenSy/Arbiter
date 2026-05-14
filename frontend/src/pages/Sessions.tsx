@@ -6,7 +6,7 @@
  *   - Sessions table — rows navigate to /sessions/:id for the full trace view
  */
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "../api/client";
@@ -25,11 +25,6 @@ const fetchSessions = (agentId: string): Promise<Session[]> =>
     .then((r) => r.data);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function agentDisplayName(agentId: string, agents: Agent[] | undefined): string {
-  const match = agents?.find((a) => a.id === agentId)
-  return match ? match.name : agentId.slice(0, 8)
-}
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -59,6 +54,12 @@ function Sessions(): React.ReactElement {
     queryKey: ["sessions", agentId],
     queryFn: () => fetchSessions(agentId),
   });
+
+  // Memoised agent lookup map to avoid O(n*m) find() per rendered row
+  const agentMap = useMemo(
+    () => new Map(agents?.map((a) => [a.id, a.name]) ?? []),
+    [agents]
+  );
 
   const TABLE_COLS = 4;
 
@@ -111,14 +112,17 @@ function Sessions(): React.ReactElement {
           </thead>
           <tbody>
             {sessionsLoading ? (
-              <tr>
-                <td
-                  colSpan={TABLE_COLS}
-                  className="py-4 px-4 text-sm text-secondary font-mono"
-                >
-                  Loading sessions…
-                </td>
-              </tr>
+              <>
+                {[1, 2, 3, 4].map((i) => (
+                  <tr key={i} className="border-b border-white/[0.07]">
+                    {[80, 96, 64, 32].map((w, j) => (
+                      <td key={j} className="py-2.5 px-4">
+                        <div className={`animate-pulse h-3 bg-elevated rounded w-${w/4}`} style={{ width: w }} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </>
             ) : !sessions || sessions.length === 0 ? (
               <tr>
                 <td colSpan={TABLE_COLS} className="py-16 px-4 text-center">
@@ -137,19 +141,19 @@ function Sessions(): React.ReactElement {
               sessions.map((session) => (
                 <tr
                   key={session.id}
-                  className="border-b border-white/[0.07] cursor-pointer hover:bg-elevated transition-colors"
+                  className="border-b border-white/[0.07] cursor-pointer hover:bg-elevated/70 transition-colors group"
                   onClick={() => navigate(`/sessions/${session.id}`)}
                 >
-                  <td className="py-2 px-4 text-sm font-mono text-accent-light">
+                  <td className="py-2.5 px-4 text-sm font-mono text-accent-light group-hover:text-white transition-colors">
                     {session.id.slice(0, 8)}
                   </td>
-                  <td className="py-2 px-4 text-sm font-mono text-secondary">
-                    {agentDisplayName(session.agent_id, agents)}
+                  <td className="py-2.5 px-4 text-sm font-mono text-secondary">
+                    {agentMap.get(session.agent_id) ?? session.agent_id.slice(0, 8)}
                   </td>
-                  <td className="py-2 px-4 text-sm text-secondary">
+                  <td className="py-2.5 px-4 text-sm text-secondary">
                     {relativeTime(session.started_at)}
                   </td>
-                  <td className="py-2 px-4 text-sm font-mono text-secondary">
+                  <td className="py-2.5 px-4 text-sm font-mono text-secondary tabular-nums">
                     {session.events?.length ?? 0}
                   </td>
                 </tr>
