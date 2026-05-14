@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
+const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
+
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
 const DashboardIcon = (): React.ReactElement => (
@@ -146,6 +148,12 @@ function UserAvatar(): React.ReactElement | null {
             </span>
           </div>
           <div className="border-t border-white/[0.07] mt-1 pt-1">
+            <a
+              href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Support`}
+              className="block w-full text-left px-3 py-1.5 text-secondary hover:text-primary hover:bg-elevated transition-colors"
+            >
+              Contact Support
+            </a>
             <button
               type="button"
               onClick={handleLogout}
