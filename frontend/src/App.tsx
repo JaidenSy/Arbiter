@@ -22,6 +22,7 @@ import React, { Suspense, lazy } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import ProtectedRoute from './components/ProtectedRoute'
+import UpgradeModal from './components/UpgradeModal'
 import { useAuth } from './context/AuthContext'
 
 // ── Lazy page imports — each page becomes its own chunk ───────────────────────
@@ -91,6 +92,8 @@ function RootRedirect(): React.ReactElement {
 
 function App(): React.ReactElement {
   return (
+    <>
+    <UpgradeModal />
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* ── Public routes (no sidebar) ──────────────────────────────────── */}
@@ -179,6 +182,7 @@ function App(): React.ReactElement {
         />
       </Routes>
     </Suspense>
+    </>
   )
 }
 

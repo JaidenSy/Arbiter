@@ -43,6 +43,13 @@ class AgentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AgentUpdate(BaseModel):
+    """Request body for PATCH /agents/{id} — all fields optional."""
+
+    name: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = Field(None, max_length=1000)
+
+
 class AgentCreateResponse(AgentResponse):
     """
     Response body for POST /agents only.

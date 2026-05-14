@@ -41,6 +41,11 @@ class ToolPermissionCreate(BaseModel):
         ...,
         description="Tool name or '*' for all tools on this server",
     )
+    rate_limit_per_minute: int | None = Field(
+        None,
+        ge=1,
+        description="Max calls per minute for this agent+tool. Null = unlimited.",
+    )
 
 
 class ToolPermissionResponse(BaseModel):
@@ -52,6 +57,7 @@ class ToolPermissionResponse(BaseModel):
     tool_name: str
     granted_at: datetime
     granted_by: str | None
+    rate_limit_per_minute: int | None
 
     model_config = {"from_attributes": True}
 
@@ -118,6 +124,7 @@ async def create_tool_permission(
         agent_id=agent_id,
         mcp_server_id=body.mcp_server_id,
         tool_name=body.tool_name,
+        rate_limit_per_minute=body.rate_limit_per_minute,
     )
     db.add(permission)
 

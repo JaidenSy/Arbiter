@@ -27,6 +27,7 @@ from app.api.v1.endpoints import (
     agents,
     auth,
     billing,
+    cache,
     mcp_servers,
     onboarding,
     proxy,
@@ -260,6 +261,7 @@ def create_app() -> FastAPI:
     app.include_router(stats.router, prefix=settings.api_prefix)
     app.include_router(onboarding.router, prefix=settings.api_prefix)
     app.include_router(billing.router, prefix=settings.api_prefix)
+    app.include_router(cache.router, prefix=settings.api_prefix)
 
     # ── Health check ──────────────────────────────────────────────────────────
     @app.get("/health", tags=["meta"])

@@ -14,9 +14,10 @@ Routes:
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -36,27 +37,15 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 )
 async def list_sessions(
     agent_id: uuid.UUID | None = Query(None, description="Filter by agent UUID"),
+    tool_name: str | None = Query(None, description="Filter sessions that called this tool"),
+    has_error: bool | None = Query(None, description="True = only sessions with errors"),
+    from_date: datetime | None = Query(None, description="Sessions started on or after this ISO timestamp"),
+    to_date: datetime | None = Query(None, description="Sessions started on or before this ISO timestamp"),
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[SessionListResponse]:
-    """
-    Return a paginated list of sessions, optionally filtered by agent.
-
-    Events are NOT included in the list response for performance reasons.
-    Use GET /sessions/{id} to retrieve events for a specific session.
-
-    Args:
-        agent_id: Optional filter to return only sessions for one agent.
-        skip:     Pagination offset.
-        limit:    Max records (capped at 200).
-        db:       Injected DB session.
-        _current: Auth guard.
-
-    Returns:
-        list[SessionResponse]: Sessions ordered by started_at DESC, no events.
-    """
     limit = min(limit, 200)
     query = (
         select(Session)
@@ -67,6 +56,37 @@ async def list_sessions(
     )
     if agent_id is not None:
         query = query.where(Session.agent_id == agent_id)
+    if from_date is not None:
+        query = query.where(Session.started_at >= from_date)
+    if to_date is not None:
+        query = query.where(Session.started_at <= to_date)
+    if tool_name is not None:
+        query = query.where(
+            exists(
+                select(SessionEvent.id).where(
+                    SessionEvent.session_id == Session.id,
+                    SessionEvent.tool_name == tool_name,
+                )
+            )
+        )
+    if has_error is True:
+        query = query.where(
+            exists(
+                select(SessionEvent.id).where(
+                    SessionEvent.session_id == Session.id,
+                    SessionEvent.error.isnot(None),
+                )
+            )
+        )
+    elif has_error is False:
+        query = query.where(
+            ~exists(
+                select(SessionEvent.id).where(
+                    SessionEvent.session_id == Session.id,
+                    SessionEvent.error.isnot(None),
+                )
+            )
+        )
 
     result = await db.execute(query)
     sessions = result.scalars().all()

@@ -166,6 +166,16 @@ function Dashboard(): React.ReactElement {
     ? `${(stats.cache_hit_rate_today * 100).toFixed(1)}%`
     : "—%";
 
+  const errorRatePct = stats
+    ? `${(stats.error_rate_today * 100).toFixed(1)}%`
+    : "—%";
+
+  function errorRateColorClass(rate: number): string {
+    if (rate === 0) return "text-success";
+    if (rate < 0.05) return "text-warning";
+    return "text-error";
+  }
+
   const userName = user?.email?.split('@')[0] ?? 'there';
 
   return (
@@ -210,6 +220,17 @@ function Dashboard(): React.ReactElement {
             }
             trend={stats && stats.cache_hit_rate_today >= 0.5 ? "up" : "down"}
             accent="teal"
+          />
+          <StatMetric
+            label="Error Rate Today"
+            value={statsLoading ? "…" : errorRatePct}
+            valueClass={
+              stats
+                ? errorRateColorClass(stats.error_rate_today)
+                : "text-primary"
+            }
+            trend={stats ? (stats.error_rate_today > 0.05 ? "down" : stats.error_rate_today === 0 ? "up" : "neutral") : "neutral"}
+            accent="purple"
           />
         </div>
 

@@ -101,6 +101,26 @@ export interface DashboardStats {
   servers_count: number;
   tool_calls_today: number;
   cache_hit_rate_today: number; // 0.0–1.0
+  error_rate_today: number; // 0.0–1.0
+}
+
+export interface CacheToolStat {
+  tool_name: string;
+  entries: number;
+}
+
+export interface CacheStats {
+  total_entries: number;
+  expired_entries: number;
+  active_entries: number;
+  top_tools: CacheToolStat[];
+}
+
+export interface MCPServerTestResult {
+  reachable: boolean;
+  tool_count: number | null;
+  error: string | null;
+  latency_ms: number | null;
 }
 
 export interface HistoryBucket {

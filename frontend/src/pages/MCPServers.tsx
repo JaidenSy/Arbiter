@@ -10,7 +10,7 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
-import type { MCPServer, MCPServerCreate, MCPServerUpdate } from '../api/types'
+import type { MCPServer, MCPServerCreate, MCPServerUpdate, MCPServerTestResult } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Toggle from '../components/Toggle'
@@ -34,6 +34,9 @@ const updateMCPServer = ({
 
 const deleteMCPServer = (id: string): Promise<void> =>
   authClient.delete(`/mcp-servers/${id}`).then(() => undefined)
+
+const testMCPServer = (id: string): Promise<MCPServerTestResult> =>
+  authClient.post<MCPServerTestResult>(`/mcp-servers/${id}/test`).then((r) => r.data)
 
 // ── Server Form Modal ─────────────────────────────────────────────────────────
 
@@ -227,6 +230,25 @@ function MCPServers(): React.ReactElement {
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<MCPServer | null>(null)
   const [deactivateTarget, setDeactivateTarget] = useState<MCPServer | null>(null)
+  const [testingId, setTestingId] = useState<string | null>(null)
+  const [testResult, setTestResult] = useState<{ id: string; result: MCPServerTestResult } | null>(null)
+
+  const testMutation = useMutation({
+    mutationFn: testMCPServer,
+    onSuccess: (data, id) => {
+      setTestResult({ id, result: data })
+      setTestingId(null)
+    },
+    onError: () => {
+      setTestingId(null)
+    },
+  })
+
+  const handleTestClick = (server: MCPServer): void => {
+    setTestingId(server.id)
+    setTestResult(null)
+    testMutation.mutate(server.id)
+  }
 
   const { data: servers, isLoading } = useQuery<MCPServer[]>({
     queryKey: ['mcp-servers'],
@@ -382,6 +404,25 @@ function MCPServers(): React.ReactElement {
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {testResult?.id === server.id && (
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                          testResult.result.reachable
+                            ? 'text-success bg-success/10 border-success/20'
+                            : 'text-error bg-error/10 border-error/20'
+                        }`}>
+                          {testResult.result.reachable
+                            ? `✓ ${testResult.result.tool_count ?? 0} tools · ${testResult.result.latency_ms}ms`
+                            : `✗ ${testResult.result.error ?? 'unreachable'}`}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        disabled={testingId === server.id}
+                        onClick={() => handleTestClick(server)}
+                        className="text-secondary hover:text-teal-light hover:bg-teal/10 border border-transparent hover:border-teal/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-50"
+                      >
+                        {testingId === server.id ? 'Testing…' : 'Test'}
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleEditClick(server)}
