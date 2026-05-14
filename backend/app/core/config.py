@@ -9,8 +9,12 @@ Uses pydantic-settings so every field is type-validated at startup.
 
 from __future__ import annotations
 
+import logging
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -99,6 +103,17 @@ class Settings(BaseSettings):
         if len(value) != 64:
             raise ValueError(
                 "VAULT_ENCRYPTION_KEY must be 64 hex characters (256-bit / 32 bytes)"
+            )
+        return value
+
+    @field_validator("jwt_secret_key")
+    @classmethod
+    def warn_default_jwt_secret(cls, value: str) -> str:
+        """Warn loudly if the insecure default JWT secret is used in any env."""
+        if value == "nexvault_dev_jwt_secret_change_in_production":
+            _logger.warning(
+                "SECURITY: JWT_SECRET_KEY is using the insecure default value. "
+                "Set JWT_SECRET_KEY to a long random string before deploying."
             )
         return value
 
