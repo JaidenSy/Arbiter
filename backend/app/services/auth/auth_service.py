@@ -297,6 +297,19 @@ async def logout(
     await db.commit()
 
 
+async def create_token_pair(db: AsyncSession, user: User) -> tuple[str, str]:
+    """Issue a fresh access + refresh token pair for an already-authenticated user."""
+    access_token = security.create_access_token(
+        user_id=user.id,
+        org_id=user.org_id,
+        role=user.role,
+    )
+    raw_refresh = security.generate_refresh_token()
+    await _store_refresh_token(db, user_id=user.id, raw_token=raw_refresh)
+    await db.commit()
+    return access_token, raw_refresh
+
+
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 

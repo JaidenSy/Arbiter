@@ -85,6 +85,18 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""   # required — whsec_... from Stripe dashboard or CLI
     stripe_pro_price_id: str = ""     # required — price_... from Stripe product catalog
 
+    # ── Email / SMTP ──────────────────────────────────────────────────────────
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = "no-reply@nexvault.dev"
+    smtp_from_name: str = "NexVault"
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.smtp_host and self.smtp_user)
+
     # ── CORS ──────────────────────────────────────────────────────────────────
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 

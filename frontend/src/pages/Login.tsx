@@ -31,12 +31,16 @@ function Login(): React.ReactElement {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [providers, setProviders] = useState<ProvidersResponse>({ google: false, github: false })
 
   useEffect(() => {
     if (searchParams.get('error') === 'sso_failed') {
       setError('Social login failed. Please try again.')
+    }
+    if (searchParams.get('reset') === '1') {
+      setSuccess('Password reset successfully. Sign in with your new password.')
     }
   }, [searchParams])
 
@@ -137,6 +141,19 @@ function Login(): React.ReactElement {
                 className="w-full bg-elevated/80 border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 focus:border-accent/60 transition-all duration-150 placeholder:text-muted"
               />
             </div>
+
+            <div className="flex justify-end -mt-1">
+              <Link to="/forgot-password" className="text-xs text-accent-light hover:text-white transition-colors">
+                Forgot password?
+              </Link>
+            </div>
+
+            {success && (
+              <div className="flex items-center gap-2 bg-success/8 border border-success/20 rounded-lg px-3 py-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />
+                <p className="text-success text-xs">{success}</p>
+              </div>
+            )}
 
             {error && (
               <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2">
