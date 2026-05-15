@@ -1,5 +1,5 @@
 /**
- * NexVault — MCP Servers page.
+ * Arbiter — MCP Servers page.
  *
  * Lists registered MCP servers and allows:
  *   - Adding a new server (form modal)
@@ -273,7 +273,7 @@ function MCPServers(): React.ReactElement {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="gradient-text-purple text-xl font-bold">MCP Servers</h1>
-          <p className="text-secondary text-sm mt-1">Connected tool servers proxied through NexVault</p>
+          <p className="text-secondary text-sm mt-1">Connected tool servers proxied through Arbiter</p>
         </div>
         <button
           type="button"
@@ -318,7 +318,7 @@ function MCPServers(): React.ReactElement {
                     </svg>
                   </div>
                   <p className="text-primary text-sm font-medium mb-1">No MCP servers registered</p>
-                  <p className="text-secondary text-xs max-w-xs mx-auto mb-4">Add a server to start routing tool calls through NexVault.</p>
+                  <p className="text-secondary text-xs max-w-xs mx-auto mb-4">Add a server to start routing tool calls through Arbiter.</p>
                   <button
                     type="button"
                     onClick={handleAddClick}

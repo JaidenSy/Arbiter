@@ -1,5 +1,5 @@
 """
-NexVault — Stripe billing service.
+Arbiter — Stripe billing service.
 
 Wraps Stripe SDK calls for checkout, customer portal, and webhook handling.
 All Stripe calls are synchronous (stripe-python is not async-native) — wrapped

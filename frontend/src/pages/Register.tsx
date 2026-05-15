@@ -1,5 +1,5 @@
 /**
- * NexVault — Register page.
+ * Arbiter — Register page.
  *
  * Route: /register (public, no sidebar)
  * On success: auto-logged in (tokens from backend), navigates to /onboarding.
@@ -85,7 +85,7 @@ function Register(): React.ReactElement {
 
           {/* Wordmark */}
           <div className="text-center mb-8">
-            <span className="gradient-text font-bold text-3xl tracking-tight">NexVault</span>
+            <span className="gradient-text font-bold text-3xl tracking-tight">Arbiter</span>
             <p className="text-secondary text-sm mt-2 font-medium">Create your organization</p>
           </div>
 

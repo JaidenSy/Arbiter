@@ -1,5 +1,5 @@
 /**
- * NexVault Frontend — React entry point.
+ * Arbiter Frontend — React entry point.
  *
  * Mounts the root React application into #root, wraps it with:
  *   - QueryClientProvider (TanStack Query for server state)

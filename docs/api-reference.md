@@ -595,8 +595,8 @@ Export all session events for the org as a downloadable file. Useful for complia
 
 **Response** `200`: A streaming file download.
 
-- `format=csv` → `Content-Type: text/csv`, file named `nexvault_export_<timestamp>.csv`
-- `format=json` → `Content-Type: application/json`, file named `nexvault_export_<timestamp>.json`
+- `format=csv` → `Content-Type: text/csv`, file named `arbiter_export_<timestamp>.csv`
+- `format=json` → `Content-Type: application/json`, file named `arbiter_export_<timestamp>.json`
 
 CSV/JSON columns: `session_id`, `agent_id`, `event_id`, `tool_name`, `mcp_server`, `cache_hit`, `duration_ms`, `error`, `occurred_at`.
 
@@ -604,7 +604,7 @@ CSV/JSON columns: `session_id`, `agent_id`, `event_id`, `tool_name`, `mcp_server
 # Download last 30 days as CSV
 curl -s "http://localhost:8000/api/v1/sessions/export?format=csv&from_date=2026-04-14T00:00:00Z" \
   -H "Authorization: Bearer nxai_..." \
-  -o nexvault_audit.csv
+  -o arbiter_audit.csv
 
 # Download a specific agent's events as JSON
 curl -s "http://localhost:8000/api/v1/sessions/export?format=json&agent_id=3f7a1b2c-..." \
@@ -627,7 +627,7 @@ The core gateway endpoint. Every MCP tool call from an agent goes through here.
 | Header | Required | Description |
 |--------|----------|-------------|
 | `Authorization` | Yes | `Bearer nxai_<key>` |
-| `X-NexVault-Session-ID` | No | Attach this call to an existing session. If omitted, a new session is started. |
+| `X-Arbiter-Session-ID` | No | Attach this call to an existing session. If omitted, a new session is started. |
 | `X-MCP-Server` | Yes | Name (slug) of the registered MCP server to forward to |
 
 **Request body**: A valid JSON-RPC 2.0 object per the MCP spec:

@@ -1,5 +1,5 @@
 """
-NexVault — SQLAlchemy ORM model: User.
+Arbiter — SQLAlchemy ORM model: User.
 
 A User represents a human operator who logs in to the dashboard with an
 email/password and receives a JWT.  Users are NOT the same as Agents;
@@ -73,6 +73,7 @@ class User(Base):
         server_default="member",
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

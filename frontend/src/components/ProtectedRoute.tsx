@@ -1,5 +1,5 @@
 /**
- * NexVault — ProtectedRoute component.
+ * Arbiter — ProtectedRoute component.
  *
  * Wraps routes that require authentication.
  * - Loading: shows centered violet pulse spinner

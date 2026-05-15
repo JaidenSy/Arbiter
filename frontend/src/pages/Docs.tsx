@@ -1,5 +1,5 @@
 /**
- * NexVault — In-app documentation page.
+ * Arbiter — In-app documentation page.
  *
  * Route: /docs (public, no ProtectedRoute, no app sidebar)
  * Layout: standalone with left sidebar nav + content area
@@ -16,7 +16,7 @@ function Navbar(): React.ReactElement {
       <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5">
           <span className="gradient-text font-bold text-lg tracking-tight">NX</span>
-          <span className="text-primary font-semibold text-sm tracking-wide">NexVault</span>
+          <span className="text-primary font-semibold text-sm tracking-wide">Arbiter</span>
           <span className="text-muted text-xs ml-1">/ Docs</span>
         </Link>
 
@@ -159,13 +159,13 @@ function DocsContent(): React.ReactElement {
       {/* Quick Start */}
       <DocSection id="quick-start" title="Quick Start">
         <p className="text-secondary text-sm leading-relaxed">
-          Get your first agent connected to NexVault in under 5 minutes.
+          Get your first agent connected to Arbiter in under 5 minutes.
         </p>
         <ol className="space-y-3">
           {[
-            'Register at nexvault.app — free plan, no credit card required.',
+            'Register at arbiter.app — free plan, no credit card required.',
             'Create your first agent in the dashboard → copy the API key.',
-            'Set your MCP client base URL to your NexVault gateway URL.',
+            'Set your MCP client base URL to your Arbiter gateway URL.',
             'Make your first tool call — all traffic is proxied, cached, and logged.',
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3 text-sm text-secondary">
@@ -176,11 +176,11 @@ function DocsContent(): React.ReactElement {
             </li>
           ))}
         </ol>
-        <Code>{`# Example: connect Claude Desktop to NexVault
+        <Code>{`# Example: connect Claude Desktop to Arbiter
 {
   "mcpServers": {
-    "nexvault": {
-      "url": "https://your-nexvault.railway.app/mcp",
+    "arbiter": {
+      "url": "https://your-arbiter.railway.app/mcp",
       "headers": {
         "Authorization": "Bearer nxai_your_agent_key_here"
       }
@@ -192,7 +192,7 @@ function DocsContent(): React.ReactElement {
       {/* Authentication */}
       <DocSection id="authentication" title="Authentication">
         <p className="text-secondary text-sm leading-relaxed">
-          NexVault uses two authentication mechanisms depending on context.
+          Arbiter uses two authentication mechanisms depending on context.
         </p>
 
         <div className="bg-surface border border-white/[0.07] rounded-xl p-5">
@@ -219,7 +219,7 @@ function DocsContent(): React.ReactElement {
       {/* Agents */}
       <DocSection id="agents" title="Agents">
         <p className="text-secondary text-sm leading-relaxed">
-          Every AI agent that calls tools through NexVault must first be registered.
+          Every AI agent that calls tools through Arbiter must first be registered.
           Registration gives the agent a unique cryptographic API key.
         </p>
 
@@ -296,7 +296,7 @@ POST /api/v1/vault
       {/* Semantic Cache */}
       <DocSection id="semantic-cache" title="Semantic Cache">
         <p className="text-secondary text-sm leading-relaxed">
-          NexVault automatically caches tool call responses. Identical calls return instantly
+          Arbiter automatically caches tool call responses. Identical calls return instantly
           without hitting the upstream MCP server, reducing latency and API costs.
         </p>
 
@@ -346,7 +346,7 @@ POST /api/v1/vault
       {/* Pricing */}
       <DocSection id="pricing" title="Pricing">
         <p className="text-secondary text-sm leading-relaxed">
-          NexVault offers a free tier with generous limits for personal projects and evaluation.
+          Arbiter offers a free tier with generous limits for personal projects and evaluation.
           See the full plan comparison on the landing page.
         </p>
         <div>
@@ -407,7 +407,7 @@ function Docs(): React.ReactElement {
           <div className="mb-12">
             <h1 className="text-2xl font-bold gradient-text-purple mb-2">Documentation</h1>
             <p className="text-secondary text-sm">
-              Everything you need to integrate NexVault with your AI agents.
+              Everything you need to integrate Arbiter with your AI agents.
             </p>
           </div>
           <DocsContent />

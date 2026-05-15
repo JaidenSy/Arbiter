@@ -1,5 +1,5 @@
 """
-NexVault Backend — Application entry point.
+Arbiter Backend — Application entry point.
 
 Initialises the FastAPI app, registers all API routers, configures CORS,
 and manages application lifespan (database pool + Redis connection setup
@@ -29,6 +29,7 @@ from app.api.v1.endpoints import (
     billing,
     mcp_servers,
     onboarding,
+    org,
     proxy,
     sessions,
     sso,
@@ -86,7 +87,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         - Dispose SQLAlchemy async engine connection pool
     """
     # ── Startup ───────────────────────────────────────────────────────────────
-    logger.info("nexvault: starting up")
+    logger.info("arbiter: starting up")
 
     # Redis
     redis_client = aioredis.from_url(
@@ -97,19 +98,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.redis = redis_client
     try:
         await redis_client.ping()
-        logger.info("nexvault: Redis connected at %s", settings.redis_url)
+        logger.info("arbiter: Redis connected at %s", settings.redis_url)
     except Exception as exc:
-        logger.warning("nexvault: Redis ping failed at startup: %s", exc)
+        logger.warning("arbiter: Redis ping failed at startup: %s", exc)
 
     # Warm up embedding model (best-effort; does not block startup on failure).
     try:
         from app.services.cache.cache_service import _get_model
 
         _get_model()
-        logger.info("nexvault: embedding model loaded")
+        logger.info("arbiter: embedding model loaded")
     except Exception as exc:
         logger.warning(
-            "nexvault: embedding model could not be pre-loaded: %s — "
+            "arbiter: embedding model could not be pre-loaded: %s — "
             "it will be loaded on first semantic cache call",
             exc,
         )
@@ -123,7 +124,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Start background eviction task.
     eviction_task = asyncio.create_task(_eviction_loop())
-    logger.info("nexvault: eviction task started (interval=%ds)", _EVICTION_INTERVAL)
+    logger.info("arbiter: eviction task started (interval=%ds)", _EVICTION_INTERVAL)
 
     yield
 
@@ -135,16 +136,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         pass
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
-    logger.info("nexvault: shutting down")
+    logger.info("arbiter: shutting down")
     await redis_client.aclose()
     await engine.dispose()
-    logger.info("nexvault: shutdown complete")
+    logger.info("arbiter: shutdown complete")
 
 
 def create_app() -> FastAPI:
     """Construct and configure the FastAPI application instance."""
     app = FastAPI(
-        title="NexVault",
+        title="Arbiter",
         description=(
             "Self-hosted MCP gateway with secret management, "
             "semantic caching, RBAC, and audit logging."
@@ -222,7 +223,7 @@ def create_app() -> FastAPI:
                 "current": exc.current,
                 "limit": exc.limit,
                 "plan": exc.plan,
-                "upgrade_url": "https://nexvault.dev/pricing",
+                "upgrade_url": "https://arbiterai.dev/pricing",
             },
         )
 
@@ -244,7 +245,7 @@ def create_app() -> FastAPI:
                 "used": exc.used,
                 "limit": exc.limit,
                 "resets_at": exc.resets_at.isoformat(),
-                "upgrade_url": "https://nexvault.dev/pricing",
+                "upgrade_url": "https://arbiterai.dev/pricing",
             },
         )
 
@@ -260,6 +261,8 @@ def create_app() -> FastAPI:
     app.include_router(stats.router, prefix=settings.api_prefix)
     app.include_router(onboarding.router, prefix=settings.api_prefix)
     app.include_router(billing.router, prefix=settings.api_prefix)
+    app.include_router(org.router, prefix=settings.api_prefix)
+    app.include_router(org._accept_router, prefix=settings.api_prefix)
 
     # ── Health checks ─────────────────────────────────────────────────────────
     @app.get("/health", tags=["meta"])

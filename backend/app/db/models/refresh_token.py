@@ -1,5 +1,5 @@
 """
-NexVault — SQLAlchemy ORM model: RefreshToken.
+Arbiter — SQLAlchemy ORM model: RefreshToken.
 
 Opaque 30-day refresh tokens issued alongside JWTs on login/register.
 On use the old token is revoked and a new pair is issued (rotation).

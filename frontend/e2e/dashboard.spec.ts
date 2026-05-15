@@ -1,5 +1,5 @@
 /**
- * NexVault E2E — Dashboard tests.
+ * Arbiter E2E — Dashboard tests.
  *
  * Covers: stat cards render, chart renders, session row click navigates
  * to trace, UsageStrip visible.

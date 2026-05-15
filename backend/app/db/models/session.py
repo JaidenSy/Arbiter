@@ -1,5 +1,5 @@
 """
-NexVault — SQLAlchemy ORM models: Session and SessionEvent.
+Arbiter — SQLAlchemy ORM models: Session and SessionEvent.
 
 A Session groups related tool calls made by a single agent within one
 context window.  Each proxied tool call is recorded as an immutable
