@@ -2,7 +2,7 @@
 
 ## What is an "agent" in Arbiter?
 
-An agent is any programmatic client that calls MCP tools through the Arbiter gateway — a Claude script, a LangChain workflow, a cron job, a FastAPI service, anything that makes HTTP requests. Arbiter assigns each agent:
+An agent is any programmatic client that calls MCP tools through the Arbiter gateway: a Claude script, a LangChain workflow, a cron job, a FastAPI service, anything that makes HTTP requests. Arbiter assigns each agent:
 
 - A unique UUID
 - An API key (`nxai_<64-hex-chars>`) used to authenticate every request
@@ -257,7 +257,7 @@ def dispatch_tool(name: str, args: dict, mcp_server: str) -> str:
 
 ### Custom script (no LLM)
 
-If you're not using an LLM at all — just a script that needs to call MCP tools with secrets injected:
+If you're not using an LLM at all, just a script that needs to call MCP tools with secrets injected:
 
 ```python
 import httpx

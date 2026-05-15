@@ -163,10 +163,10 @@ function DocsContent(): React.ReactElement {
         </p>
         <ol className="space-y-3">
           {[
-            'Register at arbiter.app — free plan, no credit card required.',
-            'Create your first agent in the dashboard → copy the API key.',
+            'Register at arbiter.app. Free plan, no credit card required.',
+            'Create your first agent in the dashboard and copy the API key.',
             'Set your MCP client base URL to your Arbiter gateway URL.',
-            'Make your first tool call — all traffic is proxied, cached, and logged.',
+            'Make your first tool call. Traffic is proxied, cached, and logged automatically.',
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3 text-sm text-secondary">
               <span className="w-5 h-5 rounded-full bg-accent/15 border border-accent/25 flex items-center justify-center text-accent-light text-xs font-mono flex-shrink-0 mt-0.5">
@@ -199,7 +199,7 @@ function DocsContent(): React.ReactElement {
           <h3 className="text-primary font-semibold text-sm mb-3">Agent API calls</h3>
           <p className="text-secondary text-xs mb-3">
             All agent tool calls use a Bearer token in the <InlineCode>Authorization</InlineCode> header.
-            Each agent has a unique key — never share keys between agents.
+            Each agent has a unique key. Don't share keys between agents.
           </p>
           <Code>Authorization: Bearer nxai_{'<your-agent-key>'}</Code>
         </div>
@@ -224,7 +224,7 @@ function DocsContent(): React.ReactElement {
         </p>
 
         <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
-          <Endpoint method="POST" path="/api/v1/agents" description="Register a new agent. Returns an api_key — store it securely, it's shown once." />
+          <Endpoint method="POST" path="/api/v1/agents" description="Register a new agent. Returns an api_key (shown once — store it immediately)." />
           <Endpoint method="GET" path="/api/v1/agents" description="List all agents for the authenticated user." />
           <Endpoint method="DELETE" path="/api/v1/agents/:id" description="Deactivate an agent. All its permissions are revoked." />
         </div>
@@ -272,12 +272,12 @@ POST /api/v1/tool-permissions
       <DocSection id="vault" title="Vault">
         <p className="text-secondary text-sm leading-relaxed">
           The vault stores secrets per agent using AES-256-GCM encryption.
-          Secrets are injected into tool calls at call time — they never leave the vault unencrypted.
+          Secrets are injected into tool calls at call time. They never leave the vault unencrypted.
         </p>
 
         <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
           <Endpoint method="POST" path="/api/v1/vault" description="Store a secret. The value is encrypted immediately on write." />
-          <Endpoint method="GET" path="/api/v1/vault" description="List secrets (names only — values are not returned)." />
+          <Endpoint method="GET" path="/api/v1/vault" description="List secrets. Names only; values are never returned." />
           <Endpoint method="GET" path="/api/v1/vault/:name" description="Retrieve and decrypt a specific secret value." />
         </div>
 
@@ -305,7 +305,7 @@ POST /api/v1/vault
             { label: 'Cache TTL', value: '1 hour (default)' },
             { label: 'Cache key', value: 'agent_id + tool_name + arguments hash' },
             { label: 'Cache hit indicator', value: 'Shown in session trace as cached: true' },
-            { label: 'Configuration', value: 'Automatic — no configuration required' },
+            { label: 'Configuration', value: 'Automatic. No setup required.' },
           ].map((row) => (
             <div key={row.label} className="flex items-center justify-between text-sm border-b border-white/[0.05] last:border-0 pb-3 last:pb-0">
               <span className="text-secondary">{row.label}</span>

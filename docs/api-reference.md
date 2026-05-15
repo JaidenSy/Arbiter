@@ -65,7 +65,7 @@ Register a new agent. Returns the raw API key exactly once.
 |-------|------|----------|-------------|
 | `name` | string | Yes | Unique display name for the agent |
 | `description` | string | No | Optional human-readable description |
-| `scope` | string | No | Permission scope — see [Agent Scopes](#agent-scopes). Defaults to `"full"` |
+| `scope` | string | No | Permission scope. See [Agent Scopes](#agent-scopes). Defaults to `"full"` |
 
 **Response** `201`:
 
@@ -97,7 +97,7 @@ curl -s -X POST http://localhost:8000/api/v1/agents \
 
 ### Agent Scopes
 
-The `scope` field controls what an agent's API key is allowed to do, independently of per-tool RBAC permissions. Both checks must pass — an agent needs both the correct scope and a matching tool permission.
+The `scope` field controls what an agent's API key is allowed to do, independently of per-tool RBAC permissions. Both checks must pass. An agent needs both the correct scope and a matching tool permission.
 
 | Scope | Tool Calls | Vault Write | Vault Read |
 |-------|-----------|-------------|------------|
@@ -388,7 +388,7 @@ curl -s http://localhost:8000/api/v1/agents/3f7a1b2c-.../permissions \
 
 ### DELETE /agents/{agent_id}/permissions/{permission_id}
 
-Revoke a specific permission. Hard-delete — no soft-delete for permissions.
+Revoke a specific permission. Hard-delete; no soft-delete for permissions.
 
 **Auth**: Required. **Response** `204`. **Errors**: `404`.
 
@@ -417,7 +417,7 @@ Store or rotate a secret, scoped to the calling agent. If a secret with the same
 }
 ```
 
-**Response** `201`: Metadata only — `value` is never returned.
+**Response** `201`: Metadata only. `value` is never returned.
 
 ```json
 {
@@ -456,7 +456,7 @@ curl -s http://localhost:8000/api/v1/vault/secrets \
 
 Retrieve and decrypt a secret. Returns the plaintext value.
 
-**Auth**: Required — **owner or admin role only**. Member-role users receive `403`. This prevents low-privilege org members from extracting credentials.
+**Auth**: Required (**owner or admin role only**). Member-role users receive `403`. This prevents low-privilege org members from extracting credentials.
 
 **Response** `200`:
 
@@ -476,7 +476,7 @@ Retrieve and decrypt a secret. Returns the plaintext value.
 
 ### DELETE /vault/secrets/{secret_id}
 
-Permanently delete a secret. Hard-delete — no recovery.
+Permanently delete a secret. Hard-delete; no recovery.
 
 **Auth**: Required. The secret must belong to the calling agent.
 
@@ -589,8 +589,8 @@ Export all session events for the org as a downloadable file. Useful for complia
 | Param | Default | Description |
 |-------|---------|-------------|
 | `format` | `csv` | `csv` or `json` |
-| `from_date` | (none) | ISO 8601 timestamp — filter sessions started after this time |
-| `to_date` | (none) | ISO 8601 timestamp — filter sessions started before this time |
+| `from_date` | (none) | ISO 8601 timestamp. Filter to sessions started after this time. |
+| `to_date` | (none) | ISO 8601 timestamp. Filter to sessions started before this time. |
 | `agent_id` | (none) | Filter to a specific agent UUID |
 
 **Response** `200`: A streaming file download.
@@ -620,7 +620,7 @@ curl -s "http://localhost:8000/api/v1/sessions/export?format=json&agent_id=3f7a1
 
 The core gateway endpoint. Every MCP tool call from an agent goes through here.
 
-**Auth**: Required (agent API key only — JWTs not accepted on this endpoint)
+**Auth**: Required (agent API key only; JWTs not accepted on this endpoint)
 
 **Headers**:
 
@@ -692,7 +692,7 @@ curl -s http://localhost:8000/health
 
 ### GET /health/db
 
-Readiness probe for the database. Executes a `SELECT 1` against Postgres. Returns `503` if the connection fails — Railway will restart the service automatically.
+Readiness probe for the database. Executes a `SELECT 1` against Postgres. Returns `503` if the connection fails. Railway will restart the service automatically.
 
 ```bash
 curl -s http://localhost:8000/health/db
