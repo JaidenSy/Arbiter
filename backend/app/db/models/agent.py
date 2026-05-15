@@ -54,6 +54,11 @@ class Agent(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     api_key_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Scope controls what this agent's key can do:
+    #   "full"           — call tools, read/write vault secrets, manage sessions
+    #   "read_only"      — tool calls only, no vault writes or secret reads
+    #   "vault_read_only"— only allowed to read vault secrets, no tool calls
+    scope: Mapped[str] = mapped_column(String(32), nullable=False, default="full")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

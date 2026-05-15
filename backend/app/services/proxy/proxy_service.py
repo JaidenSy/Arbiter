@@ -109,6 +109,13 @@ class ProxyService:
         # ── 1. Resolve MCP server (org-scoped) ────────────────────────────────
         mcp_server = await self.resolve_server(request.server_name, agent.org_id)
 
+        # ── 1b. Scope enforcement ──────────────────────────────────────────────
+        if agent.scope == "vault_read_only":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Agent {agent.name!r} has scope 'vault_read_only' and cannot make tool calls",
+            )
+
         # ── 2. RBAC check ──────────────────────────────────────────────────────
         permitted = await self._rbac.check_permission(
             agent=agent,
@@ -275,11 +282,17 @@ class ProxyService:
         # ── 6. Store in cache (only on success and if server allows caching) ──
         if error is None and mcp_server.cache_enabled:
             try:
+                cache_ttl = await self._rbac.get_cache_ttl(
+                    agent_id=agent.id,
+                    mcp_server_id=mcp_server.id,
+                    tool_name=request.tool_name,
+                )
                 await self._cache.store_cached(
                     tool_name=request.tool_name,
                     input_payload=request.params,  # original params, not injected
                     response_payload=response_payload,
                     org_id=agent.org_id,
+                    ttl_override=cache_ttl,
                 )
             except Exception as exc:
                 # Cache write failure must not prevent the response.
@@ -452,7 +465,8 @@ class ProxyService:
 
         session = Session(agent_id=agent.id, org_id=agent.org_id, metadata_={})
         self.db.add(session)
-        await self.db.flush()  # get session.id before persisting events
+        await self.db.commit()  # commit immediately so session.id is durable before events are written
+        await self.db.refresh(session)
         return session
 
     async def _persist_event(
