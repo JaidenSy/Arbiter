@@ -72,3 +72,17 @@ async def send_org_invite(to: str, invited_by: str, org_name: str, accept_url: s
 """
     text = f"{invited_by} invited you to {org_name} on Arbiter.\nAccept: {accept_url}"
     await send_email(to, f"You're invited to {org_name} on Arbiter", html, text)
+
+
+async def send_payment_failed(to: str, org_name: str, portal_url: str) -> None:
+    html = f"""
+<p>We were unable to process the payment for <strong>{org_name}</strong>'s Arbiter Pro subscription.</p>
+<p>Your Pro access is at risk. Please update your payment method to avoid losing access.</p>
+<p><a href="{portal_url}">Update payment method</a></p>
+<p>If you need help, reply to this email.</p>
+"""
+    text = (
+        f"Payment failed for {org_name}'s Arbiter Pro subscription.\n"
+        f"Update your payment method to keep Pro access: {portal_url}"
+    )
+    await send_email(to, "Action required: payment failed for Arbiter Pro", html, text)
