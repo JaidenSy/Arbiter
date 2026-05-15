@@ -15,8 +15,9 @@ Agents do not need to know about each other. They cannot see each other's secret
 
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/agents \
+  -H "Authorization: Bearer nxai_..." \
   -H "Content-Type: application/json" \
-  -d '{"name": "research-agent", "description": "Reads files and runs searches"}'
+  -d '{"name": "research-agent", "description": "Reads files and runs searches", "scope": "read_only"}'
 ```
 
 Response:
@@ -25,20 +26,29 @@ Response:
 {
   "id": "3f7a1b2c-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
   "name": "research-agent",
-  "api_key": "nxai_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
   "is_active": true,
-  "created_at": "2026-04-01T12:00:00Z"
+  "scope": "read_only",
+  "created_at": "2026-04-01T12:00:00Z",
+  "api_key": "nxai_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
 }
 ```
 
 **Save the `api_key` immediately.** It is shown exactly once and is not stored. If lost, delete the agent and register again.
+
+The `scope` field controls high-level access at the key level:
+- `full` (default) — tool calls + vault read/write
+- `read_only` — tool calls only, no vault writes
+- `vault_read_only` — vault reads only, tool calls blocked
+
+See [rbac.md](./rbac.md) for details on how scope interacts with per-tool permissions.
 
 ```python
 import httpx
 
 response = httpx.post(
     "http://localhost:8000/api/v1/agents",
-    json={"name": "research-agent", "description": "Reads files and runs searches"},
+    headers={"Authorization": "Bearer nxai_admin_key"},
+    json={"name": "research-agent", "description": "Reads files and runs searches", "scope": "read_only"},
 )
 data = response.json()
 agent_id = data["id"]

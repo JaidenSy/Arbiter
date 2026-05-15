@@ -58,7 +58,6 @@ function ServerFormModal({
   )
   const [error, setError] = useState<string | null>(null)
 
-  // Re-sync form when editTarget changes (modal re-used for add vs edit)
   React.useEffect(() => {
     if (isOpen) {
       setName(editTarget?.name ?? '')
@@ -114,6 +113,9 @@ function ServerFormModal({
     onClose()
   }
 
+  const inputClass = "w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
+
   return (
     <Modal
       isOpen={isOpen}
@@ -122,11 +124,8 @@ function ServerFormModal({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label
-            htmlFor="server-name"
-            className="block text-sm text-secondary mb-1"
-          >
-            Name <span className="text-error">*</span>
+          <label htmlFor="server-name" className={labelClass}>
+            Name <span className="text-error normal-case">*</span>
           </label>
           <input
             id="server-name"
@@ -135,16 +134,13 @@ function ServerFormModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. my-mcp-server"
-            className="w-full bg-elevated border border-white/[0.14] text-primary text-sm px-3 py-1.5 rounded focus:outline-none focus:border-accent focus:ring-0"
+            className={inputClass}
           />
         </div>
 
         <div>
-          <label
-            htmlFor="server-url"
-            className="block text-sm text-secondary mb-1"
-          >
-            Base URL <span className="text-error">*</span>
+          <label htmlFor="server-url" className={labelClass}>
+            Base URL <span className="text-error normal-case">*</span>
           </label>
           <input
             id="server-url"
@@ -153,15 +149,12 @@ function ServerFormModal({
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
             placeholder="https://"
-            className="w-full bg-elevated border border-white/[0.14] text-primary text-sm px-3 py-1.5 rounded font-mono focus:outline-none focus:border-accent focus:ring-0"
+            className={`${inputClass} font-mono`}
           />
         </div>
 
         <div>
-          <label
-            htmlFor="server-desc"
-            className="block text-sm text-secondary mb-1"
-          >
+          <label htmlFor="server-desc" className={labelClass}>
             Description
           </label>
           <input
@@ -170,37 +163,41 @@ function ServerFormModal({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Optional description"
-            className="w-full bg-elevated border border-white/[0.14] text-primary text-sm px-3 py-1.5 rounded focus:outline-none focus:border-accent focus:ring-0"
+            className={inputClass}
           />
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-secondary">Cache enabled</span>
+        <div className="flex items-center justify-between py-1">
+          <div>
+            <span className="text-sm text-primary font-medium">Cache enabled</span>
+            <p className="text-xs text-secondary mt-0.5">Cache tool responses for faster repeated calls</p>
+          </div>
           <Toggle checked={cacheEnabled} onChange={setCacheEnabled} />
         </div>
 
-        {error && <p className="text-sm text-error">{error}</p>}
+        {error && (
+          <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
+            <p className="text-error text-xs">{error}</p>
+          </div>
+        )}
 
         <div className="flex justify-end gap-3 pt-2">
           <button
             type="button"
             onClick={handleClose}
-            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded text-sm transition-colors"
+            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-white/[0.08] hover:border-white/[0.15]"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isPending || !name.trim() || !baseUrl.trim()}
-            className="bg-accent hover:bg-violet-600 text-white text-sm font-medium px-3 py-1.5 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
           >
             {isPending
-              ? isEditing
-                ? 'Saving…'
-                : 'Adding…'
-              : isEditing
-                ? 'Save'
-                : 'Add Server'}
+              ? isEditing ? 'Saving…' : 'Adding…'
+              : isEditing ? 'Save' : 'Add Server'}
           </button>
         </div>
       </form>
@@ -212,10 +209,10 @@ function ServerFormModal({
 
 function SkeletonRow(): React.ReactElement {
   return (
-    <tr className="border-b border-white/[0.07]">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
-        <td key={i} className="py-2 px-4">
-          <div className="h-3 bg-elevated rounded animate-pulse w-3/4" />
+    <tr className="border-b border-white/[0.05]">
+      {[4, 8, 6, 3, 3, 2].map((w, i) => (
+        <td key={i} className="py-3 px-4">
+          <div className="h-3 skeleton-shimmer rounded" style={{ width: `${w * 14}px` }} />
         </td>
       ))}
     </tr>
@@ -229,9 +226,7 @@ function MCPServers(): React.ReactElement {
 
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<MCPServer | null>(null)
-  const [deactivateTarget, setDeactivateTarget] = useState<MCPServer | null>(
-    null
-  )
+  const [deactivateTarget, setDeactivateTarget] = useState<MCPServer | null>(null)
 
   const { data: servers, isLoading } = useQuery<MCPServer[]>({
     queryKey: ['mcp-servers'],
@@ -273,41 +268,33 @@ function MCPServers(): React.ReactElement {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 animate-fade-in">
+      {/* Page header */}
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-primary text-lg font-semibold">MCP Servers</h1>
+        <div>
+          <h1 className="gradient-text-purple text-xl font-bold">MCP Servers</h1>
+          <p className="text-secondary text-sm mt-1">Connected tool servers proxied through NexVault</p>
+        </div>
         <button
           type="button"
-          className="bg-accent hover:bg-violet-600 text-white text-sm font-medium px-3 py-1.5 rounded transition-colors"
+          className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
           onClick={handleAddClick}
         >
           Add Server
         </button>
       </div>
 
-      {/* Table */}
-      <div className="border-t border-white/[0.07]">
+      {/* Table card */}
+      <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
         <table className="min-w-full">
           <thead>
-            <tr>
-              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Name
-              </th>
-              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Base URL
-              </th>
-              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Description
-              </th>
-              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Cache
-              </th>
-              <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">
-                Status
-              </th>
-              <th className="py-2 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">
-                Actions
-              </th>
+            <tr className="border-b border-white/[0.06]">
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Name</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Base URL</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Description</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Cache</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Status</th>
+              <th className="py-3 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -319,26 +306,35 @@ function MCPServers(): React.ReactElement {
               </>
             ) : !servers || servers.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-16 px-4 text-center">
-                  <svg className="mx-auto mb-3 text-muted" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
-                    <rect x="2" y="3" width="20" height="5" rx="1"/>
-                    <rect x="2" y="10" width="20" height="5" rx="1"/>
-                    <rect x="2" y="17" width="20" height="5" rx="1"/>
-                    <circle cx="18" cy="5.5" r="0.75" fill="currentColor"/>
-                    <circle cx="18" cy="12.5" r="0.75" fill="currentColor"/>
-                    <circle cx="18" cy="19.5" r="0.75" fill="currentColor"/>
-                  </svg>
-                  <p className="text-secondary text-sm font-mono mb-1">No MCP servers registered.</p>
-                  <p className="text-muted text-xs">Add a server to start routing tool calls through NexVault.</p>
+                <td colSpan={6} className="py-20 px-4 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                    <svg className="text-accent-light" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <rect x="2" y="3" width="20" height="5" rx="1"/>
+                      <rect x="2" y="10" width="20" height="5" rx="1"/>
+                      <rect x="2" y="17" width="20" height="5" rx="1"/>
+                      <circle cx="18" cy="5.5" r="0.75" fill="currentColor"/>
+                      <circle cx="18" cy="12.5" r="0.75" fill="currentColor"/>
+                      <circle cx="18" cy="19.5" r="0.75" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <p className="text-primary text-sm font-medium mb-1">No MCP servers registered</p>
+                  <p className="text-secondary text-xs max-w-xs mx-auto mb-4">Add a server to start routing tool calls through NexVault.</p>
+                  <button
+                    type="button"
+                    onClick={handleAddClick}
+                    className="bg-gradient-to-r from-accent to-violet-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+                  >
+                    Add Server
+                  </button>
                 </td>
               </tr>
             ) : (
-              servers.map((server) => (
+              servers.map((server, idx) => (
                 <tr
                   key={server.id}
-                  className="group border-b border-white/[0.07] hover:bg-elevated transition-colors"
+                  className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-all duration-150 ${idx % 2 === 1 ? 'bg-white/[0.01]' : ''}`}
                 >
-                  <td className="py-2 px-4">
+                  <td className="py-3 px-4">
                     <span
                       className={`text-sm font-medium ${
                         server.is_active ? 'text-primary' : 'text-muted line-through'
@@ -347,7 +343,7 @@ function MCPServers(): React.ReactElement {
                       {server.name}
                     </span>
                   </td>
-                  <td className="py-2 px-4 max-w-xs">
+                  <td className="py-3 px-4 max-w-xs">
                     <span
                       className="font-mono text-xs text-secondary truncate block max-w-xs"
                       title={server.base_url}
@@ -355,55 +351,48 @@ function MCPServers(): React.ReactElement {
                       {server.base_url}
                     </span>
                   </td>
-                  <td className="py-2 px-4 max-w-xs">
+                  <td className="py-3 px-4 max-w-xs">
                     {server.description ? (
-                      <span
-                        className="text-secondary text-xs truncate block max-w-xs"
-                        title={server.description}
-                      >
+                      <span className="text-secondary text-xs truncate block max-w-xs" title={server.description}>
                         {server.description}
                       </span>
                     ) : (
-                      <span className="text-muted text-xs">—</span>
+                      <span className="text-muted text-xs italic">—</span>
                     )}
                   </td>
-                  <td className="py-2 px-4">
-                    <div className="flex items-center">
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          server.cache_enabled ? 'bg-green-400' : 'bg-muted'
-                        }`}
-                      />
-                      <span className="text-muted text-xs ml-1.5">
-                        {server.cache_enabled ? 'cached' : 'no cache'}
-                      </span>
-                    </div>
+                  <td className="py-3 px-4">
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${
+                      server.cache_enabled
+                        ? 'bg-teal/10 text-teal-light border border-teal/20'
+                        : 'bg-muted/10 text-muted border border-muted/10'
+                    }`}>
+                      <span className={`w-1 h-1 rounded-full ${server.cache_enabled ? 'bg-teal-light' : 'bg-muted'}`} />
+                      {server.cache_enabled ? 'cached' : 'off'}
+                    </span>
                   </td>
-                  <td className="py-2 px-4">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          server.is_active ? 'bg-green-400' : 'bg-muted'
-                        }`}
-                      />
-                      <span className="text-xs text-secondary">
-                        {server.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
+                  <td className="py-3 px-4">
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${
+                      server.is_active
+                        ? 'bg-success/10 text-success border border-success/20'
+                        : 'bg-muted/20 text-muted border border-muted/20'
+                    }`}>
+                      <span className={`w-1 h-1 rounded-full ${server.is_active ? 'bg-success' : 'bg-muted'}`} />
+                      {server.is_active ? 'Active' : 'Inactive'}
+                    </span>
                   </td>
-                  <td className="py-2 px-4 text-right">
+                  <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         type="button"
                         onClick={() => handleEditClick(server)}
-                        className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded text-sm transition-colors"
+                        className="text-secondary hover:text-primary border border-white/[0.08] hover:border-white/[0.18] px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                       >
                         Edit
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeactivateTarget(server)}
-                        className="text-error hover:bg-red-500/10 px-3 py-1.5 rounded text-sm transition-colors"
+                        className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                       >
                         Deactivate
                       </button>

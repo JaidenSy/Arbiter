@@ -57,13 +57,47 @@ class TokenResponse(BaseModel):
 
 
 class MeResponse(BaseModel):
-    """Response for GET /auth/me."""
+    """Response for GET /auth/me and PATCH /auth/me."""
 
     id: uuid.UUID
     email: str
+    display_name: str | None
     role: str
     org_id: uuid.UUID
     org_name: str
     org_plan: str
+    has_password: bool
+    linked_providers: list[str]
+    avatar_url: str | None
 
     model_config = {"from_attributes": True}
+
+
+class UpdateMeRequest(BaseModel):
+    """Body for PATCH /auth/me."""
+
+    display_name: str | None = None
+    email: EmailStr | None = None
+
+    @field_validator("display_name")
+    @classmethod
+    def display_name_length(cls, value: str | None) -> str | None:
+        if value is not None and len(value.strip()) == 0:
+            raise ValueError("display_name must not be blank")
+        if value is not None and len(value) > 64:
+            raise ValueError("display_name must be 64 characters or fewer")
+        return value.strip() if value else value
+
+
+class ChangePasswordRequest(BaseModel):
+    """Body for POST /auth/me/change-password."""
+
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_min_length(cls, value: str) -> str:
+        if len(value) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return value

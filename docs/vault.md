@@ -132,6 +132,16 @@ The vault master key (`VAULT_ENCRYPTION_KEY`) is a 32-byte random key expressed 
 
 Key rotation does not require downtime if done in the correct order (re-encrypt first, swap env var second, restart third).
 
+## Access control
+
+**Writing secrets** (`POST /vault/secrets`, `DELETE /vault/secrets/{id}`) requires the `owner` or `admin` role.
+
+**Listing secrets** (`GET /vault/secrets`) is available to all authenticated org members — it returns names only, never values.
+
+**Reading a secret value** (`GET /vault/secrets/{id}`) requires the `owner` or `admin` role. Member-role users receive `403 Forbidden`. This prevents low-privilege org members from extracting credentials even if they have dashboard access.
+
+The proxy reads secrets internally on behalf of the calling agent during tool call secret injection. This internal path bypasses the user-facing role check — it is enforced at the agent scope level instead (see [rbac.md](./rbac.md)).
+
 ## What the vault does not do
 
 - Does not support secret versioning (planned for v2)

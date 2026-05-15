@@ -13,18 +13,47 @@ Routes:
 
 from __future__ import annotations
 
+import ipaddress
+import socket
 import uuid
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, require_role
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.services.plan.plan_service import check_resource_limit
+
+_PRIVATE_NETS = [
+    ipaddress.ip_network(cidr) for cidr in (
+        "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+        "127.0.0.0/8", "169.254.0.0/16", "::1/128", "fc00::/7",
+    )
+]
+
+
+def _assert_ssrf_safe(url: str) -> None:
+    """Raise ValueError if url resolves to a private/loopback address."""
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("base_url must contain a valid hostname")
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        raise ValueError(f"base_url hostname {hostname!r} could not be resolved")
+    for _family, _type, _proto, _canonname, sockaddr in infos:
+        addr = ipaddress.ip_address(sockaddr[0])
+        if any(addr in net for net in _PRIVATE_NETS):
+            raise ValueError(
+                f"base_url resolves to a private/reserved address ({addr}) — "
+                "registering internal hosts as MCP servers is not allowed"
+            )
 
 router = APIRouter(prefix="/mcp-servers", tags=["mcp-servers"])
 
@@ -46,11 +75,13 @@ class MCPServerCreate(BaseModel):
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, v: str) -> str:
-        """Ensure base_url is a valid HTTP(S) URL to prevent SSRF with unexpected schemes."""
-        stripped = v.strip().lower()
-        if not (stripped.startswith("http://") or stripped.startswith("https://")):
+        """Ensure base_url is a public HTTP(S) URL — blocks SSRF via private IPs."""
+        stripped = v.strip()
+        lower = stripped.lower()
+        if not (lower.startswith("http://") or lower.startswith("https://")):
             raise ValueError("base_url must be a valid http:// or https:// URL")
-        return v.strip()
+        _assert_ssrf_safe(stripped)
+        return stripped
 
 
 class MCPServerUpdate(BaseModel):
@@ -64,13 +95,15 @@ class MCPServerUpdate(BaseModel):
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, v: str | None) -> str | None:
-        """Ensure base_url is a valid HTTP(S) URL when provided."""
+        """Ensure base_url is a public HTTP(S) URL when provided — blocks SSRF via private IPs."""
         if v is None:
             return v
-        stripped = v.strip().lower()
-        if not (stripped.startswith("http://") or stripped.startswith("https://")):
+        stripped = v.strip()
+        lower = stripped.lower()
+        if not (lower.startswith("http://") or lower.startswith("https://")):
             raise ValueError("base_url must be a valid http:// or https:// URL")
-        return v.strip()
+        _assert_ssrf_safe(stripped)
+        return stripped
 
 
 class MCPServerResponse(BaseModel):
@@ -101,7 +134,7 @@ class MCPServerResponse(BaseModel):
 async def create_mcp_server(
     body: MCPServerCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> MCPServerResponse:
     """
     Register a new MCP server so agents can route tool calls to it.
@@ -242,7 +275,7 @@ async def update_mcp_server(
     server_id: uuid.UUID,
     body: MCPServerUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> MCPServerResponse:
     """
     Partially update name, URL, description, or cache_enabled flag of an MCP server.
@@ -297,7 +330,7 @@ async def update_mcp_server(
 async def delete_mcp_server(
     server_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> Response:
     """
     Soft-delete an MCP server by setting is_active=False.

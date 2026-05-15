@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, require_role
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
 from app.db.models.user import User
@@ -41,6 +41,11 @@ class ToolPermissionCreate(BaseModel):
         ...,
         description="Tool name or '*' for all tools on this server",
     )
+    cache_ttl_seconds: int | None = Field(
+        None,
+        ge=1,
+        description="Override cache TTL for this tool in seconds. Null = global default.",
+    )
 
 
 class ToolPermissionResponse(BaseModel):
@@ -52,6 +57,7 @@ class ToolPermissionResponse(BaseModel):
     tool_name: str
     granted_at: datetime
     granted_by: str | None
+    cache_ttl_seconds: int | None
 
     model_config = {"from_attributes": True}
 
@@ -69,7 +75,7 @@ async def create_tool_permission(
     agent_id: uuid.UUID,
     body: ToolPermissionCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> ToolPermissionResponse:
     """
     Grant an agent permission to call a specific tool (or all tools) on an MCP server.
@@ -118,6 +124,7 @@ async def create_tool_permission(
         agent_id=agent_id,
         mcp_server_id=body.mcp_server_id,
         tool_name=body.tool_name,
+        cache_ttl_seconds=body.cache_ttl_seconds,
     )
     db.add(permission)
 
@@ -185,7 +192,7 @@ async def delete_tool_permission(
     agent_id: uuid.UUID,
     permission_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> Response:
     """
     Hard-delete a specific tool permission for an agent.

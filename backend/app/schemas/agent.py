@@ -14,6 +14,9 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+_VALID_SCOPES = {"full", "read_only", "vault_read_only"}
+
+
 class AgentCreate(BaseModel):
     """
     Request body for POST /agents.
@@ -24,6 +27,10 @@ class AgentCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=255, description="Human-readable agent label")
     description: str | None = Field(None, max_length=1000, description="Optional notes")
+    scope: str = Field(
+        "full",
+        description="Permission scope: 'full', 'read_only' (no vault writes), or 'vault_read_only' (no tool calls)",
+    )
 
 
 class AgentResponse(BaseModel):
@@ -37,6 +44,7 @@ class AgentResponse(BaseModel):
     name: str
     description: str | None
     is_active: bool
+    scope: str
     created_at: datetime
     updated_at: datetime
 

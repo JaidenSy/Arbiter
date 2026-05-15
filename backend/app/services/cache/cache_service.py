@@ -110,7 +110,10 @@ class CacheService:
         return await loop.run_in_executor(None, self.compute_embedding, text)
 
     async def get_cached(
-        self, tool_name: str, input_payload: dict[str, Any]
+        self,
+        tool_name: str,
+        input_payload: dict[str, Any],
+        org_id: Any = None,
     ) -> dict[str, Any] | None:
         """
         Attempt to retrieve a cached response for a tool call.
@@ -120,9 +123,13 @@ class CacheService:
             2. Postgres exact-hash match — fallback if Redis miss
             3. Postgres semantic similarity match (embedding cosine search)
 
+        Cache entries are scoped to org_id so tenant responses never bleed
+        across orgs.
+
         Args:
             tool_name:     Name of the MCP tool being called.
             input_payload: The tool call arguments dict.
+            org_id:        Organization UUID for tenant isolation.
 
         Returns:
             dict: Cached response payload if a match is found.
@@ -130,7 +137,7 @@ class CacheService:
         """
         canonical = _canonical(tool_name, input_payload)
         input_hash = hashlib.sha256(canonical.encode()).hexdigest()
-        redis_key = f"cache:exact:{tool_name}:{input_hash}"
+        redis_key = f"cache:exact:{org_id}:{tool_name}:{input_hash}"
 
         # ── Phase 1a: Redis exact match ────────────────────────────────────────
         if self.redis is not None:
@@ -148,6 +155,7 @@ class CacheService:
             select(CacheEntry).where(
                 CacheEntry.tool_name == tool_name,
                 CacheEntry.input_hash == input_hash,
+                CacheEntry.org_id == org_id,
                 CacheEntry.expires_at > now,
             )
         )
@@ -173,13 +181,14 @@ class CacheService:
             logger.warning("cache: embedding failed, skipping semantic search: %s", exc)
             return None
 
-        # Fetch all non-expired entries for this tool that have embeddings.
+        # Fetch candidate entries for semantic search — capped to prevent OOM.
         result = await self.db.execute(
             select(CacheEntry).where(
                 CacheEntry.tool_name == tool_name,
+                CacheEntry.org_id == org_id,
                 CacheEntry.input_embedding.is_not(None),
                 CacheEntry.expires_at > now,
-            )
+            ).limit(500)
         )
         candidates = result.scalars().all()
 
@@ -214,6 +223,7 @@ class CacheService:
         input_payload: dict[str, Any],
         response_payload: dict[str, Any],
         org_id: Any = None,
+        ttl_override: int | None = None,
     ) -> None:
         """
         Store a tool call result in both Redis (L1) and Postgres (L2).
@@ -229,8 +239,8 @@ class CacheService:
         """
         canonical = _canonical(tool_name, input_payload)
         input_hash = hashlib.sha256(canonical.encode()).hexdigest()
-        redis_key = f"cache:exact:{tool_name}:{input_hash}"
-        ttl_seconds = settings.cache_ttl_seconds
+        redis_key = f"cache:exact:{org_id}:{tool_name}:{input_hash}"
+        ttl_seconds = ttl_override if ttl_override is not None else settings.cache_ttl_seconds
         expires_at = datetime.now(tz=timezone.utc) + timedelta(seconds=ttl_seconds)
 
         # Compute embedding (best-effort; proceed even if it fails).
@@ -254,6 +264,7 @@ class CacheService:
             select(CacheEntry).where(
                 CacheEntry.tool_name == tool_name,
                 CacheEntry.input_hash == input_hash,
+                CacheEntry.org_id == org_id,
             )
         )
         existing = result.scalar_one_or_none()

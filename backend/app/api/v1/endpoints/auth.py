@@ -1,37 +1,87 @@
 """
 NexVault — API endpoints: Auth.
 
-Human-operator authentication via email/password + JWT + rotating refresh tokens.
-
 Routes:
-    POST /auth/register  → 201  issue tokens for new org + owner
-    POST /auth/login     → 200  issue tokens for existing user
-    POST /auth/refresh   → 200  rotate refresh token, issue fresh pair
-    POST /auth/logout    → 204  invalidate access token; optionally all devices
-    GET  /auth/me        → 200  current user profile
+    POST   /auth/register           → 201  issue tokens for new org + owner
+    POST   /auth/login              → 200  issue tokens for existing user
+    POST   /auth/refresh            → 200  rotate refresh token, issue fresh pair
+    POST   /auth/logout             → 204  invalidate access token; optionally all devices
+    GET    /auth/me                 → 200  current user profile
+    PATCH  /auth/me                 → 200  update display name or email
+    POST   /auth/me/change-password → 204  change password (password users only)
+    DELETE /auth/me                 → 204  deactivate account + revoke all tokens
 """
 
 from __future__ import annotations
 
+import hmac
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core import security as _sec
 from app.core.config import settings
 from app.core.dependencies import get_current_user, get_db, get_redis
 from app.db.models.organization import Organization
+from app.db.models.refresh_token import RefreshToken
 from app.db.models.user import User
 from app.schemas.auth import (
+    ChangePasswordRequest,
     LoginRequest,
     MeResponse,
     RefreshRequest,
     RegisterRequest,
     TokenResponse,
+    UpdateMeRequest,
 )
 from app.services.auth import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+async def _build_me_response(user: User, db: AsyncSession) -> MeResponse:
+    """Load org + social accounts and assemble MeResponse."""
+    # Reload user with social_accounts eagerly to avoid lazy-load issues in async
+    user_with_socials = await db.scalar(
+        select(User)
+        .where(User.id == user.id)
+        .options(selectinload(User.social_accounts))
+    )
+    if user_with_socials is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    org = await db.get(Organization, user.org_id)
+    if org is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Organization not found",
+        )
+
+    linked_providers = [sa.provider for sa in user_with_socials.social_accounts]
+    avatar_url = next(
+        (sa.avatar_url for sa in user_with_socials.social_accounts if sa.avatar_url),
+        None,
+    )
+
+    return MeResponse(
+        id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        role=user.role,
+        org_id=user.org_id,
+        org_name=org.name,
+        org_plan=org.plan_tier,
+        has_password=bool(user.hashed_password),
+        linked_providers=linked_providers,
+        avatar_url=avatar_url,
+    )
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post(
     "/register",
@@ -43,27 +93,8 @@ async def register(
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
-    """
-    Self-serve registration.
-
-    Creates a new organization (plan=free) and an owner user in a single
-    atomic transaction, then returns a token pair so the caller is
-    immediately authenticated.
-
-    Args:
-        body: org_name, email, and password.
-        db:   Injected database session.
-
-    Returns:
-        TokenResponse: access_token, refresh_token, token_type, expires_in.
-
-    Raises:
-        HTTPException 403: If public registration is disabled by config.
-        HTTPException 409: If the email is already in use.
-    """
     if not settings.allow_public_registration:
-        # Allow if a valid invite code is provided
-        if not settings.invite_code or body.invite_code != settings.invite_code:
+        if not settings.invite_code or not hmac.compare_digest(body.invite_code, settings.invite_code):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Registration requires a valid invite code",
@@ -92,21 +123,19 @@ async def register(
 async def login(
     body: LoginRequest,
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> TokenResponse:
-    """
-    Email/password login.
+    if redis is not None:
+        rate_key = f"login_attempts:{body.email}"
+        attempts = await redis.incr(rate_key)
+        if attempts == 1:
+            await redis.expire(rate_key, 900)  # 15-minute window
+        if attempts > 10:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many login attempts. Try again in 15 minutes.",
+            )
 
-    Args:
-        body: email and password.
-        db:   Injected database session.
-
-    Returns:
-        TokenResponse: access_token, refresh_token, token_type, expires_in.
-
-    Raises:
-        HTTPException 401: On invalid credentials or inactive account.
-        HTTPException 403: If the org is suspended.
-    """
     _user, access_token, refresh_token = await auth_service.login(
         db=db,
         email=body.email,
@@ -131,23 +160,6 @@ async def refresh(
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ) -> TokenResponse:
-    """
-    Token rotation.
-
-    Validates the presented refresh token, revokes it, and issues a new
-    access token + refresh token pair (one-time-use rotation).
-
-    Args:
-        body:  refresh_token string.
-        db:    Injected database session.
-        redis: Injected Redis client.
-
-    Returns:
-        TokenResponse: Fresh access_token, refresh_token, token_type, expires_in.
-
-    Raises:
-        HTTPException 401: If the token is invalid, revoked, or expired.
-    """
     new_access, new_refresh = await auth_service.refresh_tokens(
         db=db,
         redis=redis,
@@ -177,22 +189,6 @@ async def logout(
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ) -> Response:
-    """
-    Log out the current user.
-
-    Adds the JWT's jti to the Redis blocklist so it cannot be reused even
-    within its remaining lifetime.  Optionally revokes all refresh tokens.
-
-    Args:
-        all_devices:   Revoke all sessions when True (query param ``?all=true``).
-        authorization: Raw Authorization header — used to re-extract jti/exp.
-        current_user:  Injected authenticated user.
-        db:            Injected database session.
-        redis:         Injected Redis client.
-
-    Returns:
-        204 No Content.
-    """
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -202,14 +198,11 @@ async def logout(
     token = authorization.removeprefix("Bearer ").strip()
     payload = _sec.decode_access_token(token)
 
-    jti: str = payload.get("jti", "")
-    exp: int = payload.get("exp", 0)
-
     await auth_service.logout(
         db=db,
         redis=redis,
-        jti=jti,
-        exp=exp,
+        jti=payload.get("jti", ""),
+        exp=payload.get("exp", 0),
         user_id=current_user.id,
         all_devices=all_devices,
     )
@@ -227,28 +220,108 @@ async def me(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> MeResponse:
-    """
-    Return profile information for the authenticated user.
+    return await _build_me_response(current_user, db)
 
-    Args:
-        current_user: Injected authenticated user.
-        db:           Injected database session.
 
-    Returns:
-        MeResponse: User ID, email, role, org_id, org name, and plan tier.
-    """
-    org = await db.get(Organization, current_user.org_id)
-    if org is None:
+@router.patch(
+    "/me",
+    response_model=MeResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update display name or email",
+)
+async def update_me(
+    body: UpdateMeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MeResponse:
+    if body.email and body.email != current_user.email:
+        existing = await db.scalar(select(User).where(User.email == str(body.email)))
+        if existing is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="That email is already in use",
+            )
+        current_user.email = str(body.email)
+
+    if body.display_name is not None:
+        current_user.display_name = body.display_name
+
+    await db.commit()
+    await db.refresh(current_user)
+    return await _build_me_response(current_user, db)
+
+
+@router.post(
+    "/me/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Change password (email/password accounts only)",
+)
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    from passlib.context import CryptContext
+    _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+    if not current_user.hashed_password:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Organization not found",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This account uses SSO — password change is not available",
         )
 
-    return MeResponse(
-        id=current_user.id,
-        email=current_user.email,
-        role=current_user.role,
-        org_id=current_user.org_id,
-        org_name=org.name,
-        org_plan=org.plan_tier,
-    )
+    if not _pwd.verify(body.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect",
+        )
+
+    current_user.hashed_password = _pwd.hash(body.new_password)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete(
+    "/me",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Deactivate account and revoke all sessions",
+)
+async def delete_me(
+    authorization: str | None = Header(default=None),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+) -> Response:
+    # Soft-delete the user
+    current_user.is_active = False
+
+    # Revoke all refresh tokens
+    tokens = (
+        await db.scalars(
+            select(RefreshToken).where(
+                RefreshToken.user_id == current_user.id,
+                RefreshToken.revoked.is_(False),
+            )
+        )
+    ).all()
+    for token in tokens:
+        token.revoked = True
+
+    await db.commit()
+
+    # Blocklist the current access token
+    if authorization:
+        try:
+            raw_token = authorization.removeprefix("Bearer ").strip()
+            payload = _sec.decode_access_token(raw_token)
+            jti: str = payload.get("jti", "")
+            exp: int = payload.get("exp", 0)
+            if jti:
+                from datetime import datetime, timezone
+                now = int(datetime.now(tz=timezone.utc).timestamp())
+                ttl = max(exp - now, 1)
+                await redis.setex(f"jti_blocklist:{jti}", ttl, "")
+        except Exception:
+            pass  # best-effort; user is already deactivated
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

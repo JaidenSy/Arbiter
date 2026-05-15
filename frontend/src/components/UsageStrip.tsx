@@ -40,6 +40,12 @@ const fetchUsageSummary = (): Promise<UsageSummary> =>
 const fetchStats = (): Promise<DashboardStats> =>
   authClient.get<DashboardStats>('/stats').then((r) => r.data)
 
+// ── Separator ─────────────────────────────────────────────────────────────────
+
+function Sep(): React.ReactElement {
+  return <span className="w-px h-3.5 bg-white/[0.1] flex-shrink-0" />
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 function UsageStrip(): React.ReactElement | null {
@@ -57,7 +63,6 @@ function UsageStrip(): React.ReactElement | null {
     staleTime: 60_000,
   })
 
-  // Only render for JWT-authenticated users
   if (!user) return null
 
   const plan = user.org_plan ?? 'free'
@@ -73,33 +78,51 @@ function UsageStrip(): React.ReactElement | null {
   const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1)
 
   return (
-    <div className="flex items-center gap-4 px-8 py-2.5 bg-surface border-b border-white/[0.07] text-xs font-mono text-secondary flex-wrap">
-      <span className="text-accent-light font-semibold">{planLabel} Plan</span>
-      <span className="text-white/20">•</span>
+    <div className="flex items-center gap-3 px-8 py-2 bg-gradient-to-r from-surface via-surface to-surface/80 border-b border-white/[0.06] text-xs font-mono text-secondary flex-wrap">
+      {/* Plan badge */}
+      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+        plan === 'enterprise'
+          ? 'bg-violet-500/15 text-violet-300 border border-violet-500/25'
+          : plan === 'pro'
+          ? 'bg-teal/10 text-teal-light border border-teal/20'
+          : 'bg-accent/10 text-accent-light border border-accent/20'
+      }`}>
+        <span className={`w-1 h-1 rounded-full ${plan === 'enterprise' ? 'bg-violet-400' : plan === 'pro' ? 'bg-teal-light' : 'bg-accent-light'}`} />
+        {planLabel}
+      </span>
+
+      <Sep />
+
       <span>
         tool calls:{' '}
         <span className="text-primary">{toolCallsUsed.toLocaleString()}</span>
-        {' / '}
-        <span>{formatLimit(limits.toolCalls)}</span>
+        <span className="text-muted"> / {formatLimit(limits.toolCalls)}</span>
       </span>
-      <span className="text-white/20">•</span>
+
+      <Sep />
+
       <span>
         agents:{' '}
-        <span className={isOverAgentLimit ? 'text-red-400 font-semibold' : 'text-primary'}>{agentsCount}</span>
-        {' / '}
-        <span>{formatLimit(limits.agents)}</span>
-        {isOverAgentLimit && <span className="text-red-400 ml-1">↑ over limit</span>}
+        <span className={isOverAgentLimit ? 'text-error font-semibold' : 'text-primary'}>{agentsCount}</span>
+        <span className="text-muted"> / {formatLimit(limits.agents)}</span>
+        {isOverAgentLimit && <span className="text-error ml-1">↑ over limit</span>}
       </span>
-      <span className="text-white/20">•</span>
+
+      <Sep />
+
       <span>
-        cache hit rate: <span className="text-primary">{cacheRatePct}</span>
+        cache:{' '}
+        <span className={`font-semibold ${stats && stats.cache_hit_rate_today >= 0.5 ? 'text-teal-light' : 'text-primary'}`}>
+          {cacheRatePct}
+        </span>
       </span>
+
       {plan === 'free' && (
         <>
-          <span className="text-white/20">•</span>
+          <Sep />
           <Link
             to="/settings#billing"
-            className="text-accent-light hover:text-white transition-colors"
+            className="text-accent-light hover:text-white transition-colors font-medium"
           >
             Upgrade →
           </Link>
@@ -107,10 +130,10 @@ function UsageStrip(): React.ReactElement | null {
       )}
       {plan === 'enterprise' && (
         <>
-          <span className="text-white/20">•</span>
+          <Sep />
           <a
             href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Enterprise`}
-            className="text-accent-light hover:text-white transition-colors"
+            className="text-accent-light hover:text-white transition-colors font-medium"
           >
             Contact Sales →
           </a>
