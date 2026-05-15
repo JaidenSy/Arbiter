@@ -1,5 +1,5 @@
 """
-NexVault — CacheService.
+Arbiter — CacheService.
 
 Implements a two-phase semantic cache for MCP tool calls:
 

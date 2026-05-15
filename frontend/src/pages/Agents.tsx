@@ -1,5 +1,5 @@
 /**
- * NexVault — Agents page.
+ * Arbiter — Agents page.
  *
  * Lists registered agents and allows:
  *   - Registering a new agent (form modal → one-time API key modal)
@@ -341,7 +341,7 @@ function Agents(): React.ReactElement {
                     </svg>
                   </div>
                   <p className="text-primary text-sm font-medium mb-1">No agents registered yet</p>
-                  <p className="text-secondary text-xs max-w-xs mx-auto mb-4">Register your first agent to start routing tool calls through NexVault.</p>
+                  <p className="text-secondary text-xs max-w-xs mx-auto mb-4">Register your first agent to start routing tool calls through Arbiter.</p>
                   <button
                     type="button"
                     onClick={() => setShowRegisterModal(true)}

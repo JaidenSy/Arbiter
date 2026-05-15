@@ -1,5 +1,5 @@
 /**
- * NexVault — Marketing landing page.
+ * Arbiter — Marketing landing page.
  *
  * Shown to unauthenticated users at /.
  * No sidebar. Standalone dark layout.
@@ -20,7 +20,7 @@ function Navbar(): React.ReactElement {
         {/* Logo */}
         <div className="flex items-center gap-2.5">
           <span className="gradient-text font-bold text-lg tracking-tight">NX</span>
-          <span className="text-primary font-semibold text-sm tracking-wide">NexVault</span>
+          <span className="text-primary font-semibold text-sm tracking-wide">Arbiter</span>
         </div>
 
         {/* Right nav */}
@@ -76,7 +76,7 @@ function Hero(): React.ReactElement {
 
         {/* Subheadline */}
         <p className="text-secondary text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed mb-10">
-          NexVault gives every AI agent a cryptographic identity, fine-grained tool permissions, an
+          Arbiter gives every AI agent a cryptographic identity, fine-grained tool permissions, an
           encrypted secrets vault, and full chain observability — all through a single MCP gateway.
         </p>
 
@@ -110,7 +110,7 @@ function Hero(): React.ReactElement {
           <pre className="font-mono text-xs text-secondary leading-relaxed">
             <span className="text-muted">$</span>{' '}
             <span className="text-teal-light">curl</span>{' '}
-            <span className="text-primary">-X POST https://your-nexvault.railway.app/mcp \</span>
+            <span className="text-primary">-X POST https://your-arbiter.railway.app/mcp \</span>
             {'\n'}
             {'  '}<span className="text-accent-light">-H</span>{' '}
             <span className="text-success">"Authorization: Bearer nxai_abc123..."</span>
@@ -274,8 +274,8 @@ const steps: Step[] = [
   {
     number: '03',
     title: 'Make tool calls',
-    description: 'Point your MCP client at NexVault. All calls proxied, cached, and logged.',
-    code: 'mcp_client.connect(\n  "https://your-nexvault.railway.app"\n)',
+    description: 'Point your MCP client at Arbiter. All calls proxied, cached, and logged.',
+    code: 'mcp_client.connect(\n  "https://your-arbiter.railway.app"\n)',
   },
 ]
 
@@ -453,9 +453,9 @@ const faqItems: FAQItem[] = [
       'Model Context Protocol (MCP) is an open standard for AI agents to call tools safely. It defines a structured way for AI models to interact with external systems, files, and APIs.',
   },
   {
-    question: 'How does NexVault differ from calling MCP servers directly?',
+    question: 'How does Arbiter differ from calling MCP servers directly?',
     answer:
-      'NexVault adds identity, access control, secrets management, semantic caching, and full observability on top of any MCP server. Instead of each agent connecting directly to each server, all traffic flows through NexVault where it can be audited, cached, and controlled.',
+      'Arbiter adds identity, access control, secrets management, semantic caching, and full observability on top of any MCP server. Instead of each agent connecting directly to each server, all traffic flows through Arbiter where it can be audited, cached, and controlled.',
   },
   {
     question: 'Is my data secure?',
@@ -470,7 +470,7 @@ const faqItems: FAQItem[] = [
   {
     question: 'What MCP clients are supported?',
     answer:
-      'Any client that supports the MCP spec, including Claude Desktop, Continue, Cursor, and custom clients built with the official MCP SDK. NexVault is a drop-in gateway — just change your base URL.',
+      'Any client that supports the MCP spec, including Claude Desktop, Continue, Cursor, and custom clients built with the official MCP SDK. Arbiter is a drop-in gateway — just change your base URL.',
   },
 ]
 
@@ -533,10 +533,10 @@ function Contact(): React.ReactElement {
       <div className="max-w-2xl mx-auto text-center">
         <h2 className="text-3xl font-bold text-primary mb-4">Questions? We're here.</h2>
         <p className="text-secondary text-base leading-relaxed mb-10">
-          Whether you're evaluating NexVault for your team or need help getting started, reach out.
+          Whether you're evaluating Arbiter for your team or need help getting started, reach out.
         </p>
         <a
-          href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Inquiry`}
+          href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Inquiry`}
           className="inline-flex items-center gap-2 bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white font-semibold px-6 py-3 rounded-xl transition-all hover:shadow-[0_0_24px_rgba(124,58,237,0.35)] text-sm"
         >
           Send us a message
@@ -555,8 +555,8 @@ function Footer(): React.ReactElement {
         {/* Left — logo + copyright */}
         <div className="flex items-center gap-2.5">
           <span className="gradient-text font-bold text-base tracking-tight">NX</span>
-          <span className="text-primary font-semibold text-sm">NexVault</span>
-          <span className="text-muted text-xs ml-2">© 2026 NexVault. All rights reserved.</span>
+          <span className="text-primary font-semibold text-sm">Arbiter</span>
+          <span className="text-muted text-xs ml-2">© 2026 Arbiter. All rights reserved.</span>
         </div>
 
         {/* Right — nav */}

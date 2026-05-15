@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: Billing.
+Arbiter — API endpoints: Billing.
 
 Exposes Stripe billing operations for the frontend and handles Stripe webhook
 delivery for subscription lifecycle events.

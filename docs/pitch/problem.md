@@ -83,4 +83,4 @@ API gateway infrastructure for microservices took 10 years to mature into produc
 
 Kong and AWS API Gateway exist because teams got tired of building auth, rate limiting, and observability themselves for every service. The same moment is arriving for MCP tool infrastructure.
 
-NexVault is that infrastructure, pre-built, in a single Docker Compose.
+Arbiter is that infrastructure, pre-built, in a single Docker Compose.

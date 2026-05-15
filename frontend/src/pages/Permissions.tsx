@@ -1,5 +1,5 @@
 /**
- * NexVault — Tool Permissions page.
+ * Arbiter — Tool Permissions page.
  *
  * Two-panel layout:
  *   Left:  Agent selector list

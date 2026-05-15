@@ -1,5 +1,5 @@
 /**
- * NexVault — Dashboard page.
+ * Arbiter — Dashboard page.
  *
  * Landing page showing a high-level overview of gateway activity:
  *   - 4 stat metrics (agents, servers, tool calls, cache hit rate)
@@ -345,7 +345,7 @@ function Dashboard(): React.ReactElement {
                 </svg>
               </div>
               <p className="text-primary text-sm font-medium mb-1">No sessions yet</p>
-              <p className="text-secondary text-xs max-w-xs mx-auto">Sessions appear once an agent makes its first tool call through NexVault.</p>
+              <p className="text-secondary text-xs max-w-xs mx-auto">Sessions appear once an agent makes its first tool call through Arbiter.</p>
             </div>
           ) : (
             <table className="min-w-full">

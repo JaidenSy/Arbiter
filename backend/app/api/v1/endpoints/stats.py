@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: Stats.
+Arbiter — API endpoints: Stats.
 
 Dashboard statistics endpoint returning aggregated counts and metrics.
 

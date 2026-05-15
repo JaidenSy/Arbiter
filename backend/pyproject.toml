@@ -1,7 +1,7 @@
 [project]
-name = "nexvault-backend"
+name = "arbiter-backend"
 version = "0.1.0"
-description = "NexVault MCP Gateway — backend API"
+description = "Arbiter MCP Gateway — backend API"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Private" }
