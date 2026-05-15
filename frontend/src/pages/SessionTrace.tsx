@@ -69,6 +69,7 @@ interface TraceRowProps {
   barLeftPct: number;
   barWidthPct: number;
   isExpanded: boolean;
+  isSelected: boolean;
   onToggle: () => void;
 }
 
@@ -77,6 +78,7 @@ function TraceRow({
   barLeftPct,
   barWidthPct,
   isExpanded,
+  isSelected,
   onToggle,
 }: TraceRowProps): React.ReactElement {
   const isError = !!event.error;
@@ -98,7 +100,11 @@ function TraceRow({
     <>
       <tr
         className={`border-b border-white/[0.07] cursor-pointer group transition-colors ${
-          isError ? "bg-red-950/20" : "hover:bg-elevated"
+          isSelected
+            ? "bg-accent/10 border-accent/30"
+            : isError
+            ? "bg-red-950/20"
+            : "hover:bg-elevated"
         }`}
         onClick={onToggle}
       >
@@ -468,6 +474,7 @@ function SessionTrace(): React.ReactElement {
                   barLeftPct={barLeftPct}
                   barWidthPct={barWidthPct}
                   isExpanded={!compareMode && expandedEventId === event.id}
+                  isSelected={isCompareSelected}
                   onToggle={() => {
                     if (compareMode) {
                       setCompareSelected((prev) => {
