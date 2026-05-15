@@ -14,7 +14,7 @@ Every agent has a `scope` field set at registration time. It restricts what the 
 
 A `vault_read_only` agent hitting the proxy will receive `403 Forbidden` before the tool-level check even runs. A `read_only` agent can call any permitted tool but cannot write secrets via `POST /vault/secrets`.
 
-Scope is set at creation and cannot be changed — delete and re-register to change scope.
+Scope is set at creation and cannot be changed. Delete and re-register to change scope.
 
 ```bash
 # Register a read-only agent
@@ -94,7 +94,7 @@ curl -s -X POST http://localhost:8000/api/v1/agents/3f7a1b2c-.../permissions \
   }'
 ```
 
-The `*` wildcard matches any tool name on that server. It does not require listing tools in advance — new tools added to the upstream server are automatically accessible to agents that have the `*` grant.
+The `*` wildcard matches any tool name on that server. It does not require listing tools in advance. New tools added to the upstream server are automatically accessible to agents that have the `*` grant.
 
 ### Grant specific tools via Python
 
@@ -168,7 +168,7 @@ Content-Type: application/json
 }
 ```
 
-The call is also logged as a `SessionEvent` with `outcome: "permission_denied"`. Permission-denied events appear in the audit log alongside successful calls — gaps in the audit log are not possible.
+The call is also logged as a `SessionEvent` with `outcome: "permission_denied"`. Permission-denied events appear in the audit log alongside successful calls. Gaps in the audit log are not possible.
 
 The agent is also not told the tool exists. When calling `tools/list`, only permitted tools are returned. An agent cannot enumerate what it cannot call.
 
@@ -254,4 +254,4 @@ SELECT EXISTS (
 )
 ```
 
-The `*` row matches any `tool_name` value passed as `$3`. There is no pattern matching beyond this — `read_*` is not a valid wildcard pattern. Use `*` for full server access, or enumerate specific tools for granular control.
+The `*` row matches any `tool_name` value passed as `$3`. There is no pattern matching beyond this. `read_*` is not a valid wildcard pattern. Use `*` for full server access, or enumerate specific tools for granular control.

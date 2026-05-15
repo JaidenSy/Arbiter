@@ -1,10 +1,10 @@
 # Vault
 
-The Arbiter vault stores secrets for your agents — API keys, tokens, passwords — encrypted at rest using AES-256-GCM. Secrets are scoped per-agent: an agent cannot read or overwrite another agent's secrets, even if it knows the name.
+The Arbiter vault stores secrets for your agents (API keys, tokens, passwords), encrypted at rest using AES-256-GCM. Secrets are scoped per-agent: an agent cannot read or overwrite another agent's secrets, even if it knows the name.
 
 ## How it works
 
-1. You write a secret via the API — a name/value pair tied to a specific agent.
+1. You write a secret via the API: a name/value pair tied to a specific agent.
 2. Arbiter encrypts the value using AES-256-GCM with a 96-bit random nonce. The nonce is prepended to the ciphertext and stored together in the database. The plaintext is discarded.
 3. In your tool call arguments, you reference the secret as `{{SECRET_NAME}}`.
 4. At request time, the proxy scans `params.arguments` for `{{...}}` placeholders, decrypts each matched secret in-memory, substitutes the plaintext value, and forwards the request to the upstream MCP server.
@@ -12,11 +12,11 @@ The Arbiter vault stores secrets for your agents — API keys, tokens, passwords
 
 ## Encryption details
 
-- **Algorithm**: AES-256-GCM (authenticated encryption — detects tampering)
+- **Algorithm**: AES-256-GCM (authenticated encryption; detects tampering)
 - **Key size**: 256 bits (32 bytes), read from `VAULT_ENCRYPTION_KEY` environment variable as 64 hex characters
 - **Nonce**: 96-bit random, generated fresh on every write, stored prepended to ciphertext
 - **Storage**: Ciphertext in Postgres, plaintext never persisted
-- **Key management**: Master key is environment-only — not in the database, not in config files
+- **Key management**: Master key is environment-only. Not in the database, not in config files.
 
 ## Writing a secret
 
@@ -89,7 +89,7 @@ Multiple secrets in one call are supported:
 
 ## Per-agent isolation
 
-Every secret is stored under `(name, agent_id)` — the combination is unique, not the name alone. This means:
+Every secret is stored under `(name, agent_id)`. The combination is unique, not the name alone. This means:
 
 - Agent A storing `GITHUB_TOKEN` and Agent B storing `GITHUB_TOKEN` are different secrets
 - Agent A cannot read, overwrite, or enumerate Agent B's secrets
@@ -104,7 +104,7 @@ curl -s http://localhost:8000/api/v1/vault/secrets \
   -H "Authorization: Bearer nxai_..."
 ```
 
-Response includes names only — never values:
+Response includes names only. Values are never returned:
 
 ```json
 [
@@ -120,7 +120,7 @@ curl -s -X DELETE http://localhost:8000/api/v1/vault/secrets/GITHUB_TOKEN \
   -H "Authorization: Bearer nxai_..."
 ```
 
-After deletion, any tool call argument containing `{{GITHUB_TOKEN}}` will fail with a `400 Bad Request` — the placeholder cannot be resolved.
+After deletion, any tool call argument containing `{{GITHUB_TOKEN}}` will fail with `400 Bad Request`. The placeholder cannot be resolved.
 
 ## Rotating the master key
 
@@ -136,15 +136,15 @@ Key rotation does not require downtime if done in the correct order (re-encrypt 
 
 **Writing secrets** (`POST /vault/secrets`, `DELETE /vault/secrets/{id}`) requires the `owner` or `admin` role.
 
-**Listing secrets** (`GET /vault/secrets`) is available to all authenticated org members — it returns names only, never values.
+**Listing secrets** (`GET /vault/secrets`) is available to all authenticated org members. Returns names only, never values.
 
 **Reading a secret value** (`GET /vault/secrets/{id}`) requires the `owner` or `admin` role. Member-role users receive `403 Forbidden`. This prevents low-privilege org members from extracting credentials even if they have dashboard access.
 
-The proxy reads secrets internally on behalf of the calling agent during tool call secret injection. This internal path bypasses the user-facing role check — it is enforced at the agent scope level instead (see [rbac.md](./rbac.md)).
+The proxy reads secrets internally on behalf of the calling agent during tool call secret injection. This internal path bypasses the user-facing role check; it is enforced at the agent scope level instead (see [rbac.md](./rbac.md)).
 
 ## What the vault does not do
 
 - Does not support secret versioning (planned for v2)
-- Does not integrate with external secret stores (HashiCorp Vault, AWS Secrets Manager) — by design, to avoid external dependencies in the self-hosted setup
+- Does not integrate with external secret stores (HashiCorp Vault, AWS Secrets Manager). This is by design, to avoid external dependencies in the self-hosted setup.
 - Does not encrypt secret names, only values
 - Does not support TTL-based secret expiry (planned for v2)
