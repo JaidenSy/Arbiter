@@ -261,11 +261,37 @@ def create_app() -> FastAPI:
     app.include_router(onboarding.router, prefix=settings.api_prefix)
     app.include_router(billing.router, prefix=settings.api_prefix)
 
-    # ── Health check ──────────────────────────────────────────────────────────
+    # ── Health checks ─────────────────────────────────────────────────────────
     @app.get("/health", tags=["meta"])
     async def health() -> dict[str, str]:
         """Liveness probe — returns 200 when the process is up."""
         return {"status": "ok"}
+
+    @app.get("/health/db", tags=["meta"])
+    async def health_db() -> dict[str, str]:
+        """Readiness probe — verifies database connectivity."""
+        try:
+            async with async_session_factory() as session:
+                await session.execute(text("SELECT 1"))
+            return {"status": "ok"}
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Database unreachable: {exc}",
+            )
+
+    @app.get("/health/cache", tags=["meta"])
+    async def health_cache(request: Request) -> dict[str, str]:
+        """Readiness probe — verifies Redis connectivity."""
+        try:
+            redis = request.app.state.redis
+            await redis.ping()
+            return {"status": "ok"}
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Redis unreachable: {exc}",
+            )
 
     return app
 

@@ -41,6 +41,11 @@ class ToolPermissionCreate(BaseModel):
         ...,
         description="Tool name or '*' for all tools on this server",
     )
+    cache_ttl_seconds: int | None = Field(
+        None,
+        ge=1,
+        description="Override cache TTL for this tool in seconds. Null = global default.",
+    )
 
 
 class ToolPermissionResponse(BaseModel):
@@ -52,6 +57,7 @@ class ToolPermissionResponse(BaseModel):
     tool_name: str
     granted_at: datetime
     granted_by: str | None
+    cache_ttl_seconds: int | None
 
     model_config = {"from_attributes": True}
 
@@ -118,6 +124,7 @@ async def create_tool_permission(
         agent_id=agent_id,
         mcp_server_id=body.mcp_server_id,
         tool_name=body.tool_name,
+        cache_ttl_seconds=body.cache_ttl_seconds,
     )
     db.add(permission)
 

@@ -162,6 +162,26 @@ class RBACService:
             tool_name,
         )
 
+    async def get_cache_ttl(
+        self,
+        agent_id: uuid.UUID,
+        mcp_server_id: uuid.UUID,
+        tool_name: str,
+    ) -> int | None:
+        """Return cache_ttl_seconds override for (agent, server, tool), or None for global default."""
+        result = await self.db.execute(
+            select(ToolPermission.tool_name, ToolPermission.cache_ttl_seconds).where(
+                ToolPermission.agent_id == agent_id,
+                ToolPermission.mcp_server_id == mcp_server_id,
+                or_(ToolPermission.tool_name == tool_name, ToolPermission.tool_name == "*"),
+            )
+        )
+        rows = result.all()
+        specific = next((r for r in rows if r.tool_name == tool_name), None)
+        wildcard = next((r for r in rows if r.tool_name == "*"), None)
+        row = specific or wildcard
+        return row.cache_ttl_seconds if row else None
+
     async def get_allowed_tools(
         self,
         agent_id: uuid.UUID,

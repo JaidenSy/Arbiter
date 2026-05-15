@@ -14,6 +14,8 @@ Routes:
 
 from __future__ import annotations
 
+import hmac
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -92,7 +94,7 @@ async def register(
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     if not settings.allow_public_registration:
-        if not settings.invite_code or body.invite_code != settings.invite_code:
+        if not settings.invite_code or not hmac.compare_digest(body.invite_code, settings.invite_code):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Registration requires a valid invite code",
@@ -121,7 +123,19 @@ async def register(
 async def login(
     body: LoginRequest,
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> TokenResponse:
+    if redis is not None:
+        rate_key = f"login_attempts:{body.email}"
+        attempts = await redis.incr(rate_key)
+        if attempts == 1:
+            await redis.expire(rate_key, 900)  # 15-minute window
+        if attempts > 10:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many login attempts. Try again in 15 minutes.",
+            )
+
     _user, access_token, refresh_token = await auth_service.login(
         db=db,
         email=body.email,

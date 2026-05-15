@@ -137,7 +137,7 @@ async def list_secrets(
 async def get_secret(
     secret_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> SecretValueResponse:
     result = await db.execute(
         select(VaultSecret).where(

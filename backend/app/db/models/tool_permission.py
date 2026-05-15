@@ -71,6 +71,8 @@ class ToolPermission(Base):
         nullable=True,
     )
 
+    cache_ttl_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     def __repr__(self) -> str:
         return (
             f"<ToolPermission agent={self.agent_id} "
