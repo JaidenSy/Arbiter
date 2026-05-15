@@ -60,7 +60,7 @@ Do not include a trailing path. Arbiter constructs the full request URL.
 
 This flag controls whether Arbiter caches responses from this server and serves cached results on future matching requests.
 
-**Set `cache_enabled: false` for servers that have side effects** — anything that sends messages, charges money, mutates external state, or produces time-sensitive results:
+**Set `cache_enabled: false` for servers that have side effects**: anything that sends messages, charges money, mutates external state, or produces time-sensitive results.
 
 ```bash
 # Register a Stripe MCP server — never serve stale cached responses
@@ -73,7 +73,7 @@ curl -s -X POST http://localhost:8000/api/v1/mcp-servers \
   }'
 ```
 
-**Set `cache_enabled: true` (or omit it) for read-heavy, idempotent servers** — file reads, database queries, search indexes, reference data:
+**Set `cache_enabled: true` (or omit it) for read-heavy, idempotent servers**: file reads, database queries, search indexes, reference data.
 
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/mcp-servers \
@@ -120,11 +120,11 @@ curl -s -X PATCH http://localhost:8000/api/v1/mcp-servers/c4d5e6f7-... \
 curl -s -X DELETE http://localhost:8000/api/v1/mcp-servers/c4d5e6f7-...
 ```
 
-Deleting a server removes all associated permissions from the `tool_permissions` table. Cached responses are not immediately purged from Redis or Postgres — they expire naturally according to `cache_ttl_seconds`.
+Deleting a server removes all associated permissions from the `tool_permissions` table. Cached responses are not immediately purged from Redis or Postgres. They expire naturally according to `cache_ttl_seconds`.
 
 ## `tools/list` filtering
 
-When an agent calls `tools/list` on a server, Arbiter filters the returned tool list to only include tools the agent has permission to call. Agents never see tool names they are not permitted to use — this prevents information leakage about the server's capabilities.
+When an agent calls `tools/list` on a server, Arbiter filters the returned tool list to only include tools the agent has permission to call. Agents never see tool names they are not permitted to use. This prevents information leakage about the server's capabilities.
 
 ```bash
 # Agent sends tools/list
@@ -135,4 +135,4 @@ curl -s -X POST http://localhost:8000/api/v1/proxy/tool-call \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
 ```
 
-The response only contains tools the agent is permitted to call — not the full list exposed by the upstream server.
+The response only contains tools the agent is permitted to call, not the full list exposed by the upstream server.

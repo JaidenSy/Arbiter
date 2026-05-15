@@ -30,7 +30,7 @@ The free tier is not a crippled trial. 3 agents, 5 MCP servers, and 1,000 tool c
 - An open source project with a small number of automated agents
 - A student or hobbyist building agent tooling
 
-The free tier includes the full feature set — semantic cache, RBAC, encrypted vault, audit log. The only limits are volume-based.
+The free tier includes the full feature set: semantic cache, RBAC, encrypted vault, audit log. The only limits are volume-based.
 
 There is no time limit on the free tier. You do not get downgraded after 14 or 30 days.
 
@@ -50,7 +50,7 @@ At scale, you are making repeated or near-duplicate tool calls. The semantic cac
 | Arbiter Pro cost | — | $29/month |
 | **Net savings** | — | **$271/month** |
 
-30% is a conservative hit rate for typical agent workloads. Agents running similar queries repeatedly — file reads, database lookups, search queries — commonly hit 40–60%.
+30% is a conservative hit rate for typical agent workloads. Agents running similar queries repeatedly (file reads, database lookups, search queries) commonly hit 40–60%.
 
 The Pro tier costs $29/month. The cache pays for itself at roughly 3,000 avoided upstream calls per month.
 

@@ -8,15 +8,15 @@ Arbiter sits between your AI agents and your MCP servers. Every tool call passes
 
 ### Agent identity: `nxai_` prefixed API keys
 
-Each agent gets a unique API key in the format `nxai_<64-hex-chars>`. The raw key is shown once and never stored. What Arbiter stores is `SHA-256(raw_key)` — a one-way hash. When a request arrives, the bearer token is hashed and compared with `hmac.compare_digest` (timing-safe) against stored hashes.
+Each agent gets a unique API key in the format `nxai_<64-hex-chars>`. The raw key is shown once and never stored. What Arbiter stores is `SHA-256(raw_key)`, a one-way hash. When a request arrives, the bearer token is hashed and compared with `hmac.compare_digest` (timing-safe) against stored hashes.
 
 The `nxai_` prefix is intentional. It makes keys grep-able. If a key leaks into a log file, a GitHub Actions log, or a Slack message, you can search for `nxai_` and find it. Generic UUIDs are invisible in noisy output.
 
-Each agent has its own key. Compromising one agent's key does not affect others. Revoking access is one API call — delete the agent, the hash is gone, the key is dead.
+Each agent has its own key. Compromising one agent's key does not affect others. Revoking access is one API call. Delete the agent, the hash is gone, the key is dead.
 
 ### Secrets: AES-256-GCM vault with `{{SECRET_NAME}}` injection
 
-Credentials your agents need — GitHub tokens, Slack keys, database passwords — are stored in the vault encrypted with AES-256-GCM. Each write generates a fresh 96-bit random nonce. The nonce is prepended to the ciphertext and both are stored in Postgres. The plaintext is discarded immediately after encryption.
+Credentials your agents need (GitHub tokens, Slack keys, database passwords) are stored in the vault encrypted with AES-256-GCM. Each write generates a fresh 96-bit random nonce. The nonce is prepended to the ciphertext and both are stored in Postgres. The plaintext is discarded immediately after encryption.
 
 At request time, the proxy scans `params.arguments` for `{{SECRET_NAME}}` placeholders. For each match, it decrypts the secret in-memory, substitutes the value, and forwards to the upstream MCP server. The plaintext never touches disk, never appears in logs, never travels back to the calling agent.
 
@@ -52,7 +52,7 @@ grant(agent="research", server="filesystem", tool="list_directory")
 grant(agent="ops", server="filesystem", tool="*")
 ```
 
-Agents that call tools they are not permitted to use receive `403 Forbidden`. The tool call is logged. The tool name is also hidden from `tools/list` responses — agents cannot enumerate tools they cannot call.
+Agents that call tools they are not permitted to use receive `403 Forbidden`. The tool call is logged. The tool name is also hidden from `tools/list` responses, so agents cannot enumerate tools they cannot call.
 
 ### Observability: gapless audit log
 
@@ -71,7 +71,7 @@ Every tool call produces a `SessionEvent` row:
 
 Every outcome is logged. Permission denials, timeouts, and upstream errors are not filtered out. An audit log with gaps is not an audit log.
 
-Sessions group related calls. If your agent sends `X-Arbiter-Session-ID` across calls, they appear as a single trace in the dashboard — you can see the full tool call sequence for one agent run.
+Sessions group related calls. If your agent sends `X-Arbiter-Session-ID` across calls, they appear as a single trace in the dashboard. You can see the full tool call sequence for one agent run.
 
 ### Semantic cache: 3-layer, MCP tool call-specific
 
