@@ -9,6 +9,7 @@ import React, { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { authClient } from '../api/client'
+import { ArbiterMark } from '../components/ArbiterLogo'
 
 interface OnboardingStatus {
   complete: boolean
@@ -105,7 +106,10 @@ function Login(): React.ReactElement {
 
           {/* Wordmark */}
           <div className="text-center mb-8">
-            <span className="gradient-text font-bold text-3xl tracking-tight">Arbiter</span>
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <ArbiterMark size={40} />
+              <span className="gradient-text font-bold text-3xl tracking-tight">Arbiter</span>
+            </div>
             <p className="text-secondary text-sm mt-2 font-medium">The identity layer for your AI agents</p>
           </div>
 

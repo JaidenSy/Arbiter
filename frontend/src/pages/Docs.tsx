@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { ArbiterMark } from '../components/ArbiterLogo'
 
 // ── Navbar ─────────────────────────────────────────────────────────────────────
 
@@ -15,7 +16,7 @@ function Navbar(): React.ReactElement {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-base/80 backdrop-blur-md border-b border-white/[0.06]">
       <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5">
-          <span className="gradient-text font-bold text-lg tracking-tight">NX</span>
+          <ArbiterMark size={28} />
           <span className="text-primary font-semibold text-sm tracking-wide">Arbiter</span>
           <span className="text-muted text-xs ml-1">/ Docs</span>
         </Link>
