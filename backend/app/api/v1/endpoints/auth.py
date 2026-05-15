@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: Auth.
+Arbiter — API endpoints: Auth.
 
 Routes:
     POST   /auth/register           → 201  issue tokens for new org + owner

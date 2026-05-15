@@ -1,5 +1,5 @@
 /**
- * NexVault — Verify Email page.
+ * Arbiter — Verify Email page.
  *
  * Route: /verify-email?token=<token> (public, no sidebar)
  * Hits GET /auth/verify-email?token=<token> on mount.
@@ -49,7 +49,7 @@ function VerifyEmail(): React.ReactElement {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-violet-600 flex items-center justify-center">
             <span className="text-white font-bold text-sm">N</span>
           </div>
-          <span className="text-primary font-semibold text-lg tracking-tight">NexVault</span>
+          <span className="text-primary font-semibold text-lg tracking-tight">Arbiter</span>
         </div>
 
         <div className="bg-card border border-white/[0.08] rounded-xl p-8 shadow-xl">

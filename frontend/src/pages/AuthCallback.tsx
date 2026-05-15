@@ -1,5 +1,5 @@
 /**
- * NexVault — SSO Callback page.
+ * Arbiter — SSO Callback page.
  *
  * Route: /auth/callback (public)
  *
@@ -18,8 +18,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authClient } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
-const ACCESS_KEY = 'nexvault_access_token'
-const REFRESH_KEY = 'nexvault_refresh_token'
+const ACCESS_KEY = 'arbiter_access_token'
+const REFRESH_KEY = 'arbiter_refresh_token'
 
 interface TokenResponse {
   access_token: string

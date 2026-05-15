@@ -1,5 +1,5 @@
 /**
- * NexVault E2E — Direct API helpers for test setup.
+ * Arbiter E2E — Direct API helpers for test setup.
  *
  * These helpers call the backend API directly (bypassing the UI) to set up
  * test data quickly. Use them in beforeEach/beforeAll hooks.
@@ -29,7 +29,7 @@ export interface TestServer {
 
 /** Register a new user and return their access token. */
 export async function registerUser(overrides: Partial<{ email: string; password: string; orgName: string }> = {}): Promise<TestUser> {
-  const email = overrides.email ?? `test-${Date.now()}@nexvault.test`
+  const email = overrides.email ?? `test-${Date.now()}@arbiter.test`
   const password = overrides.password ?? 'TestPass123!'
   const orgName = overrides.orgName ?? `TestOrg-${Date.now()}`
 

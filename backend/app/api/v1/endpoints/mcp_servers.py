@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: MCP Servers.
+Arbiter — API endpoints: MCP Servers.
 
 CRUD management of MCP server registrations.
 

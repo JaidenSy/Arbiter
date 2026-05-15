@@ -1,0 +1,494 @@
+{
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/tailwind.config.js": {
+    "mtime": 1776391724.5135806,
+    "hash": "97a54a2ff893247abcd615d66675676a"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/playwright.config.ts": {
+    "mtime": 1776411407.293905,
+    "hash": "517873bab22b3c21621239077c888362"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/eslint.config.js": {
+    "mtime": 1776391724.50252,
+    "hash": "40d6e1a74bdc1cf399153a5c88d151cd"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/vite.config.ts": {
+    "mtime": 1776411407.2970629,
+    "hash": "ac605e4b540846227ec125e13f24f3e2"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/postcss.config.js": {
+    "mtime": 1776391724.5043347,
+    "hash": "ef3ba2a81ba19f8ea5ddf625521e96f0"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/e2e/agents.spec.ts": {
+    "mtime": 1776411407.298621,
+    "hash": "2599648061f685699d822297f5084d7d"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/e2e/auth.spec.ts": {
+    "mtime": 1776411407.3000116,
+    "hash": "5bc40e7a157d684c60b54bf077598a9d"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/e2e/mcp-servers.spec.ts": {
+    "mtime": 1776411407.3013952,
+    "hash": "ff600c4da3d3d5b7ec64b6f5b237b677"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/e2e/auth.setup.ts": {
+    "mtime": 1776411407.302813,
+    "hash": "358ee577e8dbddcc00b529ed1ce1f5f6"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/e2e/settings.spec.ts": {
+    "mtime": 1776411407.3044145,
+    "hash": "1b0bda5eee6fb2c2a5f62cc59c85bd18"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/e2e/sessions.spec.ts": {
+    "mtime": 1776411407.30623,
+    "hash": "b1fe79e8128c8b0cf700b310aba4acec"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/e2e/vault.spec.ts": {
+    "mtime": 1776411407.307732,
+    "hash": "c7759ec1ceb52c42a13f7c4698d67b38"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/e2e/dashboard.spec.ts": {
+    "mtime": 1776411407.3092482,
+    "hash": "d016b52d0805fa090b42d18850361a95"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/e2e/permissions.spec.ts": {
+    "mtime": 1776411407.312665,
+    "hash": "a5651d627afe30f987d4f5ddcd847a2b"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/e2e/helpers/api.ts": {
+    "mtime": 1776411407.3111043,
+    "hash": "70d827308e5bead87351acf6c5bfec40"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/App.tsx": {
+    "mtime": 1776411407.3147001,
+    "hash": "09dd1c9b9c0dfe828affd7c82d3d0caf"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/main.tsx": {
+    "mtime": 1776411407.3167956,
+    "hash": "f5ef59e54d6b97d98c13848e6fd4e671"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/context/AuthContext.tsx": {
+    "mtime": 1776411407.3185194,
+    "hash": "d003155d54c44cf18c2a6ad454968a4e"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/components/ConfirmDialog.tsx": {
+    "mtime": 1776411407.320305,
+    "hash": "a8edc9609e733544b6538eed2289d53d"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/components/ProtectedRoute.tsx": {
+    "mtime": 1776411407.322055,
+    "hash": "4f0ffa9b2757e673bedfc55315313d97"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/components/JsonViewer.tsx": {
+    "mtime": 1776411407.3236034,
+    "hash": "15dc93f943743dcd9e3dac33ad1afb2f"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/components/UsageStrip.tsx": {
+    "mtime": 1776411407.325311,
+    "hash": "68a55c233a4824be11eec76f9874556a"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/components/CopyButton.tsx": {
+    "mtime": 1776411407.326885,
+    "hash": "01dafde50c358b80b1d3da15e3516555"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/components/Badge.tsx": {
+    "mtime": 1776411407.3283772,
+    "hash": "d0e640ef929c0f9cbda9d6ddb244e6ec"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/components/Sidebar.tsx": {
+    "mtime": 1776411407.330816,
+    "hash": "6af5931a404f98d8a2fc4af2a35a0e7a"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/components/Toggle.tsx": {
+    "mtime": 1776411407.332365,
+    "hash": "130863d1384fc30a13226de8c6fceb0a"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/components/Modal.tsx": {
+    "mtime": 1776411407.3377368,
+    "hash": "198645f386006de152b0d00392e200e8"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/api/types.ts": {
+    "mtime": 1776411407.3394034,
+    "hash": "f7ae8752054c2dbb2189f083c8993382"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/api/client.ts": {
+    "mtime": 1776411407.3409562,
+    "hash": "6437f288cc3fbe14ec3daddf8f4e36a5"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/pages/Settings.tsx": {
+    "mtime": 1776411407.3428233,
+    "hash": "bdfb9425175182c6d9c2db15f42907a8"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/pages/Sessions.tsx": {
+    "mtime": 1776411407.344372,
+    "hash": "65e75e7acf1e53d2281f7ae140455ddb"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/pages/MCPServers.tsx": {
+    "mtime": 1776411407.3462636,
+    "hash": "4fe74fa1d244d5d51be3aad3e82168ed"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/pages/SessionTrace.tsx": {
+    "mtime": 1776411407.3497837,
+    "hash": "63ca9aa10fdef8ad5dafc7918ce48989"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/pages/Login.tsx": {
+    "mtime": 1776411407.3517582,
+    "hash": "6f5f06a9f3bd7c3ce1ec742f038c1d84"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/pages/Dashboard.tsx": {
+    "mtime": 1776411407.353747,
+    "hash": "b923e8d7ca651043e11ad0af4c76cbeb"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/pages/Agents.tsx": {
+    "mtime": 1776411407.3569062,
+    "hash": "e41a5b98c72eed25e04e3dcecbf12f36"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/pages/Register.tsx": {
+    "mtime": 1776411407.3584826,
+    "hash": "0382a807607bf8c0a03b5a267dec256e"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/pages/Permissions.tsx": {
+    "mtime": 1776411407.3601074,
+    "hash": "31a2351f4c01cf5a3ac3acf92c158917"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/pages/Vault.tsx": {
+    "mtime": 1776411407.3620048,
+    "hash": "a4004587c943fa3ba773ea9fbcbef4e1"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/pages/Onboarding.tsx": {
+    "mtime": 1776411407.3638313,
+    "hash": "88b1f7133a983d0dbe8a357873808f56"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/src/pages/AuthCallback.tsx": {
+    "mtime": 1776411407.365303,
+    "hash": "60c222dd8b0dc92047ff901168c2de0a"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/main.py": {
+    "mtime": 1776411407.4271894,
+    "hash": "5d6b134b838c7bbad506a61b6d2b00e4"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/core/config.py": {
+    "mtime": 1776411407.3681257,
+    "hash": "86340099808c721ae743694b608a9f0a"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/core/security.py": {
+    "mtime": 1776411407.3697963,
+    "hash": "eebedbc19eee2e7c6069ca2f698eb4ea"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/core/dependencies.py": {
+    "mtime": 1776411407.371942,
+    "hash": "0482d6fb24206007bd4b6ee0f0a77388"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/schemas/auth.py": {
+    "mtime": 1776411407.3736672,
+    "hash": "ae63fd37539240d958cd98bd4e29e59b"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/schemas/proxy.py": {
+    "mtime": 1776411407.3750603,
+    "hash": "4e9c2df973d5f19ed893a14dc99493e3"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/schemas/session.py": {
+    "mtime": 1776411407.3763816,
+    "hash": "7927b57a8209e5232de03ffeec392bfa"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/schemas/agent.py": {
+    "mtime": 1776411407.378017,
+    "hash": "a283c37ab8092429e2c17684db5b683d"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/schema.sql": {
+    "mtime": 1776391966.1736896,
+    "hash": "4affc5ce0f0cb1e4041338cb9b22550e"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/base.py": {
+    "mtime": 1776411407.4056206,
+    "hash": "25d220177103ce7999c54d89b8f860ae"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/migrations/env.py": {
+    "mtime": 1776411407.3794694,
+    "hash": "83fc33ca70e3d717e37bb69cb35d5b52"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/migrations/versions/002_add_auth_tables.py": {
+    "mtime": 1776413647.0801218,
+    "hash": "07d2b776dedc8744b766deed38464384"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/migrations/versions/001_initial_schema.py": {
+    "mtime": 1776411407.3811395,
+    "hash": "950546eb495c0758b8cb548362feb104"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/models/user.py": {
+    "mtime": 1776411407.3830705,
+    "hash": "9eb6cba27dd814a3fd348e87f559fc9f"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/models/organization.py": {
+    "mtime": 1776411407.3845482,
+    "hash": "c2b83a0971a277a0eb6a370fe4208831"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/models/session.py": {
+    "mtime": 1776411407.3861792,
+    "hash": "79d482873612d79994949c3bb63a5a94"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/models/cache.py": {
+    "mtime": 1776411407.3899226,
+    "hash": "3c031a80652cd281f21b5a2bee646df8"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/models/social_account.py": {
+    "mtime": 1776411407.3922474,
+    "hash": "e9d11cb1777f6f88f51f6f3977d7d24d"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/models/refresh_token.py": {
+    "mtime": 1776411407.394355,
+    "hash": "db0ff8dac764bcc03089fc6c5ba05fb1"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/models/vault.py": {
+    "mtime": 1776411407.398016,
+    "hash": "80a800b7c0b9fb5bef1b7b4fe0c30dd6"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/models/tool_permission.py": {
+    "mtime": 1776411407.3994663,
+    "hash": "b4cbc9a592c68b91198983ec3e387f12"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/models/agent.py": {
+    "mtime": 1776411407.401257,
+    "hash": "089f4ebcba7937d834c435bd3c8049d3"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/models/mcp_server.py": {
+    "mtime": 1776411407.4027984,
+    "hash": "37bd7fdddbc6ba89caedbb372401d0b7"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/db/models/usage_event.py": {
+    "mtime": 1776411407.4041796,
+    "hash": "3ded71fe7e6f75772198d91aa43db866"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/api/v1/endpoints/auth.py": {
+    "mtime": 1776411407.4072647,
+    "hash": "21c6f3ec62203d7b5852827c5fad0631"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/api/v1/endpoints/sessions.py": {
+    "mtime": 1776411407.4089735,
+    "hash": "58d4a83f358b8860c0c5ae4dd9a63ee5"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/api/v1/endpoints/billing.py": {
+    "mtime": 1776411407.4108536,
+    "hash": "dbd42ebdbd58552bdcda8412a9c4f9da"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/api/v1/endpoints/sso.py": {
+    "mtime": 1776411407.4132404,
+    "hash": "77abcbe1d77d695bfbf3d4d8a3f3ed46"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/api/v1/endpoints/tool_permissions.py": {
+    "mtime": 1776411407.415318,
+    "hash": "1c7facdbdbb4f02b18a52db9def166f1"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/api/v1/endpoints/proxy.py": {
+    "mtime": 1776411407.4169822,
+    "hash": "0fc4e25378f3ae9ba27bbd5eec5722bc"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/api/v1/endpoints/onboarding.py": {
+    "mtime": 1776411407.4187412,
+    "hash": "efd099701e5fef4f92d987fd104e0623"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/api/v1/endpoints/agents.py": {
+    "mtime": 1776411407.4204676,
+    "hash": "9e129ed5cb1cc520f9f792db83d672dc"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/api/v1/endpoints/mcp_servers.py": {
+    "mtime": 1776411407.4222243,
+    "hash": "c0a286a16eabe5d07a090dcd57c4ca53"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/api/v1/endpoints/vault.py": {
+    "mtime": 1776411407.4240267,
+    "hash": "321e73c9e61ba2aeec55e2cf03eb267e"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/api/v1/endpoints/stats.py": {
+    "mtime": 1776411407.4256227,
+    "hash": "4ca72c4dc3be9a81f93746e65ba6e1f5"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/services/rbac/rbac_service.py": {
+    "mtime": 1776411407.4289508,
+    "hash": "96a486d2ce1abde3c4307af22ebf3cfc"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/services/proxy/proxy_service.py": {
+    "mtime": 1776411407.4308994,
+    "hash": "dc5d69a32baef7ac6593f3e447c05d32"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/services/cache/cache_service.py": {
+    "mtime": 1776411407.43273,
+    "hash": "ee19a168ab833ac62bdcc2ad5112dbb8"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/services/auth/auth_service.py": {
+    "mtime": 1776411407.4348495,
+    "hash": "a4f45c33af6fd560611317fde914b853"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/services/auth/__init__.py": {
+    "mtime": 1776411407.436162,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/services/auth/sso_service.py": {
+    "mtime": 1776411407.4380617,
+    "hash": "d3e20c20146b4db5072f2bce4e7130e3"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/services/plan/plan_limits.py": {
+    "mtime": 1776411407.4395745,
+    "hash": "1bb4cd23c06dd16fd5f9338091fe40f5"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/services/plan/__init__.py": {
+    "mtime": 1776411407.4408398,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/services/plan/plan_service.py": {
+    "mtime": 1776411407.4425492,
+    "hash": "d01265f9004b7a26ba2029b62dc14eac"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/services/billing/__init__.py": {
+    "mtime": 1776411407.4440007,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/services/billing/billing_service.py": {
+    "mtime": 1776411407.4460747,
+    "hash": "9e0b0127d3e16a9ecc578ac3e9230fe9"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/app/services/vault/vault_service.py": {
+    "mtime": 1776411407.4476519,
+    "hash": "3ccbd4a25d10fe4ab44ef81d408c1d05"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/conftest.py": {
+    "mtime": 1776411407.4635396,
+    "hash": "8b706ac8bcec154a48710fdacc2c2039"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/unit/test_plan_limits.py": {
+    "mtime": 1776411407.4526317,
+    "hash": "65bdbcaf6b18edab7299389db91e8d15"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/unit/test_security.py": {
+    "mtime": 1776411407.4541883,
+    "hash": "9986d1be4d2905c401f0a48fa69e171f"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/unit/test_rbac_service.py": {
+    "mtime": 1776411407.45568,
+    "hash": "198e51a3485199c6de9d280aea016307"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/unit/test_vault_service.py": {
+    "mtime": 1776411407.4572709,
+    "hash": "aec71634bbfd04b50c78d26edecdea42"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/unit/test_plan_service.py": {
+    "mtime": 1776411407.4587348,
+    "hash": "63012ea9a474ecdebaaa875f75a191ee"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/unit/__init__.py": {
+    "mtime": 1776411407.4602265,
+    "hash": "8e87baf1b004e93dbd28324bd7133856"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/unit/test_cache_service.py": {
+    "mtime": 1776411407.4619093,
+    "hash": "e8df57f819de873a308e54293b22fc37"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/integration/test_agents_api.py": {
+    "mtime": 1776411407.465132,
+    "hash": "e9f7ff7b826dbd008639543036837c69"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/integration/test_vault.py": {
+    "mtime": 1776411407.4669385,
+    "hash": "6e66b15740445d55a437fedb6a3188ea"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/integration/test_stats.py": {
+    "mtime": 1776411407.4686048,
+    "hash": "fc0f5f150335361e83fcd1fbc0e6ecca"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/integration/test_mcp_servers.py": {
+    "mtime": 1776411407.4754827,
+    "hash": "58226b389f655f8634c3206a71681b9f"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/integration/test_sessions.py": {
+    "mtime": 1776411407.4782917,
+    "hash": "2fdf21dce4c3bc1ec9011d136328fa6a"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/integration/__init__.py": {
+    "mtime": 1776411407.4798772,
+    "hash": "c0ce46e309cf542cffcea6b33198c1ac"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/integration/test_tool_permissions.py": {
+    "mtime": 1776411407.4818792,
+    "hash": "a81633485bca2d12b5f628f9b72753b9"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/integration/test_proxy_api.py": {
+    "mtime": 1776411407.4834814,
+    "hash": "cf38bb9ece0edc9ee3a4d5c9ee3989b7"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/integration/test_exception_handlers.py": {
+    "mtime": 1776411407.485039,
+    "hash": "4e5d942a549e2063c96d61fdf98c907a"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/integration/test_proxy_quota.py": {
+    "mtime": 1776411407.4865813,
+    "hash": "509714ad6fa4fd25f7d41cb2b1a97a21"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/tests/integration/test_billing_api.py": {
+    "mtime": 1776411407.4881833,
+    "hash": "94936b609a3962c2f78c5310dbaf2b81"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/README.md": {
+    "mtime": 1776411407.5146434,
+    "hash": "3312f08b61829c01dd0411d69f7f21c6"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docker-compose.yml": {
+    "mtime": 1776411407.5175228,
+    "hash": "9b799a30af60e8abce3e085669cf1ee1"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/frontend/index.html": {
+    "mtime": 1776411407.0817313,
+    "hash": "c93e638aaeb68a886c9190c1e327c262"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/backend/requirements.txt": {
+    "mtime": 1776391966.1752498,
+    "hash": "598eb52ab41e1d249e4755311918426c"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docs/self-hosting.md": {
+    "mtime": 1776411407.5011108,
+    "hash": "4df0dd6bd34696dd93389b5799a9e8dc"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docs/vault.md": {
+    "mtime": 1776411407.5028868,
+    "hash": "744d15a962ab9287028b4618bb3d6279"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docs/agent-integration.md": {
+    "mtime": 1776411407.5045626,
+    "hash": "a296cb86cf1a3142e33cbf51243232ba"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docs/README.md": {
+    "mtime": 1776411407.5060496,
+    "hash": "32d4976176c240b83dda652d35c56c21"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docs/rbac.md": {
+    "mtime": 1776411407.5079918,
+    "hash": "16d8cd4e5dbb93ecca513ae170ccc414"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docs/mcp-servers.md": {
+    "mtime": 1776411407.5097082,
+    "hash": "d56412a3e9e497fbeb43f0b9cfdaca55"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docs/api-reference.md": {
+    "mtime": 1776411407.511484,
+    "hash": "3e452397081053e7386b9b53b847c7a6"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docs/pitch/pricing.md": {
+    "mtime": 1776411407.4932258,
+    "hash": "61edb74466e680a728c4ee2cdafdeb34"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docs/pitch/comparison.md": {
+    "mtime": 1776411407.4946525,
+    "hash": "3a3cc3f241d0e8f53b9e42c70887fca2"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docs/pitch/problem.md": {
+    "mtime": 1776411407.4962342,
+    "hash": "117142f6d77f17303f0862bfca86fc24"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docs/pitch/solution.md": {
+    "mtime": 1776411407.4978645,
+    "hash": "a6e8c56c3a1b456a34fdf0c24648ad15"
+  },
+  "/Users/raphael_the_great-sage/Projects/arbiter/docs/pitch/use-cases.md": {
+    "mtime": 1776411407.4994571,
+    "hash": "2e5e9b14678e54ad50d48e4c8137bcce"
+  }
+}

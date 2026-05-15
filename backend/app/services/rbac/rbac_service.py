@@ -1,5 +1,5 @@
 """
-NexVault — RBACService.
+Arbiter — RBACService.
 
 Role-Based Access Control for tool call permissions.
 

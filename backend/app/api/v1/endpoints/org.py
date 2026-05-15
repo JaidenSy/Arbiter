@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: Org Members & Invites.
+Arbiter — API endpoints: Org Members & Invites.
 
 Routes:
     GET    /org/members              — list all members

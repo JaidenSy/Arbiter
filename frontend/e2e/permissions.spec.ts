@@ -1,5 +1,5 @@
 /**
- * NexVault E2E — Permissions (RBAC) page tests.
+ * Arbiter E2E — Permissions (RBAC) page tests.
  *
  * Covers: grant permission, revoke permission, empty state.
  */

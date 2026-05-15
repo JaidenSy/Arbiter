@@ -1,5 +1,5 @@
 /**
- * NexVault — Forgot Password page.
+ * Arbiter — Forgot Password page.
  *
  * Route: /forgot-password (public, no sidebar)
  * Submits email to POST /auth/forgot-password; always shows success to avoid email enumeration.
@@ -40,7 +40,7 @@ function ForgotPassword(): React.ReactElement {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-violet-600 flex items-center justify-center">
               <span className="text-white font-bold text-sm">N</span>
             </div>
-            <span className="text-primary font-semibold text-lg tracking-tight">NexVault</span>
+            <span className="text-primary font-semibold text-lg tracking-tight">Arbiter</span>
           </div>
           <h1 className="text-xl font-bold text-primary mb-1">Reset your password</h1>
           <p className="text-secondary text-sm">

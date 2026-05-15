@@ -1,5 +1,5 @@
 """
-NexVault — Application configuration.
+Arbiter — Application configuration.
 
 All settings are read from environment variables (or a .env file when
 APP_ENV=development). No secrets are hardcoded here — see .env.example.
@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = 3600
 
     # ── JWT ───────────────────────────────────────────────────────────────────
-    jwt_secret_key: str = "nexvault_dev_jwt_secret_change_in_production"
+    jwt_secret_key: str = "arbiter_dev_jwt_secret_change_in_production"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60  # 1 hour — keep short; refresh token handles persistence
     jwt_refresh_token_expire_days: int = 30
@@ -90,8 +90,8 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    smtp_from_email: str = "no-reply@nexvault.dev"
-    smtp_from_name: str = "NexVault"
+    smtp_from_email: str = "no-reply@arbiterai.dev"
+    smtp_from_name: str = "Arbiter"
 
     @property
     def email_enabled(self) -> bool:
@@ -122,7 +122,7 @@ class Settings(BaseSettings):
     @classmethod
     def warn_default_jwt_secret(cls, value: str) -> str:
         """Warn loudly if the insecure default JWT secret is used in any env."""
-        if value == "nexvault_dev_jwt_secret_change_in_production":
+        if value == "arbiter_dev_jwt_secret_change_in_production":
             _logger.warning(
                 "SECURITY: JWT_SECRET_KEY is using the insecure default value. "
                 "Set JWT_SECRET_KEY to a long random string before deploying."

@@ -1,5 +1,5 @@
 """
-NexVault — SQLAlchemy ORM model: OrgInvite.
+Arbiter — SQLAlchemy ORM model: OrgInvite.
 
 Tracks pending email invitations to join an organization.
 """

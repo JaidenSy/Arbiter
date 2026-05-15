@@ -1,5 +1,5 @@
 /**
- * NexVault — Onboarding wizard.
+ * Arbiter — Onboarding wizard.
  *
  * Route: /onboarding (protected, no sidebar)
  * 4-step wizard that walks a new user through:
@@ -58,10 +58,10 @@ function Step1({ orgName, onNext }: Step1Props): React.ReactElement {
   return (
     <div className="text-center space-y-6">
       <h1 className="text-white text-2xl font-mono font-semibold">
-        Welcome to NexVault, {orgName}
+        Welcome to Arbiter, {orgName}
       </h1>
       <p className="text-secondary text-sm font-mono leading-relaxed max-w-sm mx-auto">
-        NexVault is a developer-first MCP gateway that gives your agents identity,
+        Arbiter is a developer-first MCP gateway that gives your agents identity,
         tool-level access control, a secrets vault, and full observability — all in one place.
       </p>
       <p className="text-secondary text-sm font-mono leading-relaxed max-w-sm mx-auto">
@@ -381,7 +381,7 @@ function Onboarding(): React.ReactElement {
   const handleStep2Next = (name: string, key: string): void => {
     setAgentName(name)
     setAgentApiKey(key)
-    localStorage.setItem('nexvault_api_key', key)
+    localStorage.setItem('arbiter_api_key', key)
     void syncStatus()
     setStep(2)
   }

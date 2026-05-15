@@ -1,5 +1,5 @@
 /**
- * NexVault — Members page.
+ * Arbiter — Members page.
  *
  * Route: /members (protected, with sidebar)
  * Owners and admins can list members, change roles, remove members, and invite new ones.

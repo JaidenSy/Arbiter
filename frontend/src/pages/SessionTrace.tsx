@@ -1,5 +1,5 @@
 /**
- * NexVault — Session Trace View.
+ * Arbiter — Session Trace View.
  *
  * Full waterfall timeline for a single session.
  * Route: /sessions/:id

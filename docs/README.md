@@ -1,6 +1,6 @@
-# NexVault
+# Arbiter
 
-NexVault is a developer-first MCP (Model Context Protocol) gateway that gives every AI agent a verified identity, a per-agent encrypted secrets vault, tool-level access control, a 3-layer semantic cache, and a gapless audit log — deployed in a single `docker compose up`.
+Arbiter is a developer-first MCP (Model Context Protocol) gateway that gives every AI agent a verified identity, a per-agent encrypted secrets vault, tool-level access control, a 3-layer semantic cache, and a gapless audit log — deployed in a single `docker compose up`.
 
 ## Problems it solves
 
@@ -13,7 +13,7 @@ NexVault is a developer-first MCP (Model Context Protocol) gateway that gives ev
 ## Quick start
 
 ```bash
-git clone https://github.com/your-org/nexvault && cd nexvault
+git clone https://github.com/your-org/arbiter && cd arbiter
 cp .env.example .env  # fill in VAULT_ENCRYPTION_KEY and passwords
 docker compose up -d
 ```
@@ -36,7 +36,7 @@ The API is available at `http://localhost:8000` and the dashboard at `http://loc
 | Doc | Description |
 |-----|-------------|
 | [pitch/problem.md](./pitch/problem.md) | The infrastructure problem every AI team builds twice |
-| [pitch/solution.md](./pitch/solution.md) | How NexVault solves it, with architecture details |
+| [pitch/solution.md](./pitch/solution.md) | How Arbiter solves it, with architecture details |
 | [pitch/pricing.md](./pitch/pricing.md) | Tier breakdown and ROI rationale |
-| [pitch/comparison.md](./pitch/comparison.md) | NexVault vs LiteLLM, Portkey, Kong, DIY |
+| [pitch/comparison.md](./pitch/comparison.md) | Arbiter vs LiteLLM, Portkey, Kong, DIY |
 | [pitch/use-cases.md](./pitch/use-cases.md) | Four buyer personas and their specific scenarios |

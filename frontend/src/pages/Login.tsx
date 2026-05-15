@@ -1,5 +1,5 @@
 /**
- * NexVault — Login page.
+ * Arbiter — Login page.
  *
  * Route: /login (public, no sidebar)
  * On success: navigates to / or /onboarding (if onboarding incomplete).
@@ -105,7 +105,7 @@ function Login(): React.ReactElement {
 
           {/* Wordmark */}
           <div className="text-center mb-8">
-            <span className="gradient-text font-bold text-3xl tracking-tight">NexVault</span>
+            <span className="gradient-text font-bold text-3xl tracking-tight">Arbiter</span>
             <p className="text-secondary text-sm mt-2 font-medium">The identity layer for your AI agents</p>
           </div>
 

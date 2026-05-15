@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: Sessions.
+Arbiter — API endpoints: Sessions.
 
 Sessions are created automatically by the proxy when a tool call is
 received without a session_id.  These endpoints expose read-only access
@@ -133,7 +133,7 @@ async def export_sessions(
         return StreamingResponse(
             iter([content]),
             media_type="application/json",
-            headers={"Content-Disposition": f'attachment; filename="nexvault_export_{ts}.json"'},
+            headers={"Content-Disposition": f'attachment; filename="arbiter_export_{ts}.json"'},
         )
 
     buf = io.StringIO()
@@ -144,7 +144,7 @@ async def export_sessions(
     return StreamingResponse(
         iter([buf.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="nexvault_export_{ts}.csv"'},
+        headers={"Content-Disposition": f'attachment; filename="arbiter_export_{ts}.csv"'},
     )
 
 

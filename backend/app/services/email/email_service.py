@@ -1,5 +1,5 @@
 """
-NexVault — Email service.
+Arbiter — Email service.
 
 Sends transactional emails via SMTP (TLS/STARTTLS).  When SMTP is not
 configured (smtp_host is empty) all send calls are no-ops that log a
@@ -46,29 +46,29 @@ async def send_email(to: str, subject: str, html: str, text: str = "") -> None:
 
 async def send_password_reset(to: str, reset_url: str) -> None:
     html = f"""
-<p>You requested a password reset for your NexVault account.</p>
+<p>You requested a password reset for your Arbiter account.</p>
 <p><a href="{reset_url}">Reset your password</a></p>
 <p>This link expires in 1 hour. If you didn't request this, ignore this email.</p>
 """
-    text = f"Reset your NexVault password: {reset_url}\n\nExpires in 1 hour."
-    await send_email(to, "Reset your NexVault password", html, text)
+    text = f"Reset your Arbiter password: {reset_url}\n\nExpires in 1 hour."
+    await send_email(to, "Reset your Arbiter password", html, text)
 
 
 async def send_email_verification(to: str, verify_url: str) -> None:
     html = f"""
-<p>Welcome to NexVault! Please verify your email address.</p>
+<p>Welcome to Arbiter! Please verify your email address.</p>
 <p><a href="{verify_url}">Verify email</a></p>
 <p>This link expires in 24 hours.</p>
 """
-    text = f"Verify your NexVault email: {verify_url}"
-    await send_email(to, "Verify your NexVault email", html, text)
+    text = f"Verify your Arbiter email: {verify_url}"
+    await send_email(to, "Verify your Arbiter email", html, text)
 
 
 async def send_org_invite(to: str, invited_by: str, org_name: str, accept_url: str) -> None:
     html = f"""
-<p><strong>{invited_by}</strong> invited you to join <strong>{org_name}</strong> on NexVault.</p>
+<p><strong>{invited_by}</strong> invited you to join <strong>{org_name}</strong> on Arbiter.</p>
 <p><a href="{accept_url}">Accept invitation</a></p>
 <p>This invitation expires in 7 days.</p>
 """
-    text = f"{invited_by} invited you to {org_name} on NexVault.\nAccept: {accept_url}"
-    await send_email(to, f"You're invited to {org_name} on NexVault", html, text)
+    text = f"{invited_by} invited you to {org_name} on Arbiter.\nAccept: {accept_url}"
+    await send_email(to, f"You're invited to {org_name} on Arbiter", html, text)

@@ -1,5 +1,5 @@
 /**
- * NexVault Frontend — Root application component.
+ * Arbiter Frontend — Root application component.
  *
  * Routes:
  *   /            → Dashboard    (stats, cache hit rate, recent sessions)

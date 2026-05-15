@@ -1,5 +1,5 @@
 /**
- * NexVault — Settings page.
+ * Arbiter — Settings page.
  *
  * Sections:
  *   - Gateway API Key (stored in localStorage)
@@ -200,7 +200,7 @@ function BillingSection(): React.ReactElement {
             <p className="text-secondary text-sm">
               Enterprise plan —{' '}
               <a
-                href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Enterprise Subscription`}
+                href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Enterprise Subscription`}
                 className="text-accent-light hover:text-white transition-colors"
               >
                 contact us
@@ -225,19 +225,19 @@ function BillingSection(): React.ReactElement {
 
 function ApiKeySection(): React.ReactElement {
   const [apiKey, setApiKey] = useState<string>(
-    localStorage.getItem('nexvault_api_key') ?? '',
+    localStorage.getItem('arbiter_api_key') ?? '',
   )
   const [showKey, setShowKey] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const handleSave = (): void => {
-    localStorage.setItem('nexvault_api_key', apiKey)
+    localStorage.setItem('arbiter_api_key', apiKey)
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
   }
 
   const handleClear = (): void => {
-    localStorage.removeItem('nexvault_api_key')
+    localStorage.removeItem('arbiter_api_key')
     setApiKey('')
   }
 
@@ -252,7 +252,7 @@ function ApiKeySection(): React.ReactElement {
             Gateway API Key
           </label>
           <p className="text-secondary text-xs mb-2.5">
-            Required to authenticate agent requests with the NexVault gateway.
+            Required to authenticate agent requests with the Arbiter gateway.
           </p>
           <div className="flex gap-2">
             <input
@@ -309,12 +309,12 @@ function ApiKeySection(): React.ReactElement {
 
 function GatewayUrlSection(): React.ReactElement {
   const [url, setUrl] = useState<string>(
-    localStorage.getItem('nexvault_gateway_url') ?? 'http://localhost:8000/api/v1',
+    localStorage.getItem('arbiter_gateway_url') ?? 'http://localhost:8000/api/v1',
   )
   const [saved, setSaved] = useState(false)
 
   const handleSave = (): void => {
-    localStorage.setItem('nexvault_gateway_url', url)
+    localStorage.setItem('arbiter_gateway_url', url)
     setSaved(true)
     setTimeout(() => {
       setSaved(false)
@@ -324,7 +324,7 @@ function GatewayUrlSection(): React.ReactElement {
 
   return (
     <div>
-      <SectionHeader title="Gateway URL" subtitle="Base URL of the NexVault backend API" />
+      <SectionHeader title="Gateway URL" subtitle="Base URL of the Arbiter backend API" />
       <div className="max-w-xl space-y-4">
         <div>
           <label htmlFor="gateway-url-input" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
@@ -391,7 +391,7 @@ function Settings(): React.ReactElement {
     <div className="p-8 animate-fade-in">
       <div className="mb-8">
         <h1 className="gradient-text-purple text-xl font-bold">Settings</h1>
-        <p className="text-secondary text-sm mt-1">Configure your NexVault gateway</p>
+        <p className="text-secondary text-sm mt-1">Configure your Arbiter gateway</p>
       </div>
 
       <div className="max-w-2xl space-y-0">

@@ -1,6 +1,6 @@
 # RBAC
 
-NexVault enforces access control at two independent layers. Both must pass for a tool call to succeed.
+Arbiter enforces access control at two independent layers. Both must pass for a tool call to succeed.
 
 ## Layer 1 — Agent Scope
 

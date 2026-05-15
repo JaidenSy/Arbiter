@@ -1,5 +1,5 @@
 /**
- * NexVault — Reset Password page.
+ * Arbiter — Reset Password page.
  *
  * Route: /reset-password?token=<token> (public, no sidebar)
  * Submits new password to POST /auth/reset-password.
@@ -76,7 +76,7 @@ function ResetPassword(): React.ReactElement {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-violet-600 flex items-center justify-center">
               <span className="text-white font-bold text-sm">N</span>
             </div>
-            <span className="text-primary font-semibold text-lg tracking-tight">NexVault</span>
+            <span className="text-primary font-semibold text-lg tracking-tight">Arbiter</span>
           </div>
           <h1 className="text-xl font-bold text-primary mb-1">Choose a new password</h1>
           <p className="text-secondary text-sm">Must be at least 8 characters.</p>

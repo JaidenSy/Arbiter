@@ -172,7 +172,7 @@ function UserAvatar(): React.ReactElement | null {
               My Account
             </a>
             <a
-              href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Support`}
+              href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Support`}
               className="flex items-center w-full px-3 py-1.5 text-xs text-secondary hover:text-primary hover:bg-white/[0.05] transition-colors rounded-md mx-0"
             >
               Contact Support
@@ -203,9 +203,9 @@ function Sidebar(): React.ReactElement {
       <NavLink
         to="/"
         className="flex items-center justify-center h-[52px] font-mono font-bold text-lg select-none"
-        aria-label="NexVault home"
+        aria-label="Arbiter home"
       >
-        <span className="gradient-text tracking-tight">NX</span>
+        <span className="gradient-text tracking-tight">AR</span>
       </NavLink>
 
       {/* Top divider */}

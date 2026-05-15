@@ -1,5 +1,5 @@
 /**
- * NexVault — JsonViewer component.
+ * Arbiter — JsonViewer component.
  *
  * Renders a pretty-printed, scrollable JSON block.
  * If data is null, renders a muted "null" placeholder.

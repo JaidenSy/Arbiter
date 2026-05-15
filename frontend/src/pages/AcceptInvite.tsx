@@ -1,5 +1,5 @@
 /**
- * NexVault — Accept Invite page.
+ * Arbiter — Accept Invite page.
  *
  * Route: /accept-invite?token=<token> (public, no sidebar)
  * Submits to POST /auth/accept-invite; on success logs the user in.
@@ -12,8 +12,8 @@ const API_BASE: string =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
   'http://localhost:8000/api/v1'
 
-const ACCESS_KEY = 'nexvault_access_token'
-const REFRESH_KEY = 'nexvault_refresh_token'
+const ACCESS_KEY = 'arbiter_access_token'
+const REFRESH_KEY = 'arbiter_refresh_token'
 
 function AcceptInvite(): React.ReactElement {
   const [searchParams] = useSearchParams()
@@ -90,7 +90,7 @@ function AcceptInvite(): React.ReactElement {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-violet-600 flex items-center justify-center">
               <span className="text-white font-bold text-sm">N</span>
             </div>
-            <span className="text-primary font-semibold text-lg tracking-tight">NexVault</span>
+            <span className="text-primary font-semibold text-lg tracking-tight">Arbiter</span>
           </div>
           <h1 className="text-xl font-bold text-primary mb-1">You're invited!</h1>
           <p className="text-secondary text-sm">Create your account to join the team.</p>
