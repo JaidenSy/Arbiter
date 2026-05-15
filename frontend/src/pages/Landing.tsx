@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ArbiterMark } from '../components/ArbiterLogo'
 
 const SUPPORT_EMAIL: string =
   (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'jaidensy07@gmail.com'
@@ -19,7 +20,7 @@ function Navbar(): React.ReactElement {
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2.5">
-          <span className="gradient-text font-bold text-lg tracking-tight">NX</span>
+          <ArbiterMark size={30} />
           <span className="text-primary font-semibold text-sm tracking-wide">Arbiter</span>
         </div>
 
@@ -554,7 +555,7 @@ function Footer(): React.ReactElement {
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Left — logo + copyright */}
         <div className="flex items-center gap-2.5">
-          <span className="gradient-text font-bold text-base tracking-tight">NX</span>
+          <ArbiterMark size={24} />
           <span className="text-primary font-semibold text-sm">Arbiter</span>
           <span className="text-muted text-xs ml-2">© 2026 Arbiter. All rights reserved.</span>
         </div>

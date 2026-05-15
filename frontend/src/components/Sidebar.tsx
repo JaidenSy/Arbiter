@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { ArbiterMark } from './ArbiterLogo'
 
 const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
 
@@ -202,10 +203,10 @@ function Sidebar(): React.ReactElement {
       {/* Logo */}
       <NavLink
         to="/"
-        className="flex items-center justify-center h-[52px] font-mono font-bold text-lg select-none"
+        className="flex items-center justify-center h-[52px] select-none"
         aria-label="Arbiter home"
       >
-        <span className="gradient-text tracking-tight">AR</span>
+        <ArbiterMark size={32} />
       </NavLink>
 
       {/* Top divider */}
