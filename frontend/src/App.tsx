@@ -187,7 +187,7 @@ function App(): React.ReactElement {
           }
         />
         <Route
-          path="/members"
+          path="/organization"
           element={
             <ProtectedRoute>
               <AppLayout><Members /></AppLayout>

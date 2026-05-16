@@ -272,7 +272,7 @@ function Sidebar(): React.ReactElement {
         <NavItem to="/vault" icon={<VaultIcon />} title="Vault" />
         <NavItem to="/sessions" icon={<SessionsIcon />} title="Sessions" />
         <NavItem to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
-        <NavItem to="/members" icon={<UsersIcon />} title="Members" />
+        <NavItem to="/organization" icon={<UsersIcon />} title="Organization" />
       </nav>
 
       {/* Bottom divider */}
