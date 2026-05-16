@@ -103,7 +103,7 @@ function RegisterModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. my-agent"
-            className="w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+            className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
           />
         </div>
 
@@ -117,7 +117,7 @@ function RegisterModal({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Optional description…"
-            className="w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all resize-none"
+            className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all resize-none"
           />
         </div>
 
@@ -129,7 +129,7 @@ function RegisterModal({
             id="agent-scope"
             value={scope}
             onChange={(e) => setScope(e.target.value as AgentScope)}
-            className="w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+            className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
           >
             <option value="full">Full — tool calls + vault read/write</option>
             <option value="read_only">Read Only — tool calls only, no vault writes</option>
