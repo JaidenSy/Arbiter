@@ -80,7 +80,7 @@ function Sessions(): React.ReactElement {
             id="agent-filter"
             value={agentId}
             onChange={(e) => setAgentId(e.target.value)}
-            className="bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+            className="bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
           >
             <option value="">All agents</option>
             {agents?.map((agent) => (

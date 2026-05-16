@@ -263,7 +263,7 @@ function ApiKeySection(): React.ReactElement {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="nx_..."
-              className="flex-1 bg-elevated border border-white/[0.1] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+              className="flex-1 bg-base border border-white/[0.12] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
             />
             <button
               type="button"
@@ -343,7 +343,7 @@ function GatewayUrlSection(): React.ReactElement {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="http://localhost:8000/api/v1"
-            className="w-full bg-elevated border border-white/[0.1] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+            className="w-full bg-base border border-white/[0.12] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
           />
         </div>
 

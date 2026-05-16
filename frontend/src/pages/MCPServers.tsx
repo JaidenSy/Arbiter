@@ -113,7 +113,7 @@ function ServerFormModal({
     onClose()
   }
 
-  const inputClass = "w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (

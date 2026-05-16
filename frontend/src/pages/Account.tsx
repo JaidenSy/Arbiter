@@ -168,7 +168,7 @@ export default function Account(): React.ReactElement {
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Your name"
               maxLength={64}
-              className="w-full bg-elevated border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-accent/50 transition-colors"
+              className="w-full bg-base border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-accent/50 transition-colors"
             />
           </Field>
 
@@ -177,7 +177,7 @@ export default function Account(): React.ReactElement {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-elevated border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
+              className="w-full bg-base border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
             />
           </Field>
 
@@ -210,7 +210,7 @@ export default function Account(): React.ReactElement {
                 onChange={(e) => setCurrentPw(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="w-full bg-elevated border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
+                className="w-full bg-base border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
               />
             </Field>
 
@@ -222,7 +222,7 @@ export default function Account(): React.ReactElement {
                 required
                 minLength={8}
                 autoComplete="new-password"
-                className="w-full bg-elevated border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
+                className="w-full bg-base border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
               />
             </Field>
 
@@ -233,7 +233,7 @@ export default function Account(): React.ReactElement {
                 onChange={(e) => setConfirmPw(e.target.value)}
                 required
                 autoComplete="new-password"
-                className="w-full bg-elevated border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
+                className="w-full bg-base border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
               />
             </Field>
 
