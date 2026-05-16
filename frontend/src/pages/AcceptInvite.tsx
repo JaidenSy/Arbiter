@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { ArbiterMark } from '../components/ArbiterLogo'
 
 const API_BASE: string =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
@@ -63,7 +64,7 @@ function AcceptInvite(): React.ReactElement {
       if (data.access_token && data.refresh_token) {
         localStorage.setItem(ACCESS_KEY, data.access_token)
         localStorage.setItem(REFRESH_KEY, data.refresh_token)
-        window.location.href = '/dashboard'
+        window.location.href = '/'
       }
     } catch {
       setError('Network error. Please try again.')
@@ -87,16 +88,14 @@ function AcceptInvite(): React.ReactElement {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-violet-600 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">N</span>
-            </div>
+            <ArbiterMark size={32} />
             <span className="text-primary font-semibold text-lg tracking-tight">Arbiter</span>
           </div>
           <h1 className="text-xl font-bold text-primary mb-1">You're invited!</h1>
           <p className="text-secondary text-sm">Create your account to join the team.</p>
         </div>
 
-        <div className="bg-card border border-white/[0.08] rounded-xl p-6 shadow-xl">
+        <div className="bg-surface/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <label htmlFor="displayName" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
