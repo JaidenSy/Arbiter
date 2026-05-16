@@ -592,7 +592,7 @@ function Footer(): React.ReactElement {
 
 function Landing(): React.ReactElement {
   return (
-    <div className="min-h-screen bg-base text-primary">
+    <div data-theme="dark" className="min-h-screen bg-base text-primary">
       <Navbar />
       {/* Offset for fixed navbar */}
       <div className="pt-14">
