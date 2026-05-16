@@ -10,6 +10,7 @@ Only these event types are acted upon:
     - checkout.session.completed     → set stripe IDs, upgrade to "pro"
     - customer.subscription.updated  → sync plan_tier from subscription status
     - customer.subscription.deleted  → downgrade to "free", clear stripe_subscription_id
+    - invoice.payment_failed         → email org owner with portal link to update payment method
 """
 
 from __future__ import annotations
@@ -18,10 +19,13 @@ import asyncio
 import logging
 
 import stripe
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.models.organization import Organization
+from app.db.models.user import User
+from app.services.email.email_service import send_payment_failed
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +142,12 @@ class BillingService:
                 - Set plan_tier = "free", stripe_subscription_id = None
                 - Commit
 
+            invoice.payment_failed:
+                - Lookup org by stripe_customer_id
+                - Query org owner (role == "owner")
+                - Generate billing portal URL
+                - Email owner with link to update payment method
+
         All other event types: no-op (return silently).
         """
         event = await asyncio.to_thread(
@@ -156,6 +166,8 @@ class BillingService:
             await self._on_subscription_updated(data, db)
         elif event_type == "customer.subscription.deleted":
             await self._on_subscription_deleted(data, db)
+        elif event_type == "invoice.payment_failed":
+            await self._on_payment_failed(data, db)
         # All other event types: no-op
 
     # ── Private helpers ───────────────────────────────────────────────────────
@@ -237,3 +249,46 @@ class BillingService:
         await db.commit()
         logger.info("billing: org %s downgraded to free (subscription deleted)", org_id)
 
+    async def _on_payment_failed(
+        self, invoice: dict, db: AsyncSession
+    ) -> None:
+        """Handle invoice.payment_failed — email org owner with a portal link."""
+        customer_id: str | None = invoice.get("customer")
+        if not customer_id:
+            logger.warning("billing: invoice.payment_failed missing customer")
+            return
+
+        result = await db.execute(
+            select(Organization).where(Organization.stripe_customer_id == customer_id)
+        )
+        org = result.scalar_one_or_none()
+        if org is None:
+            logger.warning(
+                "billing: no org found for stripe_customer_id=%s (invoice.payment_failed)",
+                customer_id,
+            )
+            return
+
+        owner_result = await db.execute(
+            select(User).where(User.org_id == org.id, User.role == "owner")
+        )
+        owner = owner_result.scalar_one_or_none()
+        if owner is None:
+            logger.warning("billing: no owner found for org %s (invoice.payment_failed)", org.id)
+            return
+
+        return_url = settings.frontend_url + "/settings?tab=billing"
+        portal_session = await asyncio.to_thread(
+            stripe.billing_portal.Session.create,
+            customer=customer_id,
+            return_url=return_url,
+        )
+
+        await send_payment_failed(
+            to=owner.email,
+            org_name=org.name,
+            portal_url=portal_session.url,
+        )
+        logger.info(
+            "billing: payment_failed email sent to %s for org %s", owner.email, org.id
+        )

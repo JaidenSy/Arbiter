@@ -11,6 +11,8 @@ import React, { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { authClient } from '../api/client'
 import type { BillingStatus } from '../api/types'
+import { useTheme } from '../context/ThemeContext'
+import Toggle from '../components/Toggle'
 
 const STRIPE_PRO_PRICE_ID: string = import.meta.env.VITE_STRIPE_PRO_PRICE_ID ?? ''
 const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
@@ -384,6 +386,25 @@ function AboutSection(): React.ReactElement {
   )
 }
 
+// ── Appearance Section ────────────────────────────────────────────────────────
+
+function AppearanceSection(): React.ReactElement {
+  const { theme, toggleTheme } = useTheme()
+
+  return (
+    <div>
+      <SectionHeader title="Appearance" subtitle="Customize the look of the dashboard" />
+      <div className="flex items-center justify-between max-w-xl">
+        <div>
+          <p className="text-primary text-sm font-medium">Theme</p>
+          <p className="text-secondary text-xs mt-0.5">{theme === 'dark' ? 'Dark mode' : 'Light mode'}</p>
+        </div>
+        <Toggle checked={theme === 'light'} onChange={() => toggleTheme()} />
+      </div>
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function Settings(): React.ReactElement {
@@ -395,6 +416,9 @@ function Settings(): React.ReactElement {
       </div>
 
       <div className="max-w-2xl space-y-0">
+        <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
+          <AppearanceSection />
+        </div>
         <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
           <BillingSection />
         </div>
