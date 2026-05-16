@@ -90,7 +90,7 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    smtp_from_email: str = "no-reply@arbiterai.dev"
+    smtp_from_email: str = "support@arbiterai.dev"
     smtp_from_name: str = "Arbiter"
 
     @property

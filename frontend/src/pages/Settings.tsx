@@ -263,7 +263,7 @@ function ApiKeySection(): React.ReactElement {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="nx_..."
-              className="flex-1 bg-elevated border border-white/[0.1] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+              className="flex-1 bg-base border border-white/[0.12] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
             />
             <button
               type="button"
@@ -343,7 +343,7 @@ function GatewayUrlSection(): React.ReactElement {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="http://localhost:8000/api/v1"
-            className="w-full bg-elevated border border-white/[0.1] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+            className="w-full bg-base border border-white/[0.12] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
           />
         </div>
 
@@ -405,32 +405,76 @@ function AppearanceSection(): React.ReactElement {
   )
 }
 
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+type Tab = 'general' | 'billing' | 'developer' | 'about'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'general',   label: 'General'   },
+  { id: 'billing',   label: 'Billing'   },
+  { id: 'developer', label: 'Developer' },
+  { id: 'about',     label: 'About'     },
+]
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function Settings(): React.ReactElement {
+  const [activeTab, setActiveTab] = useState<Tab>('general')
+
   return (
     <div className="p-8 animate-fade-in">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="gradient-text-purple text-xl font-bold">Settings</h1>
         <p className="text-secondary text-sm mt-1">Configure your Arbiter gateway</p>
       </div>
 
-      <div className="max-w-2xl space-y-0">
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
-          <AppearanceSection />
-        </div>
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
-          <BillingSection />
-        </div>
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
-          <ApiKeySection />
-        </div>
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
-          <GatewayUrlSection />
-        </div>
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
-          <AboutSection />
-        </div>
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-white/[0.08] mb-6 max-w-2xl">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-medium transition-all border-b-2 -mb-px ${
+              activeTab === tab.id
+                ? 'text-primary border-accent'
+                : 'text-secondary border-transparent hover:text-primary hover:border-white/[0.2]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="max-w-2xl">
+        {activeTab === 'general' && (
+          <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+            <AppearanceSection />
+          </div>
+        )}
+
+        {activeTab === 'billing' && (
+          <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+            <BillingSection />
+          </div>
+        )}
+
+        {activeTab === 'developer' && (
+          <div className="space-y-4">
+            <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+              <ApiKeySection />
+            </div>
+            <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+              <GatewayUrlSection />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'about' && (
+          <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+            <AboutSection />
+          </div>
+        )}
       </div>
     </div>
   )

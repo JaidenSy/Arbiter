@@ -42,6 +42,13 @@
 
 * { box-sizing: border-box; }
 
+/* In light mode, white-opacity borders used for inputs are invisible — override them */
+[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="submit"]),
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
 body {
   background-color: var(--color-base);
   color: var(--color-primary);

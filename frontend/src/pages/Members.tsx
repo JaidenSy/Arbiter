@@ -1,8 +1,8 @@
 /**
- * Arbiter — Members page.
+ * Arbiter — Organization page.
  *
- * Route: /members (protected, with sidebar)
- * Owners and admins can list members, change roles, remove members, and invite new ones.
+ * Route: /organization (protected, with sidebar)
+ * Shows org info with rename (owner only), member list, and invite management.
  */
 
 import React, { useEffect, useState, useCallback } from 'react'
@@ -10,6 +10,14 @@ import { authClient } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+interface OrgInfo {
+  id: string
+  name: string
+  slug: string
+  plan_tier: string
+  created_at: string
+}
 
 interface Member {
   id: string
@@ -38,6 +46,12 @@ const ROLE_BADGE: Record<string, string> = {
   member: 'bg-white/5 text-secondary border-white/10',
 }
 
+const PLAN_BADGE: Record<string, string> = {
+  free: 'bg-white/5 text-secondary border-white/10',
+  pro: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
+  enterprise: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function canManage(currentRole: string): boolean {
@@ -48,17 +62,54 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function SelectField({
+  value,
+  onChange,
+  options,
+  className = '',
+}: {
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string }[]
+  className?: string
+}) {
+  return (
+    <div className={`relative ${className}`}>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="appearance-none w-full bg-base border border-white/[0.12] text-primary text-sm px-3.5 py-2.5 pr-9 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 transition-all cursor-pointer"
+      >
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+      </svg>
+    </div>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
-function Members(): React.ReactElement {
+function Organization(): React.ReactElement {
   const { user } = useAuth()
   const currentRole = user?.role ?? 'member'
+  const isOwner = currentRole === 'owner'
   const isManager = canManage(currentRole)
 
+  const [org, setOrg] = useState<OrgInfo | null>(null)
   const [members, setMembers] = useState<Member[]>([])
   const [invites, setInvites] = useState<Invite[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // Rename state
+  const [renaming, setRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const [renameError, setRenameError] = useState('')
+  const [renameSaving, setRenameSaving] = useState(false)
 
   // Invite modal state
   const [showInvite, setShowInvite] = useState(false)
@@ -71,20 +122,45 @@ function Members(): React.ReactElement {
   const fetchData = useCallback(async () => {
     setError('')
     try {
-      const [membersRes, invitesRes] = await Promise.all([
+      const [orgRes, membersRes, invitesRes] = await Promise.all([
+        authClient.get<OrgInfo>('/org'),
         authClient.get<Member[]>('/org/members'),
         isManager ? authClient.get<Invite[]>('/org/invites') : Promise.resolve(null),
       ])
+      setOrg(orgRes.data)
       setMembers(membersRes.data)
       if (invitesRes) setInvites(invitesRes.data)
     } catch {
-      setError('Failed to load members.')
+      setError('Failed to load organization data.')
     } finally {
       setLoading(false)
     }
   }, [isManager])
 
   useEffect(() => { void fetchData() }, [fetchData])
+
+  function startRename() {
+    setRenameValue(org?.name ?? '')
+    setRenameError('')
+    setRenaming(true)
+  }
+
+  async function saveRename() {
+    const name = renameValue.trim()
+    if (!name) { setRenameError('Name cannot be empty'); return }
+    setRenameSaving(true)
+    setRenameError('')
+    try {
+      const res = await authClient.patch<OrgInfo>('/org', { name })
+      setOrg(res.data)
+      setRenaming(false)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setRenameError(msg ?? 'Failed to rename organization.')
+    } finally {
+      setRenameSaving(false)
+    }
+  }
 
   async function handleRoleChange(memberId: string, newRole: Role) {
     try {
@@ -148,10 +224,79 @@ function Members(): React.ReactElement {
   return (
     <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
       {/* Header */}
+      <div>
+        <h1 className="text-xl font-bold text-primary">Organization</h1>
+        <p className="text-secondary text-sm mt-0.5">Manage your organization settings and members</p>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-4 py-2.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
+          <p className="text-error text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Org info card */}
+      {org && (
+        <div className="bg-card border border-white/[0.08] rounded-xl p-5 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-secondary uppercase tracking-widest mb-1">Organization name</p>
+              {renaming ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') void saveRename(); if (e.key === 'Escape') setRenaming(false) }}
+                    autoFocus
+                    className="bg-base border border-white/[0.12] text-primary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 w-full max-w-xs transition-all"
+                  />
+                  <button
+                    onClick={() => void saveRename()}
+                    disabled={renameSaving}
+                    className="text-xs font-medium text-accent-light hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    {renameSaving ? 'Saving…' : 'Save'}
+                  </button>
+                  <button onClick={() => setRenaming(false)} className="text-xs text-muted hover:text-secondary transition-colors">Cancel</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-primary font-semibold text-base">{org.name}</span>
+                  {isOwner && (
+                    <button onClick={startRename} className="text-muted hover:text-secondary transition-colors" aria-label="Rename organization">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
+              {renameError && <p className="text-error text-xs mt-1">{renameError}</p>}
+            </div>
+            <span className={`inline-block text-xs font-medium border rounded-full px-2.5 py-0.5 flex-shrink-0 ${PLAN_BADGE[org.plan_tier] ?? PLAN_BADGE['free']}`}>
+              {org.plan_tier}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-4 pt-1 border-t border-white/[0.06]">
+            <div>
+              <p className="text-xs text-muted mb-0.5">Slug</p>
+              <p className="text-sm text-secondary font-mono">{org.slug}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted mb-0.5">Created</p>
+              <p className="text-sm text-secondary">{formatDate(org.created_at)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Members section */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-primary">Members</h1>
-          <p className="text-secondary text-sm mt-0.5">{members.length} member{members.length !== 1 ? 's' : ''} in your organization</p>
+          <h2 className="text-base font-semibold text-primary">Members</h2>
+          <p className="text-secondary text-sm mt-0.5">{members.length} member{members.length !== 1 ? 's' : ''}</p>
         </div>
         {isManager && (
           <button
@@ -162,13 +307,6 @@ function Members(): React.ReactElement {
           </button>
         )}
       </div>
-
-      {error && (
-        <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-4 py-2.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
-          <p className="text-error text-sm">{error}</p>
-        </div>
-      )}
 
       {/* Members table */}
       <div className="bg-card border border-white/[0.08] rounded-xl overflow-hidden">
@@ -195,15 +333,12 @@ function Members(): React.ReactElement {
                   </td>
                   <td className="px-5 py-3.5">
                     {isManager && !isSelf ? (
-                      <select
+                      <SelectField
                         value={m.role}
-                        onChange={(e) => handleRoleChange(m.id, e.target.value as Role)}
-                        className="bg-elevated/80 border border-white/[0.1] text-primary text-xs rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-accent/60"
-                      >
-                        {VALID_ROLES.map(r => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
+                        onChange={(v) => void handleRoleChange(m.id, v as Role)}
+                        options={VALID_ROLES.map(r => ({ value: r, label: r }))}
+                        className="w-28"
+                      />
                     ) : (
                       <span className={`inline-block text-xs font-medium border rounded-full px-2.5 py-0.5 ${ROLE_BADGE[m.role] ?? ROLE_BADGE['member']}`}>
                         {m.role}
@@ -215,7 +350,7 @@ function Members(): React.ReactElement {
                     <td className="px-5 py-3.5 text-right">
                       {!isSelf && (
                         <button
-                          onClick={() => handleRemoveMember(m.id)}
+                          onClick={() => void handleRemoveMember(m.id)}
                           className="text-muted hover:text-error text-xs transition-colors"
                         >
                           Remove
@@ -256,7 +391,7 @@ function Members(): React.ReactElement {
                     <td className="px-5 py-3.5 text-secondary">{formatDate(inv.expires_at)}</td>
                     <td className="px-5 py-3.5 text-right">
                       <button
-                        onClick={() => handleCancelInvite(inv.id)}
+                        onClick={() => void handleCancelInvite(inv.id)}
                         className="text-muted hover:text-error text-xs transition-colors"
                       >
                         Cancel
@@ -273,7 +408,7 @@ function Members(): React.ReactElement {
       {/* Invite modal */}
       {showInvite && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowInvite(false)}>
-          <div className="bg-card border border-white/[0.12] rounded-xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-surface border border-white/[0.12] rounded-xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-base font-bold text-primary mb-4">Invite a member</h2>
 
             {inviteSuccess ? (
@@ -289,7 +424,7 @@ function Members(): React.ReactElement {
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSendInvite} className="flex flex-col gap-4">
+              <form onSubmit={(e) => void handleSendInvite(e)} className="flex flex-col gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">Email</label>
                   <input
@@ -298,21 +433,21 @@ function Members(): React.ReactElement {
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="colleague@company.com"
-                    className="w-full bg-elevated/80 border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 transition-all"
+                    className="w-full bg-base border border-white/[0.12] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 transition-all placeholder:text-muted"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">Role</label>
-                  <select
+                  <SelectField
                     value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as Role)}
-                    className="w-full bg-elevated/80 border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 transition-all"
-                  >
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                    {currentRole === 'owner' && <option value="owner">Owner</option>}
-                  </select>
+                    onChange={(v) => setInviteRole(v as Role)}
+                    options={[
+                      { value: 'member', label: 'Member' },
+                      { value: 'admin', label: 'Admin' },
+                      ...(currentRole === 'owner' ? [{ value: 'owner', label: 'Owner' }] : []),
+                    ]}
+                  />
                 </div>
 
                 {inviteError && (
@@ -347,4 +482,4 @@ function Members(): React.ReactElement {
   )
 }
 
-export default Members
+export default Organization

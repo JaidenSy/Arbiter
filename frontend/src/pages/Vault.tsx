@@ -150,7 +150,7 @@ function SecretFormModal({
     onClose()
   }
 
-  const inputClass = "w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (
@@ -161,7 +161,7 @@ function SecretFormModal({
             Name <span className="text-error normal-case">*</span>
           </label>
           {isRotating ? (
-            <div className="px-3 py-2 bg-elevated border border-white/[0.07] rounded-lg">
+            <div className="px-3 py-2 bg-base border border-white/[0.07] rounded-lg">
               <span className="font-mono text-sm text-accent-light">{rotateTarget?.name}</span>
             </div>
           ) : (

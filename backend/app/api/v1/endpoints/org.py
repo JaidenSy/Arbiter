@@ -2,6 +2,8 @@
 Arbiter — API endpoints: Org Members & Invites.
 
 Routes:
+    GET    /org                      — get organization info
+    PATCH  /org                      — rename organization (owner only)
     GET    /org/members              — list all members
     PATCH  /org/members/{id}         — change a member's role
     DELETE /org/members/{id}         — remove a member
@@ -41,6 +43,20 @@ _VALID_ROLES = {"owner", "admin", "member"}
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
 
+class OrgResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    slug: str
+    plan_tier: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class RenameOrgRequest(BaseModel):
+    name: str
+
+
 class MemberResponse(BaseModel):
     id: uuid.UUID
     email: str
@@ -76,6 +92,38 @@ class AcceptInviteRequest(BaseModel):
     token: str
     display_name: str | None = None
     password: str
+
+
+# ── Org ───────────────────────────────────────────────────────────────────────
+
+
+@router.get("/org", response_model=OrgResponse, summary="Get organization info")
+async def get_org(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> OrgResponse:
+    org = await db.get(Organization, current_user.org_id)
+    if org is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
+    return OrgResponse.model_validate(org)
+
+
+@router.patch("/org", response_model=OrgResponse, summary="Rename organization (owner only)")
+async def rename_org(
+    body: RenameOrgRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("owner")),
+) -> OrgResponse:
+    name = body.name.strip()
+    if not name or len(name) > 255:
+        raise HTTPException(status_code=422, detail="Name must be 1–255 characters")
+    org = await db.get(Organization, current_user.org_id)
+    if org is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
+    org.name = name
+    await db.commit()
+    await db.refresh(org)
+    return OrgResponse.model_validate(org)
 
 
 # ── Members ───────────────────────────────────────────────────────────────────
