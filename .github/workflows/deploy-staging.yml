@@ -47,7 +47,7 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Alias to staging domain
-        run: vercel alias ${{ steps.deploy.outputs.url }} staging.arbiterai.dev --token ${{ secrets.VERCEL_TOKEN }} --yes
+        run: vercel alias ${{ steps.deploy.outputs.url }} staging.arbiterai.dev --token ${{ secrets.VERCEL_TOKEN }}
         working-directory: frontend
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
