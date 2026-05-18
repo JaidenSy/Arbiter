@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { ArbiterMark } from './ArbiterLogo'
+import { useTour } from '../hooks/useTour'
 
 const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
 
@@ -124,11 +125,12 @@ interface NavItemProps {
   icon: React.ReactElement
   title: string
   end?: boolean
+  id?: string
 }
 
-function NavItem({ to, icon, title, end }: NavItemProps): React.ReactElement {
+function NavItem({ to, icon, title, end, id }: NavItemProps): React.ReactElement {
   return (
-    <div className="relative group/nav px-2 py-0.5">
+    <div id={id} className="relative group/nav px-2 py-0.5">
       <NavLink
         to={to}
         end={end}
@@ -244,9 +246,37 @@ function UserAvatar(): React.ReactElement | null {
   )
 }
 
+// ── Help button ───────────────────────────────────────────────────────────────
+
+function HelpButton({ onStart }: { onStart: () => void }): React.ReactElement {
+  return (
+    <div id="help-button" className="relative group/nav px-2 py-0.5">
+      <button
+        type="button"
+        aria-label="Product walkthrough"
+        onClick={onStart}
+        className="w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-white/[0.05] transition-all"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </button>
+      <div className="pointer-events-none absolute left-[52px] top-1/2 -translate-y-1/2 ml-1 z-50 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150">
+        <div className="bg-overlay border border-white/[0.12] text-primary text-xs font-medium px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap">
+          Help / Walkthrough
+          <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-overlay" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 function Sidebar(): React.ReactElement {
+  const { startTour } = useTour()
   return (
     <aside className="fixed left-0 top-0 h-screen w-[52px] bg-gradient-to-b from-surface to-base border-r border-white/[0.06] flex flex-col z-40">
       {/* Subtle vertical accent line at top */}
@@ -266,13 +296,13 @@ function Sidebar(): React.ReactElement {
 
       {/* Main nav */}
       <nav className="flex flex-col flex-1 pt-2 gap-0.5">
-        <NavItem to="/" icon={<DashboardIcon />} title="Dashboard" end />
-        <NavItem to="/agents" icon={<AgentsIcon />} title="Agents" />
-        <NavItem to="/mcp-servers" icon={<MCPServersIcon />} title="MCP Servers" />
-        <NavItem to="/vault" icon={<VaultIcon />} title="Vault" />
-        <NavItem to="/sessions" icon={<SessionsIcon />} title="Sessions" />
-        <NavItem to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
-        <NavItem to="/organization" icon={<UsersIcon />} title="Organization" />
+        <NavItem id="nav-dashboard" to="/" icon={<DashboardIcon />} title="Dashboard" end />
+        <NavItem id="nav-agents" to="/agents" icon={<AgentsIcon />} title="Agents" />
+        <NavItem id="nav-mcp-servers" to="/mcp-servers" icon={<MCPServersIcon />} title="MCP Servers" />
+        <NavItem id="nav-vault" to="/vault" icon={<VaultIcon />} title="Vault" />
+        <NavItem id="nav-sessions" to="/sessions" icon={<SessionsIcon />} title="Sessions" />
+        <NavItem id="nav-permissions" to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
+        <NavItem id="nav-organization" to="/organization" icon={<UsersIcon />} title="Organization" />
       </nav>
 
       {/* Bottom divider */}
@@ -280,7 +310,8 @@ function Sidebar(): React.ReactElement {
 
       {/* Settings + user at bottom */}
       <div className="pb-2 flex flex-col items-center gap-0.5 pt-2">
-        <NavItem to="/settings" icon={<SettingsIcon />} title="Settings" />
+        <NavItem id="nav-settings" to="/settings" icon={<SettingsIcon />} title="Settings" />
+        <HelpButton onStart={startTour} />
         <ThemeToggleButton />
         <UserAvatar />
       </div>

@@ -128,3 +128,54 @@ body {
   mask-composite: exclude;
   pointer-events: none;
 }
+
+/* ── Driver.js tour — dark/purple theme ───────────────────────────────────── */
+
+.arbiter-tour-popover.driver-popover {
+  background: #1a1625;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 0.75rem;
+  box-shadow: 0 0 24px rgba(124,58,237,0.18), 0 8px 32px rgba(0,0,0,0.5);
+  color: #e2e0f0;
+  font-family: inherit;
+}
+
+.arbiter-tour-popover .driver-popover-title {
+  color: #c4b5fd;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.arbiter-tour-popover .driver-popover-description {
+  color: #a39db8;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.arbiter-tour-popover .driver-popover-navigation-btns button {
+  background: rgba(124,58,237,0.15);
+  border: 1px solid rgba(124,58,237,0.35);
+  color: #c4b5fd;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.375rem 0.875rem;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.arbiter-tour-popover .driver-popover-navigation-btns button:hover {
+  background: rgba(124,58,237,0.28);
+  border-color: rgba(167,139,250,0.6);
+}
+
+.arbiter-tour-popover .driver-popover-progress-text {
+  color: #6b6480;
+  font-size: 0.6875rem;
+}
+
+.arbiter-tour-popover .driver-popover-close-btn {
+  color: #6b6480;
+}
+
+.arbiter-tour-popover .driver-popover-close-btn:hover {
+  color: #a39db8;
+}
