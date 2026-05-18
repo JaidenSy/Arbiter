@@ -29,9 +29,12 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Build
-        run: npm run build
+      - name: Build for staging
+        run: vercel build --target staging --token ${{ secrets.VERCEL_TOKEN }} --yes
         working-directory: frontend
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Deploy prebuilt to staging
         id: deploy
