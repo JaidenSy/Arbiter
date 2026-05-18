@@ -18,8 +18,33 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
-      - name: Deploy to staging
-        run: vercel --target staging --token ${{ secrets.VERCEL_TOKEN }} --yes
+      - name: Pull staging environment variables
+        run: vercel env pull .env.local --environment staging --token ${{ secrets.VERCEL_TOKEN }} --yes
+        working-directory: frontend
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+
+      - name: Deploy prebuilt to staging
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt --target staging --token ${{ secrets.VERCEL_TOKEN }} --yes)
+          echo "url=$url" >> $GITHUB_OUTPUT
+        working-directory: frontend
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Alias to staging domain
+        run: vercel alias ${{ steps.deploy.outputs.url }} staging.arbiterai.dev --token ${{ secrets.VERCEL_TOKEN }} --yes
         working-directory: frontend
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
