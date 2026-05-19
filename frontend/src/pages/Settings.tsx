@@ -8,9 +8,9 @@
  */
 
 import React, { useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
-import type { BillingStatus } from '../api/types'
+import type { BillingStatus, CacheStats } from '../api/types'
 import { useTheme } from '../context/ThemeContext'
 import Toggle from '../components/Toggle'
 
@@ -405,6 +405,83 @@ function AppearanceSection(): React.ReactElement {
   )
 }
 
+// ── Cache Section ─────────────────────────────────────────────────────────────
+
+function CacheSection(): React.ReactElement {
+  const queryClient = useQueryClient()
+  const [flushed, setFlushed] = useState(false)
+
+  const { data: stats, isLoading } = useQuery<CacheStats>({
+    queryKey: ['cache-stats'],
+    queryFn: () => authClient.get<CacheStats>('/cache/stats').then((r) => r.data),
+    refetchInterval: 30_000,
+  })
+
+  const flushMutation = useMutation({
+    mutationFn: () => authClient.delete('/cache').then(() => undefined),
+    onSuccess: () => {
+      setFlushed(true)
+      void queryClient.invalidateQueries({ queryKey: ['cache-stats'] })
+      setTimeout(() => setFlushed(false), 3000)
+    },
+  })
+
+  return (
+    <div>
+      <SectionHeader title="Semantic Cache" subtitle="Visibility and control over cached tool call responses" />
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => <div key={i} className="h-4 skeleton-shimmer rounded w-48" />)}
+        </div>
+      ) : stats ? (
+        <div className="space-y-4">
+          <div className="flex gap-6 text-sm font-mono">
+            <div>
+              <p className="text-muted text-xs uppercase tracking-wider mb-1">Active</p>
+              <p className="text-primary text-lg font-light">{stats.active_entries.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-muted text-xs uppercase tracking-wider mb-1">Expired</p>
+              <p className="text-secondary text-lg font-light">{stats.expired_entries.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-muted text-xs uppercase tracking-wider mb-1">Total</p>
+              <p className="text-secondary text-lg font-light">{stats.total_entries.toLocaleString()}</p>
+            </div>
+          </div>
+
+          {stats.top_tools.length > 0 && (
+            <div>
+              <p className="text-muted text-xs font-mono uppercase tracking-wider mb-2">Top cached tools</p>
+              <div className="space-y-1">
+                {stats.top_tools.slice(0, 5).map((t) => (
+                  <div key={t.tool_name} className="flex justify-between items-center text-xs font-mono">
+                    <span className="text-secondary">{t.tool_name}</span>
+                    <span className="text-muted tabular-nums">{t.entries}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="pt-2 border-t border-white/[0.06]">
+            <button
+              type="button"
+              disabled={flushMutation.isPending || stats.active_entries === 0}
+              onClick={() => flushMutation.mutate()}
+              className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {flushMutation.isPending ? 'Flushing…' : flushed ? 'Flushed ✓' : 'Flush Cache'}
+            </button>
+            <p className="text-muted text-xs mt-1.5">Removes all active cache entries for your org. Cannot be undone.</p>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
 type Tab = 'general' | 'billing' | 'developer' | 'about'
@@ -415,6 +492,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'developer', label: 'Developer' },
   { id: 'about',     label: 'About'     },
 ]
+
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -466,6 +544,9 @@ function Settings(): React.ReactElement {
             </div>
             <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
               <GatewayUrlSection />
+            </div>
+            <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+              <CacheSection />
             </div>
           </div>
         )}

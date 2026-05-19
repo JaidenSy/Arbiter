@@ -18,6 +18,7 @@ import socket
 import uuid
 from urllib.parse import urlparse
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
@@ -104,6 +105,13 @@ class MCPServerUpdate(BaseModel):
             raise ValueError("base_url must be a valid http:// or https:// URL")
         _assert_ssrf_safe(stripped)
         return stripped
+
+
+class MCPServerTestResponse(BaseModel):
+    reachable: bool
+    tool_count: int | None = None
+    error: str | None = None
+    latency_ms: int | None = None
 
 
 class MCPServerResponse(BaseModel):
@@ -356,3 +364,41 @@ async def delete_mcp_server(
     server.is_active = False
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{server_id}/test",
+    response_model=MCPServerTestResponse,
+    summary="Test MCP server connectivity",
+)
+async def test_mcp_server(
+    server_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> MCPServerTestResponse:
+    """Fire tools/list against the server and return tool count or error."""
+    result = await db.execute(
+        select(MCPServer).where(
+            MCPServer.id == server_id,
+            MCPServer.org_id == current_user.org_id,
+            MCPServer.is_active.is_(True),
+        )
+    )
+    server = result.scalar_one_or_none()
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {server_id} not found")
+
+    import time
+    url = server.base_url.rstrip("/") + "/tools/list"
+    try:
+        t0 = time.monotonic()
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(url, json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
+        latency_ms = int((time.monotonic() - t0) * 1000)
+        if resp.status_code >= 400:
+            return MCPServerTestResponse(reachable=False, error=f"HTTP {resp.status_code}", latency_ms=latency_ms)
+        data = resp.json()
+        tools = data.get("result", {}).get("tools", [])
+        return MCPServerTestResponse(reachable=True, tool_count=len(tools), latency_ms=latency_ms)
+    except Exception as exc:
+        return MCPServerTestResponse(reachable=False, error=str(exc))

@@ -25,7 +25,7 @@ from app.core.dependencies import get_current_user, get_db, require_role
 from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.db.models.user import User
-from app.schemas.agent import AgentCreate, AgentCreateResponse, AgentResponse, _VALID_SCOPES
+from app.schemas.agent import AgentCreate, AgentCreateResponse, AgentResponse, AgentUpdate, _VALID_SCOPES
 from app.services.plan.plan_service import check_resource_limit
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -147,6 +147,47 @@ async def get_agent(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent {agent_id} not found",
         )
+    return AgentResponse.model_validate(agent)
+
+
+@router.patch(
+    "/{agent_id}",
+    response_model=AgentResponse,
+    summary="Update agent name or description",
+)
+async def update_agent(
+    agent_id: uuid.UUID,
+    body: AgentUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("owner", "admin")),
+) -> AgentResponse:
+    result = await db.execute(
+        select(Agent).where(
+            Agent.id == agent_id,
+            Agent.is_active.is_(True),
+            Agent.org_id == current_user.org_id,
+        )
+    )
+    agent = result.scalar_one_or_none()
+    if agent is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
+
+    if body.name is not None:
+        existing = await db.execute(
+            select(Agent).where(
+                Agent.name == body.name,
+                Agent.org_id == current_user.org_id,
+                Agent.id != agent_id,
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"An agent named {body.name!r} already exists")
+        agent.name = body.name
+    if body.description is not None:
+        agent.description = body.description
+
+    await db.commit()
+    await db.refresh(agent)
     return AgentResponse.model_validate(agent)
 
 

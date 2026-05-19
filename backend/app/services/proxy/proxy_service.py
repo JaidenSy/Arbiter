@@ -135,6 +135,27 @@ class ProxyService:
                 ),
             )
 
+        # ── 2b. Per-tool rate limiting ─────────────────────────────────────────
+        rate_limit = await self._rbac.get_rate_limit(
+            agent_id=agent.id,
+            mcp_server_id=mcp_server.id,
+            tool_name=request.tool_name,
+        )
+        if rate_limit is not None:
+            minute_bucket = int(time.time() // 60)
+            rl_key = f"rl:{agent.id}:{mcp_server.id}:{request.tool_name}:{minute_bucket}"
+            count = await self.redis.incr(rl_key)
+            if count == 1:
+                await self.redis.expire(rl_key, 120)  # TTL 2 min to survive clock edges
+            if count > rate_limit:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=(
+                        f"Rate limit exceeded: agent {agent.name!r} may call "
+                        f"tool {request.tool_name!r} at most {rate_limit} times per minute"
+                    ),
+                )
+
         # ── 3. Cache lookup (org-scoped) ───────────────────────────────────────
         cached_result = None
         if mcp_server.cache_enabled:

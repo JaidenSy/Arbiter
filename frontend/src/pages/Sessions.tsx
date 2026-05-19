@@ -17,12 +17,23 @@ import type { Agent, Session } from "../api/types";
 const fetchAgents = (): Promise<Agent[]> =>
   authClient.get<Agent[]>("/agents").then((r) => r.data);
 
-const fetchSessions = (agentId: string): Promise<Session[]> =>
-  authClient
-    .get<Session[]>("/sessions", {
-      params: agentId ? { agent_id: agentId } : undefined,
-    })
-    .then((r) => r.data);
+interface SessionFilters {
+  agentId: string;
+  toolName: string;
+  hasError: string; // ""|"true"|"false"
+  fromDate: string;
+  toDate: string;
+}
+
+const fetchSessions = (filters: SessionFilters): Promise<Session[]> => {
+  const params: Record<string, string> = {};
+  if (filters.agentId) params.agent_id = filters.agentId;
+  if (filters.toolName) params.tool_name = filters.toolName;
+  if (filters.hasError) params.has_error = filters.hasError;
+  if (filters.fromDate) params.from_date = new Date(filters.fromDate).toISOString();
+  if (filters.toDate) params.to_date = new Date(filters.toDate).toISOString();
+  return authClient.get<Session[]>("/sessions", { params }).then((r) => r.data);
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -41,9 +52,17 @@ function relativeTime(iso: string): string {
 function Sessions(): React.ReactElement {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [agentId, setAgentId] = useState<string>(
-    searchParams.get("agent_id") ?? "",
-  );
+  const [filters, setFilters] = useState<SessionFilters>({
+    agentId: searchParams.get("agent_id") ?? "",
+    toolName: "",
+    hasError: "",
+    fromDate: "",
+    toDate: "",
+  });
+
+  const setFilter = <K extends keyof SessionFilters>(key: K, value: SessionFilters[K]): void => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
 
   const { data: agents } = useQuery<Agent[]>({
     queryKey: ["agents"],
@@ -51,8 +70,8 @@ function Sessions(): React.ReactElement {
   });
 
   const { data: sessions, isLoading: sessionsLoading } = useQuery<Session[]>({
-    queryKey: ["sessions", agentId],
-    queryFn: () => fetchSessions(agentId),
+    queryKey: ["sessions", filters],
+    queryFn: () => fetchSessions(filters),
   });
 
   const agentMap = useMemo(
@@ -71,24 +90,56 @@ function Sessions(): React.ReactElement {
           <p className="text-secondary text-sm mt-1">Full audit log of agent activity and tool calls</p>
         </div>
 
-        {/* Agent filter */}
-        <div className="flex items-center gap-3">
-          <label htmlFor="agent-filter" className="text-xs font-semibold text-secondary uppercase tracking-widest">
-            Filter:
-          </label>
+        {/* Filters */}
+        <div className="flex items-center gap-2 flex-wrap">
           <select
-            id="agent-filter"
-            value={agentId}
-            onChange={(e) => setAgentId(e.target.value)}
-            className="bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+            value={filters.agentId}
+            onChange={(e) => setFilter("agentId", e.target.value)}
+            className="bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent/60 transition-all"
           >
             <option value="">All agents</option>
             {agents?.map((agent) => (
-              <option key={agent.id} value={agent.id}>
-                {agent.name}
-              </option>
+              <option key={agent.id} value={agent.id}>{agent.name}</option>
             ))}
           </select>
+          <input
+            type="text"
+            placeholder="Tool name"
+            value={filters.toolName}
+            onChange={(e) => setFilter("toolName", e.target.value)}
+            className="bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent/60 transition-all w-36"
+          />
+          <select
+            value={filters.hasError}
+            onChange={(e) => setFilter("hasError", e.target.value)}
+            className="bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent/60 transition-all"
+          >
+            <option value="">All results</option>
+            <option value="true">Errors only</option>
+            <option value="false">No errors</option>
+          </select>
+          <input
+            type="date"
+            value={filters.fromDate}
+            onChange={(e) => setFilter("fromDate", e.target.value)}
+            className="bg-elevated border border-white/[0.1] text-secondary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent/60 transition-all"
+          />
+          <span className="text-muted text-xs">→</span>
+          <input
+            type="date"
+            value={filters.toDate}
+            onChange={(e) => setFilter("toDate", e.target.value)}
+            className="bg-elevated border border-white/[0.1] text-secondary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent/60 transition-all"
+          />
+          {(filters.agentId || filters.toolName || filters.hasError || filters.fromDate || filters.toDate) && (
+            <button
+              type="button"
+              onClick={() => setFilters({ agentId: "", toolName: "", hasError: "", fromDate: "", toDate: "" })}
+              className="text-muted hover:text-secondary text-xs px-2 py-1.5 rounded-lg hover:bg-elevated/60 transition-all"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 

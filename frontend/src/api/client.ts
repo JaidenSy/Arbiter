@@ -17,6 +17,20 @@ import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from "axio
 const BASE_URL: string =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
+// ── Plan-limit event bus ──────────────────────────────────────────────────────
+// When any request returns 402, dispatch this event so the upgrade modal can
+// open regardless of which page triggered it.
+export interface PlanLimitPayload {
+  resource: string;
+  current: number;
+  limit: number;
+  plan: string;
+}
+export const PLAN_LIMIT_EVENT = "nexvault:plan_limit";
+function dispatchPlanLimit(payload: PlanLimitPayload): void {
+  window.dispatchEvent(new CustomEvent(PLAN_LIMIT_EVENT, { detail: payload }));
+}
+
 // ── apiClient — agent API key ─────────────────────────────────────────────────
 
 export const apiClient: AxiosInstance = axios.create({
@@ -44,6 +58,9 @@ apiClient.interceptors.response.use(
       if (hadKey) {
         window.location.href = "/agents";
       }
+    }
+    if (error.response?.status === 402) {
+      dispatchPlanLimit(error.response.data);
     }
     return Promise.reject(error);
   },
@@ -84,6 +101,11 @@ authClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retried?: boolean;
     };
+
+    if (error.response?.status === 402) {
+      dispatchPlanLimit(error.response.data);
+      return Promise.reject(error);
+    }
 
     if (error.response?.status !== 401 || originalRequest._retried) {
       return Promise.reject(error);
