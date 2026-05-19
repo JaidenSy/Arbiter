@@ -132,6 +132,8 @@ async def create_tool_permission(
         tool_name=body.tool_name,
         rate_limit_per_minute=body.rate_limit_per_minute,
         cache_ttl_seconds=body.cache_ttl_seconds,
+        granted_by=current_user.display_name or current_user.email,
+        granted_by_user_id=current_user.id,
     )
     db.add(permission)
 

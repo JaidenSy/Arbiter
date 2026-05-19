@@ -363,10 +363,10 @@ function MCPServers(): React.ReactElement {
                 </td>
               </tr>
             ) : (
-              servers.map((server, idx) => (
+              servers.map((server) => (
                 <tr
                   key={server.id}
-                  className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-all duration-150 ${idx % 2 === 1 ? 'bg-white/[0.01]' : ''}`}
+                  className="group border-b border-white/[0.05] hover:bg-white/[0.025] transition-all duration-150"
                 >
                   <td className="py-3 px-4">
                     <span
@@ -415,18 +415,18 @@ function MCPServers(): React.ReactElement {
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {testResult?.id === server.id && (
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                          testResult.result.reachable
-                            ? 'text-success bg-success/10 border-success/20'
-                            : 'text-error bg-error/10 border-error/20'
-                        }`}>
-                          {testResult.result.reachable
-                            ? `✓ ${testResult.result.tool_count ?? 0} tools · ${testResult.result.latency_ms}ms`
-                            : `✗ ${testResult.result.error ?? 'unreachable'}`}
-                        </span>
-                      )}
+                    {testResult?.id === server.id && (
+                      <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border mr-2 ${
+                        testResult.result.reachable
+                          ? 'text-success bg-success/10 border-success/20'
+                          : 'text-error bg-error/10 border-error/20'
+                      }`}>
+                        {testResult.result.reachable
+                          ? `✓ ${testResult.result.tool_count ?? 0} tools · ${testResult.result.latency_ms}ms`
+                          : `✗ ${testResult.result.error ?? 'unreachable'}`}
+                      </span>
+                    )}
+                    <div className="inline-flex items-center gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
                       <button
                         type="button"
                         disabled={testingId === server.id}

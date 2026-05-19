@@ -13,6 +13,7 @@ import { authClient } from '../api/client'
 import type { Agent, MCPServer, ToolPermission, ToolPermissionCreate } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { useAuth } from '../context/AuthContext'
 
 // ── Data fetchers / mutators ───────────────────────────────────────────────────
 
@@ -47,6 +48,16 @@ const revokePermission = ({
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
+function extractApiError(err: unknown, fallback: string): string {
+  const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail) && detail.length > 0) {
+    const msg: unknown = (detail[0] as { msg?: unknown }).msg
+    if (typeof msg === 'string') return msg.replace(/^Value error, /, '')
+  }
+  return fallback
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -71,17 +82,16 @@ function GrantModal({
   servers,
 }: GrantModalProps): React.ReactElement | null {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   const [mcpServerId, setMcpServerId] = useState('')
   const [toolName, setToolName] = useState('')
-  const [grantedBy, setGrantedBy] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   React.useEffect(() => {
     if (isOpen) {
       setMcpServerId(servers.length > 0 ? servers[0].id : '')
       setToolName('')
-      setGrantedBy('')
       setError(null)
     }
   }, [isOpen, servers])
@@ -93,11 +103,11 @@ function GrantModal({
       onClose()
     },
     onError: (err: unknown) => {
-      const status = (err as { response?: { status?: number } })?.response?.status
-      if (status === 409) {
+      const httpStatus = (err as { response?: { status?: number } })?.response?.status
+      if (httpStatus === 409) {
         setError('This permission already exists.')
       } else {
-        setError('Failed to grant permission. Please try again.')
+        setError(extractApiError(err, 'Failed to grant permission. Please try again.'))
       }
     },
   })
@@ -111,7 +121,6 @@ function GrantModal({
       payload: {
         mcp_server_id: mcpServerId,
         tool_name: toolName.trim(),
-        granted_by: grantedBy.trim() || null,
       },
     })
   }
@@ -168,17 +177,10 @@ function GrantModal({
         </div>
 
         <div>
-          <label htmlFor="perm-granted-by" className={labelClass}>
-            Granted By
-          </label>
-          <input
-            id="perm-granted-by"
-            type="text"
-            value={grantedBy}
-            onChange={(e) => setGrantedBy(e.target.value)}
-            placeholder="your name or team"
-            className={inputClass}
-          />
+          <label className={labelClass}>Granted By</label>
+          <div className="px-3 py-2 bg-base border border-white/[0.07] rounded-lg text-sm text-secondary">
+            {user?.display_name ?? user?.email ?? '—'}
+          </div>
         </div>
 
         {error && (
