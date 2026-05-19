@@ -154,7 +154,7 @@ function SecretFormModal({
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={isRotating ? 'Rotate Secret' : 'Add Secret'}>
+    <Modal isOpen={isOpen} onClose={handleClose} title={isRotating ? 'Update Secret' : 'Add Secret'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="secret-name" className={labelClass}>
@@ -228,8 +228,8 @@ function SecretFormModal({
             className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
           >
             {mutation.isPending
-              ? isRotating ? 'Rotating…' : 'Adding…'
-              : isRotating ? 'Rotate Secret' : 'Add Secret'}
+              ? isRotating ? 'Updating…' : 'Adding…'
+              : isRotating ? 'Update Secret' : 'Add Secret'}
           </button>
         </div>
       </form>
@@ -425,8 +425,8 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                           type="button"
                           onClick={() => setRotateTarget(secret)}
                           className="text-secondary hover:text-primary border border-white/[0.08] hover:border-white/[0.18] px-2 py-1.5 rounded-md text-xs transition-all flex items-center gap-1"
-                          aria-label="Rotate secret"
-                          title="Rotate"
+                          aria-label="Update secret"
+                          title="Update"
                         >
                           <PencilIcon />
                         </button>
