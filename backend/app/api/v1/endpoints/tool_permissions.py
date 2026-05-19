@@ -12,6 +12,7 @@ Routes:
 
 from __future__ import annotations
 
+import traceback
 import uuid
 from datetime import datetime
 
@@ -148,6 +149,12 @@ async def create_tool_permission(
                 f"tool {body.tool_name!r} already exists"
             ),
         ) from exc
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"[debug] {type(exc).__name__}: {exc}\n{traceback.format_exc()}",
+        ) from exc
 
     await db.refresh(permission)
     return ToolPermissionResponse.model_validate(permission)
@@ -187,9 +194,15 @@ async def list_tool_permissions(
             detail=f"Agent {agent_id} not found",
         )
 
-    result = await db.execute(select(ToolPermission).where(ToolPermission.agent_id == agent_id))
-    permissions = result.scalars().all()
-    return [ToolPermissionResponse.model_validate(p) for p in permissions]
+    try:
+        result = await db.execute(select(ToolPermission).where(ToolPermission.agent_id == agent_id))
+        permissions = result.scalars().all()
+        return [ToolPermissionResponse.model_validate(p) for p in permissions]
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"[debug] {type(exc).__name__}: {exc}\n{traceback.format_exc()}",
+        ) from exc
 
 
 @router.delete(
