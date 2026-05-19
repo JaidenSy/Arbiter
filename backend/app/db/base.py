@@ -1,5 +1,5 @@
 """
-NexVault — SQLAlchemy async engine and session factory.
+Arbiter — SQLAlchemy async engine and session factory.
 
 This module owns the single async engine and the session factory used
 throughout the application.  All models must import ``Base`` from here
@@ -39,6 +39,15 @@ class Base(DeclarativeBase):
 
 # ── Engine ────────────────────────────────────────────────────────────────────
 
+def _normalize_db_url(url: str) -> str:
+    """Ensure the URL uses the postgresql+asyncpg:// scheme Railway provides postgresql://."""
+    if url.startswith("postgresql://") or url.startswith("postgres://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1).replace(
+            "postgres://", "postgresql+asyncpg://", 1
+        )
+    return url
+
+
 def build_engine() -> AsyncEngine:
     """
     Construct the async SQLAlchemy engine from settings.
@@ -50,7 +59,7 @@ def build_engine() -> AsyncEngine:
         AsyncEngine: ready to use, connected lazily on first query.
     """
     return create_async_engine(
-        settings.database_url,
+        _normalize_db_url(settings.database_url),
         echo=settings.app_debug,
         pool_size=10,
         max_overflow=20,

@@ -1,5 +1,5 @@
 /**
- * NexVault — Tool Permissions page.
+ * Arbiter — Tool Permissions page.
  *
  * Two-panel layout:
  *   Left:  Agent selector list
@@ -121,7 +121,7 @@ function GrantModal({
     onClose()
   }
 
-  const inputClass = "w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (
@@ -329,7 +329,7 @@ function PermissionsTable({
                   </td>
                   <td className="py-3 px-4">
                     {perm.tool_name === '*' ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono text-secondary bg-elevated border border-white/[0.08] italic">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono text-secondary bg-base border border-white/[0.08] italic">
                         all tools
                       </span>
                     ) : (

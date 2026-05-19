@@ -1,5 +1,5 @@
 /**
- * NexVault — MCP Servers page.
+ * Arbiter — MCP Servers page.
  *
  * Lists registered MCP servers and allows:
  *   - Adding a new server (form modal)
@@ -116,7 +116,7 @@ function ServerFormModal({
     onClose()
   }
 
-  const inputClass = "w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (
@@ -295,7 +295,7 @@ function MCPServers(): React.ReactElement {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="gradient-text-purple text-xl font-bold">MCP Servers</h1>
-          <p className="text-secondary text-sm mt-1">Connected tool servers proxied through NexVault</p>
+          <p className="text-secondary text-sm mt-1">Connected tool servers proxied through Arbiter</p>
         </div>
         <button
           type="button"
@@ -340,7 +340,7 @@ function MCPServers(): React.ReactElement {
                     </svg>
                   </div>
                   <p className="text-primary text-sm font-medium mb-1">No MCP servers registered</p>
-                  <p className="text-secondary text-xs max-w-xs mx-auto mb-4">Add a server to start routing tool calls through NexVault.</p>
+                  <p className="text-secondary text-xs max-w-xs mx-auto mb-4">Add a server to start routing tool calls through Arbiter.</p>
                   <button
                     type="button"
                     onClick={handleAddClick}

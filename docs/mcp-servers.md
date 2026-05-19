@@ -1,6 +1,6 @@
 # MCP Servers
 
-An MCP server in NexVault is a registered upstream that agents route tool calls through. NexVault proxies JSON-RPC 2.0 requests to these servers, applies RBAC, injects vault secrets, and caches responses.
+An MCP server in Arbiter is a registered upstream that agents route tool calls through. Arbiter proxies JSON-RPC 2.0 requests to these servers, applies RBAC, injects vault secrets, and caches responses.
 
 ## Register a server
 
@@ -38,7 +38,7 @@ The `name` field is the slug agents reference via the `X-MCP-Server` request hea
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | string | yes | Unique slug. Used in `X-MCP-Server` header and logs. Lowercase, hyphens allowed. |
-| `url` | string | yes | Base URL of the upstream MCP server. Must be reachable from the NexVault container. |
+| `url` | string | yes | Base URL of the upstream MCP server. Must be reachable from the Arbiter container. |
 | `description` | string | no | Human-readable description. Shown in the dashboard. |
 | `cache_enabled` | bool | no | Default `true`. Set to `false` for side-effectful servers (see below). |
 | `cache_ttl_seconds` | int | no | Default `300`. How long cached responses are valid. |
@@ -46,7 +46,7 @@ The `name` field is the slug agents reference via the `X-MCP-Server` request hea
 
 ## URL format
 
-The `url` is the base URL of the upstream MCP server. NexVault appends the MCP path when forwarding. Examples:
+The `url` is the base URL of the upstream MCP server. Arbiter appends the MCP path when forwarding. Examples:
 
 ```
 http://mcp-filesystem:3001          # Docker Compose service
@@ -54,13 +54,13 @@ http://127.0.0.1:3001               # Localhost (if running outside Docker)
 https://my-mcp-server.example.com   # Remote server
 ```
 
-Do not include a trailing path. NexVault constructs the full request URL.
+Do not include a trailing path. Arbiter constructs the full request URL.
 
 ## The `cache_enabled` flag
 
-This flag controls whether NexVault caches responses from this server and serves cached results on future matching requests.
+This flag controls whether Arbiter caches responses from this server and serves cached results on future matching requests.
 
-**Set `cache_enabled: false` for servers that have side effects** — anything that sends messages, charges money, mutates external state, or produces time-sensitive results:
+**Set `cache_enabled: false` for servers that have side effects**: anything that sends messages, charges money, mutates external state, or produces time-sensitive results.
 
 ```bash
 # Register a Stripe MCP server — never serve stale cached responses
@@ -73,7 +73,7 @@ curl -s -X POST http://localhost:8000/api/v1/mcp-servers \
   }'
 ```
 
-**Set `cache_enabled: true` (or omit it) for read-heavy, idempotent servers** — file reads, database queries, search indexes, reference data:
+**Set `cache_enabled: true` (or omit it) for read-heavy, idempotent servers**: file reads, database queries, search indexes, reference data.
 
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/mcp-servers \
@@ -86,7 +86,7 @@ curl -s -X POST http://localhost:8000/api/v1/mcp-servers \
   }'
 ```
 
-When `cache_enabled` is `false`, NexVault skips all three cache layers (Redis, Postgres exact, Postgres semantic) on both reads and writes. The `cache_ttl_seconds` and `cache_similarity_threshold` fields are ignored.
+When `cache_enabled` is `false`, Arbiter skips all three cache layers (Redis, Postgres exact, Postgres semantic) on both reads and writes. The `cache_ttl_seconds` and `cache_similarity_threshold` fields are ignored.
 
 ## How the three cache layers interact with `cache_enabled`
 
@@ -120,11 +120,11 @@ curl -s -X PATCH http://localhost:8000/api/v1/mcp-servers/c4d5e6f7-... \
 curl -s -X DELETE http://localhost:8000/api/v1/mcp-servers/c4d5e6f7-...
 ```
 
-Deleting a server removes all associated permissions from the `tool_permissions` table. Cached responses are not immediately purged from Redis or Postgres — they expire naturally according to `cache_ttl_seconds`.
+Deleting a server removes all associated permissions from the `tool_permissions` table. Cached responses are not immediately purged from Redis or Postgres. They expire naturally according to `cache_ttl_seconds`.
 
 ## `tools/list` filtering
 
-When an agent calls `tools/list` on a server, NexVault filters the returned tool list to only include tools the agent has permission to call. Agents never see tool names they are not permitted to use — this prevents information leakage about the server's capabilities.
+When an agent calls `tools/list` on a server, Arbiter filters the returned tool list to only include tools the agent has permission to call. Agents never see tool names they are not permitted to use. This prevents information leakage about the server's capabilities.
 
 ```bash
 # Agent sends tools/list
@@ -135,4 +135,4 @@ curl -s -X POST http://localhost:8000/api/v1/proxy/tool-call \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
 ```
 
-The response only contains tools the agent is permitted to call — not the full list exposed by the upstream server.
+The response only contains tools the agent is permitted to call, not the full list exposed by the upstream server.

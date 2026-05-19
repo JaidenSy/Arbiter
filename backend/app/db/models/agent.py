@@ -1,8 +1,8 @@
 """
-NexVault — SQLAlchemy ORM model: Agent.
+Arbiter — SQLAlchemy ORM model: Agent.
 
 An Agent represents an AI assistant (Claude instance, automation script,
-etc.) that authenticates to the NexVault gateway with an API key and is
+etc.) that authenticates to the Arbiter gateway with an API key and is
 subject to RBAC-controlled tool access.
 """
 
@@ -54,6 +54,11 @@ class Agent(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     api_key_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Scope controls what this agent's key can do:
+    #   "full"           — call tools, read/write vault secrets, manage sessions
+    #   "read_only"      — tool calls only, no vault writes or secret reads
+    #   "vault_read_only"— only allowed to read vault secrets, no tool calls
+    scope: Mapped[str] = mapped_column(String(32), nullable=False, default="full")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

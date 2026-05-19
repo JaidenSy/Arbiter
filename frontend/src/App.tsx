@@ -1,5 +1,5 @@
 /**
- * NexVault Frontend — Root application component.
+ * Arbiter Frontend — Root application component.
  *
  * Routes:
  *   /            → Dashboard    (stats, cache hit rate, recent sessions)
@@ -39,9 +39,14 @@ const Login        = lazy(() => import('./pages/Login'))
 const Register     = lazy(() => import('./pages/Register'))
 const Onboarding   = lazy(() => import('./pages/Onboarding'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback'))
-const Landing      = lazy(() => import('./pages/Landing'))
-const Docs         = lazy(() => import('./pages/Docs'))
-const Account      = lazy(() => import('./pages/Account'))
+const Landing        = lazy(() => import('./pages/Landing'))
+const Docs           = lazy(() => import('./pages/Docs'))
+const Account        = lazy(() => import('./pages/Account'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword  = lazy(() => import('./pages/ResetPassword'))
+const VerifyEmail    = lazy(() => import('./pages/VerifyEmail'))
+const AcceptInvite   = lazy(() => import('./pages/AcceptInvite'))
+const Members        = lazy(() => import('./pages/Members'))
 
 // ── Shared loading fallback ───────────────────────────────────────────────────
 
@@ -101,6 +106,10 @@ function App(): React.ReactElement {
         <Route path="/register" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/docs" element={<Docs />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/accept-invite" element={<AcceptInvite />} />
 
         {/* ── Protected onboarding (no sidebar) ───────────────────────────── */}
         <Route
@@ -177,6 +186,14 @@ function App(): React.ReactElement {
           element={
             <ProtectedRoute>
               <AppLayout><Account /></AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/organization"
+          element={
+            <ProtectedRoute>
+              <AppLayout><Members /></AppLayout>
             </ProtectedRoute>
           }
         />

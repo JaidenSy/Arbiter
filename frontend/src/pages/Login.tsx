@@ -1,5 +1,5 @@
 /**
- * NexVault — Login page.
+ * Arbiter — Login page.
  *
  * Route: /login (public, no sidebar)
  * On success: navigates to / or /onboarding (if onboarding incomplete).
@@ -9,6 +9,7 @@ import React, { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { authClient } from '../api/client'
+import { ArbiterMark } from '../components/ArbiterLogo'
 
 interface OnboardingStatus {
   complete: boolean
@@ -31,12 +32,16 @@ function Login(): React.ReactElement {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [providers, setProviders] = useState<ProvidersResponse>({ google: false, github: false })
 
   useEffect(() => {
     if (searchParams.get('error') === 'sso_failed') {
       setError('Social login failed. Please try again.')
+    }
+    if (searchParams.get('reset') === '1') {
+      setSuccess('Password reset successfully. Sign in with your new password.')
     }
   }, [searchParams])
 
@@ -101,7 +106,10 @@ function Login(): React.ReactElement {
 
           {/* Wordmark */}
           <div className="text-center mb-8">
-            <span className="gradient-text font-bold text-3xl tracking-tight">NexVault</span>
+            <div className="flex items-center justify-center gap-3 mb-2">
+              <ArbiterMark size={40} />
+              <span className="gradient-text font-bold text-3xl tracking-tight">Arbiter</span>
+            </div>
             <p className="text-secondary text-sm mt-2 font-medium">The identity layer for your AI agents</p>
           </div>
 
@@ -118,7 +126,7 @@ function Login(): React.ReactElement {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full bg-elevated/80 border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 focus:border-accent/60 transition-all duration-150 placeholder:text-muted"
+                className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 focus:border-accent/60 transition-all duration-150 placeholder:text-muted"
               />
             </div>
 
@@ -134,9 +142,22 @@ function Login(): React.ReactElement {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-elevated/80 border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 focus:border-accent/60 transition-all duration-150 placeholder:text-muted"
+                className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 focus:border-accent/60 transition-all duration-150 placeholder:text-muted"
               />
             </div>
+
+            <div className="flex justify-end -mt-1">
+              <Link to="/forgot-password" className="text-xs text-accent-light hover:text-white transition-colors">
+                Forgot password?
+              </Link>
+            </div>
+
+            {success && (
+              <div className="flex items-center gap-2 bg-success/8 border border-success/20 rounded-lg px-3 py-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />
+                <p className="text-success text-xs">{success}</p>
+              </div>
+            )}
 
             {error && (
               <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2">

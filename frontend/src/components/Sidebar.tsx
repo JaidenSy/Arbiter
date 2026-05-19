@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
+import { ArbiterMark } from './ArbiterLogo'
+import { useTour } from '../hooks/useTour'
 
 const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
 
@@ -57,12 +60,63 @@ const VaultIcon = (): React.ReactElement => (
   </svg>
 )
 
-const SettingsIcon = (): React.ReactElement => (
+const UsersIcon = (): React.ReactElement => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <circle cx="12" cy="12" r="3"/>
-    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
   </svg>
 )
+
+const SettingsIcon = (): React.ReactElement => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+)
+
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+
+function ThemeToggleButton(): React.ReactElement {
+  const { theme, toggleTheme } = useTheme()
+
+  return (
+    <div className="relative group/nav px-2 py-0.5">
+      <button
+        type="button"
+        onClick={toggleTheme}
+        aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        className="w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-white/[0.05] transition-all"
+      >
+        {theme === 'dark' ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        )}
+      </button>
+      {/* Tooltip */}
+      <div className="pointer-events-none absolute left-[52px] top-1/2 -translate-y-1/2 ml-1 z-50 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150">
+        <div className="bg-overlay border border-white/[0.12] text-primary text-xs font-medium px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap">
+          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-overlay" />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Nav link helper ───────────────────────────────────────────────────────────
 
@@ -71,11 +125,12 @@ interface NavItemProps {
   icon: React.ReactElement
   title: string
   end?: boolean
+  id?: string
 }
 
-function NavItem({ to, icon, title, end }: NavItemProps): React.ReactElement {
+function NavItem({ to, icon, title, end, id }: NavItemProps): React.ReactElement {
   return (
-    <div className="relative group/nav px-2 py-0.5">
+    <div id={id} className="relative group/nav px-2 py-0.5">
       <NavLink
         to={to}
         end={end}
@@ -172,7 +227,7 @@ function UserAvatar(): React.ReactElement | null {
               My Account
             </a>
             <a
-              href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Support`}
+              href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Support`}
               className="flex items-center w-full px-3 py-1.5 text-xs text-secondary hover:text-primary hover:bg-white/[0.05] transition-colors rounded-md mx-0"
             >
               Contact Support
@@ -191,9 +246,37 @@ function UserAvatar(): React.ReactElement | null {
   )
 }
 
+// ── Help button ───────────────────────────────────────────────────────────────
+
+function HelpButton({ onStart }: { onStart: () => void }): React.ReactElement {
+  return (
+    <div id="help-button" className="relative group/nav px-2 py-0.5">
+      <button
+        type="button"
+        aria-label="Product walkthrough"
+        onClick={onStart}
+        className="w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-white/[0.05] transition-all"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </button>
+      <div className="pointer-events-none absolute left-[52px] top-1/2 -translate-y-1/2 ml-1 z-50 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150">
+        <div className="bg-overlay border border-white/[0.12] text-primary text-xs font-medium px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap">
+          Help / Walkthrough
+          <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-overlay" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
 function Sidebar(): React.ReactElement {
+  const { startTour } = useTour()
   return (
     <aside className="fixed left-0 top-0 h-screen w-[52px] bg-gradient-to-b from-surface to-base border-r border-white/[0.06] flex flex-col z-40">
       {/* Subtle vertical accent line at top */}
@@ -202,10 +285,10 @@ function Sidebar(): React.ReactElement {
       {/* Logo */}
       <NavLink
         to="/"
-        className="flex items-center justify-center h-[52px] font-mono font-bold text-lg select-none"
-        aria-label="NexVault home"
+        className="flex items-center justify-center h-[52px] select-none"
+        aria-label="Arbiter home"
       >
-        <span className="gradient-text tracking-tight">NX</span>
+        <ArbiterMark size={32} />
       </NavLink>
 
       {/* Top divider */}
@@ -213,12 +296,13 @@ function Sidebar(): React.ReactElement {
 
       {/* Main nav */}
       <nav className="flex flex-col flex-1 pt-2 gap-0.5">
-        <NavItem to="/" icon={<DashboardIcon />} title="Dashboard" end />
-        <NavItem to="/agents" icon={<AgentsIcon />} title="Agents" />
-        <NavItem to="/mcp-servers" icon={<MCPServersIcon />} title="MCP Servers" />
-        <NavItem to="/vault" icon={<VaultIcon />} title="Vault" />
-        <NavItem to="/sessions" icon={<SessionsIcon />} title="Sessions" />
-        <NavItem to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
+        <NavItem id="nav-dashboard" to="/" icon={<DashboardIcon />} title="Dashboard" end />
+        <NavItem id="nav-agents" to="/agents" icon={<AgentsIcon />} title="Agents" />
+        <NavItem id="nav-mcp-servers" to="/mcp-servers" icon={<MCPServersIcon />} title="MCP Servers" />
+        <NavItem id="nav-vault" to="/vault" icon={<VaultIcon />} title="Vault" />
+        <NavItem id="nav-sessions" to="/sessions" icon={<SessionsIcon />} title="Sessions" />
+        <NavItem id="nav-permissions" to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
+        <NavItem id="nav-organization" to="/organization" icon={<UsersIcon />} title="Organization" />
       </nav>
 
       {/* Bottom divider */}
@@ -226,7 +310,9 @@ function Sidebar(): React.ReactElement {
 
       {/* Settings + user at bottom */}
       <div className="pb-2 flex flex-col items-center gap-0.5 pt-2">
-        <NavItem to="/settings" icon={<SettingsIcon />} title="Settings" />
+        <NavItem id="nav-settings" to="/settings" icon={<SettingsIcon />} title="Settings" />
+        <HelpButton onStart={startTour} />
+        <ThemeToggleButton />
         <UserAvatar />
       </div>
     </aside>

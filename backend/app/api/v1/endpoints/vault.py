@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: Vault.
+Arbiter — API endpoints: Vault.
 
 Manages encrypted secrets stored in the vault.  Raw secret values are
 accepted on write and returned on read — the gateway handles encryption
@@ -137,7 +137,7 @@ async def list_secrets(
 async def get_secret(
     secret_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner", "admin")),
 ) -> SecretValueResponse:
     result = await db.execute(
         select(VaultSecret).where(

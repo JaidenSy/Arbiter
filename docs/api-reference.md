@@ -33,9 +33,13 @@ All errors follow this structure:
 | 204 | Success, no response body |
 | 400 | Bad request / validation error |
 | 401 | Missing or invalid API key |
-| 403 | Permission denied (RBAC) |
+| 402 | Plan limit reached (upgrade required) |
+| 403 | Permission denied (RBAC or insufficient role) |
 | 404 | Resource not found |
 | 409 | Conflict (duplicate name) |
+| 422 | Unprocessable entity (validation error) |
+| 429 | Rate limit exceeded (login attempts) |
+| 503 | Service unavailable (health probe failed) |
 
 ---
 
@@ -45,14 +49,15 @@ All errors follow this structure:
 
 Register a new agent. Returns the raw API key exactly once.
 
-**Auth**: None required (open registration; restrict with network policy in production)
+**Auth**: Required (owner or admin role)
 
 **Request body**:
 
 ```json
 {
   "name": "my-claude-agent",
-  "description": "Optional description"
+  "description": "Optional description",
+  "scope": "full"
 }
 ```
 
@@ -60,6 +65,7 @@ Register a new agent. Returns the raw API key exactly once.
 |-------|------|----------|-------------|
 | `name` | string | Yes | Unique display name for the agent |
 | `description` | string | No | Optional human-readable description |
+| `scope` | string | No | Permission scope. See [Agent Scopes](#agent-scopes). Defaults to `"full"` |
 
 **Response** `201`:
 
@@ -69,6 +75,7 @@ Register a new agent. Returns the raw API key exactly once.
   "name": "my-claude-agent",
   "description": "Optional description",
   "is_active": true,
+  "scope": "full",
   "created_at": "2026-04-01T12:00:00Z",
   "updated_at": "2026-04-01T12:00:00Z",
   "api_key": "nxai_a1b2c3d4e5f6..."
@@ -77,13 +84,32 @@ Register a new agent. Returns the raw API key exactly once.
 
 `api_key` is not stored and will not appear in any other response.
 
-**Errors**: `409` if an agent with this name already exists.
+**Errors**: `409` if an agent with this name already exists; `422` if `scope` is not one of the valid values.
 
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/agents \
+  -H "Authorization: Bearer nxai_..." \
   -H "Content-Type: application/json" \
-  -d '{"name": "my-claude-agent", "description": "Research agent"}'
+  -d '{"name": "my-claude-agent", "description": "Research agent", "scope": "read_only"}'
 ```
+
+---
+
+### Agent Scopes
+
+The `scope` field controls what an agent's API key is allowed to do, independently of per-tool RBAC permissions. Both checks must pass. An agent needs both the correct scope and a matching tool permission.
+
+| Scope | Tool Calls | Vault Write | Vault Read |
+|-------|-----------|-------------|------------|
+| `full` | ✅ | ✅ | ✅ |
+| `read_only` | ✅ | ❌ | ✅ |
+| `vault_read_only` | ❌ | ❌ | ✅ |
+
+- **`full`** — Default. Agent can make tool calls, read and write vault secrets.
+- **`read_only`** — Agent can call tools but cannot create, update, or delete vault secrets. Useful for analysis agents that should never store new credentials.
+- **`vault_read_only`** — Agent can only read vault secrets via the vault endpoint. All tool calls via the proxy are rejected with `403`. Useful for credential-fetching automation that should never interact with MCP servers.
+
+Scope cannot be changed after creation. Delete and re-register the agent to change its scope.
 
 ---
 
@@ -109,6 +135,7 @@ List all active agents, paginated.
     "name": "my-claude-agent",
     "description": "Research agent",
     "is_active": true,
+    "scope": "full",
     "created_at": "2026-04-01T12:00:00Z",
     "updated_at": "2026-04-01T12:00:00Z"
   }
@@ -141,12 +168,29 @@ curl -s http://localhost:8000/api/v1/agents/3f7a1b2c-... \
 
 Soft-delete an agent (sets `is_active=false`). Historical sessions and audit events are preserved.
 
-**Auth**: Required
+**Auth**: Required (owner or admin)
 
 **Response** `204`: No body.
 
 ```bash
 curl -s -X DELETE http://localhost:8000/api/v1/agents/3f7a1b2c-... \
+  -H "Authorization: Bearer nxai_..."
+```
+
+---
+
+### POST /agents/{agent_id}/rotate-key
+
+Invalidate the current API key and issue a new one. The old key is immediately rejected. The new raw key is returned exactly once.
+
+**Auth**: Required (owner or admin)
+
+**Response** `200`: Same shape as `POST /agents` response, including the new `api_key`.
+
+**Errors**: `404` if the agent is not found or inactive.
+
+```bash
+curl -s -X POST http://localhost:8000/api/v1/agents/3f7a1b2c-.../rotate-key \
   -H "Authorization: Bearer nxai_..."
 ```
 
@@ -286,11 +330,20 @@ Grant an agent permission to call a tool on an MCP server.
 ```json
 {
   "mcp_server_id": "c4d5e6f7-...",
-  "tool_name": "read_file"
+  "tool_name": "read_file",
+  "rate_limit_per_minute": 60,
+  "cache_ttl_seconds": 300
 }
 ```
 
 Use `"tool_name": "*"` to grant access to all tools on the server.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `mcp_server_id` | UUID | Yes | The registered MCP server |
+| `tool_name` | string | Yes | Exact tool name, or `*` for all tools |
+| `rate_limit_per_minute` | integer | No | Max calls per minute for this agent+tool combination. `null` means unlimited. |
+| `cache_ttl_seconds` | integer | No | Override the global cache TTL for this tool (in seconds). `null` uses the global default. |
 
 **Response** `201`:
 
@@ -300,6 +353,8 @@ Use `"tool_name": "*"` to grant access to all tools on the server.
   "agent_id": "3f7a1b2c-...",
   "mcp_server_id": "c4d5e6f7-...",
   "tool_name": "read_file",
+  "rate_limit_per_minute": 60,
+  "cache_ttl_seconds": 300,
   "granted_at": "2026-04-01T12:00:00Z",
   "granted_by": null
 }
@@ -311,7 +366,7 @@ Use `"tool_name": "*"` to grant access to all tools on the server.
 curl -s -X POST http://localhost:8000/api/v1/agents/3f7a1b2c-.../permissions \
   -H "Authorization: Bearer nxai_..." \
   -H "Content-Type: application/json" \
-  -d '{"mcp_server_id": "c4d5e6f7-...", "tool_name": "*"}'
+  -d '{"mcp_server_id": "c4d5e6f7-...", "tool_name": "*", "rate_limit_per_minute": 100}'
 ```
 
 ---
@@ -333,7 +388,7 @@ curl -s http://localhost:8000/api/v1/agents/3f7a1b2c-.../permissions \
 
 ### DELETE /agents/{agent_id}/permissions/{permission_id}
 
-Revoke a specific permission. Hard-delete — no soft-delete for permissions.
+Revoke a specific permission. Hard-delete; no soft-delete for permissions.
 
 **Auth**: Required. **Response** `204`. **Errors**: `404`.
 
@@ -362,7 +417,7 @@ Store or rotate a secret, scoped to the calling agent. If a secret with the same
 }
 ```
 
-**Response** `201`: Metadata only — `value` is never returned.
+**Response** `201`: Metadata only. `value` is never returned.
 
 ```json
 {
@@ -399,9 +454,9 @@ curl -s http://localhost:8000/api/v1/vault/secrets \
 
 ### GET /vault/secrets/{secret_id}
 
-Retrieve and decrypt a secret. Returns plaintext value — restrict access in production.
+Retrieve and decrypt a secret. Returns the plaintext value.
 
-**Auth**: Required. The secret must belong to the calling agent.
+**Auth**: Required (**owner or admin role only**). Member-role users receive `403`. This prevents low-privilege org members from extracting credentials.
 
 **Response** `200`:
 
@@ -421,7 +476,7 @@ Retrieve and decrypt a secret. Returns plaintext value — restrict access in pr
 
 ### DELETE /vault/secrets/{secret_id}
 
-Permanently delete a secret. Hard-delete — no recovery.
+Permanently delete a secret. Hard-delete; no recovery.
 
 **Auth**: Required. The secret must belong to the calling agent.
 
@@ -523,20 +578,56 @@ Paginated events for a session. Use this instead of `GET /sessions/{id}` when a 
 
 ---
 
+### GET /sessions/export
+
+Export all session events for the org as a downloadable file. Useful for compliance audits, cost analysis, and external dashboards.
+
+**Auth**: Required
+
+**Query params**:
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `format` | `csv` | `csv` or `json` |
+| `from_date` | (none) | ISO 8601 timestamp. Filter to sessions started after this time. |
+| `to_date` | (none) | ISO 8601 timestamp. Filter to sessions started before this time. |
+| `agent_id` | (none) | Filter to a specific agent UUID |
+
+**Response** `200`: A streaming file download.
+
+- `format=csv` → `Content-Type: text/csv`, file named `arbiter_export_<timestamp>.csv`
+- `format=json` → `Content-Type: application/json`, file named `arbiter_export_<timestamp>.json`
+
+CSV/JSON columns: `session_id`, `agent_id`, `event_id`, `tool_name`, `mcp_server`, `cache_hit`, `duration_ms`, `error`, `occurred_at`.
+
+```bash
+# Download last 30 days as CSV
+curl -s "http://localhost:8000/api/v1/sessions/export?format=csv&from_date=2026-04-14T00:00:00Z" \
+  -H "Authorization: Bearer nxai_..." \
+  -o arbiter_audit.csv
+
+# Download a specific agent's events as JSON
+curl -s "http://localhost:8000/api/v1/sessions/export?format=json&agent_id=3f7a1b2c-..." \
+  -H "Authorization: Bearer nxai_..." \
+  -o agent_events.json
+```
+
+---
+
 ## Proxy (Tool Call)
 
 ### POST /proxy/tool-call
 
 The core gateway endpoint. Every MCP tool call from an agent goes through here.
 
-**Auth**: Required (agent API key only — JWTs not accepted on this endpoint)
+**Auth**: Required (agent API key only; JWTs not accepted on this endpoint)
 
 **Headers**:
 
 | Header | Required | Description |
 |--------|----------|-------------|
 | `Authorization` | Yes | `Bearer nxai_<key>` |
-| `X-NexVault-Session-ID` | No | Attach this call to an existing session. If omitted, a new session is started. |
+| `X-Arbiter-Session-ID` | No | Attach this call to an existing session. If omitted, a new session is started. |
 | `X-MCP-Server` | Yes | Name (slug) of the registered MCP server to forward to |
 
 **Request body**: A valid JSON-RPC 2.0 object per the MCP spec:
@@ -562,8 +653,9 @@ The core gateway endpoint. Every MCP tool call from an agent goes through here.
 
 **Errors**:
 - `401` — invalid or missing API key
-- `403` — agent not permitted to call this tool on this server
+- `403` — agent not permitted to call this tool on this server, or agent scope blocks tool calls
 - `404` — MCP server name not found
+- `429` — rate limit exceeded for this agent+tool combination
 
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/proxy/tool-call \
@@ -579,4 +671,43 @@ curl -s -X POST http://localhost:8000/api/v1/proxy/tool-call \
       "arguments": {"path": "/src/main.py"}
     }
   }'
+```
+
+---
+
+## Health Checks
+
+These endpoints are unauthenticated and intended for load balancers, Railway health checks, and uptime monitors.
+
+### GET /health
+
+Liveness probe. Returns `200` as long as the process is running.
+
+```bash
+curl -s http://localhost:8000/health
+# {"status": "ok"}
+```
+
+---
+
+### GET /health/db
+
+Readiness probe for the database. Executes a `SELECT 1` against Postgres. Returns `503` if the connection fails. Railway will restart the service automatically.
+
+```bash
+curl -s http://localhost:8000/health/db
+# {"status": "ok"}
+# or: HTTP 503 {"detail": "Database unreachable: ..."}
+```
+
+---
+
+### GET /health/cache
+
+Readiness probe for Redis. Sends a `PING` to the Redis instance. Returns `503` if unreachable.
+
+```bash
+curl -s http://localhost:8000/health/cache
+# {"status": "ok"}
+# or: HTTP 503 {"detail": "Redis unreachable: ..."}
 ```

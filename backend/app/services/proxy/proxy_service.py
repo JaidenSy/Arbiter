@@ -1,5 +1,5 @@
 """
-NexVault — ProxyService.
+Arbiter — ProxyService.
 
 The core gateway component.  Every tool call from an agent passes through
 here before reaching an MCP server.
@@ -8,10 +8,11 @@ Request pipeline:
     1. Resolve MCPServer by server_name from DB.
     2. RBACService.check_permission()     — agent allowed to call this tool?
     3. CacheService.get_cached()          — serve from cache if available
-    4. VaultService secret injection      — substitute secret placeholders
-    5. HTTP forward to MCP server         — actual call via httpx
-    6. CacheService.store_cached()        — cache the response
-    7. SessionEvent persistence           — write audit record
+    4. check_tool_call_quota()            — enforce monthly quota (skipped on cache hit)
+    5. VaultService secret injection      — substitute secret placeholders
+    6. HTTP forward to MCP server         — actual call via httpx
+    7. CacheService.store_cached()        — cache the response
+    8. SessionEvent persistence           — write audit record
 
 Design decisions:
     - httpx.AsyncClient used for non-blocking HTTP forwarding.
@@ -41,10 +42,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
+from app.db.models.organization import Organization
 from app.db.models.session import Session, SessionEvent
 from app.db.models.usage_event import UsageEvent
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.services.cache.cache_service import CacheService
+from app.services.plan.plan_service import check_tool_call_quota
 from app.services.rbac.rbac_service import RBACService
 from app.services.vault.vault_service import VaultService
 
@@ -86,11 +89,12 @@ class ProxyService:
         Steps:
             1. Resolve the target MCPServer by server_name from the DB.
             2. Check RBAC permission for (agent, server, tool).
-            3. Check semantic cache — return early on hit.
-            4. Inject vault secrets into request parameters.
-            5. POST to ``{mcp_server.base_url}`` as JSON-RPC tools/call.
-            6. Store response in cache.
-            7. Persist SessionEvent audit record.
+            3. Check semantic cache — return early on hit (skips quota).
+            4. Check monthly tool-call quota — raises 429 if exceeded.
+            5. Inject vault secrets into request parameters.
+            6. POST to ``{mcp_server.base_url}`` as JSON-RPC tools/call.
+            7. Store response in cache.
+            8. Persist SessionEvent audit record.
 
         Args:
             request: Validated ToolCallRequest from the endpoint.
@@ -108,6 +112,13 @@ class ProxyService:
 
         # ── 1. Resolve MCP server (org-scoped) ────────────────────────────────
         mcp_server = await self.resolve_server(request.server_name, agent.org_id)
+
+        # ── 1b. Scope enforcement ──────────────────────────────────────────────
+        if agent.scope == "vault_read_only":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Agent {agent.name!r} has scope 'vault_read_only' and cannot make tool calls",
+            )
 
         # ── 2. RBAC check ──────────────────────────────────────────────────────
         permitted = await self._rbac.check_permission(
@@ -181,14 +192,18 @@ class ProxyService:
                 duration_ms=duration_ms,
             )
 
-        # ── 4. Secret injection ────────────────────────────────────────────────
+        # ── 4. Quota check (skipped for cache hits) ───────────────────────────
+        org = await self.db.get(Organization, agent.org_id)
+        await check_tool_call_quota(self.redis, self.db, org)
+
+        # ── 5. Secret injection ────────────────────────────────────────────────
         injected_params = await self.intercept_request(
             tool_name=request.tool_name,
             params=request.params,
             agent=agent,
         )
 
-        # ── 5. Forward to MCP server ──────────────────────────────────────────
+        # ── 6. Forward to MCP server ──────────────────────────────────────────
         jsonrpc_body = {
             "jsonrpc": "2.0",
             "id": str(uuid.uuid4()),
@@ -293,20 +308,26 @@ class ProxyService:
 
         duration_ms = int((time.monotonic() - start_ms) * 1000)
 
-        # ── 6. Store in cache (only on success and if server allows caching) ──
+        # ── 7. Store in cache (only on success and if server allows caching) ──
         if error is None and mcp_server.cache_enabled:
             try:
+                cache_ttl = await self._rbac.get_cache_ttl(
+                    agent_id=agent.id,
+                    mcp_server_id=mcp_server.id,
+                    tool_name=request.tool_name,
+                )
                 await self._cache.store_cached(
                     tool_name=request.tool_name,
                     input_payload=request.params,  # original params, not injected
                     response_payload=response_payload,
                     org_id=agent.org_id,
+                    ttl_override=cache_ttl,
                 )
             except Exception as exc:
                 # Cache write failure must not prevent the response.
                 logger.warning("proxy: cache store failed: %s", exc)
 
-        # ── 7. Persist audit record ────────────────────────────────────────────
+        # ── 8. Persist audit record ────────────────────────────────────────────
         event = await self._persist_event(
             session=session,
             mcp_server=mcp_server,
@@ -425,12 +446,12 @@ class ProxyService:
         # No cached session — do MCP initialize handshake.
         init_body = {
             "jsonrpc": "2.0",
-            "id": "nexvault-init",
+            "id": "arbiter-init",
             "method": "initialize",
             "params": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {},
-                "clientInfo": {"name": "nexvault-gateway", "version": "1.0"},
+                "clientInfo": {"name": "arbiter-gateway", "version": "1.0"},
             },
         }
         try:
@@ -473,7 +494,8 @@ class ProxyService:
 
         session = Session(agent_id=agent.id, org_id=agent.org_id, metadata_={})
         self.db.add(session)
-        await self.db.flush()  # get session.id before persisting events
+        await self.db.commit()  # commit immediately so session.id is durable before events are written
+        await self.db.refresh(session)
         return session
 
     async def _persist_event(

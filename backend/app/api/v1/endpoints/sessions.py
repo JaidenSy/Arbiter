@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: Sessions.
+Arbiter — API endpoints: Sessions.
 
 Sessions are created automatically by the proxy when a tool call is
 received without a session_id.  These endpoints expose read-only access
@@ -13,6 +13,9 @@ Routes:
 
 from __future__ import annotations
 
+import csv
+import io
+import json
 import uuid
 from datetime import datetime
 
@@ -91,6 +94,76 @@ async def list_sessions(
     result = await db.execute(query)
     sessions = result.scalars().all()
     return [SessionListResponse.model_validate(s) for s in sessions]
+
+
+@router.get(
+    "/export",
+    summary="Export session events as CSV or JSON",
+    response_class=StreamingResponse,
+)
+async def export_sessions(
+    format: str = Query("csv", description="Export format: 'csv' or 'json'"),
+    from_date: datetime | None = Query(None, description="Start of date range (ISO timestamp)"),
+    to_date: datetime | None = Query(None, description="End of date range (ISO timestamp)"),
+    agent_id: uuid.UUID | None = Query(None, description="Filter by agent UUID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    """Stream session events for the org as CSV or JSON for compliance/audit export."""
+    if format not in ("csv", "json"):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="format must be 'csv' or 'json'")
+
+    session_query = select(Session).where(Session.org_id == current_user.org_id)
+    if agent_id is not None:
+        session_query = session_query.where(Session.agent_id == agent_id)
+    if from_date is not None:
+        session_query = session_query.where(Session.started_at >= from_date)
+    if to_date is not None:
+        session_query = session_query.where(Session.started_at <= to_date)
+
+    session_result = await db.execute(session_query.options(selectinload(Session.events)))
+    sessions = session_result.scalars().all()
+
+    all_server_ids = {e.mcp_server_id for s in sessions for e in s.events if e.mcp_server_id}
+    server_map: dict[uuid.UUID, str] = {}
+    if all_server_ids:
+        sr = await db.execute(select(MCPServer.id, MCPServer.name).where(MCPServer.id.in_(all_server_ids)))
+        server_map = {row.id: row.name for row in sr}
+
+    rows = []
+    for s in sessions:
+        for e in s.events:
+            rows.append({
+                "session_id": str(s.id),
+                "agent_id": str(s.agent_id),
+                "event_id": str(e.id),
+                "tool_name": e.tool_name,
+                "mcp_server": server_map.get(e.mcp_server_id, ""),
+                "cache_hit": e.cache_hit,
+                "duration_ms": e.duration_ms,
+                "error": e.error or "",
+                "occurred_at": e.occurred_at.isoformat() if e.occurred_at else "",
+            })
+
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    if format == "json":
+        content = json.dumps(rows, indent=2)
+        return StreamingResponse(
+            iter([content]),
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="arbiter_export_{ts}.json"'},
+        )
+
+    buf = io.StringIO()
+    if rows:
+        writer = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="arbiter_export_{ts}.csv"'},
+    )
 
 
 @router.get(

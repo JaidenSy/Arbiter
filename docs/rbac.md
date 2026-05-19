@@ -1,8 +1,30 @@
 # RBAC
 
-NexVault uses a flat permission model: every tool call is checked against a `tool_permissions` table keyed on `(agent_id, mcp_server_id, tool_name)`. No roles, no groups, no hierarchy in Phase 1.
+Arbiter enforces access control at two independent layers. Both must pass for a tool call to succeed.
 
-## Permission model
+## Layer 1 — Agent Scope
+
+Every agent has a `scope` field set at registration time. It restricts what the agent's key can do at a high level, before per-tool checks run.
+
+| Scope | Tool Calls | Vault Write | Vault Read |
+|-------|-----------|-------------|------------|
+| `full` | ✅ | ✅ | ✅ |
+| `read_only` | ✅ | ❌ | ✅ |
+| `vault_read_only` | ❌ | ❌ | ✅ |
+
+A `vault_read_only` agent hitting the proxy will receive `403 Forbidden` before the tool-level check even runs. A `read_only` agent can call any permitted tool but cannot write secrets via `POST /vault/secrets`.
+
+Scope is set at creation and cannot be changed. Delete and re-register to change scope.
+
+```bash
+# Register a read-only agent
+curl -s -X POST http://localhost:8000/api/v1/agents \
+  -H "Authorization: Bearer nxai_..." \
+  -H "Content-Type: application/json" \
+  -d '{"name": "analysis-agent", "scope": "read_only"}'
+```
+
+## Layer 2 — Tool Permissions
 
 A permission record says: "Agent X is allowed to call tool Y on server Z."
 
@@ -26,6 +48,40 @@ curl -s -X POST http://localhost:8000/api/v1/agents/3f7a1b2c-.../permissions \
   }'
 ```
 
+### Grant with rate limiting
+
+Limit how many times an agent can call a tool per minute. When exceeded, the gateway returns `429 Too Many Requests` without forwarding to the upstream server.
+
+```bash
+curl -s -X POST http://localhost:8000/api/v1/agents/3f7a1b2c-.../permissions \
+  -H "Authorization: Bearer nxai_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mcp_server_id": "c4d5e6f7-...",
+    "tool_name": "web_search",
+    "rate_limit_per_minute": 20
+  }'
+```
+
+Omit `rate_limit_per_minute` (or set to `null`) for unlimited calls.
+
+### Grant with a custom cache TTL
+
+Override the global cache TTL for a specific tool. Useful when a tool's results are short-lived (e.g. live stock prices) or very stable (e.g. static config reads).
+
+```bash
+curl -s -X POST http://localhost:8000/api/v1/agents/3f7a1b2c-.../permissions \
+  -H "Authorization: Bearer nxai_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mcp_server_id": "c4d5e6f7-...",
+    "tool_name": "get_stock_price",
+    "cache_ttl_seconds": 30
+  }'
+```
+
+If `cache_ttl_seconds` is set on both a specific-tool permission and a wildcard `*` permission, the specific-tool value takes precedence. If neither is set, the global `CACHE_TTL_SECONDS` environment variable is used.
+
 ### Grant all tools on a server (wildcard)
 
 ```bash
@@ -38,7 +94,7 @@ curl -s -X POST http://localhost:8000/api/v1/agents/3f7a1b2c-.../permissions \
   }'
 ```
 
-The `*` wildcard matches any tool name on that server. It does not require listing tools in advance — new tools added to the upstream server are automatically accessible to agents that have the `*` grant.
+The `*` wildcard matches any tool name on that server. It does not require listing tools in advance. New tools added to the upstream server are automatically accessible to agents that have the `*` grant.
 
 ### Grant specific tools via Python
 
@@ -112,7 +168,7 @@ Content-Type: application/json
 }
 ```
 
-The call is also logged as a `SessionEvent` with `outcome: "permission_denied"`. Permission-denied events appear in the audit log alongside successful calls — gaps in the audit log are not possible.
+The call is also logged as a `SessionEvent` with `outcome: "permission_denied"`. Permission-denied events appear in the audit log alongside successful calls. Gaps in the audit log are not possible.
 
 The agent is also not told the tool exists. When calling `tools/list`, only permitted tools are returned. An agent cannot enumerate what it cannot call.
 
@@ -198,4 +254,4 @@ SELECT EXISTS (
 )
 ```
 
-The `*` row matches any `tool_name` value passed as `$3`. There is no pattern matching beyond this — `read_*` is not a valid wildcard pattern. Use `*` for full server access, or enumerate specific tools for granular control.
+The `*` row matches any `tool_name` value passed as `$3`. There is no pattern matching beyond this. `read_*` is not a valid wildcard pattern. Use `*` for full server access, or enumerate specific tools for granular control.

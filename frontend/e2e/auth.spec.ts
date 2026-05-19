@@ -1,5 +1,5 @@
 /**
- * NexVault E2E — Auth tests.
+ * Arbiter E2E — Auth tests.
  *
  * Covers: login, logout, auth guard (unauthenticated redirect).
  * Registration is covered in auth.setup.ts.
@@ -14,7 +14,7 @@ test.use({ storageState: { cookies: [], origins: [] } })
 test.describe('Login', () => {
   test('valid credentials → redirect to dashboard', async ({ page }) => {
     // Use env vars or defaults; in CI these should be the setup user's creds
-    const email = process.env.E2E_EMAIL ?? 'e2e-user@nexvault.test'
+    const email = process.env.E2E_EMAIL ?? 'e2e-user@arbiter.test'
     const password = process.env.E2E_PASSWORD ?? 'TestPass123!'
 
     await page.goto('/login')
@@ -27,7 +27,7 @@ test.describe('Login', () => {
 
   test('wrong password → error message shown', async ({ page }) => {
     await page.goto('/login')
-    await page.getByLabel(/email/i).fill('wrong@nexvault.test')
+    await page.getByLabel(/email/i).fill('wrong@arbiter.test')
     await page.getByLabel(/password/i).fill('wrongpassword')
     await page.getByRole('button', { name: /sign in|log in/i }).click()
 
@@ -62,7 +62,7 @@ test.describe('Logout', () => {
     await expect(page).toHaveURL(/\/login/, { timeout: 5_000 })
 
     // Tokens should be cleared
-    const token = await page.evaluate(() => localStorage.getItem('nexvault_access_token'))
+    const token = await page.evaluate(() => localStorage.getItem('arbiter_access_token'))
     expect(token).toBeNull()
   })
 })

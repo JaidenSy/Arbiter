@@ -1,5 +1,5 @@
 /**
- * NexVault — In-app documentation page.
+ * Arbiter — In-app documentation page.
  *
  * Route: /docs (public, no ProtectedRoute, no app sidebar)
  * Layout: standalone with left sidebar nav + content area
@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { ArbiterMark } from '../components/ArbiterLogo'
 
 // ── Navbar ─────────────────────────────────────────────────────────────────────
 
@@ -15,8 +16,8 @@ function Navbar(): React.ReactElement {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-base/80 backdrop-blur-md border-b border-white/[0.06]">
       <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5">
-          <span className="gradient-text font-bold text-lg tracking-tight">NX</span>
-          <span className="text-primary font-semibold text-sm tracking-wide">NexVault</span>
+          <ArbiterMark size={28} />
+          <span className="text-primary font-semibold text-sm tracking-wide">Arbiter</span>
           <span className="text-muted text-xs ml-1">/ Docs</span>
         </Link>
 
@@ -159,14 +160,14 @@ function DocsContent(): React.ReactElement {
       {/* Quick Start */}
       <DocSection id="quick-start" title="Quick Start">
         <p className="text-secondary text-sm leading-relaxed">
-          Get your first agent connected to NexVault in under 5 minutes.
+          Get your first agent connected to Arbiter in under 5 minutes.
         </p>
         <ol className="space-y-3">
           {[
-            'Register at nexvault.app — free plan, no credit card required.',
-            'Create your first agent in the dashboard → copy the API key.',
-            'Set your MCP client base URL to your NexVault gateway URL.',
-            'Make your first tool call — all traffic is proxied, cached, and logged.',
+            'Register at arbiter.app. Free plan, no credit card required.',
+            'Create your first agent in the dashboard and copy the API key.',
+            'Set your MCP client base URL to your Arbiter gateway URL.',
+            'Make your first tool call. Traffic is proxied, cached, and logged automatically.',
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3 text-sm text-secondary">
               <span className="w-5 h-5 rounded-full bg-accent/15 border border-accent/25 flex items-center justify-center text-accent-light text-xs font-mono flex-shrink-0 mt-0.5">
@@ -176,11 +177,11 @@ function DocsContent(): React.ReactElement {
             </li>
           ))}
         </ol>
-        <Code>{`# Example: connect Claude Desktop to NexVault
+        <Code>{`# Example: connect Claude Desktop to Arbiter
 {
   "mcpServers": {
-    "nexvault": {
-      "url": "https://your-nexvault.railway.app/mcp",
+    "arbiter": {
+      "url": "https://your-arbiter.railway.app/mcp",
       "headers": {
         "Authorization": "Bearer nxai_your_agent_key_here"
       }
@@ -192,14 +193,14 @@ function DocsContent(): React.ReactElement {
       {/* Authentication */}
       <DocSection id="authentication" title="Authentication">
         <p className="text-secondary text-sm leading-relaxed">
-          NexVault uses two authentication mechanisms depending on context.
+          Arbiter uses two authentication mechanisms depending on context.
         </p>
 
         <div className="bg-surface border border-white/[0.07] rounded-xl p-5">
           <h3 className="text-primary font-semibold text-sm mb-3">Agent API calls</h3>
           <p className="text-secondary text-xs mb-3">
             All agent tool calls use a Bearer token in the <InlineCode>Authorization</InlineCode> header.
-            Each agent has a unique key — never share keys between agents.
+            Each agent has a unique key. Don't share keys between agents.
           </p>
           <Code>Authorization: Bearer nxai_{'<your-agent-key>'}</Code>
         </div>
@@ -219,12 +220,12 @@ function DocsContent(): React.ReactElement {
       {/* Agents */}
       <DocSection id="agents" title="Agents">
         <p className="text-secondary text-sm leading-relaxed">
-          Every AI agent that calls tools through NexVault must first be registered.
+          Every AI agent that calls tools through Arbiter must first be registered.
           Registration gives the agent a unique cryptographic API key.
         </p>
 
         <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
-          <Endpoint method="POST" path="/api/v1/agents" description="Register a new agent. Returns an api_key — store it securely, it's shown once." />
+          <Endpoint method="POST" path="/api/v1/agents" description="Register a new agent. Returns an api_key (shown once — store it immediately)." />
           <Endpoint method="GET" path="/api/v1/agents" description="List all agents for the authenticated user." />
           <Endpoint method="DELETE" path="/api/v1/agents/:id" description="Deactivate an agent. All its permissions are revoked." />
         </div>
@@ -272,12 +273,12 @@ POST /api/v1/tool-permissions
       <DocSection id="vault" title="Vault">
         <p className="text-secondary text-sm leading-relaxed">
           The vault stores secrets per agent using AES-256-GCM encryption.
-          Secrets are injected into tool calls at call time — they never leave the vault unencrypted.
+          Secrets are injected into tool calls at call time. They never leave the vault unencrypted.
         </p>
 
         <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
           <Endpoint method="POST" path="/api/v1/vault" description="Store a secret. The value is encrypted immediately on write." />
-          <Endpoint method="GET" path="/api/v1/vault" description="List secrets (names only — values are not returned)." />
+          <Endpoint method="GET" path="/api/v1/vault" description="List secrets. Names only; values are never returned." />
           <Endpoint method="GET" path="/api/v1/vault/:name" description="Retrieve and decrypt a specific secret value." />
         </div>
 
@@ -296,7 +297,7 @@ POST /api/v1/vault
       {/* Semantic Cache */}
       <DocSection id="semantic-cache" title="Semantic Cache">
         <p className="text-secondary text-sm leading-relaxed">
-          NexVault automatically caches tool call responses. Identical calls return instantly
+          Arbiter automatically caches tool call responses. Identical calls return instantly
           without hitting the upstream MCP server, reducing latency and API costs.
         </p>
 
@@ -305,7 +306,7 @@ POST /api/v1/vault
             { label: 'Cache TTL', value: '1 hour (default)' },
             { label: 'Cache key', value: 'agent_id + tool_name + arguments hash' },
             { label: 'Cache hit indicator', value: 'Shown in session trace as cached: true' },
-            { label: 'Configuration', value: 'Automatic — no configuration required' },
+            { label: 'Configuration', value: 'Automatic. No setup required.' },
           ].map((row) => (
             <div key={row.label} className="flex items-center justify-between text-sm border-b border-white/[0.05] last:border-0 pb-3 last:pb-0">
               <span className="text-secondary">{row.label}</span>
@@ -346,7 +347,7 @@ POST /api/v1/vault
       {/* Pricing */}
       <DocSection id="pricing" title="Pricing">
         <p className="text-secondary text-sm leading-relaxed">
-          NexVault offers a free tier with generous limits for personal projects and evaluation.
+          Arbiter offers a free tier with generous limits for personal projects and evaluation.
           See the full plan comparison on the landing page.
         </p>
         <div>
@@ -407,7 +408,7 @@ function Docs(): React.ReactElement {
           <div className="mb-12">
             <h1 className="text-2xl font-bold gradient-text-purple mb-2">Documentation</h1>
             <p className="text-secondary text-sm">
-              Everything you need to integrate NexVault with your AI agents.
+              Everything you need to integrate Arbiter with your AI agents.
             </p>
           </div>
           <DocsContent />

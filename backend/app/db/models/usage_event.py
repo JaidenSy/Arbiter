@@ -1,5 +1,5 @@
 """
-NexVault — SQLAlchemy ORM model: UsageEvent.
+Arbiter — SQLAlchemy ORM model: UsageEvent.
 
 One row per org per calendar day.  Counters are incremented via an upsert
 so the proxy hot path can fire-and-forget without a read-modify-write cycle.

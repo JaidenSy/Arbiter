@@ -1,5 +1,5 @@
 /**
- * NexVault E2E — Settings page tests.
+ * Arbiter E2E — Settings page tests.
  *
  * Covers: profile section, API key save/show/hide/clear,
  * gateway URL save, billing section (plan badge, usage bars, upgrade CTA).
@@ -30,7 +30,7 @@ test.describe('Settings — API Key', () => {
     await expect(page.getByText(/connected/i)).toBeVisible({ timeout: 3_000 })
 
     // Persisted in localStorage
-    const stored = await page.evaluate(() => localStorage.getItem('nexvault_api_key'))
+    const stored = await page.evaluate(() => localStorage.getItem('arbiter_api_key'))
     expect(stored).toBe('nxai_testkey1234abcd')
   })
 
@@ -56,13 +56,13 @@ test.describe('Settings — API Key', () => {
     await page.goto('/settings')
 
     // Ensure a key is set first
-    await page.evaluate(() => localStorage.setItem('nexvault_api_key', 'nxai_testkey'))
+    await page.evaluate(() => localStorage.setItem('arbiter_api_key', 'nxai_testkey'))
     await page.reload()
 
     await page.getByRole('button', { name: /clear/i }).click()
 
     await expect(page.getByText(/no key set/i)).toBeVisible({ timeout: 3_000 })
-    const stored = await page.evaluate(() => localStorage.getItem('nexvault_api_key'))
+    const stored = await page.evaluate(() => localStorage.getItem('arbiter_api_key'))
     expect(stored).toBeNull()
   })
 })

@@ -1,5 +1,5 @@
 /**
- * NexVault — Onboarding wizard.
+ * Arbiter — Onboarding wizard.
  *
  * Route: /onboarding (protected, no sidebar)
  * 4-step wizard that walks a new user through:
@@ -58,10 +58,10 @@ function Step1({ orgName, onNext }: Step1Props): React.ReactElement {
   return (
     <div className="text-center space-y-6">
       <h1 className="text-white text-2xl font-mono font-semibold">
-        Welcome to NexVault, {orgName}
+        Welcome to Arbiter, {orgName}
       </h1>
       <p className="text-secondary text-sm font-mono leading-relaxed max-w-sm mx-auto">
-        NexVault is a developer-first MCP gateway that gives your agents identity,
+        Arbiter is a developer-first MCP gateway that gives your agents identity,
         tool-level access control, a secrets vault, and full observability — all in one place.
       </p>
       <p className="text-secondary text-sm font-mono leading-relaxed max-w-sm mx-auto">
@@ -134,7 +134,7 @@ function Step2({ onNext }: Step2Props): React.ReactElement {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. my-agent"
-              className="w-full bg-elevated border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+              className="w-full bg-base border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
           </div>
 
@@ -148,7 +148,7 @@ function Step2({ onNext }: Step2Props): React.ReactElement {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional"
-              className="w-full bg-elevated border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+              className="w-full bg-base border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
           </div>
 
@@ -246,7 +246,7 @@ function Step3({ onNext }: Step3Props): React.ReactElement {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. filesystem"
-            className="w-full bg-elevated border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+            className="w-full bg-base border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
           />
         </div>
 
@@ -261,7 +261,7 @@ function Step3({ onNext }: Step3Props): React.ReactElement {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="http://localhost:8001"
-            className="w-full bg-elevated border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+            className="w-full bg-base border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
           />
         </div>
 
@@ -271,7 +271,7 @@ function Step3({ onNext }: Step3Props): React.ReactElement {
             role="switch"
             aria-checked={cacheEnabled}
             onClick={() => setCacheEnabled(!cacheEnabled)}
-            className={`relative w-9 h-5 rounded-full transition-colors ${cacheEnabled ? 'bg-accent' : 'bg-elevated border border-white/10'}`}
+            className={`relative w-9 h-5 rounded-full transition-colors ${cacheEnabled ? 'bg-accent' : 'bg-base border border-white/10'}`}
           >
             <span
               className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${cacheEnabled ? 'translate-x-4' : ''}`}
@@ -381,7 +381,7 @@ function Onboarding(): React.ReactElement {
   const handleStep2Next = (name: string, key: string): void => {
     setAgentName(name)
     setAgentApiKey(key)
-    localStorage.setItem('nexvault_api_key', key)
+    localStorage.setItem('arbiter_api_key', key)
     void syncStatus()
     setStep(2)
   }

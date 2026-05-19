@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: Tool Permissions.
+Arbiter — API endpoints: Tool Permissions.
 
 Manages RBAC permission records that control which agents may call which
 tools on which MCP servers.  Permissions are agent-scoped sub-resources.
@@ -46,6 +46,11 @@ class ToolPermissionCreate(BaseModel):
         ge=1,
         description="Max calls per minute for this agent+tool. Null = unlimited.",
     )
+    cache_ttl_seconds: int | None = Field(
+        None,
+        ge=1,
+        description="Override cache TTL for this tool in seconds. Null = global default.",
+    )
 
 
 class ToolPermissionResponse(BaseModel):
@@ -58,6 +63,7 @@ class ToolPermissionResponse(BaseModel):
     granted_at: datetime
     granted_by: str | None
     rate_limit_per_minute: int | None
+    cache_ttl_seconds: int | None
 
     model_config = {"from_attributes": True}
 
@@ -125,6 +131,7 @@ async def create_tool_permission(
         mcp_server_id=body.mcp_server_id,
         tool_name=body.tool_name,
         rate_limit_per_minute=body.rate_limit_per_minute,
+        cache_ttl_seconds=body.cache_ttl_seconds,
     )
     db.add(permission)
 

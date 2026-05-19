@@ -1,5 +1,5 @@
 /**
- * NexVault — Sessions page.
+ * Arbiter — Sessions page.
  *
  * Audit log of all agent sessions.
  *   - Agent filter dropdown

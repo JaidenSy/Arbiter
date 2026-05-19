@@ -1,15 +1,18 @@
 /**
- * NexVault Frontend — shared TypeScript types for API responses.
+ * Arbiter Frontend — shared TypeScript types for API responses.
  *
- * These types mirror the Pydantic schemas exposed by the NexVault backend.
+ * These types mirror the Pydantic schemas exposed by the Arbiter backend.
  * Keep in sync with CODER-A's backend contracts.
  */
+
+export type AgentScope = "full" | "read_only" | "vault_read_only";
 
 export interface Agent {
   id: string;
   name: string;
   description: string | null;
   is_active: boolean;
+  scope: AgentScope;
   created_at: string;
 }
 

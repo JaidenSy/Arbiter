@@ -26,11 +26,11 @@
 The free tier is not a crippled trial. 3 agents, 5 MCP servers, and 1,000 tool calls per month covers:
 
 - A solo developer's personal agent setup
-- A team evaluating NexVault before committing
+- A team evaluating Arbiter before committing
 - An open source project with a small number of automated agents
 - A student or hobbyist building agent tooling
 
-The free tier includes the full feature set — semantic cache, RBAC, encrypted vault, audit log. The only limits are volume-based.
+The free tier includes the full feature set: semantic cache, RBAC, encrypted vault, audit log. The only limits are volume-based.
 
 There is no time limit on the free tier. You do not get downgraded after 14 or 30 days.
 
@@ -47,10 +47,10 @@ At scale, you are making repeated or near-duplicate tool calls. The semantic cac
 | Upstream calls made | 100,000 | 70,000 |
 | Calls saved | 0 | 30,000 |
 | Cost saved at $0.01/call avg | $0 | $300/month |
-| NexVault Pro cost | — | $29/month |
+| Arbiter Pro cost | — | $29/month |
 | **Net savings** | — | **$271/month** |
 
-30% is a conservative hit rate for typical agent workloads. Agents running similar queries repeatedly — file reads, database lookups, search queries — commonly hit 40–60%.
+30% is a conservative hit rate for typical agent workloads. Agents running similar queries repeatedly (file reads, database lookups, search queries) commonly hit 40–60%.
 
 The Pro tier costs $29/month. The cache pays for itself at roughly 3,000 avoided upstream calls per month.
 
@@ -58,7 +58,7 @@ The Pro tier costs $29/month. The cache pays for itself at roughly 3,000 avoided
 
 ## Comparison
 
-| | NexVault Free | NexVault Pro | NexVault Team | LiteLLM OSS | LiteLLM Enterprise | Portkey Production | Kong AI |
+| | Arbiter Free | Arbiter Pro | Arbiter Team | LiteLLM OSS | LiteLLM Enterprise | Portkey Production | Kong AI |
 |---|---|---|---|---|---|---|---|
 | **Price** | $0 | $29/mo | $99/mo | $0 | $250/mo | $49/mo | $2,500+/mo |
 | **MCP-native** | Yes | Yes | Yes | Partial | Partial | Partial | Add-on |
@@ -87,7 +87,7 @@ Enterprise pricing is custom and covers:
 
 Enterprise is the right choice for teams with data residency requirements, SOC2 obligations, or compliance teams that need documented security controls.
 
-[Contact us](mailto:enterprise@nexvault.dev) to discuss Enterprise pricing.
+[Contact us](mailto:enterprise@arbiterai.dev) to discuss Enterprise pricing.
 
 ---
 
@@ -97,4 +97,4 @@ Enterprise is the right choice for teams with data residency requirements, SOC2 
 - Tool call counts reset at the start of each billing cycle.
 - Overages on the Free tier result in rate limiting (not charges).
 - Overages on Pro and Team result in per-call charges at $0.0005/call above the limit, or you can upgrade tiers mid-cycle.
-- Self-hosted deployments on any tier do not report usage to NexVault servers. Honor system for Free; Pro and Team self-hosted plans use a license key.
+- Self-hosted deployments on any tier do not report usage to Arbiter servers. Honor system for Free; Pro and Team self-hosted plans use a license key.

@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: Agents.
+Arbiter — API endpoints: Agents.
 
 Manages agent registration and lifecycle.  API keys are generated on
 creation and returned ONCE; the hash is stored, never the raw key.
@@ -25,7 +25,7 @@ from app.core.dependencies import get_current_user, get_db, require_role
 from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.db.models.user import User
-from app.schemas.agent import AgentCreate, AgentCreateResponse, AgentResponse, AgentUpdate
+from app.schemas.agent import AgentCreate, AgentCreateResponse, AgentResponse, AgentUpdate, _VALID_SCOPES
 from app.services.plan.plan_service import check_resource_limit
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -42,6 +42,12 @@ async def create_agent(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("owner", "admin")),
 ) -> AgentCreateResponse:
+    if body.scope not in _VALID_SCOPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid scope {body.scope!r}. Must be one of: {sorted(_VALID_SCOPES)}",
+        )
+
     existing = await db.execute(
         select(Agent).where(
             Agent.name == body.name,
@@ -77,6 +83,7 @@ async def create_agent(
         description=body.description,
         api_key_hash=key_hash,
         is_active=True,
+        scope=body.scope,
     )
     db.add(agent)
     await db.commit()
@@ -87,6 +94,7 @@ async def create_agent(
         name=agent.name,
         description=agent.description,
         is_active=agent.is_active,
+        scope=agent.scope,
         created_at=agent.created_at,
         updated_at=agent.updated_at,
         api_key=raw_key,
@@ -245,6 +253,7 @@ async def rotate_api_key(
         name=agent.name,
         description=agent.description,
         is_active=agent.is_active,
+        scope=agent.scope,
         created_at=agent.created_at,
         updated_at=agent.updated_at,
         api_key=raw_key,

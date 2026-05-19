@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: Auth.
+Arbiter — API endpoints: Auth.
 
 Routes:
     POST   /auth/register           → 201  issue tokens for new org + owner
@@ -14,7 +14,11 @@ Routes:
 
 from __future__ import annotations
 
+import hmac
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -35,6 +39,9 @@ from app.schemas.auth import (
     UpdateMeRequest,
 )
 from app.services.auth import auth_service
+from app.services.email.email_service import send_email_verification, send_password_reset
+
+_token_serializer = URLSafeTimedSerializer(settings.app_secret_key)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -92,18 +99,22 @@ async def register(
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     if not settings.allow_public_registration:
-        if not settings.invite_code or body.invite_code != settings.invite_code:
+        if not settings.invite_code or not hmac.compare_digest(body.invite_code, settings.invite_code):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Registration requires a valid invite code",
             )
 
-    _user, access_token, refresh_token = await auth_service.register(
+    user, access_token, refresh_token = await auth_service.register(
         db=db,
         org_name=body.org_name,
         email=body.email,
         password=body.password,
     )
+
+    token = _token_serializer.dumps(str(user.id), salt="email-verify")
+    verify_url = f"{settings.frontend_url}/verify-email?token={token}"
+    await send_email_verification(user.email, verify_url)
 
     return TokenResponse(
         access_token=access_token,
@@ -121,7 +132,19 @@ async def register(
 async def login(
     body: LoginRequest,
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> TokenResponse:
+    if redis is not None:
+        rate_key = f"login_attempts:{body.email}"
+        attempts = await redis.incr(rate_key)
+        if attempts == 1:
+            await redis.expire(rate_key, 900)  # 15-minute window
+        if attempts > 10:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many login attempts. Try again in 15 minutes.",
+            )
+
     _user, access_token, refresh_token = await auth_service.login(
         db=db,
         email=body.email,
@@ -310,4 +333,88 @@ async def delete_me(
         except Exception:
             pass  # best-effort; user is already deactivated
 
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ── Email verification ────────────────────────────────────────────────────────
+
+
+@router.post("/send-verification", status_code=status.HTTP_204_NO_CONTENT, summary="Resend verification email")
+async def resend_verification(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    if current_user.is_verified:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already verified")
+    token = _token_serializer.dumps(str(current_user.id), salt="email-verify")
+    verify_url = f"{settings.frontend_url}/verify-email?token={token}"
+    await send_email_verification(current_user.email, verify_url)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/verify-email", status_code=status.HTTP_200_OK, summary="Verify email address")
+async def verify_email(
+    token: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    try:
+        user_id = _token_serializer.loads(token, salt="email-verify", max_age=86400)
+    except SignatureExpired:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification link has expired")
+    except BadSignature:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification token")
+    user = await db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if not user.is_verified:
+        user.is_verified = True
+        await db.commit()
+    return {"message": "Email verified successfully"}
+
+
+# ── Password reset ────────────────────────────────────────────────────────────
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT, summary="Request password reset email")
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    result = await db.execute(select(User).where(User.email == body.email, User.is_active.is_(True)))
+    user = result.scalar_one_or_none()
+    # Always return 204 — never reveal whether the email exists
+    if user is not None:
+        token = _token_serializer.dumps(str(user.id), salt="pwd-reset")
+        reset_url = f"{settings.frontend_url}/reset-password?token={token}"
+        await send_password_reset(user.email, reset_url)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT, summary="Reset password using token")
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    try:
+        user_id = _token_serializer.loads(body.token, salt="pwd-reset", max_age=3600)
+    except SignatureExpired:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reset link has expired")
+    except BadSignature:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token")
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Password must be at least 8 characters")
+    user = await db.get(User, user_id)
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user.hashed_password = _sec.hash_password(body.new_password)
+    await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

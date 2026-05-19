@@ -1,19 +1,19 @@
-# NexVault
+# Arbiter
 
-NexVault is a developer-first MCP (Model Context Protocol) gateway that gives every AI agent a verified identity, a per-agent encrypted secrets vault, tool-level access control, a 3-layer semantic cache, and a gapless audit log — deployed in a single `docker compose up`.
+Arbiter is a developer-first MCP (Model Context Protocol) gateway that gives every AI agent a verified identity, a per-agent encrypted secrets vault, tool-level access control, a 3-layer semantic cache, and a gapless audit log. Runs with a single `docker compose up`.
 
 ## Problems it solves
 
-- **No agent identity** — your Claude scripts all share one API key with no per-agent tracking
-- **Secrets in env files** — API keys for downstream tools live in plaintext `.env` files or are baked into prompts
-- **No access control** — any agent can call any tool; there is no allowlist or per-agent restriction
-- **Repeated upstream calls** — semantically identical tool calls (e.g. "list files in /src" vs "show me /src files") hit the upstream server every time
-- **Invisible audit trail** — when something breaks or costs spike, you have no record of what tool was called, by whom, with what inputs, and whether it was a cache hit
+- **No agent identity**: all your Claude scripts share one API key with no per-agent tracking
+- **Secrets in env files**: API keys for downstream tools live in plaintext `.env` files or get baked into prompts
+- **No access control**: any agent can call any tool with no allowlist or per-agent restriction
+- **Repeated upstream calls**: semantically identical tool calls (e.g. "list files in /src" vs "show me /src files") hit the upstream server every time
+- **Invisible audit trail**: when something breaks or costs spike, you have no record of what tool was called, by whom, with what inputs, or whether it was a cache hit
 
 ## Quick start
 
 ```bash
-git clone https://github.com/your-org/nexvault && cd nexvault
+git clone https://github.com/your-org/arbiter && cd arbiter
 cp .env.example .env  # fill in VAULT_ENCRYPTION_KEY and passwords
 docker compose up -d
 ```
@@ -36,7 +36,7 @@ The API is available at `http://localhost:8000` and the dashboard at `http://loc
 | Doc | Description |
 |-----|-------------|
 | [pitch/problem.md](./pitch/problem.md) | The infrastructure problem every AI team builds twice |
-| [pitch/solution.md](./pitch/solution.md) | How NexVault solves it, with architecture details |
+| [pitch/solution.md](./pitch/solution.md) | How Arbiter solves it, with architecture details |
 | [pitch/pricing.md](./pitch/pricing.md) | Tier breakdown and ROI rationale |
-| [pitch/comparison.md](./pitch/comparison.md) | NexVault vs LiteLLM, Portkey, Kong, DIY |
+| [pitch/comparison.md](./pitch/comparison.md) | Arbiter vs LiteLLM, Portkey, Kong, DIY |
 | [pitch/use-cases.md](./pitch/use-cases.md) | Four buyer personas and their specific scenarios |

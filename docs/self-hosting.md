@@ -1,22 +1,22 @@
-# Self-Hosting NexVault
+# Self-Hosting Arbiter
 
 ## Prerequisites
 
 - Docker Desktop (includes Docker Compose v2)
-- Nothing else — Postgres and Redis are bundled in the Compose file
+- Nothing else. Postgres and Redis are bundled in the Compose file.
 
 ## Setup
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-org/nexvault
-cd nexvault
+git clone https://github.com/your-org/arbiter
+cd arbiter
 ```
 
 ### 2. Generate a vault encryption key
 
-The vault requires a 32-byte (64 hex character) AES-256 key. Generate one now and keep it safe — losing it means losing access to all stored secrets.
+The vault requires a 32-byte (64 hex character) AES-256 key. Generate one now and keep it safe. Losing it means losing access to all stored secrets.
 
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
@@ -41,7 +41,7 @@ Edit `.env` and fill in every `CHANGE_ME` value:
 | `API_PREFIX` | No | URL prefix for all API routes. Default: `/api/v1` |
 | `POSTGRES_HOST` | No | Postgres hostname. When using Docker Compose, this is `postgres` (the service name). Default: `localhost` |
 | `POSTGRES_PORT` | No | Postgres port. Default: `5432` |
-| `POSTGRES_DB` | **Yes** | Database name. Default in example: `nexvault` |
+| `POSTGRES_DB` | **Yes** | Database name. Default in example: `arbiter` |
 | `POSTGRES_USER` | **Yes** | Postgres username. |
 | `POSTGRES_PASSWORD` | **Yes** | Postgres password. Use a strong random value in production. |
 | `DATABASE_URL` | **Yes** | Full asyncpg connection string. Docker Compose overrides this automatically to use the internal `postgres` hostname. |
@@ -89,8 +89,8 @@ curl http://localhost:8000/health/db
 
 ## Accessing the dashboard and API docs
 
-- **Dashboard**: `http://localhost:3000` — React UI for managing agents, MCP servers, vault, and viewing sessions
-- **API docs (Swagger)**: `http://localhost:8000/docs` — interactive OpenAPI documentation for all endpoints
+- **Dashboard**: `http://localhost:3000`. React UI for managing agents, MCP servers, vault, and viewing sessions.
+- **API docs (Swagger)**: `http://localhost:8000/docs`. Interactive OpenAPI documentation for all endpoints.
 - **API docs (ReDoc)**: `http://localhost:8000/redoc`
 
 ## Upgrading
@@ -113,5 +113,5 @@ For production deployments, change these from the defaults:
 1. `APP_ENV=production` and `APP_DEBUG=false`
 2. Set `CORS_ORIGINS` to your actual frontend domain
 3. Put a TLS-terminating reverse proxy (nginx, Caddy, Cloudflare Tunnel) in front of port 8000
-4. Do not expose port 5432 or 6379 to the public internet — remove the `ports:` sections for `postgres` and `redis` in `docker-compose.yml`, or use a separate `docker-compose.prod.yml` override
+4. Do not expose port 5432 or 6379 to the public internet. Remove the `ports:` sections for `postgres` and `redis` in `docker-compose.yml`, or use a separate `docker-compose.prod.yml` override.
 5. Store `VAULT_ENCRYPTION_KEY` in a secrets manager (not in `.env` on disk)

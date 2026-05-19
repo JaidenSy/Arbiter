@@ -1,5 +1,5 @@
 /**
- * NexVault — Session Trace View.
+ * Arbiter — Session Trace View.
  *
  * Full waterfall timeline for a single session.
  * Route: /sessions/:id
@@ -69,6 +69,7 @@ interface TraceRowProps {
   barLeftPct: number;
   barWidthPct: number;
   isExpanded: boolean;
+  isSelected: boolean;
   onToggle: () => void;
 }
 
@@ -77,6 +78,7 @@ function TraceRow({
   barLeftPct,
   barWidthPct,
   isExpanded,
+  isSelected,
   onToggle,
 }: TraceRowProps): React.ReactElement {
   const isError = !!event.error;
@@ -98,7 +100,11 @@ function TraceRow({
     <>
       <tr
         className={`border-b border-white/[0.07] cursor-pointer group transition-colors ${
-          isError ? "bg-red-950/20" : "hover:bg-elevated"
+          isSelected
+            ? "bg-accent/10 border-accent/30"
+            : isError
+            ? "bg-red-950/20"
+            : "hover:bg-elevated"
         }`}
         onClick={onToggle}
       >
@@ -197,12 +203,104 @@ function TraceRow({
   );
 }
 
+// ── Diff helpers ──────────────────────────────────────────────────────────────
+
+function diffLines(a: string, b: string): Array<{ type: "same" | "add" | "remove"; text: string }> {
+  const la = a.split("\n");
+  const lb = b.split("\n");
+  const result: Array<{ type: "same" | "add" | "remove"; text: string }> = [];
+  const maxLen = Math.max(la.length, lb.length);
+  for (let i = 0; i < maxLen; i++) {
+    const lineA = la[i];
+    const lineB = lb[i];
+    if (lineA === lineB) {
+      result.push({ type: "same", text: lineA ?? "" });
+    } else {
+      if (lineA !== undefined) result.push({ type: "remove", text: lineA });
+      if (lineB !== undefined) result.push({ type: "add", text: lineB });
+    }
+  }
+  return result;
+}
+
+interface DiffPanelProps {
+  eventA: SessionEvent;
+  eventB: SessionEvent;
+  onClose: () => void;
+}
+
+function DiffPanel({ eventA, eventB, onClose }: DiffPanelProps): React.ReactElement {
+  const [field, setField] = useState<"request" | "response">("request");
+
+  const aStr = JSON.stringify(field === "request" ? eventA.request_payload : eventA.response_payload, null, 2) ?? "null";
+  const bStr = JSON.stringify(field === "request" ? eventB.request_payload : eventB.response_payload, null, 2) ?? "null";
+  const lines = diffLines(aStr, bStr);
+  const hasChanges = lines.some((l) => l.type !== "same");
+
+  return (
+    <div className="mt-6 border border-white/[0.1] rounded-xl overflow-hidden bg-surface">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.07]">
+        <div className="flex items-center gap-3">
+          <span className="text-primary text-xs font-semibold">Compare Events</span>
+          <span className="text-muted text-xs font-mono">{eventA.tool_name}</span>
+          <span className="text-muted text-xs">vs</span>
+          <span className="text-muted text-xs font-mono">{eventB.tool_name}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex border border-white/[0.08] rounded-lg overflow-hidden">
+            {(["request", "response"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setField(f)}
+                className={`px-3 py-1 text-xs font-medium transition-all ${
+                  field === f ? "bg-accent/15 text-accent-light" : "text-muted hover:text-secondary"
+                }`}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+          <button onClick={onClose} className="text-muted hover:text-secondary text-xs px-2 py-1 rounded hover:bg-elevated transition-all">
+            Close
+          </button>
+        </div>
+      </div>
+
+      {!hasChanges ? (
+        <div className="py-8 text-center text-secondary text-xs font-mono">No differences in {field} payload</div>
+      ) : (
+        <pre className="text-xs font-mono p-4 overflow-x-auto leading-relaxed">
+          {lines.map((line, i) => (
+            <div
+              key={i}
+              className={
+                line.type === "add"
+                  ? "bg-success/10 text-success"
+                  : line.type === "remove"
+                  ? "bg-error/10 text-error"
+                  : "text-secondary"
+              }
+            >
+              <span className="select-none text-muted mr-2">
+                {line.type === "add" ? "+" : line.type === "remove" ? "-" : " "}
+              </span>
+              {line.text}
+            </div>
+          ))}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function SessionTrace(): React.ReactElement {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareSelected, setCompareSelected] = useState<string[]>([]);
 
   const { data: session, isLoading } = useQuery<Session>({
     queryKey: ["session", id],
@@ -305,12 +403,24 @@ function SessionTrace(): React.ReactElement {
           </p>
         </div>
 
-        {/* Stat pills */}
+        {/* Stat pills + Compare toggle */}
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <StatPill label={`${events.length} calls`} />
           <StatPill label={`${errorCount} errors`} colorClass={errorColor} />
           <StatPill label={`${cacheHitRate}% cached`} colorClass={cacheRateColor} />
           <StatPill label={`${totalDuration}ms total`} />
+          {events.length >= 2 && (
+            <button
+              onClick={() => { setCompareMode((m) => !m); setCompareSelected([]); }}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                compareMode
+                  ? "bg-accent/15 text-accent-light border-accent/30"
+                  : "border-white/[0.1] text-muted hover:text-secondary"
+              }`}
+            >
+              {compareMode ? "Exit Compare" : "Compare"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -328,7 +438,16 @@ function SessionTrace(): React.ReactElement {
       </div>
 
       {/* Timeline */}
-      <p className="text-secondary text-xs uppercase tracking-widest mb-4">Timeline</p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-secondary text-xs uppercase tracking-widest">Timeline</p>
+        {compareMode && (
+          <p className="text-muted text-xs font-mono">
+            {compareSelected.length === 0 && "Select two events to compare"}
+            {compareSelected.length === 1 && "Select one more event"}
+            {compareSelected.length === 2 && "↓ Diff below"}
+          </p>
+        )}
+      </div>
 
       {events.length === 0 ? (
         <div className="text-secondary text-sm py-12 text-center">
@@ -346,6 +465,7 @@ function SessionTrace(): React.ReactElement {
               const { barLeft, barWidth } = waterfallData[i];
               const barLeftPct = maxTime > 0 ? (barLeft / maxTime) * 100 : 0;
               const barWidthPct = maxTime > 0 ? Math.max((barWidth / maxTime) * 100, 0.5) : 0.5;
+              const isCompareSelected = compareSelected.includes(event.id);
 
               return (
                 <TraceRow
@@ -353,18 +473,38 @@ function SessionTrace(): React.ReactElement {
                   event={event}
                   barLeftPct={barLeftPct}
                   barWidthPct={barWidthPct}
-                  isExpanded={expandedEventId === event.id}
-                  onToggle={() =>
-                    setExpandedEventId((prev) =>
-                      prev === event.id ? null : event.id
-                    )
-                  }
+                  isExpanded={!compareMode && expandedEventId === event.id}
+                  isSelected={isCompareSelected}
+                  onToggle={() => {
+                    if (compareMode) {
+                      setCompareSelected((prev) => {
+                        if (prev.includes(event.id)) return prev.filter((x) => x !== event.id);
+                        if (prev.length >= 2) return [prev[1], event.id];
+                        return [...prev, event.id];
+                      });
+                    } else {
+                      setExpandedEventId((prev) => prev === event.id ? null : event.id);
+                    }
+                  }}
                 />
               );
             })}
           </tbody>
         </table>
       )}
+
+      {/* Diff panel */}
+      {compareMode && compareSelected.length === 2 && (() => {
+        const evA = events.find((e) => e.id === compareSelected[0]);
+        const evB = events.find((e) => e.id === compareSelected[1]);
+        return evA && evB ? (
+          <DiffPanel
+            eventA={evA}
+            eventB={evB}
+            onClose={() => setCompareSelected([])}
+          />
+        ) : null;
+      })()}
     </div>
   );
 }

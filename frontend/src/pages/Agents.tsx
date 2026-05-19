@@ -1,5 +1,5 @@
 /**
- * NexVault — Agents page.
+ * Arbiter — Agents page.
  *
  * Lists registered agents and allows:
  *   - Registering a new agent (form modal → one-time API key modal)
@@ -9,7 +9,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "../api/client";
-import type { Agent, AgentCreateResponse } from "../api/types";
+import type { Agent, AgentCreateResponse, AgentScope } from "../api/types";
 import CopyButton from "../components/CopyButton";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -22,6 +22,7 @@ const fetchAgents = (): Promise<Agent[]> =>
 const createAgent = (payload: {
   name: string;
   description: string;
+  scope: AgentScope;
 }): Promise<AgentCreateResponse> =>
   authClient.post<AgentCreateResponse>("/agents", payload).then((r) => r.data);
 
@@ -59,6 +60,7 @@ function RegisterModal({
 }: RegisterModalProps): React.ReactElement | null {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [scope, setScope] = useState<AgentScope>("full");
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -66,6 +68,7 @@ function RegisterModal({
     onSuccess: (data) => {
       setName("");
       setDescription("");
+      setScope("full");
       setError(null);
       onSuccess(data);
     },
@@ -78,12 +81,13 @@ function RegisterModal({
     e.preventDefault();
     if (!name.trim()) return;
     setError(null);
-    mutation.mutate({ name: name.trim(), description: description.trim() });
+    mutation.mutate({ name: name.trim(), description: description.trim(), scope });
   };
 
   const handleClose = (): void => {
     setName("");
     setDescription("");
+    setScope("full");
     setError(null);
     onClose();
   };
@@ -102,7 +106,7 @@ function RegisterModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. my-agent"
-            className="w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+            className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
           />
         </div>
 
@@ -116,8 +120,24 @@ function RegisterModal({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Optional description…"
-            className="w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all resize-none"
+            className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all resize-none"
           />
+        </div>
+
+        <div>
+          <label htmlFor="agent-scope" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
+            Scope
+          </label>
+          <select
+            id="agent-scope"
+            value={scope}
+            onChange={(e) => setScope(e.target.value as AgentScope)}
+            className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+          >
+            <option value="full">Full — tool calls + vault read/write</option>
+            <option value="read_only">Read Only — tool calls only, no vault writes</option>
+            <option value="vault_read_only">Vault Read Only — secrets only, no tool calls</option>
+          </select>
         </div>
 
         {error && (
@@ -482,6 +502,7 @@ function Agents(): React.ReactElement {
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Name</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Description</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Status</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Scope</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Created</th>
               <th className="py-3 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">Actions</th>
             </tr>
@@ -504,7 +525,7 @@ function Agents(): React.ReactElement {
                     </svg>
                   </div>
                   <p className="text-primary text-sm font-medium mb-1">No agents registered yet</p>
-                  <p className="text-secondary text-xs max-w-xs mx-auto mb-4">Register your first agent to start routing tool calls through NexVault.</p>
+                  <p className="text-secondary text-xs max-w-xs mx-auto mb-4">Register your first agent to start routing tool calls through Arbiter.</p>
                   <button
                     type="button"
                     onClick={() => setShowRegisterModal(true)}
@@ -536,6 +557,17 @@ function Agents(): React.ReactElement {
                     }`}>
                       <span className={`w-1 h-1 rounded-full ${agent.is_active ? 'bg-success' : 'bg-muted'}`} />
                       {agent.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide border ${
+                      agent.scope === "full"
+                        ? 'bg-accent/10 text-accent border-accent/20'
+                        : agent.scope === "read_only"
+                        ? 'bg-warning/10 text-warning border-warning/20'
+                        : 'bg-muted/10 text-muted border-muted/20'
+                    }`}>
+                      {agent.scope === "full" ? "Full" : agent.scope === "read_only" ? "Read Only" : "Vault RO"}
                     </span>
                   </td>
                   <td className="py-3 px-4 font-mono text-xs text-muted">

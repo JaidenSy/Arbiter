@@ -1,5 +1,5 @@
 /**
- * NexVault — Register page.
+ * Arbiter — Register page.
  *
  * Route: /register (public, no sidebar)
  * On success: auto-logged in (tokens from backend), navigates to /onboarding.
@@ -59,7 +59,7 @@ function Register(): React.ReactElement {
     }
   }
 
-  const inputClass = "w-full bg-elevated/80 border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 focus:border-accent/60 transition-all duration-150 placeholder:text-muted"
+  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 focus:border-accent/60 transition-all duration-150 placeholder:text-muted"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (
@@ -85,7 +85,7 @@ function Register(): React.ReactElement {
 
           {/* Wordmark */}
           <div className="text-center mb-8">
-            <span className="gradient-text font-bold text-3xl tracking-tight">NexVault</span>
+            <span className="gradient-text font-bold text-3xl tracking-tight">Arbiter</span>
             <p className="text-secondary text-sm mt-2 font-medium">Create your organization</p>
           </div>
 

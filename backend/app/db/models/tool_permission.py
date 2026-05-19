@@ -1,5 +1,5 @@
 """
-NexVault — SQLAlchemy ORM model: ToolPermission.
+Arbiter — SQLAlchemy ORM model: ToolPermission.
 
 Join table that enforces which agent may call which tool on which MCP server.
 The wildcard tool_name ``"*"`` grants access to all tools on the server.
@@ -71,6 +71,8 @@ class ToolPermission(Base):
         nullable=True,
     )
     rate_limit_per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    cache_ttl_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     def __repr__(self) -> str:
         return (

@@ -1,5 +1,5 @@
 """
-NexVault — Pydantic schemas for Session and SessionEvent resources.
+Arbiter — Pydantic schemas for Session and SessionEvent resources.
 
 Sessions are read-only from the API perspective — they are opened and
 closed by the proxy service automatically.  Clients can query them for

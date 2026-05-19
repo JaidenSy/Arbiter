@@ -1,5 +1,5 @@
 """
-NexVault — CacheService.
+Arbiter — CacheService.
 
 Implements a two-phase semantic cache for MCP tool calls:
 
@@ -223,6 +223,7 @@ class CacheService:
         input_payload: dict[str, Any],
         response_payload: dict[str, Any],
         org_id: Any = None,
+        ttl_override: int | None = None,
     ) -> None:
         """
         Store a tool call result in both Redis (L1) and Postgres (L2).
@@ -239,7 +240,7 @@ class CacheService:
         canonical = _canonical(tool_name, input_payload)
         input_hash = hashlib.sha256(canonical.encode()).hexdigest()
         redis_key = f"cache:exact:{org_id}:{tool_name}:{input_hash}"
-        ttl_seconds = settings.cache_ttl_seconds
+        ttl_seconds = ttl_override if ttl_override is not None else settings.cache_ttl_seconds
         expires_at = datetime.now(tz=timezone.utc) + timedelta(seconds=ttl_seconds)
 
         # Compute embedding (best-effort; proceed even if it fails).
@@ -263,6 +264,7 @@ class CacheService:
             select(CacheEntry).where(
                 CacheEntry.tool_name == tool_name,
                 CacheEntry.input_hash == input_hash,
+                CacheEntry.org_id == org_id,
             )
         )
         existing = result.scalar_one_or_none()

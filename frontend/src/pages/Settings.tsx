@@ -1,5 +1,5 @@
 /**
- * NexVault — Settings page.
+ * Arbiter — Settings page.
  *
  * Sections:
  *   - Gateway API Key (stored in localStorage)
@@ -11,6 +11,8 @@ import React, { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
 import type { BillingStatus, CacheStats } from '../api/types'
+import { useTheme } from '../context/ThemeContext'
+import Toggle from '../components/Toggle'
 
 const STRIPE_PRO_PRICE_ID: string = import.meta.env.VITE_STRIPE_PRO_PRICE_ID ?? ''
 const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
@@ -200,7 +202,7 @@ function BillingSection(): React.ReactElement {
             <p className="text-secondary text-sm">
               Enterprise plan —{' '}
               <a
-                href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Enterprise Subscription`}
+                href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Enterprise Subscription`}
                 className="text-accent-light hover:text-white transition-colors"
               >
                 contact us
@@ -225,19 +227,19 @@ function BillingSection(): React.ReactElement {
 
 function ApiKeySection(): React.ReactElement {
   const [apiKey, setApiKey] = useState<string>(
-    localStorage.getItem('nexvault_api_key') ?? '',
+    localStorage.getItem('arbiter_api_key') ?? '',
   )
   const [showKey, setShowKey] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const handleSave = (): void => {
-    localStorage.setItem('nexvault_api_key', apiKey)
+    localStorage.setItem('arbiter_api_key', apiKey)
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
   }
 
   const handleClear = (): void => {
-    localStorage.removeItem('nexvault_api_key')
+    localStorage.removeItem('arbiter_api_key')
     setApiKey('')
   }
 
@@ -252,7 +254,7 @@ function ApiKeySection(): React.ReactElement {
             Gateway API Key
           </label>
           <p className="text-secondary text-xs mb-2.5">
-            Required to authenticate agent requests with the NexVault gateway.
+            Required to authenticate agent requests with the Arbiter gateway.
           </p>
           <div className="flex gap-2">
             <input
@@ -261,7 +263,7 @@ function ApiKeySection(): React.ReactElement {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="nx_..."
-              className="flex-1 bg-elevated border border-white/[0.1] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+              className="flex-1 bg-base border border-white/[0.12] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
             />
             <button
               type="button"
@@ -309,12 +311,12 @@ function ApiKeySection(): React.ReactElement {
 
 function GatewayUrlSection(): React.ReactElement {
   const [url, setUrl] = useState<string>(
-    localStorage.getItem('nexvault_gateway_url') ?? 'http://localhost:8000/api/v1',
+    localStorage.getItem('arbiter_gateway_url') ?? 'http://localhost:8000/api/v1',
   )
   const [saved, setSaved] = useState(false)
 
   const handleSave = (): void => {
-    localStorage.setItem('nexvault_gateway_url', url)
+    localStorage.setItem('arbiter_gateway_url', url)
     setSaved(true)
     setTimeout(() => {
       setSaved(false)
@@ -324,7 +326,7 @@ function GatewayUrlSection(): React.ReactElement {
 
   return (
     <div>
-      <SectionHeader title="Gateway URL" subtitle="Base URL of the NexVault backend API" />
+      <SectionHeader title="Gateway URL" subtitle="Base URL of the Arbiter backend API" />
       <div className="max-w-xl space-y-4">
         <div>
           <label htmlFor="gateway-url-input" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
@@ -341,7 +343,7 @@ function GatewayUrlSection(): React.ReactElement {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="http://localhost:8000/api/v1"
-            className="w-full bg-elevated border border-white/[0.1] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+            className="w-full bg-base border border-white/[0.12] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
           />
         </div>
 
@@ -384,6 +386,25 @@ function AboutSection(): React.ReactElement {
   )
 }
 
+// ── Appearance Section ────────────────────────────────────────────────────────
+
+function AppearanceSection(): React.ReactElement {
+  const { theme, toggleTheme } = useTheme()
+
+  return (
+    <div>
+      <SectionHeader title="Appearance" subtitle="Customize the look of the dashboard" />
+      <div className="flex items-center justify-between max-w-xl">
+        <div>
+          <p className="text-primary text-sm font-medium">Theme</p>
+          <p className="text-secondary text-xs mt-0.5">{theme === 'dark' ? 'Dark mode' : 'Light mode'}</p>
+        </div>
+        <Toggle checked={theme === 'light'} onChange={() => toggleTheme()} />
+      </div>
+    </div>
+  )
+}
+
 // ── Cache Section ─────────────────────────────────────────────────────────────
 
 function CacheSection(): React.ReactElement {
@@ -415,7 +436,6 @@ function CacheSection(): React.ReactElement {
         </div>
       ) : stats ? (
         <div className="space-y-4">
-          {/* Stats row */}
           <div className="flex gap-6 text-sm font-mono">
             <div>
               <p className="text-muted text-xs uppercase tracking-wider mb-1">Active</p>
@@ -431,7 +451,6 @@ function CacheSection(): React.ReactElement {
             </div>
           </div>
 
-          {/* Top tools */}
           {stats.top_tools.length > 0 && (
             <div>
               <p className="text-muted text-xs font-mono uppercase tracking-wider mb-2">Top cached tools</p>
@@ -446,7 +465,6 @@ function CacheSection(): React.ReactElement {
             </div>
           )}
 
-          {/* Flush button */}
           <div className="pt-2 border-t border-white/[0.06]">
             <button
               type="button"
@@ -464,32 +482,80 @@ function CacheSection(): React.ReactElement {
   )
 }
 
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+type Tab = 'general' | 'billing' | 'developer' | 'about'
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'general',   label: 'General'   },
+  { id: 'billing',   label: 'Billing'   },
+  { id: 'developer', label: 'Developer' },
+  { id: 'about',     label: 'About'     },
+]
+
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function Settings(): React.ReactElement {
+  const [activeTab, setActiveTab] = useState<Tab>('general')
+
   return (
     <div className="p-8 animate-fade-in">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="gradient-text-purple text-xl font-bold">Settings</h1>
-        <p className="text-secondary text-sm mt-1">Configure your NexVault gateway</p>
+        <p className="text-secondary text-sm mt-1">Configure your Arbiter gateway</p>
       </div>
 
-      <div className="max-w-2xl space-y-0">
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
-          <BillingSection />
-        </div>
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
-          <ApiKeySection />
-        </div>
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
-          <GatewayUrlSection />
-        </div>
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-6 mb-4">
-          <CacheSection />
-        </div>
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
-          <AboutSection />
-        </div>
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-white/[0.08] mb-6 max-w-2xl">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-medium transition-all border-b-2 -mb-px ${
+              activeTab === tab.id
+                ? 'text-primary border-accent'
+                : 'text-secondary border-transparent hover:text-primary hover:border-white/[0.2]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="max-w-2xl">
+        {activeTab === 'general' && (
+          <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+            <AppearanceSection />
+          </div>
+        )}
+
+        {activeTab === 'billing' && (
+          <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+            <BillingSection />
+          </div>
+        )}
+
+        {activeTab === 'developer' && (
+          <div className="space-y-4">
+            <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+              <ApiKeySection />
+            </div>
+            <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+              <GatewayUrlSection />
+            </div>
+            <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+              <CacheSection />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'about' && (
+          <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+            <AboutSection />
+          </div>
+        )}
       </div>
     </div>
   )

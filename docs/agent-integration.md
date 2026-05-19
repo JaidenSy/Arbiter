@@ -1,8 +1,8 @@
 # Agent Integration
 
-## What is an "agent" in NexVault?
+## What is an "agent" in Arbiter?
 
-An agent is any programmatic client that calls MCP tools through the NexVault gateway — a Claude script, a LangChain workflow, a cron job, a FastAPI service, anything that makes HTTP requests. NexVault assigns each agent:
+An agent is any programmatic client that calls MCP tools through the Arbiter gateway: a Claude script, a LangChain workflow, a cron job, a FastAPI service, anything that makes HTTP requests. Arbiter assigns each agent:
 
 - A unique UUID
 - An API key (`nxai_<64-hex-chars>`) used to authenticate every request
@@ -15,8 +15,9 @@ Agents do not need to know about each other. They cannot see each other's secret
 
 ```bash
 curl -s -X POST http://localhost:8000/api/v1/agents \
+  -H "Authorization: Bearer nxai_..." \
   -H "Content-Type: application/json" \
-  -d '{"name": "research-agent", "description": "Reads files and runs searches"}'
+  -d '{"name": "research-agent", "description": "Reads files and runs searches", "scope": "read_only"}'
 ```
 
 Response:
@@ -25,20 +26,29 @@ Response:
 {
   "id": "3f7a1b2c-4d5e-6f7a-8b9c-0d1e2f3a4b5c",
   "name": "research-agent",
-  "api_key": "nxai_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
   "is_active": true,
-  "created_at": "2026-04-01T12:00:00Z"
+  "scope": "read_only",
+  "created_at": "2026-04-01T12:00:00Z",
+  "api_key": "nxai_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
 }
 ```
 
 **Save the `api_key` immediately.** It is shown exactly once and is not stored. If lost, delete the agent and register again.
+
+The `scope` field controls high-level access at the key level:
+- `full` (default) — tool calls + vault read/write
+- `read_only` — tool calls only, no vault writes
+- `vault_read_only` — vault reads only, tool calls blocked
+
+See [rbac.md](./rbac.md) for details on how scope interacts with per-tool permissions.
 
 ```python
 import httpx
 
 response = httpx.post(
     "http://localhost:8000/api/v1/agents",
-    json={"name": "research-agent", "description": "Reads files and runs searches"},
+    headers={"Authorization": "Bearer nxai_admin_key"},
+    json={"name": "research-agent", "description": "Reads files and runs searches", "scope": "read_only"},
 )
 data = response.json()
 agent_id = data["id"]
@@ -90,7 +100,7 @@ def call_tool(server: str, tool: str, arguments: dict, session_id: str | None = 
         "Content-Type": "application/json",
     }
     if session_id:
-        headers["X-NexVault-Session-ID"] = session_id
+        headers["X-Arbiter-Session-ID"] = session_id
 
     response = httpx.post(
         f"{NEXUS_URL}/proxy/tool-call",
@@ -149,13 +159,13 @@ The upstream MCP server receives `"token": "ghp_actual_token_here"`. The agent's
 
 ## Session IDs
 
-`X-NexVault-Session-ID` is an optional header. When you send it, all tool calls with the same session ID are grouped into a single session in the audit log, which makes it easier to trace a complete agent run.
+`X-Arbiter-Session-ID` is an optional header. When you send it, all tool calls with the same session ID are grouped into a single session in the audit log, which makes it easier to trace a complete agent run.
 
 ```
 Agent run starts → no session ID exists yet
-First tool call  → omit X-NexVault-Session-ID
+First tool call  → omit X-Arbiter-Session-ID
                  → gateway creates a new session, returns session ID in response header
-Subsequent calls → include X-NexVault-Session-ID: <id from first response>
+Subsequent calls → include X-Arbiter-Session-ID: <id from first response>
                  → all events attached to same session
 ```
 
@@ -168,7 +178,7 @@ Use sessions when:
 
 ### Claude with tool use
 
-Claude does not natively speak MCP. The typical pattern is to define your tools as Claude function definitions, receive tool call requests from Claude, and forward them through NexVault:
+Claude does not natively speak MCP. The typical pattern is to define your tools as Claude function definitions, receive tool call requests from Claude, and forward them through Arbiter:
 
 ```python
 import anthropic
@@ -226,7 +236,7 @@ while True:
 
 ### OpenAI function calling
 
-Same pattern: catch `finish_reason: "tool_calls"`, forward each call to NexVault, return results.
+Same pattern: catch `finish_reason: "tool_calls"`, forward each call to Arbiter, return results.
 
 ```python
 import openai, httpx
@@ -247,7 +257,7 @@ def dispatch_tool(name: str, args: dict, mcp_server: str) -> str:
 
 ### Custom script (no LLM)
 
-If you're not using an LLM at all — just a script that needs to call MCP tools with secrets injected:
+If you're not using an LLM at all, just a script that needs to call MCP tools with secrets injected:
 
 ```python
 import httpx

@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: Proxy (Tool Call Gateway).
+Arbiter — API endpoints: Proxy (Tool Call Gateway).
 
 This is the primary endpoint that agents call.  Every MCP tool invocation
 passes through here, triggering the full pipeline:
@@ -34,7 +34,7 @@ router = APIRouter(prefix="/proxy", tags=["proxy"])
     "/tool-call",
     response_model=ToolCallResponse,
     status_code=status.HTTP_200_OK,
-    summary="Invoke an MCP tool through the NexVault gateway",
+    summary="Invoke an MCP tool through the Arbiter gateway",
 )
 async def tool_call(
     body: ToolCallRequest,

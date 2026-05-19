@@ -1,5 +1,5 @@
 """
-NexVault — Plan enforcement service.
+Arbiter — Plan enforcement service.
 
 Provides two check functions called from the service/endpoint layer:
 
