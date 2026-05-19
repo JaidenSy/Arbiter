@@ -208,6 +208,31 @@ class RBACService:
         )
         return list(result.scalars().all())
 
+    async def get_rate_limit(
+        self,
+        agent_id: uuid.UUID,
+        mcp_server_id: uuid.UUID,
+        tool_name: str,
+    ) -> int | None:
+        """
+        Return the rate_limit_per_minute for (agent, server, tool).
+
+        Checks specific tool first, then wildcard '*'.  Returns None if unlimited.
+        """
+        result = await self.db.execute(
+            select(ToolPermission.tool_name, ToolPermission.rate_limit_per_minute).where(
+                ToolPermission.agent_id == agent_id,
+                ToolPermission.mcp_server_id == mcp_server_id,
+                or_(ToolPermission.tool_name == tool_name, ToolPermission.tool_name == "*"),
+            )
+        )
+        rows = result.all()
+        # Prefer the specific-tool row's limit over the wildcard's
+        specific = next((r for r in rows if r.tool_name == tool_name), None)
+        wildcard = next((r for r in rows if r.tool_name == "*"), None)
+        row = specific or wildcard
+        return row.rate_limit_per_minute if row else None
+
     async def filter_tools_list(
         self,
         agent_id: uuid.UUID,

@@ -38,6 +38,7 @@ class StatsResponse(BaseModel):
     servers_count: int
     tool_calls_today: int
     cache_hit_rate_today: float  # 0.0–1.0
+    error_rate_today: float  # 0.0–1.0
 
 
 class HistoryBucket(BaseModel):
@@ -117,19 +118,23 @@ async def get_stats(
         select(
             func.count(SessionEvent.id).label("total"),
             func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
+            func.sum(case((SessionEvent.error.isnot(None), 1), else_=0)).label("errors"),
         ).where(SessionEvent.occurred_at >= today_midnight, SessionEvent.session_id.in_(org_session_ids_today))
     )
     row = calls_result.one()
     tool_calls_today: int = row.total or 0
     hits_today: int = row.hits or 0
+    errors_today: int = row.errors or 0
 
     cache_hit_rate_today: float = hits_today / tool_calls_today if tool_calls_today > 0 else 0.0
+    error_rate_today: float = errors_today / tool_calls_today if tool_calls_today > 0 else 0.0
 
     return StatsResponse(
         agents_count=agents_count,
         servers_count=servers_count,
         tool_calls_today=tool_calls_today,
         cache_hit_rate_today=cache_hit_rate_today,
+        error_rate_today=error_rate_today,
     )
 
 

@@ -70,6 +70,7 @@ class ToolPermission(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+    rate_limit_per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     cache_ttl_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
