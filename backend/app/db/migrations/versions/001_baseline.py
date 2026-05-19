@@ -20,7 +20,7 @@ from alembic import op
 
 # revision identifiers
 revision: str = "013"
-down_revision: str | None = None
+down_revision: str | None = "012"
 branch_labels: str | None = None
 depends_on: str | None = None
 
