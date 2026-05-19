@@ -184,10 +184,10 @@ function Sessions(): React.ReactElement {
                 </td>
               </tr>
             ) : (
-              sessions.map((session, idx) => (
+              sessions.map((session) => (
                 <tr
                   key={session.id}
-                  className={`border-b border-white/[0.05] cursor-pointer hover:bg-white/[0.025] transition-colors group ${idx % 2 === 1 ? 'bg-white/[0.01]' : ''}`}
+                  className={`border-b border-white/[0.05] cursor-pointer hover:bg-white/[0.025] transition-colors group ${''}`}
                   onClick={() => navigate(`/sessions/${session.id}`)}
                 >
                   <td className="py-3 px-4 text-sm font-mono text-accent-light group-hover:text-white transition-colors">

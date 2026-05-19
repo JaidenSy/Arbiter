@@ -319,10 +319,10 @@ function PermissionsTable({
                 </td>
               </tr>
             ) : (
-              permissions.map((perm, idx) => (
+              permissions.map((perm) => (
                 <tr
                   key={perm.id}
-                  className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-colors ${idx % 2 === 1 ? 'bg-white/[0.01]' : ''}`}
+                  className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-colors ${''}`}
                 >
                   <td className="py-3 px-4 text-sm text-primary font-medium">
                     {serverName(perm.mcp_server_id)}
@@ -348,7 +348,7 @@ function PermissionsTable({
                     <button
                       type="button"
                       onClick={() => setRevokeTarget(perm)}
-                      className="opacity-0 group-hover:opacity-100 text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      className="opacity-40 group-hover:opacity-100 text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                     >
                       Revoke
                     </button>
