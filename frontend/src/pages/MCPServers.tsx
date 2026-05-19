@@ -15,6 +15,18 @@ import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Toggle from '../components/Toggle'
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function extractApiError(err: unknown, fallback: string): string {
+  const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail) && detail.length > 0) {
+    const msg: unknown = (detail[0] as { msg?: unknown }).msg
+    if (typeof msg === 'string') return msg.replace(/^Value error, /, '')
+  }
+  return fallback
+}
+
 // ── Data fetchers / mutators ───────────────────────────────────────────────────
 
 const fetchMCPServers = (): Promise<MCPServer[]> =>
@@ -77,7 +89,7 @@ function ServerFormModal({
       void queryClient.invalidateQueries({ queryKey: ['mcp-servers'] })
       onClose()
     },
-    onError: () => setError('Failed to add server. Please try again.'),
+    onError: (err: unknown) => setError(extractApiError(err, 'Failed to add server.')),
   })
 
   const updateMutation = useMutation({
@@ -86,7 +98,7 @@ function ServerFormModal({
       void queryClient.invalidateQueries({ queryKey: ['mcp-servers'] })
       onClose()
     },
-    onError: () => setError('Failed to update server. Please try again.'),
+    onError: (err: unknown) => setError(extractApiError(err, 'Failed to update server.')),
   })
 
   const isPending = createMutation.isPending || updateMutation.isPending
