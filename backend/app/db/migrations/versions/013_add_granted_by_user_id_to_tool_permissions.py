@@ -1,8 +1,8 @@
 """add granted_by_user_id to tool_permissions
 
-Revision ID: 006
-Revises: 005
-Create Date: 2026-05-14
+Revision ID: 013
+Revises: 012
+Create Date: 2026-05-19
 """
 
 from __future__ import annotations
@@ -11,8 +11,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "006"
-down_revision = "005"
+revision = "013"
+down_revision = "012"
 branch_labels = None
 depends_on = None
 
