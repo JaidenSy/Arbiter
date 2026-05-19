@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
 
 revision = "013"
@@ -18,16 +19,22 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "tool_permissions",
-        sa.Column(
-            "granted_by_user_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="SET NULL"),
-            nullable=True,
-        ),
-    )
+    bind = op.get_bind()
+    cols = [c["name"] for c in inspect(bind).get_columns("tool_permissions")]
+    if "granted_by_user_id" not in cols:
+        op.add_column(
+            "tool_permissions",
+            sa.Column(
+                "granted_by_user_id",
+                postgresql.UUID(as_uuid=True),
+                sa.ForeignKey("users.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+        )
 
 
 def downgrade() -> None:
-    op.drop_column("tool_permissions", "granted_by_user_id")
+    bind = op.get_bind()
+    cols = [c["name"] for c in inspect(bind).get_columns("tool_permissions")]
+    if "granted_by_user_id" in cols:
+        op.drop_column("tool_permissions", "granted_by_user_id")
