@@ -372,7 +372,7 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                 </td>
               </tr>
             ) : (
-              secrets.map((secret, idx) => {
+              secrets.map((secret) => {
                 const revealedValue = revealedValues.get(secret.id)
                 const isRevealed = revealedValue !== undefined
                 const isRevealing = revealingId === secret.id
@@ -380,7 +380,7 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                 return (
                   <tr
                     key={secret.id}
-                    className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-colors ${idx % 2 === 1 ? 'bg-white/[0.01]' : ''}`}
+                    className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-colors ${''}`}
                   >
                     <td className="py-3 px-4">
                       <span className="font-mono text-sm text-accent-light">
@@ -410,7 +410,7 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                           type="button"
                           onClick={() => void handleReveal(secret)}
                           disabled={isRevealing}
-                          className="opacity-0 group-hover:opacity-100 text-secondary hover:text-primary border border-white/[0.08] hover:border-white/[0.18] px-2 py-1 rounded-md text-xs transition-all disabled:cursor-wait flex items-center gap-1"
+                          className="opacity-40 group-hover:opacity-100 text-secondary hover:text-primary border border-white/[0.08] hover:border-white/[0.18] px-2 py-1 rounded-md text-xs transition-all disabled:cursor-wait flex items-center gap-1"
                           aria-label={isRevealed ? 'Hide value' : 'Reveal value'}
                         >
                           {isRevealed ? <EyeClosedIcon /> : <EyeOpenIcon />}
@@ -420,7 +420,7 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                     </td>
 
                     <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
                         <button
                           type="button"
                           onClick={() => setRotateTarget(secret)}

@@ -225,7 +225,7 @@ function Organization(): React.ReactElement {
     <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-primary">Organization</h1>
+        <h1 className="gradient-text-purple text-xl font-bold">Organization</h1>
         <p className="text-secondary text-sm mt-0.5">Manage your organization settings and members</p>
       </div>
 

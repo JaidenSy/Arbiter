@@ -125,19 +125,30 @@ function RegisterModal({
         </div>
 
         <div>
-          <label htmlFor="agent-scope" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
-            Scope
-          </label>
-          <select
-            id="agent-scope"
-            value={scope}
-            onChange={(e) => setScope(e.target.value as AgentScope)}
-            className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
-          >
-            <option value="full">Full — tool calls + vault read/write</option>
-            <option value="read_only">Read Only — tool calls only, no vault writes</option>
-            <option value="vault_read_only">Vault Read Only — secrets only, no tool calls</option>
-          </select>
+          <p className="block text-xs font-semibold text-secondary mb-2 uppercase tracking-widest">Scope</p>
+          <div className="flex flex-col gap-2">
+            {([
+              { value: 'full', label: 'Full Access', desc: 'Tool calls + vault read/write' },
+              { value: 'read_only', label: 'Read Only', desc: 'Tool calls only, no vault writes' },
+              { value: 'vault_read_only', label: 'Vault Read Only', desc: 'Secrets access only, no tool calls' },
+            ] as { value: AgentScope; label: string; desc: string }[]).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setScope(opt.value)}
+                className={`w-full text-left px-3.5 py-2.5 rounded-lg border transition-all duration-150 ${
+                  scope === opt.value
+                    ? 'border-accent/60 bg-accent/8 ring-1 ring-accent/25'
+                    : 'border-white/[0.08] bg-base hover:border-white/[0.15] hover:bg-white/[0.02]'
+                }`}
+              >
+                <span className={`text-sm font-medium block ${scope === opt.value ? 'text-accent-light' : 'text-primary'}`}>
+                  {opt.label}
+                </span>
+                <span className="text-xs text-secondary mt-0.5 block">{opt.desc}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && (
@@ -536,10 +547,10 @@ function Agents(): React.ReactElement {
                 </td>
               </tr>
             ) : (
-              agents.map((agent, idx) => (
+              agents.map((agent) => (
                 <tr
                   key={agent.id}
-                  className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-all duration-150 ${idx % 2 === 1 ? 'bg-white/[0.01]' : ''}`}
+                  className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-all duration-150 ${''}`}
                 >
                   <td className="py-3 px-4 text-sm font-medium text-primary">
                     {agent.name}
@@ -574,7 +585,7 @@ function Agents(): React.ReactElement {
                     {formatDate(agent.created_at)}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                    <div className="flex items-center justify-end gap-2 opacity-40 group-hover:opacity-100 transition-all">
                       <button
                         type="button"
                         onClick={() => setSnippetAgent(agent)}
