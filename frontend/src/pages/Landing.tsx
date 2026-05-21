@@ -72,14 +72,16 @@ function Hero(): React.ReactElement {
 
         {/* Headline */}
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-primary leading-tight mb-6">
-          The Identity Layer for{' '}
-          <span className="gradient-text">Your AI Agents</span>
+          Your AI agents are running
+          <br />
+          <span className="gradient-text">without guardrails.</span>
         </h1>
 
         {/* Subheadline */}
         <p className="text-secondary text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed mb-10">
-          Arbiter gives every AI agent a cryptographic identity, fine-grained tool permissions, an
-          encrypted secrets vault, and full chain observability — all through a single MCP gateway.
+          Shared credentials, no audit trail, agents that can call any tool they want.
+          Arbiter fixes all of it — cryptographic agent identity, tool-level permissions,
+          an encrypted secrets vault, and full observability through a single MCP gateway.
         </p>
 
         {/* CTAs */}
@@ -245,6 +247,88 @@ function Features(): React.ReactElement {
               <p className="text-secondary text-sm leading-relaxed">{f.description}</p>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ── Comparison ─────────────────────────────────────────────────────────────────
+
+function Comparison(): React.ReactElement {
+  const check = (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-success mx-auto">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  )
+  const cross = (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-muted mx-auto">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  )
+
+  type CellVal = boolean | 'partial' | string
+
+  const rows: { feature: string; arbiter: CellVal; litellm: CellVal; portkey: CellVal; diy: CellVal }[] = [
+    { feature: 'Per-agent identity',         arbiter: true,      litellm: false,     portkey: false,     diy: '~3 months' },
+    { feature: 'Tool-level RBAC',            arbiter: true,      litellm: false,     portkey: false,     diy: '~2 months' },
+    { feature: 'Encrypted secrets vault',    arbiter: true,      litellm: false,     portkey: false,     diy: '~2 months' },
+    { feature: 'Semantic cache (pgvector)',  arbiter: true,      litellm: 'partial', portkey: 'partial', diy: '~3 months' },
+    { feature: 'Full request/response audit', arbiter: true,     litellm: 'partial', portkey: true,      diy: '~1 month'  },
+    { feature: 'MCP protocol native',        arbiter: true,      litellm: false,     portkey: false,     diy: 'depends'   },
+    { feature: 'Self-hosted',                arbiter: true,      litellm: true,      portkey: false,     diy: true        },
+  ]
+
+  function renderCell(val: CellVal): React.ReactNode {
+    if (val === true) return check
+    if (val === false) return cross
+    if (val === 'partial') return <span className="text-warning text-xs font-medium">Partial</span>
+    return <span className="text-muted text-xs">{val}</span>
+  }
+
+  return (
+    <section className="py-24 px-6 bg-surface/30">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl font-bold text-primary mb-4">How Arbiter compares</h2>
+          <div className="w-16 h-0.5 bg-gradient-to-r from-accent to-teal mx-auto mb-6" />
+          <p className="text-secondary text-base max-w-xl mx-auto">
+            LiteLLM and Portkey solve LLM routing. Arbiter solves MCP security.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-white/[0.08]">
+                <th className="text-left py-3 pr-6 text-secondary font-normal w-[45%]" />
+                <th className="py-3 px-4 text-center">
+                  <span className="text-accent-light font-semibold">Arbiter</span>
+                </th>
+                <th className="py-3 px-4 text-center text-secondary font-medium">LiteLLM</th>
+                <th className="py-3 px-4 text-center text-secondary font-medium">Portkey</th>
+                <th className="py-3 px-4 text-center text-secondary font-medium">DIY</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={row.feature} className={`border-b border-white/[0.05] ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                  <td className="py-3.5 pr-6 text-secondary">{row.feature}</td>
+                  <td className="py-3.5 px-4 text-center">{renderCell(row.arbiter)}</td>
+                  <td className="py-3.5 px-4 text-center">{renderCell(row.litellm)}</td>
+                  <td className="py-3.5 px-4 text-center">{renderCell(row.portkey)}</td>
+                  <td className="py-3.5 px-4 text-center">{renderCell(row.diy)}</td>
+                </tr>
+              ))}
+              <tr className="border-t border-accent/20 bg-accent/[0.04]">
+                <td className="py-3.5 pr-6 text-primary font-semibold">Cost</td>
+                <td className="py-3.5 px-4 text-center text-accent-light font-semibold text-xs">$0–$29/mo</td>
+                <td className="py-3.5 px-4 text-center text-secondary text-xs">Free/OSS</td>
+                <td className="py-3.5 px-4 text-center text-secondary text-xs">$49+/mo</td>
+                <td className="py-3.5 px-4 text-center text-secondary text-xs">$50k–90k eng</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -614,6 +698,7 @@ function Landing(): React.ReactElement {
       <div className="pt-14">
         <Hero />
         <Features />
+        <Comparison />
         <HowItWorks />
         <Pricing />
         <FAQ />
