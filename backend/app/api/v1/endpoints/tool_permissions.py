@@ -207,12 +207,16 @@ async def list_permission_history(
     if agent_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
 
+    where = (
+        ToolPermissionEvent.agent_id == agent_id,
+        ToolPermissionEvent.org_id == current_user.org_id,
+    )
     total = await db.scalar(
-        select(func.count(ToolPermissionEvent.id)).where(ToolPermissionEvent.agent_id == agent_id)
+        select(func.count(ToolPermissionEvent.id)).where(*where)
     ) or 0
     result = await db.execute(
         select(ToolPermissionEvent)
-        .where(ToolPermissionEvent.agent_id == agent_id)
+        .where(*where)
         .order_by(ToolPermissionEvent.occurred_at.desc())
         .offset(skip)
         .limit(limit)
