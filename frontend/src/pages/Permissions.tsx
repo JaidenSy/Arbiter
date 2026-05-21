@@ -386,27 +386,81 @@ function formatChanges(changes: Record<string, [unknown, unknown]>): string {
     .join(', ')
 }
 
+const ACTION_FILTERS = ['all', 'granted', 'revoked', 'updated'] as const
+type ActionFilter = typeof ACTION_FILTERS[number]
+
 interface HistoryPanelProps {
   agentId: string
 }
 
 function HistoryPanel({ agentId }: HistoryPanelProps): React.ReactElement {
+  const [actionFilter, setActionFilter] = useState<ActionFilter>('all')
+  const [sortAsc, setSortAsc] = useState(false)
+
   const { data: events, isLoading } = useQuery<ToolPermissionEvent[]>({
     queryKey: ['permissions-history', agentId],
     queryFn: () => fetchHistory(agentId),
     enabled: !!agentId,
   })
 
+  const filtered = (events ?? [])
+    .filter((e) => actionFilter === 'all' || e.action === actionFilter)
+    .sort((a, b) => {
+      const diff = new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime()
+      return sortAsc ? diff : -diff
+    })
+    .slice(0, 10)
+
+  const filterBtn = (f: ActionFilter) => {
+    const active = actionFilter === f
+    return (
+      <button
+        key={f}
+        type="button"
+        onClick={() => setActionFilter(f)}
+        className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-all ${
+          active
+            ? 'bg-accent/15 text-accent-light border border-accent/30'
+            : 'text-muted hover:text-secondary border border-transparent hover:border-white/[0.08]'
+        }`}
+      >
+        {f}
+      </button>
+    )
+  }
+
   return (
     <div className="mt-6">
-      <p className="text-muted text-xs font-semibold uppercase tracking-widest mb-3">Permission History</p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-muted text-xs font-semibold uppercase tracking-widest">Permission History</p>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            {ACTION_FILTERS.map(filterBtn)}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSortAsc((v) => !v)}
+            title={sortAsc ? 'Oldest first' : 'Newest first'}
+            className="ml-1 px-2.5 py-1 rounded-md text-xs text-muted hover:text-secondary border border-transparent hover:border-white/[0.08] transition-all flex items-center gap-1"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
+              {sortAsc
+                ? <><path d="M5 1v8M2 6l3 3 3-3"/></>
+                : <><path d="M5 9V1M2 4l3-3 3 3"/></>}
+            </svg>
+            {sortAsc ? 'Oldest' : 'Newest'}
+          </button>
+        </div>
+      </div>
       <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
         {isLoading ? (
           <div className="py-8 flex items-center justify-center">
             <div className="w-4 h-4 border-2 border-accent/40 border-t-accent rounded-full animate-spin" />
           </div>
-        ) : !events || events.length === 0 ? (
-          <p className="text-muted text-xs text-center py-8">No history yet.</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-muted text-xs text-center py-8">
+            {events?.length ? 'No events match the filter.' : 'No history yet.'}
+          </p>
         ) : (
           <table className="min-w-full">
             <thead>
@@ -419,7 +473,7 @@ function HistoryPanel({ agentId }: HistoryPanelProps): React.ReactElement {
               </tr>
             </thead>
             <tbody>
-              {events.map((e) => (
+              {filtered.map((e) => (
                 <tr key={e.id} className="border-b border-white/[0.04] last:border-0">
                   <td className="py-2.5 px-4">{actionBadge(e.action)}</td>
                   <td className="py-2.5 px-4 font-mono text-xs text-accent-light">{e.tool_name}</td>
