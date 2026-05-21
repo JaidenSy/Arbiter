@@ -226,10 +226,6 @@ def create_app() -> FastAPI:
     """Construct and configure the FastAPI application instance."""
     _configure_logging(settings.is_production)
 
-    # DX-02: disable interactive API docs in production to avoid exposing the schema.
-    _docs_url = None if settings.is_production else "/docs"
-    _redoc_url = None if settings.is_production else "/redoc"
-
     app = FastAPI(
         title="Arbiter",
         description=(
@@ -237,8 +233,8 @@ def create_app() -> FastAPI:
             "semantic caching, RBAC, and audit logging."
         ),
         version="0.1.0",
-        docs_url=_docs_url,
-        redoc_url=_redoc_url,
+        docs_url="/docs",
+        redoc_url="/redoc",
         lifespan=lifespan,
     )
 
