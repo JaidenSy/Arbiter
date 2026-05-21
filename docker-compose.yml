@@ -53,9 +53,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: >
-      sh -c "pip install 'PyJWT==2.9.0' 'pydantic[email]==2.9.2' 'authlib==1.3.2' 'itsdangerous==2.2.0' 'bcrypt==4.0.1' -q &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
     healthcheck:

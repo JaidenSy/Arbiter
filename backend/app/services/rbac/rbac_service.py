@@ -36,19 +36,24 @@ from app.db.models.tool_permission import ToolPermission
 logger = logging.getLogger(__name__)
 
 
+_RBAC_TTL = 30  # seconds
+
+
 class RBACService:
     """
     Manages and enforces tool-call permissions for agents.
     """
 
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, redis=None) -> None:
         """
-        Initialise with injected DB session.
+        Initialise with injected DB session and optional Redis client.
 
         Args:
-            db: Async SQLAlchemy session.
+            db:    Async SQLAlchemy session.
+            redis: Optional Redis client for permission caching (30s TTL).
         """
         self.db = db
+        self.redis = redis
 
     async def check_permission(
         self,
@@ -60,6 +65,7 @@ class RBACService:
         Return True if the agent has permission to call the tool.
 
         Checks both exact tool_name match and wildcard ``"*"`` in one query.
+        Result is cached in Redis for 30 seconds to reduce DB load on hot paths.
 
         Args:
             agent:         The authenticated agent.
@@ -69,6 +75,15 @@ class RBACService:
         Returns:
             bool: True if permitted, False otherwise.
         """
+        cache_key = f"rbac:{agent.id}:{mcp_server_id}:{tool_name}"
+        if self.redis is not None:
+            try:
+                cached = await self.redis.get(cache_key)
+                if cached is not None:
+                    return cached == b"1"
+            except Exception as exc:
+                logger.warning("rbac: Redis permission cache read failed: %s", exc)
+
         stmt = select(
             exists(
                 select(ToolPermission.id).where(
@@ -83,6 +98,13 @@ class RBACService:
         )
         result = await self.db.execute(stmt)
         permitted: bool = result.scalar()
+
+        if self.redis is not None:
+            try:
+                await self.redis.setex(cache_key, _RBAC_TTL, b"1" if permitted else b"0")
+            except Exception as exc:
+                logger.warning("rbac: Redis permission cache write failed: %s", exc)
+
         logger.debug(
             "rbac: agent=%s server=%s tool=%r permitted=%s",
             agent.id,

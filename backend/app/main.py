@@ -9,7 +9,9 @@ and teardown).
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import logging
+import uuid as _uuid_lib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
@@ -19,6 +21,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from sqlalchemy import delete, select, text, update
@@ -46,6 +49,64 @@ from app.db.models.session import Session, SessionEvent
 from app.services.plan.plan_limits import PlanLimitError, QuotaExceededError
 
 logger = logging.getLogger(__name__)
+
+# ── Request-ID context (OPS-03) ───────────────────────────────────────────────
+
+_request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "request_id", default=""
+)
+
+
+class _RequestIDFilter(logging.Filter):
+    """Inject request_id into every log record for structured log correlation."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.request_id = _request_id_var.get("")  # type: ignore[attr-defined]
+        return True
+
+
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """Generate a UUID per request; expose it on `X-Request-ID` response header."""
+
+    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+        req_id = request.headers.get("X-Request-ID") or str(_uuid_lib.uuid4())
+        _request_id_var.set(req_id)
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = req_id
+        return response
+
+
+# ── Logging setup (OPS-02) ────────────────────────────────────────────────────
+
+def _configure_logging(is_production: bool) -> None:
+    """
+    Set up structured JSON logging in production, plain text in development.
+
+    Attaches _RequestIDFilter to every handler so request_id is included in
+    every log record without requiring callers to pass it explicitly.
+    """
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    # Remove any handlers that uvicorn or Python may have already installed.
+    root.handlers = []
+
+    handler = logging.StreamHandler()
+    handler.addFilter(_RequestIDFilter())
+
+    if is_production:
+        from pythonjsonlogger import jsonlogger  # type: ignore[import]
+        formatter = jsonlogger.JsonFormatter(
+            "%(asctime)s %(name)s %(levelname)s %(message)s %(request_id)s",
+            rename_fields={"asctime": "timestamp", "levelname": "level", "name": "logger"},
+        )
+    else:
+        formatter = logging.Formatter(
+            "%(asctime)s [%(request_id)s] %(name)s %(levelname)s %(message)s"
+        )
+
+    handler.setFormatter(formatter)
+    root.addHandler(handler)
+
 
 _EVICTION_INTERVAL = 3600  # run every hour
 _SESSION_INACTIVITY_MINUTES = 30
@@ -163,6 +224,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def create_app() -> FastAPI:
     """Construct and configure the FastAPI application instance."""
+    _configure_logging(settings.is_production)
+
+    # DX-02: disable interactive API docs in production to avoid exposing the schema.
+    _docs_url = None if settings.is_production else "/docs"
+    _redoc_url = None if settings.is_production else "/redoc"
+
     app = FastAPI(
         title="Arbiter",
         description=(
@@ -170,10 +237,14 @@ def create_app() -> FastAPI:
             "semantic caching, RBAC, and audit logging."
         ),
         version="0.1.0",
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url=_docs_url,
+        redoc_url=_redoc_url,
         lifespan=lifespan,
     )
+
+    # ── Request-ID middleware (OPS-03) ────────────────────────────────────────
+    # Must be innermost (added last) so it wraps every request before CORS.
+    app.add_middleware(RequestIDMiddleware)
 
     # ── Session middleware (required by Authlib for OAuth2 state) ─────────────
     # Must be added before CORS so it wraps the full request lifecycle.
