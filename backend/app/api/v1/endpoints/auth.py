@@ -360,7 +360,7 @@ async def delete_me(
 # ── Email verification ────────────────────────────────────────────────────────
 
 
-@router.post("/send-verification", status_code=status.HTTP_204_NO_CONTENT, summary="Resend verification email")
+@router.post("/send-verification", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Resend verification email")
 async def resend_verification(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -437,7 +437,7 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
-@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT, summary="Request password reset email")
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Request password reset email")
 async def forgot_password(
     body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
@@ -452,7 +452,7 @@ async def forgot_password(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT, summary="Reset password using token")
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Reset password using token")
 async def reset_password(
     body: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),

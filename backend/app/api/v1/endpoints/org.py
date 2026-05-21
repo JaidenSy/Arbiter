@@ -181,7 +181,7 @@ async def update_member(
     return MemberResponse.model_validate(member)
 
 
-@router.delete("/org/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Remove a member")
+@router.delete("/org/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Remove a member")
 async def remove_member(
     member_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -274,7 +274,7 @@ async def create_invite(
     return InviteResponse.model_validate(invite)
 
 
-@router.delete("/org/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Cancel an invite")
+@router.delete("/org/invites/{invite_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Cancel an invite")
 async def cancel_invite(
     invite_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
