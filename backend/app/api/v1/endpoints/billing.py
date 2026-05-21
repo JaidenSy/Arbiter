@@ -62,7 +62,7 @@ class BillingStatus(BaseModel):
 class CheckoutRequest(BaseModel):
     """Request body for POST /billing/checkout."""
 
-    price_id: str  # Stripe Price ID from frontend config
+    return_url: str | None = None  # optional override for success/cancel base URL
 
 
 class PortalRequest(BaseModel):
@@ -151,7 +151,7 @@ async def get_billing_status(
         servers_limit=limits["max_mcp_servers"],
         vault_secrets_count=vault_secrets_count,
         vault_secrets_limit=limits["max_vault_secrets"],
-        has_active_subscription=org.stripe_subscription_id is not None,
+        has_active_subscription=org.stripe_subscription_id is not None and org.plan_tier == "pro",
     )
 
 
@@ -207,13 +207,19 @@ async def create_checkout(
             detail="Contact sales for enterprise billing",
         )
 
+    if not settings.stripe_pro_price_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Billing not configured",
+        )
+
     success_url = f"{settings.frontend_url}/settings?tab=billing&status=success"
     cancel_url = f"{settings.frontend_url}/settings?tab=billing"
 
     try:
         url = await billing_service.create_checkout_session(
             org=org,
-            price_id=body.price_id,
+            price_id=settings.stripe_pro_price_id,  # never accept price_id from client
             success_url=success_url,
             cancel_url=cancel_url,
         )
