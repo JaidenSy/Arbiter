@@ -16,7 +16,6 @@ import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import Toggle from '../components/Toggle'
 
-const STRIPE_PRO_PRICE_ID: string = import.meta.env.VITE_STRIPE_PRO_PRICE_ID ?? ''
 const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
 
 // ── Usage progress bar ────────────────────────────────────────────────────────
@@ -94,9 +93,7 @@ function BillingSection(): React.ReactElement {
   const checkoutMutation = useMutation({
     mutationFn: () =>
       authClient
-        .post<{ url: string }>('/billing/checkout', {
-          price_id: STRIPE_PRO_PRICE_ID,
-        })
+        .post<{ url: string }>('/billing/checkout', {})
         .then((r) => r.data.url),
     onSuccess: (url) => {
       window.location.href = url
