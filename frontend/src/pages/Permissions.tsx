@@ -17,11 +17,11 @@ import { useAuth } from '../context/AuthContext'
 
 // ── Data fetchers / mutators ───────────────────────────────────────────────────
 
-const fetchAgents = (): Promise<Agent[]> =>
-  authClient.get<Page<Agent>>('/agents').then((r) => r.data.items)
+const fetchAgents = (): Promise<Page<Agent>> =>
+  authClient.get<Page<Agent>>('/agents').then((r) => r.data)
 
-const fetchMCPServers = (): Promise<MCPServer[]> =>
-  authClient.get<Page<MCPServer>>('/mcp-servers').then((r) => r.data.items)
+const fetchMCPServers = (): Promise<Page<MCPServer>> =>
+  authClient.get<Page<MCPServer>>('/mcp-servers').then((r) => r.data)
 
 const fetchPermissions = (agentId: string): Promise<ToolPermission[]> =>
   authClient.get<Page<ToolPermission>>(`/agents/${agentId}/permissions`).then((r) => r.data.items)
@@ -690,17 +690,19 @@ function PermissionsTable({
 function Permissions(): React.ReactElement {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
 
-  const { data: agents } = useQuery<Agent[]>({
+  const { data: agentsPage } = useQuery<Page<Agent>>({
     queryKey: ['agents'],
     queryFn: fetchAgents,
   })
+  const agents = agentsPage?.items ?? []
 
-  const { data: servers = [] } = useQuery<MCPServer[]>({
+  const { data: serversPage } = useQuery<Page<MCPServer>>({
     queryKey: ['mcp-servers'],
     queryFn: fetchMCPServers,
   })
+  const servers = serversPage?.items ?? []
 
-  const selectedAgent = agents?.find((a) => a.id === selectedAgentId) ?? null
+  const selectedAgent = agents.find((a) => a.id === selectedAgentId) ?? null
 
   return (
     <div className="p-8 animate-fade-in">
@@ -716,7 +718,7 @@ function Permissions(): React.ReactElement {
             Agents
           </p>
           <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
-            {!agents || agents.length === 0 ? (
+            {agents.length === 0 ? (
               <div className="px-4 py-5 flex flex-col items-start gap-3">
                 <p className="text-secondary text-xs">No agents registered.</p>
                 <Link
