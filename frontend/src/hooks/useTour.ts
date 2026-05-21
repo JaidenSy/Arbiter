@@ -9,6 +9,8 @@ export function useTour(): { startTour: () => void } {
   const driverRef = useRef<ReturnType<typeof driver> | null>(null)
 
   const startTour = useCallback(() => {
+    // Mark seen immediately — onDestroyStarted doesn't fire on navigation/refresh
+    localStorage.setItem(TOUR_SEEN_KEY, '1')
     if (!driverRef.current) {
       driverRef.current = driver({
         showProgress: true,
@@ -18,7 +20,6 @@ export function useTour(): { startTour: () => void } {
         popoverClass: 'arbiter-tour-popover',
         steps: TOUR_STEPS,
         onDestroyStarted: () => {
-          localStorage.setItem(TOUR_SEEN_KEY, '1')
           driverRef.current?.destroy()
         },
       })
