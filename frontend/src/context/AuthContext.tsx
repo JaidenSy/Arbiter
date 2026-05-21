@@ -25,6 +25,7 @@ export interface AuthUser {
   has_password: boolean
   linked_providers: string[]
   avatar_url: string | null
+  is_verified: boolean
 }
 
 export interface AuthState {
@@ -76,6 +77,7 @@ interface MeResponse {
   has_password: boolean
   linked_providers: string[]
   avatar_url: string | null
+  is_verified: boolean
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }): React.ReactElement {

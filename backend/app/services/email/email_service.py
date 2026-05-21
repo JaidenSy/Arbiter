@@ -74,6 +74,16 @@ async def send_org_invite(to: str, invited_by: str, org_name: str, accept_url: s
     await send_email(to, f"You're invited to {org_name} on Arbiter", html, text)
 
 
+async def send_email_change_confirmation(to: str, confirm_url: str) -> None:
+    html = f"""
+<p>You requested to change your Arbiter email address.</p>
+<p><a href="{confirm_url}">Confirm your new email address</a></p>
+<p>This link expires in 24 hours. If you didn't request this, ignore this email — your current address remains active.</p>
+"""
+    text = f"Confirm your new Arbiter email: {confirm_url}\n\nExpires in 24 hours."
+    await send_email(to, "Confirm your new email address — Arbiter", html, text)
+
+
 async def send_payment_failed(to: str, org_name: str, portal_url: str) -> None:
     html = f"""
 <p>We were unable to process the payment for <strong>{org_name}</strong>'s Arbiter Pro subscription.</p>

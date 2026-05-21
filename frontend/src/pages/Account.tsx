@@ -50,6 +50,9 @@ export default function Account(): React.ReactElement {
   const { user, refreshUser, logout } = useAuth()
   const navigate = useNavigate()
 
+  const [resendingVerification, setResendingVerification] = useState(false)
+  const [resendMsg, setResendMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
   // Profile form
   const [displayName, setDisplayName] = useState(user?.display_name ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
@@ -73,17 +76,36 @@ export default function Account(): React.ReactElement {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
+  async function handleResendVerification(): Promise<void> {
+    setResendingVerification(true)
+    setResendMsg(null)
+    try {
+      await authClient.post('/auth/send-verification')
+      setResendMsg({ type: 'success', text: 'Verification email sent — check your inbox.' })
+    } catch {
+      setResendMsg({ type: 'error', text: 'Failed to send verification email.' })
+    } finally {
+      setResendingVerification(false)
+    }
+  }
+
   async function handleProfileSave(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     setProfileSaving(true)
     setProfileMsg(null)
+    const emailChanged = email !== user!.email
     try {
-      await authClient.patch('/auth/me', {
+      const res = await authClient.patch<{ pending_email_confirmation?: string | null }>('/auth/me', {
         display_name: displayName.trim() || null,
-        email: email !== user!.email ? email : undefined,
+        email: emailChanged ? email : undefined,
       })
       await refreshUser()
-      setProfileMsg({ type: 'success', text: 'Profile updated.' })
+      if (emailChanged && res.data.pending_email_confirmation) {
+        setEmail(user!.email) // reset field back to current confirmed email
+        setProfileMsg({ type: 'success', text: `Check ${res.data.pending_email_confirmation} for a confirmation link. Your email won't change until you click it.` })
+      } else {
+        setProfileMsg({ type: 'success', text: 'Profile updated.' })
+      }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
       setProfileMsg({ type: 'error', text: msg ?? 'Failed to update profile.' })
@@ -138,6 +160,32 @@ export default function Account(): React.ReactElement {
         <h1 className="gradient-text-purple text-xl font-bold">My Account</h1>
         <p className="text-secondary text-sm mt-1">Manage your profile, security, and account settings.</p>
       </div>
+
+      {/* ── Unverified email banner ── */}
+      {!user.is_verified && (
+        <div className="flex items-start gap-3 bg-warning/8 border border-warning/20 rounded-xl px-4 py-3">
+          <svg className="w-4 h-4 text-warning mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-warning text-sm font-medium">Email not verified</p>
+            <p className="text-warning/70 text-xs mt-0.5">Verify your email to unlock plan upgrades and secure your account.</p>
+            {resendMsg && (
+              <p className={`text-xs mt-1.5 ${resendMsg.type === 'success' ? 'text-success' : 'text-error'}`}>
+                {resendMsg.text}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleResendVerification()}
+            disabled={resendingVerification}
+            className="shrink-0 text-xs font-medium text-warning hover:text-white border border-warning/30 hover:border-warning/60 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {resendingVerification ? 'Sending…' : 'Resend'}
+          </button>
+        </div>
+      )}
 
       {/* ── Profile ── */}
       <Section title="Profile">

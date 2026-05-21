@@ -185,6 +185,12 @@ async def create_checkout(
             detail="Billing not configured",
         )
 
+    if not current_user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email address before upgrading",
+        )
+
     org = await db.get(Organization, current_user.org_id)
     if org is None:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found")
