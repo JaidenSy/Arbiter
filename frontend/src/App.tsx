@@ -11,8 +11,8 @@
  *   /vault       → Vault        (per-agent secret management, AES-256-GCM encrypted)
  *
  * Auth routes (no sidebar, no ProtectedRoute):
- *   /login       → Login page
- *   /register    → Register page
+ *   /login       → Landing + login modal pre-opened
+ *   /register    → Landing + register modal pre-opened
  *
  * Protected wizard (no sidebar):
  *   /onboarding  → Onboarding wizard (new users only)
@@ -23,6 +23,7 @@ import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import ProtectedRoute from './components/ProtectedRoute'
 import UpgradeModal from './components/UpgradeModal'
+import ErrorBoundary from './components/ErrorBoundary'
 import { useAuth } from './context/AuthContext'
 
 // ── Lazy page imports — each page becomes its own chunk ───────────────────────
@@ -35,8 +36,6 @@ const SessionTrace = lazy(() => import('./pages/SessionTrace'))
 const Settings     = lazy(() => import('./pages/Settings'))
 const Permissions  = lazy(() => import('./pages/Permissions'))
 const Vault        = lazy(() => import('./pages/Vault'))
-const Login        = lazy(() => import('./pages/Login'))
-const Register     = lazy(() => import('./pages/Register'))
 const Onboarding   = lazy(() => import('./pages/Onboarding'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback'))
 const Landing        = lazy(() => import('./pages/Landing'))
@@ -98,13 +97,13 @@ function RootRedirect(): React.ReactElement {
 
 function App(): React.ReactElement {
   return (
-    <>
+    <ErrorBoundary>
     <UpgradeModal />
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* ── Public routes (no sidebar) ──────────────────────────────────── */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Landing initialModal="login" />} />
+        <Route path="/register" element={<Landing initialModal="register" />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/docs" element={<Docs />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -201,7 +200,7 @@ function App(): React.ReactElement {
         />
       </Routes>
     </Suspense>
-    </>
+    </ErrorBoundary>
   )
 }
 

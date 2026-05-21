@@ -11,7 +11,9 @@
     "type-check": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug"
+    "test:e2e:debug": "playwright test --debug",
+    "test:staging": "playwright test --config=playwright.staging.config.ts",
+    "test:staging:ui": "playwright test --config=playwright.staging.config.ts --ui"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.59.0",
