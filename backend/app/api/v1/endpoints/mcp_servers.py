@@ -21,10 +21,11 @@ from urllib.parse import urlparse
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db, require_role
+from app.schemas.pagination import Page
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
 from app.db.models.user import User
@@ -201,7 +202,7 @@ async def create_mcp_server(
 
 @router.get(
     "",
-    response_model=list[MCPServerResponse],
+    response_model=Page[MCPServerResponse],
     summary="List all MCP servers",
 )
 async def list_mcp_servers(
@@ -209,7 +210,7 @@ async def list_mcp_servers(
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[MCPServerResponse]:
+) -> Page[MCPServerResponse]:
     """
     Return a paginated list of active MCP servers.
 
@@ -220,9 +221,14 @@ async def list_mcp_servers(
         _current: Auth guard.
 
     Returns:
-        list[MCPServerResponse]: Active servers ordered by created_at DESC.
+        Page[MCPServerResponse]: Active servers ordered by created_at DESC.
     """
     limit = min(limit, 200)
+    total = await db.scalar(
+        select(func.count(MCPServer.id)).where(
+            MCPServer.is_active.is_(True), MCPServer.org_id == current_user.org_id
+        )
+    ) or 0
     result = await db.execute(
         select(MCPServer)
         .where(MCPServer.is_active.is_(True), MCPServer.org_id == current_user.org_id)
@@ -231,7 +237,7 @@ async def list_mcp_servers(
         .limit(limit)
     )
     servers = result.scalars().all()
-    return [MCPServerResponse.model_validate(s) for s in servers]
+    return Page(items=[MCPServerResponse.model_validate(s) for s in servers], total=total, skip=skip, limit=limit)
 
 
 @router.get(

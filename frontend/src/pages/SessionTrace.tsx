@@ -14,7 +14,7 @@ import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "../api/client";
-import type { Agent, Session, SessionEvent } from "../api/types";
+import type { Agent, Session, SessionEvent, Page } from "../api/types";
 import JsonViewer from "../components/JsonViewer";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -308,12 +308,12 @@ function SessionTrace(): React.ReactElement {
     enabled: !!id,
   });
 
-  const { data: agents } = useQuery<Agent[]>({
+  const { data: agentsPage } = useQuery<Page<Agent>>({
     queryKey: ["agents"],
-    queryFn: () => authClient.get<Agent[]>("/agents").then((r) => r.data),
+    queryFn: () => authClient.get<Page<Agent>>("/agents").then((r) => r.data),
   });
 
-  const agent = agents?.find((a) => a.id === session?.agent_id);
+  const agent = agentsPage?.items.find((a) => a.id === session?.agent_id);
   const events: SessionEvent[] = session?.events ?? [];
 
   // ── Derived stats ────────────────────────────────────────────────────────────

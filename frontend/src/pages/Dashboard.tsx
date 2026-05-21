@@ -20,7 +20,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { authClient } from "../api/client";
-import type { Agent, DashboardStats, Session, StatsHistoryResponse } from "../api/types";
+import type { Agent, DashboardStats, Page, Session, StatsHistoryResponse } from "../api/types";
 import UsageStrip from "../components/UsageStrip";
 import { useAuth } from "../context/AuthContext";
 
@@ -31,11 +31,11 @@ const fetchStats = (): Promise<DashboardStats> =>
 
 const fetchRecentSessions = (): Promise<Session[]> =>
   authClient
-    .get<Session[]>("/sessions", { params: { limit: 10 } })
-    .then((r) => r.data);
+    .get<Page<Session>>("/sessions", { params: { limit: 10 } })
+    .then((r) => r.data.items);
 
 const fetchAgents = (): Promise<Agent[]> =>
-  authClient.get<Agent[]>("/agents").then((r) => r.data);
+  authClient.get<Page<Agent>>("/agents").then((r) => r.data.items);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

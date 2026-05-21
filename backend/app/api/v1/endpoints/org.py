@@ -22,12 +22,13 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from itsdangerous import URLSafeTimedSerializer
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security as _sec
 from app.core.config import settings
 from app.core.dependencies import get_current_user, get_db, require_role
+from app.schemas.pagination import Page
 from app.db.models.org_invite import OrgInvite
 from app.db.models.organization import Organization
 from app.db.models.user import User
@@ -129,17 +130,24 @@ async def rename_org(
 # ── Members ───────────────────────────────────────────────────────────────────
 
 
-@router.get("/org/members", response_model=list[MemberResponse], summary="List org members")
+@router.get("/org/members", response_model=Page[MemberResponse], summary="List org members")
 async def list_members(
+    skip: int = 0,
+    limit: int = 100,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[MemberResponse]:
+) -> Page[MemberResponse]:
+    total = await db.scalar(
+        select(func.count(User.id)).where(User.org_id == current_user.org_id, User.is_active.is_(True))
+    ) or 0
     result = await db.execute(
         select(User)
         .where(User.org_id == current_user.org_id, User.is_active.is_(True))
         .order_by(User.created_at.asc())
+        .offset(skip)
+        .limit(limit)
     )
-    return [MemberResponse.model_validate(u) for u in result.scalars().all()]
+    return Page(items=[MemberResponse.model_validate(u) for u in result.scalars().all()], total=total, skip=skip, limit=limit)
 
 
 @router.patch("/org/members/{member_id}", response_model=MemberResponse, summary="Update a member's role")
@@ -204,17 +212,26 @@ async def remove_member(
 # ── Invites ───────────────────────────────────────────────────────────────────
 
 
-@router.get("/org/invites", response_model=list[InviteResponse], summary="List pending invites")
+@router.get("/org/invites", response_model=Page[InviteResponse], summary="List pending invites")
 async def list_invites(
+    skip: int = 0,
+    limit: int = 100,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("owner", "admin")),
-) -> list[InviteResponse]:
+) -> Page[InviteResponse]:
+    total = await db.scalar(
+        select(func.count(OrgInvite.id)).where(
+            OrgInvite.org_id == current_user.org_id, OrgInvite.accepted_at.is_(None)
+        )
+    ) or 0
     result = await db.execute(
         select(OrgInvite)
         .where(OrgInvite.org_id == current_user.org_id, OrgInvite.accepted_at.is_(None))
         .order_by(OrgInvite.created_at.desc())
+        .offset(skip)
+        .limit(limit)
     )
-    return [InviteResponse.model_validate(i) for i in result.scalars().all()]
+    return Page(items=[InviteResponse.model_validate(i) for i in result.scalars().all()], total=total, skip=skip, limit=limit)
 
 
 @router.post("/org/invites", response_model=InviteResponse, status_code=status.HTTP_201_CREATED, summary="Invite a new member")
