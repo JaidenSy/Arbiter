@@ -2,13 +2,13 @@
  * Arbiter — Dashboard page.
  *
  * Landing page showing a high-level overview of gateway activity:
- *   - 4 stat metrics (agents, servers, tool calls, cache hit rate)
+ *   - 5 stat metrics (agents, servers, tool calls, cache hit rate, error rate)
  *   - Area chart — real historical data from /stats/history with 7d/24h toggle
  *   - Recent sessions table (last 10, click-through to /sessions)
  */
 
 import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart,
@@ -55,6 +55,12 @@ function cacheRateColorClass(rate: number): string {
   return "text-error";
 }
 
+function errorRateColorClass(rate: number): string {
+  if (rate === 0) return "text-success";
+  if (rate < 0.05) return "text-warning";
+  return "text-error";
+}
+
 function getGreeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
@@ -78,6 +84,7 @@ interface StatMetricProps {
   valueClass?: string;
   trend?: "up" | "down" | "neutral";
   accent?: "purple" | "teal";
+  to?: string;
 }
 
 function StatMetric({
@@ -86,10 +93,10 @@ function StatMetric({
   valueClass = "text-primary",
   trend,
   accent = "purple",
+  to,
 }: StatMetricProps): React.ReactElement {
-  return (
-    <div className={`flex-1 px-6 py-5 group hover:bg-white/[0.02] transition-all duration-150 relative overflow-hidden`}>
-      {/* Subtle corner glow on hover */}
+  const inner = (
+    <>
       <div className={`absolute -top-6 -right-6 w-16 h-16 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${accent === 'teal' ? 'bg-teal/20' : 'bg-accent/15'}`} />
       <p className="text-muted text-xs font-mono tracking-wider uppercase mb-2 relative">
         {label}
@@ -102,7 +109,20 @@ function StatMetric({
           </span>
         )}
       </div>
-    </div>
+      {to && (
+        <p className="text-muted text-[10px] font-mono mt-2 opacity-0 group-hover:opacity-100 transition-opacity relative">
+          View all →
+        </p>
+      )}
+    </>
+  );
+
+  const cls = `flex-1 px-6 py-5 group hover:bg-white/[0.02] transition-all duration-150 relative overflow-hidden ${to ? 'cursor-pointer' : ''}`;
+
+  return to ? (
+    <Link to={to} className={cls}>{inner}</Link>
+  ) : (
+    <div className={cls}>{inner}</div>
   );
 }
 
@@ -170,13 +190,8 @@ function Dashboard(): React.ReactElement {
     ? `${(stats.error_rate_today * 100).toFixed(1)}%`
     : "—%";
 
-  function errorRateColorClass(rate: number): string {
-    if (rate === 0) return "text-success";
-    if (rate < 0.05) return "text-warning";
-    return "text-error";
-  }
-
   const userName = user?.email?.split('@')[0] ?? 'there';
+  const isNewUser = !statsLoading && stats?.agents_count === 0;
 
   return (
     <div>
@@ -191,6 +206,29 @@ function Dashboard(): React.ReactElement {
           <p className="text-secondary text-sm mt-1">{formatDate()}</p>
         </div>
 
+        {/* Zero-state CTA for new users */}
+        {isNewUser && (
+          <div className="mb-6 flex items-center gap-4 bg-accent/5 border border-accent/20 rounded-xl px-5 py-4">
+            <div className="w-9 h-9 rounded-xl bg-accent/15 flex items-center justify-center flex-shrink-0">
+              <svg className="text-accent-light" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <path d="M8 21h8M12 17v4"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-primary text-sm font-medium">Register your first agent to get started</p>
+              <p className="text-secondary text-xs mt-0.5">Agents route tool calls through Arbiter and get a scoped API key.</p>
+            </div>
+            <Link
+              to="/agents"
+              className="flex-shrink-0 bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+            >
+              Register Agent →
+            </Link>
+          </div>
+        )}
+
         {/* Stat strip */}
         <div className="flex border border-white/[0.07] rounded-xl mb-6 divide-x divide-white/[0.07] overflow-hidden bg-surface glow-accent">
           <StatMetric
@@ -198,17 +236,20 @@ function Dashboard(): React.ReactElement {
             value={statsLoading ? "…" : (stats?.agents_count ?? "—")}
             trend="up"
             accent="purple"
+            to="/agents"
           />
           <StatMetric
             label="MCP Servers"
             value={statsLoading ? "…" : (stats?.servers_count ?? "—")}
             accent="purple"
+            to="/mcp-servers"
           />
           <StatMetric
             label="Tool Calls Today"
             value={statsLoading ? "…" : (stats?.tool_calls_today ?? "—")}
             trend="up"
             accent="purple"
+            to="/sessions"
           />
           <StatMetric
             label="Cache Hit Rate"
@@ -241,20 +282,33 @@ function Dashboard(): React.ReactElement {
               <span className="text-primary text-sm font-semibold">Activity</span>
               <p className="text-secondary text-xs mt-0.5">Tool calls & cache hits over time</p>
             </div>
-            <div className="inline-flex border border-white/[0.08] rounded-lg overflow-hidden bg-elevated/50">
-              {(["7d", "24h"] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`px-3.5 py-1.5 text-xs font-medium transition-all duration-150 focus:outline-none ${
-                    period === p
-                      ? "bg-accent/15 text-accent-light border-accent/30"
-                      : "text-muted hover:text-secondary hover:bg-elevated/80"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
+            <div className="flex items-center gap-4">
+              {/* Chart legend */}
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5 text-xs text-muted font-mono">
+                  <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0" />
+                  Tool Calls
+                </span>
+                <span className="flex items-center gap-1.5 text-xs text-muted font-mono">
+                  <span className="w-2 h-2 rounded-full bg-teal flex-shrink-0" />
+                  Cache Hits
+                </span>
+              </div>
+              <div className="inline-flex border border-white/[0.08] rounded-lg overflow-hidden bg-elevated/50">
+                {(["7d", "24h"] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    className={`px-3.5 py-1.5 text-xs font-medium transition-all duration-150 focus:outline-none ${
+                      period === p
+                        ? "bg-accent/15 text-accent-light border-accent/30"
+                        : "text-muted hover:text-secondary hover:bg-elevated/80"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -345,6 +399,12 @@ function Dashboard(): React.ReactElement {
               <h2 className="text-primary text-sm font-semibold">Recent Sessions</h2>
               <p className="text-secondary text-xs mt-0.5">Latest agent activity</p>
             </div>
+            <Link
+              to="/sessions"
+              className="text-xs text-muted hover:text-accent-light font-mono transition-colors"
+            >
+              View all →
+            </Link>
           </div>
 
           {sessionsLoading ? (
@@ -379,10 +439,10 @@ function Dashboard(): React.ReactElement {
                 </tr>
               </thead>
               <tbody>
-                {sessions.map((session, idx) => (
+                {sessions.map((session) => (
                   <tr
                     key={session.id}
-                    className={`cursor-pointer hover:bg-white/[0.025] transition-colors group ${idx % 2 === 0 ? '' : 'bg-white/[0.01]'}`}
+                    className="cursor-pointer hover:bg-white/[0.025] transition-colors group border-b border-white/[0.04] last:border-0"
                     onClick={() => navigate(`/sessions/${session.id}`)}
                   >
                     <td className="py-3 px-6 text-sm font-mono text-accent-light group-hover:text-white transition-colors">

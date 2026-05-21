@@ -1,43 +1,24 @@
-"""add org_id to sessions and session_events
+"""[stub] add_org_id_to_sessions
 
 Revision ID: 009
 Revises: 008
-Create Date: 2026-05-14
+Create Date: squashed
+
+No-op stub retained so Alembic can navigate from any old DB version
+to the squashed baseline (013).  The real DDL lives in 001_baseline.py.
 """
 
 from __future__ import annotations
 
-from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
-
-revision = "009"
-down_revision = "008"
-branch_labels = None
-depends_on = None
+revision: str = "009"
+down_revision: str | None = "008"
+branch_labels: str | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "sessions",
-        sa.Column(
-            "org_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("organizations.id", ondelete="CASCADE"),
-            nullable=True,
-        ),
-    )
-    op.add_column(
-        "session_events",
-        sa.Column(
-            "org_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("organizations.id", ondelete="CASCADE"),
-            nullable=True,
-        ),
-    )
+    pass
 
 
 def downgrade() -> None:
-    op.drop_column("session_events", "org_id")
-    op.drop_column("sessions", "org_id")
+    pass

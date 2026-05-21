@@ -1,18 +1,14 @@
-"""add_display_name_to_users
+"""[stub] add_display_name_to_users
 
 Revision ID: 004
 Revises: 003
-Create Date: 2026-05-14
+Create Date: squashed
 
-Adds a nullable display_name column to the users table.
-SSO users default to their provider name; password users set it on the
-account page.  Null means "not set — fall back to email prefix in the UI."
+No-op stub retained so Alembic can navigate from any old DB version
+to the squashed baseline (013).  The real DDL lives in 001_baseline.py.
 """
 
 from __future__ import annotations
-
-from alembic import op
-import sqlalchemy as sa
 
 revision: str = "004"
 down_revision: str | None = "003"
@@ -21,11 +17,8 @@ depends_on: str | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "users",
-        sa.Column("display_name", sa.String(64), nullable=True),
-    )
+    pass
 
 
 def downgrade() -> None:
-    op.drop_column("users", "display_name")
+    pass

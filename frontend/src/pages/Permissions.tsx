@@ -10,9 +10,10 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
-import type { Agent, MCPServer, ToolPermission, ToolPermissionCreate } from '../api/types'
+import type { Agent, MCPServer, ToolPermission, ToolPermissionCreate, ToolPermissionUpdate } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { useAuth } from '../context/AuthContext'
 
 // ── Data fetchers / mutators ───────────────────────────────────────────────────
 
@@ -45,7 +46,30 @@ const revokePermission = ({
 }): Promise<void> =>
   authClient.delete(`/agents/${agentId}/permissions/${permissionId}`).then(() => undefined)
 
+const updatePermission = ({
+  agentId,
+  permissionId,
+  payload,
+}: {
+  agentId: string
+  permissionId: string
+  payload: ToolPermissionUpdate
+}): Promise<ToolPermission> =>
+  authClient
+    .patch<ToolPermission>(`/agents/${agentId}/permissions/${permissionId}`, payload)
+    .then((r) => r.data)
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+function extractApiError(err: unknown, fallback: string): string {
+  const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail) && detail.length > 0) {
+    const msg: unknown = (detail[0] as { msg?: unknown }).msg
+    if (typeof msg === 'string') return msg.replace(/^Value error, /, '')
+  }
+  return fallback
+}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
@@ -71,17 +95,16 @@ function GrantModal({
   servers,
 }: GrantModalProps): React.ReactElement | null {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   const [mcpServerId, setMcpServerId] = useState('')
   const [toolName, setToolName] = useState('')
-  const [grantedBy, setGrantedBy] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   React.useEffect(() => {
     if (isOpen) {
       setMcpServerId(servers.length > 0 ? servers[0].id : '')
       setToolName('')
-      setGrantedBy('')
       setError(null)
     }
   }, [isOpen, servers])
@@ -93,11 +116,11 @@ function GrantModal({
       onClose()
     },
     onError: (err: unknown) => {
-      const status = (err as { response?: { status?: number } })?.response?.status
-      if (status === 409) {
+      const httpStatus = (err as { response?: { status?: number } })?.response?.status
+      if (httpStatus === 409) {
         setError('This permission already exists.')
       } else {
-        setError('Failed to grant permission. Please try again.')
+        setError(extractApiError(err, 'Failed to grant permission. Please try again.'))
       }
     },
   })
@@ -111,7 +134,6 @@ function GrantModal({
       payload: {
         mcp_server_id: mcpServerId,
         tool_name: toolName.trim(),
-        granted_by: grantedBy.trim() || null,
       },
     })
   }
@@ -168,17 +190,10 @@ function GrantModal({
         </div>
 
         <div>
-          <label htmlFor="perm-granted-by" className={labelClass}>
-            Granted By
-          </label>
-          <input
-            id="perm-granted-by"
-            type="text"
-            value={grantedBy}
-            onChange={(e) => setGrantedBy(e.target.value)}
-            placeholder="your name or team"
-            className={inputClass}
-          />
+          <label className={labelClass}>Granted By</label>
+          <div className="px-3 py-2 bg-base border border-white/[0.07] rounded-lg text-sm text-secondary">
+            {user?.display_name ?? user?.email ?? '—'}
+          </div>
         </div>
 
         {error && (
@@ -209,12 +224,130 @@ function GrantModal({
   )
 }
 
+// ── Edit Permission Modal ──────────────────────────────────────────────────────
+
+interface EditModalProps {
+  isOpen: boolean
+  onClose: () => void
+  agentId: string
+  permission: ToolPermission | null
+}
+
+function EditModal({ isOpen, onClose, agentId, permission }: EditModalProps): React.ReactElement | null {
+  const queryClient = useQueryClient()
+
+  const [rateLimit, setRateLimit] = useState<string>('')
+  const [cacheTtl, setCacheTtl] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (isOpen && permission) {
+      setRateLimit(permission.rate_limit_per_minute != null ? String(permission.rate_limit_per_minute) : '')
+      setCacheTtl(permission.cache_ttl_seconds != null ? String(permission.cache_ttl_seconds) : '')
+      setError(null)
+    }
+  }, [isOpen, permission])
+
+  const mutation = useMutation({
+    mutationFn: updatePermission,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
+      onClose()
+    },
+    onError: (err: unknown) => {
+      setError(extractApiError(err, 'Failed to update permission.'))
+    },
+  })
+
+  const handleSubmit = (e: React.FormEvent): void => {
+    e.preventDefault()
+    if (!permission) return
+    setError(null)
+    mutation.mutate({
+      agentId,
+      permissionId: permission.id,
+      payload: {
+        rate_limit_per_minute: rateLimit.trim() !== '' ? Number(rateLimit) : null,
+        cache_ttl_seconds: cacheTtl.trim() !== '' ? Number(cacheTtl) : null,
+      },
+    })
+  }
+
+  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all font-mono"
+  const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit Permission">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="bg-base border border-white/[0.07] rounded-lg px-3 py-2 space-y-0.5">
+          <p className="text-xs text-muted">Tool</p>
+          <p className="text-sm font-mono text-accent-light">{permission?.tool_name ?? '—'}</p>
+        </div>
+
+        <div>
+          <label htmlFor="edit-rate-limit" className={labelClass}>
+            Rate Limit <span className="text-muted normal-case font-normal">(calls/min — leave blank for unlimited)</span>
+          </label>
+          <input
+            id="edit-rate-limit"
+            type="number"
+            min={1}
+            value={rateLimit}
+            onChange={(e) => setRateLimit(e.target.value)}
+            placeholder="Unlimited"
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="edit-cache-ttl" className={labelClass}>
+            Cache TTL <span className="text-muted normal-case font-normal">(seconds — leave blank for global default)</span>
+          </label>
+          <input
+            id="edit-cache-ttl"
+            type="number"
+            min={1}
+            value={cacheTtl}
+            onChange={(e) => setCacheTtl(e.target.value)}
+            placeholder="Global default"
+            className={inputClass}
+          />
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
+            <p className="text-error text-xs">{error}</p>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-white/[0.08] hover:border-white/[0.15]"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={mutation.isPending}
+            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+          >
+            {mutation.isPending ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
 // ── Skeleton rows ──────────────────────────────────────────────────────────────
 
 function SkeletonRow(): React.ReactElement {
   return (
     <tr className="border-b border-white/[0.05]">
-      {[5, 4, 4, 4, 2].map((w, i) => (
+      {[5, 4, 4, 4, 3, 3, 2].map((w, i) => (
         <td key={i} className="py-3 px-4">
           <div className="skeleton-shimmer h-4 rounded" style={{ width: `${w * 14}px` }} />
         </td>
@@ -239,6 +372,7 @@ function PermissionsTable({
   const queryClient = useQueryClient()
 
   const [grantOpen, setGrantOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<ToolPermission | null>(null)
   const [revokeTarget, setRevokeTarget] = useState<ToolPermission | null>(null)
 
   const { data: permissions, isLoading } = useQuery<ToolPermission[]>({
@@ -295,6 +429,8 @@ function PermissionsTable({
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Tool</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Granted At</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Granted By</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Rate Limit</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Cache TTL</th>
               <th className="py-3 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -307,7 +443,7 @@ function PermissionsTable({
               </>
             ) : !permissions || permissions.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-20 px-4 text-center">
+                <td colSpan={7} className="py-20 px-4 text-center">
                   <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
                     <svg className="text-accent-light" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                       <rect x="3" y="11" width="18" height="11" rx="1"/>
@@ -319,10 +455,10 @@ function PermissionsTable({
                 </td>
               </tr>
             ) : (
-              permissions.map((perm, idx) => (
+              permissions.map((perm) => (
                 <tr
                   key={perm.id}
-                  className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-colors ${idx % 2 === 1 ? 'bg-white/[0.01]' : ''}`}
+                  className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-colors ${''}`}
                 >
                   <td className="py-3 px-4 text-sm text-primary font-medium">
                     {serverName(perm.mcp_server_id)}
@@ -344,14 +480,33 @@ function PermissionsTable({
                   <td className="py-3 px-4 text-xs text-secondary">
                     {perm.granted_by ?? <span className="text-muted italic">—</span>}
                   </td>
+                  <td className="py-3 px-4 font-mono text-xs text-muted">
+                    {perm.rate_limit_per_minute != null
+                      ? <span className="text-primary">{perm.rate_limit_per_minute}/min</span>
+                      : <span className="italic">unlimited</span>}
+                  </td>
+                  <td className="py-3 px-4 font-mono text-xs text-muted">
+                    {perm.cache_ttl_seconds != null
+                      ? <span className="text-primary">{perm.cache_ttl_seconds}s</span>
+                      : <span className="italic">default</span>}
+                  </td>
                   <td className="py-3 px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setRevokeTarget(perm)}
-                      className="opacity-0 group-hover:opacity-100 text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                    >
-                      Revoke
-                    </button>
+                    <div className="inline-flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => setEditTarget(perm)}
+                        className="text-secondary hover:text-primary hover:bg-white/[0.06] border border-transparent hover:border-white/[0.1] px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRevokeTarget(perm)}
+                        className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      >
+                        Revoke
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -365,6 +520,13 @@ function PermissionsTable({
         onClose={() => setGrantOpen(false)}
         agentId={agentId}
         servers={servers}
+      />
+
+      <EditModal
+        isOpen={editTarget !== null}
+        onClose={() => setEditTarget(null)}
+        agentId={agentId}
+        permission={editTarget}
       />
 
       <ConfirmDialog

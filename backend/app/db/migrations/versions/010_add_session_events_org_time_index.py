@@ -1,27 +1,24 @@
-"""add composite index on session_events(org_id, occurred_at)
+"""[stub] add_session_events_org_time_index
 
 Revision ID: 010
 Revises: 009
-Create Date: 2026-05-14
+Create Date: squashed
+
+No-op stub retained so Alembic can navigate from any old DB version
+to the squashed baseline (013).  The real DDL lives in 001_baseline.py.
 """
 
 from __future__ import annotations
 
-from alembic import op
-
-revision = "010"
-down_revision = "009"
-branch_labels = None
-depends_on = None
+revision: str = "010"
+down_revision: str | None = "009"
+branch_labels: str | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:
-    op.create_index(
-        "ix_session_events_org_occurred",
-        "session_events",
-        ["org_id", "occurred_at"],
-    )
+    pass
 
 
 def downgrade() -> None:
-    op.drop_index("ix_session_events_org_occurred", table_name="session_events")
+    pass

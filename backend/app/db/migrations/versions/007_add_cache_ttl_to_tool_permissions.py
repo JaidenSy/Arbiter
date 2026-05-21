@@ -1,27 +1,24 @@
-"""add cache_ttl_seconds to tool_permissions
+"""[stub] add_cache_ttl_to_tool_permissions
 
 Revision ID: 007
 Revises: 006
-Create Date: 2026-05-14
+Create Date: squashed
+
+No-op stub retained so Alembic can navigate from any old DB version
+to the squashed baseline (013).  The real DDL lives in 001_baseline.py.
 """
 
 from __future__ import annotations
 
-from alembic import op
-import sqlalchemy as sa
-
-revision = "007"
-down_revision = "006"
-branch_labels = None
-depends_on = None
+revision: str = "007"
+down_revision: str | None = "006"
+branch_labels: str | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "tool_permissions",
-        sa.Column("cache_ttl_seconds", sa.Integer(), nullable=True),
-    )
+    pass
 
 
 def downgrade() -> None:
-    op.drop_column("tool_permissions", "cache_ttl_seconds")
+    pass

@@ -75,12 +75,20 @@ export interface ToolPermission {
   tool_name: string;
   granted_at: string;
   granted_by: string | null;
+  rate_limit_per_minute: number | null;
+  cache_ttl_seconds: number | null;
 }
 
 export interface ToolPermissionCreate {
   mcp_server_id: string
   tool_name: string
-  granted_by?: string | null
+  rate_limit_per_minute?: number | null
+  cache_ttl_seconds?: number | null
+}
+
+export interface ToolPermissionUpdate {
+  rate_limit_per_minute: number | null
+  cache_ttl_seconds: number | null
 }
 
 export interface VaultSecret {

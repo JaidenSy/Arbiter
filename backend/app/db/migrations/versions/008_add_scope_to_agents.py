@@ -1,32 +1,24 @@
-"""add scope to agents
+"""[stub] add_scope_to_agents
 
 Revision ID: 008
 Revises: 007
-Create Date: 2026-05-14
+Create Date: squashed
+
+No-op stub retained so Alembic can navigate from any old DB version
+to the squashed baseline (013).  The real DDL lives in 001_baseline.py.
 """
 
 from __future__ import annotations
 
-from alembic import op
-import sqlalchemy as sa
-
-revision = "008"
-down_revision = "007"
-branch_labels = None
-depends_on = None
+revision: str = "008"
+down_revision: str | None = "007"
+branch_labels: str | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "agents",
-        sa.Column(
-            "scope",
-            sa.String(32),
-            nullable=False,
-            server_default="full",
-        ),
-    )
+    pass
 
 
 def downgrade() -> None:
-    op.drop_column("agents", "scope")
+    pass

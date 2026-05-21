@@ -135,7 +135,7 @@ export default function Account(): React.ReactElement {
     <div className="max-w-2xl mx-auto px-6 py-10 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-primary">My Account</h1>
+        <h1 className="gradient-text-purple text-xl font-bold">My Account</h1>
         <p className="text-secondary text-sm mt-1">Manage your profile, security, and account settings.</p>
       </div>
 

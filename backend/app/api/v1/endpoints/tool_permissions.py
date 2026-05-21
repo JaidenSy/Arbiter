@@ -53,6 +53,21 @@ class ToolPermissionCreate(BaseModel):
     )
 
 
+class ToolPermissionUpdate(BaseModel):
+    """Request body for updating rate limits on an existing permission."""
+
+    rate_limit_per_minute: int | None = Field(
+        None,
+        ge=1,
+        description="Max calls per minute. Null = unlimited.",
+    )
+    cache_ttl_seconds: int | None = Field(
+        None,
+        ge=1,
+        description="Cache TTL override in seconds. Null = global default.",
+    )
+
+
 class ToolPermissionResponse(BaseModel):
     """Response schema for a tool permission record."""
 
@@ -132,6 +147,8 @@ async def create_tool_permission(
         tool_name=body.tool_name,
         rate_limit_per_minute=body.rate_limit_per_minute,
         cache_ttl_seconds=body.cache_ttl_seconds,
+        granted_by=current_user.display_name or current_user.email,
+        granted_by_user_id=current_user.id,
     )
     db.add(permission)
 
@@ -146,7 +163,6 @@ async def create_tool_permission(
                 f"tool {body.tool_name!r} already exists"
             ),
         ) from exc
-
     await db.refresh(permission)
     return ToolPermissionResponse.model_validate(permission)
 
@@ -188,6 +204,43 @@ async def list_tool_permissions(
     result = await db.execute(select(ToolPermission).where(ToolPermission.agent_id == agent_id))
     permissions = result.scalars().all()
     return [ToolPermissionResponse.model_validate(p) for p in permissions]
+
+
+@router.patch(
+    "/{agent_id}/permissions/{permission_id}",
+    response_model=ToolPermissionResponse,
+    summary="Update rate limits on a tool permission",
+)
+async def update_tool_permission(
+    agent_id: uuid.UUID,
+    permission_id: uuid.UUID,
+    body: ToolPermissionUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("owner", "admin")),
+) -> ToolPermissionResponse:
+    """
+    Update rate_limit_per_minute and cache_ttl_seconds on an existing permission.
+    Pass null to remove the limit.
+    """
+    result = await db.execute(
+        select(ToolPermission).where(
+            ToolPermission.id == permission_id,
+            ToolPermission.agent_id == agent_id,
+        )
+    )
+    permission = result.scalar_one_or_none()
+    if permission is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Permission {permission_id} not found for agent {agent_id}",
+        )
+
+    permission.rate_limit_per_minute = body.rate_limit_per_minute
+    permission.cache_ttl_seconds = body.cache_ttl_seconds
+
+    await db.commit()
+    await db.refresh(permission)
+    return ToolPermissionResponse.model_validate(permission)
 
 
 @router.delete(

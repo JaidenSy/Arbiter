@@ -1,27 +1,24 @@
-"""add is_verified to users
+"""[stub] add_is_verified_to_users
 
 Revision ID: 011
 Revises: 010
-Create Date: 2026-05-15
+Create Date: squashed
+
+No-op stub retained so Alembic can navigate from any old DB version
+to the squashed baseline (013).  The real DDL lives in 001_baseline.py.
 """
 
 from __future__ import annotations
 
-from alembic import op
-import sqlalchemy as sa
-
-revision = "011"
-down_revision = "010"
-branch_labels = None
-depends_on = None
+revision: str = "011"
+down_revision: str | None = "010"
+branch_labels: str | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "users",
-        sa.Column("is_verified", sa.Boolean, nullable=False, server_default="false"),
-    )
+    pass
 
 
 def downgrade() -> None:
-    op.drop_column("users", "is_verified")
+    pass
