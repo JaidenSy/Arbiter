@@ -35,11 +35,18 @@ def _add_col_if_missing(table: str, col_def: str) -> None:
 
 
 def _add_constraint_if_missing(ddl: str) -> None:
-    """Wrap a constraint DDL in a DO-block that ignores duplicate_object."""
+    """Wrap a constraint DDL in a DO-block that ignores already-exists errors.
+
+    Catches both duplicate_object (42710) for named constraints and
+    duplicate_table (42P07) which PostgreSQL raises when a UNIQUE constraint's
+    backing index already exists independently.
+    """
     op.execute(f"""
         DO $$ BEGIN
             {ddl};
-        EXCEPTION WHEN duplicate_object THEN NULL;
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+            WHEN duplicate_table  THEN NULL;
         END $$;
     """)
 
