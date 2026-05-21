@@ -44,8 +44,9 @@ const Docs           = lazy(() => import('./pages/Docs'))
 const Account        = lazy(() => import('./pages/Account'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const ResetPassword  = lazy(() => import('./pages/ResetPassword'))
-const VerifyEmail    = lazy(() => import('./pages/VerifyEmail'))
-const AcceptInvite   = lazy(() => import('./pages/AcceptInvite'))
+const VerifyEmail         = lazy(() => import('./pages/VerifyEmail'))
+const ConfirmEmailChange  = lazy(() => import('./pages/ConfirmEmailChange'))
+const AcceptInvite        = lazy(() => import('./pages/AcceptInvite'))
 const Members        = lazy(() => import('./pages/Members'))
 
 // ── Shared loading fallback ───────────────────────────────────────────────────
@@ -109,6 +110,7 @@ function App(): React.ReactElement {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/confirm-email-change" element={<ConfirmEmailChange />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
 
         {/* ── Protected onboarding (no sidebar) ───────────────────────────── */}

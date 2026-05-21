@@ -8,9 +8,11 @@
  */
 
 import React, { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
 import type { BillingStatus, CacheStats } from '../api/types'
+import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import Toggle from '../components/Toggle'
 
@@ -80,6 +82,8 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
 // ── Billing Section ───────────────────────────────────────────────────────────
 
 function BillingSection(): React.ReactElement {
+  const { user } = useAuth()
+  const isVerified = user?.is_verified ?? true // default true to avoid flash on load
   const { data, isLoading, isError } = useQuery<BillingStatus>({
     queryKey: ['billing-status'],
     queryFn: () =>
@@ -177,14 +181,30 @@ function BillingSection(): React.ReactElement {
 
           {/* CTA buttons */}
           {data.plan === 'free' && (
-            <button
-              type="button"
-              disabled={checkoutMutation.isPending}
-              onClick={() => checkoutMutation.mutate()}
-              className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-60 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
-            >
-              {checkoutMutation.isPending ? 'Redirecting…' : 'Upgrade to Pro'}
-            </button>
+            <div className="space-y-3">
+              {!isVerified && (
+                <div className="flex items-start gap-3 bg-warning/8 border border-warning/20 rounded-lg px-4 py-3">
+                  <svg className="w-4 h-4 text-warning mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-warning text-xs font-medium">Email verification required</p>
+                    <p className="text-warning/70 text-xs mt-0.5">
+                      Verify your email before upgrading.{' '}
+                      <Link to="/account" className="underline hover:text-warning">Go to Account</Link>
+                    </p>
+                  </div>
+                </div>
+              )}
+              <button
+                type="button"
+                disabled={checkoutMutation.isPending || !isVerified}
+                onClick={() => checkoutMutation.mutate()}
+                className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
+              >
+                {checkoutMutation.isPending ? 'Redirecting…' : 'Upgrade to Pro'}
+              </button>
+            </div>
           )}
 
           {data.plan === 'pro' && (

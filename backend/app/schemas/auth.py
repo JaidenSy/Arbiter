@@ -69,6 +69,7 @@ class MeResponse(BaseModel):
     has_password: bool
     linked_providers: list[str]
     avatar_url: str | None
+    is_verified: bool
 
     model_config = {"from_attributes": True}
 
