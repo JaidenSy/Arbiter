@@ -34,8 +34,8 @@ const fetchRecentSessions = (): Promise<Session[]> =>
     .get<Page<Session>>("/sessions", { params: { limit: 10 } })
     .then((r) => r.data.items);
 
-const fetchAgents = (): Promise<Agent[]> =>
-  authClient.get<Page<Agent>>("/agents").then((r) => r.data.items);
+const fetchAgents = (): Promise<Page<Agent>> =>
+  authClient.get<Page<Agent>>("/agents").then((r) => r.data);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -159,11 +159,12 @@ function Dashboard(): React.ReactElement {
     refetchInterval: 30_000,
   });
 
-  const { data: agents } = useQuery<Agent[]>({
+  const { data: agentsPage } = useQuery<Page<Agent>>({
     queryKey: ["agents"],
     queryFn: fetchAgents,
     staleTime: 60_000,
   });
+  const agents = agentsPage?.items;
 
   const { data: history } = useQuery({
     queryKey: ["stats-history", period],
