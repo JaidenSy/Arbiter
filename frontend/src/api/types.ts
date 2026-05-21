@@ -91,6 +91,17 @@ export interface ToolPermissionUpdate {
   cache_ttl_seconds: number | null
 }
 
+export interface ToolPermissionEvent {
+  id: string
+  permission_id: string | null
+  mcp_server_id: string | null
+  tool_name: string
+  action: 'granted' | 'revoked' | 'updated'
+  performed_by: string | null
+  changes: Record<string, [unknown, unknown]> | null
+  occurred_at: string
+}
+
 export interface VaultSecret {
   id: string;
   name: string;

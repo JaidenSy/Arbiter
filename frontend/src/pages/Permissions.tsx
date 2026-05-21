@@ -10,7 +10,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
-import type { Agent, MCPServer, ToolPermission, ToolPermissionCreate, ToolPermissionUpdate } from '../api/types'
+import type { Agent, MCPServer, ToolPermission, ToolPermissionCreate, ToolPermissionUpdate, ToolPermissionEvent } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useAuth } from '../context/AuthContext'
@@ -45,6 +45,9 @@ const revokePermission = ({
   permissionId: string
 }): Promise<void> =>
   authClient.delete(`/agents/${agentId}/permissions/${permissionId}`).then(() => undefined)
+
+const fetchHistory = (agentId: string): Promise<ToolPermissionEvent[]> =>
+  authClient.get<ToolPermissionEvent[]>(`/agents/${agentId}/permissions/history`).then((r) => r.data)
 
 const updatePermission = ({
   agentId,
@@ -113,6 +116,7 @@ function GrantModal({
     mutationFn: grantPermission,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
+      void queryClient.invalidateQueries({ queryKey: ['permissions-history', agentId] })
       onClose()
     },
     onError: (err: unknown) => {
@@ -252,6 +256,7 @@ function EditModal({ isOpen, onClose, agentId, permission }: EditModalProps): Re
     mutationFn: updatePermission,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
+      void queryClient.invalidateQueries({ queryKey: ['permissions-history', agentId] })
       onClose()
     },
     onError: (err: unknown) => {
@@ -356,6 +361,85 @@ function SkeletonRow(): React.ReactElement {
   )
 }
 
+// ── History Panel ─────────────────────────────────────────────────────────────
+
+function actionBadge(action: ToolPermissionEvent['action']): React.ReactElement {
+  const styles: Record<string, string> = {
+    granted: 'bg-success/10 text-success border-success/20',
+    revoked: 'bg-error/10 text-error border-error/20',
+    updated: 'bg-accent/10 text-accent-light border-accent/20',
+  }
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${styles[action] ?? ''}`}>
+      {action}
+    </span>
+  )
+}
+
+function formatChanges(changes: Record<string, [unknown, unknown]>): string {
+  return Object.entries(changes)
+    .map(([k, [from, to]]) => {
+      const label = k === 'rate_limit_per_minute' ? 'rate limit' : 'cache TTL'
+      const fmtVal = (v: unknown) => (v == null ? 'none' : String(v))
+      return `${label}: ${fmtVal(from)} → ${fmtVal(to)}`
+    })
+    .join(', ')
+}
+
+interface HistoryPanelProps {
+  agentId: string
+}
+
+function HistoryPanel({ agentId }: HistoryPanelProps): React.ReactElement {
+  const { data: events, isLoading } = useQuery<ToolPermissionEvent[]>({
+    queryKey: ['permissions-history', agentId],
+    queryFn: () => fetchHistory(agentId),
+    enabled: !!agentId,
+  })
+
+  return (
+    <div className="mt-6">
+      <p className="text-muted text-xs font-semibold uppercase tracking-widest mb-3">Permission History</p>
+      <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+        {isLoading ? (
+          <div className="py-8 flex items-center justify-center">
+            <div className="w-4 h-4 border-2 border-accent/40 border-t-accent rounded-full animate-spin" />
+          </div>
+        ) : !events || events.length === 0 ? (
+          <p className="text-muted text-xs text-center py-8">No history yet.</p>
+        ) : (
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-white/[0.06]">
+                <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Action</th>
+                <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Tool</th>
+                <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">By</th>
+                <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Changes</th>
+                <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">When</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((e) => (
+                <tr key={e.id} className="border-b border-white/[0.04] last:border-0">
+                  <td className="py-2.5 px-4">{actionBadge(e.action)}</td>
+                  <td className="py-2.5 px-4 font-mono text-xs text-accent-light">{e.tool_name}</td>
+                  <td className="py-2.5 px-4 text-xs text-secondary">{e.performed_by ?? '—'}</td>
+                  <td className="py-2.5 px-4 text-xs text-muted">
+                    {e.changes ? formatChanges(e.changes) : '—'}
+                  </td>
+                  <td className="py-2.5 px-4 font-mono text-xs text-muted">
+                    {new Date(e.occurred_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Permissions Table ──────────────────────────────────────────────────────────
 
 interface PermissionsTableProps {
@@ -381,14 +465,17 @@ function PermissionsTable({
     enabled: !!agentId,
   })
 
+  const invalidateAll = () => {
+    void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
+    void queryClient.invalidateQueries({ queryKey: ['permissions-history', agentId] })
+  }
+
   const revokeMutation = useMutation({
     mutationFn: revokePermission,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
-    },
+    onSuccess: invalidateAll,
     onError: (err) => {
       console.error('Failed to revoke permission', err)
-      void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
+      invalidateAll()
     },
   })
 
@@ -537,6 +624,8 @@ function PermissionsTable({
         message={`Revoke permission for tool "${revokeTarget?.tool_name ?? ''}"? This cannot be undone.`}
         confirmLabel="Revoke"
       />
+
+      <HistoryPanel agentId={agentId} />
     </div>
   )
 }
