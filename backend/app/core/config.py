@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     # supply this code. Leave empty to fully disable self-serve registration.
     invite_code: str = ""
 
+    # ── Audit log retention ───────────────────────────────────────────────────
+    # Sessions (and their events) older than this are deleted by the eviction loop.
+    # Set to 0 to disable automatic retention enforcement.
+    audit_log_retention_days: int = 90
+
     # ── Quota ─────────────────────────────────────────────────────────────────
     quota_cache_ttl_seconds: int = 60
 
