@@ -23,6 +23,7 @@ import app.db.models.cache  # noqa: F401
 import app.db.models.mcp_server  # noqa: F401
 import app.db.models.session  # noqa: F401
 import app.db.models.tool_permission  # noqa: F401
+import app.db.models.tool_permission_event  # noqa: F401
 import app.db.models.vault  # noqa: F401
 
 # ── Alembic Config object ─────────────────────────────────────────────────────

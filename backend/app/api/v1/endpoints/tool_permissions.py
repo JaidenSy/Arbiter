@@ -7,15 +7,18 @@ tools on which MCP servers.  Permissions are agent-scoped sub-resources.
 Routes:
     POST   /agents/{agent_id}/permissions                  — grant a permission
     GET    /agents/{agent_id}/permissions                  — list permissions for an agent
+    PATCH  /agents/{agent_id}/permissions/{permission_id}  — update rate limits
     DELETE /agents/{agent_id}/permissions/{permission_id}  — revoke a permission
+    GET    /agents/{agent_id}/permissions/history          — audit log
 """
 
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -26,6 +29,7 @@ from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
 from app.db.models.user import User
 from app.db.models.tool_permission import ToolPermission
+from app.db.models.tool_permission_event import ToolPermissionEvent
 
 router = APIRouter(prefix="/agents", tags=["tool-permissions"])
 
@@ -83,6 +87,46 @@ class ToolPermissionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ToolPermissionEventResponse(BaseModel):
+    """Response schema for a permission audit event."""
+
+    id: uuid.UUID
+    permission_id: uuid.UUID | None
+    mcp_server_id: uuid.UUID | None
+    tool_name: str
+    action: str
+    performed_by: str | None
+    changes: dict[str, Any] | None
+    occurred_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+async def _log_event(
+    db: AsyncSession,
+    *,
+    action: str,
+    permission: ToolPermission,
+    current_user: User,
+    changes: dict[str, Any] | None = None,
+) -> None:
+    event = ToolPermissionEvent(
+        org_id=permission.org_id,
+        agent_id=permission.agent_id,
+        permission_id=permission.id,
+        mcp_server_id=permission.mcp_server_id,
+        tool_name=permission.tool_name,
+        action=action,
+        performed_by=current_user.display_name or current_user.email,
+        performed_by_user_id=current_user.id,
+        changes=changes,
+    )
+    db.add(event)
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 
@@ -98,35 +142,12 @@ async def create_tool_permission(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("owner", "admin")),
 ) -> ToolPermissionResponse:
-    """
-    Grant an agent permission to call a specific tool (or all tools) on an MCP server.
-
-    Use tool_name='*' to grant access to all tools on the given server.
-
-    Args:
-        agent_id: UUID of the agent to grant permission to.
-        body:     mcp_server_id and tool_name to permit.
-        db:       Injected DB session.
-        _current: Auth guard.
-
-    Returns:
-        ToolPermissionResponse: The created permission record.
-
-    Raises:
-        HTTPException 404: If agent_id or mcp_server_id does not exist.
-        HTTPException 409: If this exact permission already exists.
-    """
-    # Verify agent exists and belongs to this org.
     agent_result = await db.execute(
         select(Agent).where(Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True))
     )
     if agent_result.scalar_one_or_none() is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Agent {agent_id} not found",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
 
-    # Verify MCP server exists and belongs to this org.
     server_result = await db.execute(
         select(MCPServer).where(
             MCPServer.id == body.mcp_server_id,
@@ -135,10 +156,7 @@ async def create_tool_permission(
         )
     )
     if server_result.scalar_one_or_none() is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"MCP server {body.mcp_server_id} not found",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {body.mcp_server_id} not found")
 
     permission = ToolPermission(
         org_id=current_user.org_id,
@@ -153,6 +171,8 @@ async def create_tool_permission(
     db.add(permission)
 
     try:
+        await db.flush()  # get permission.id before logging
+        await _log_event(db, action="granted", permission=permission, current_user=current_user)
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
@@ -163,8 +183,35 @@ async def create_tool_permission(
                 f"tool {body.tool_name!r} already exists"
             ),
         ) from exc
+
     await db.refresh(permission)
     return ToolPermissionResponse.model_validate(permission)
+
+
+@router.get(
+    "/{agent_id}/permissions/history",
+    response_model=list[ToolPermissionEventResponse],
+    summary="Audit log for an agent's permissions",
+)
+async def list_permission_history(
+    agent_id: uuid.UUID,
+    limit: int = Query(50, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[ToolPermissionEventResponse]:
+    agent_result = await db.execute(
+        select(Agent).where(Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True))
+    )
+    if agent_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
+
+    result = await db.execute(
+        select(ToolPermissionEvent)
+        .where(ToolPermissionEvent.agent_id == agent_id)
+        .order_by(ToolPermissionEvent.occurred_at.desc())
+        .limit(limit)
+    )
+    return [ToolPermissionEventResponse.model_validate(e) for e in result.scalars().all()]
 
 
 @router.get(
@@ -177,33 +224,14 @@ async def list_tool_permissions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[ToolPermissionResponse]:
-    """
-    Return all tool permissions granted to a specific agent.
-
-    Args:
-        agent_id: UUID of the agent whose permissions to list.
-        db:       Injected DB session.
-        _current: Auth guard.
-
-    Returns:
-        list[ToolPermissionResponse]: All permissions for the agent.
-
-    Raises:
-        HTTPException 404: If the agent does not exist.
-    """
-    # Verify agent exists and belongs to this org.
     agent_result = await db.execute(
         select(Agent).where(Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True))
     )
     if agent_result.scalar_one_or_none() is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Agent {agent_id} not found",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
 
     result = await db.execute(select(ToolPermission).where(ToolPermission.agent_id == agent_id))
-    permissions = result.scalars().all()
-    return [ToolPermissionResponse.model_validate(p) for p in permissions]
+    return [ToolPermissionResponse.model_validate(p) for p in result.scalars().all()]
 
 
 @router.patch(
@@ -218,10 +246,6 @@ async def update_tool_permission(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("owner", "admin")),
 ) -> ToolPermissionResponse:
-    """
-    Update rate_limit_per_minute and cache_ttl_seconds on an existing permission.
-    Pass null to remove the limit.
-    """
     result = await db.execute(
         select(ToolPermission).where(
             ToolPermission.id == permission_id,
@@ -235,8 +259,17 @@ async def update_tool_permission(
             detail=f"Permission {permission_id} not found for agent {agent_id}",
         )
 
+    changes: dict[str, Any] = {}
+    if permission.rate_limit_per_minute != body.rate_limit_per_minute:
+        changes["rate_limit_per_minute"] = [permission.rate_limit_per_minute, body.rate_limit_per_minute]
+    if permission.cache_ttl_seconds != body.cache_ttl_seconds:
+        changes["cache_ttl_seconds"] = [permission.cache_ttl_seconds, body.cache_ttl_seconds]
+
     permission.rate_limit_per_minute = body.rate_limit_per_minute
     permission.cache_ttl_seconds = body.cache_ttl_seconds
+
+    if changes:
+        await _log_event(db, action="updated", permission=permission, current_user=current_user, changes=changes)
 
     await db.commit()
     await db.refresh(permission)
@@ -254,18 +287,6 @@ async def delete_tool_permission(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("owner", "admin")),
 ) -> Response:
-    """
-    Hard-delete a specific tool permission for an agent.
-
-    Args:
-        agent_id:      UUID of the agent that owns the permission.
-        permission_id: UUID of the permission record to delete.
-        db:            Injected DB session.
-        _current:      Auth guard.
-
-    Raises:
-        HTTPException 404: If the permission does not exist or belongs to another agent.
-    """
     result = await db.execute(
         select(ToolPermission).where(
             ToolPermission.id == permission_id,
@@ -279,6 +300,7 @@ async def delete_tool_permission(
             detail=f"Permission {permission_id} not found for agent {agent_id}",
         )
 
+    await _log_event(db, action="revoked", permission=permission, current_user=current_user)
     await db.delete(permission)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
