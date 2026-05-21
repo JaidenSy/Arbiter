@@ -9,13 +9,16 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
 import { useAuth } from '../context/AuthContext'
+import AuthModal, { type AuthMode } from '../components/AuthModal'
 
 const SUPPORT_EMAIL: string =
   (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'jaidensy07@gmail.com'
 
 // ── Navbar ─────────────────────────────────────────────────────────────────────
 
-function Navbar(): React.ReactElement {
+interface NavbarProps { onSignIn: () => void; onGetStarted: () => void }
+
+function Navbar({ onSignIn, onGetStarted }: NavbarProps): React.ReactElement {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-base/80 backdrop-blur-md border-b border-white/[0.06]">
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
@@ -27,18 +30,18 @@ function Navbar(): React.ReactElement {
 
         {/* Right nav */}
         <div className="flex items-center gap-3">
-          <Link
-            to="/login"
+          <button
+            onClick={onSignIn}
             className="text-secondary hover:text-primary border border-white/[0.1] hover:border-white/[0.2] px-4 py-1.5 rounded-lg text-sm transition-all"
           >
             Sign In
-          </Link>
-          <Link
-            to="/register"
+          </button>
+          <button
+            onClick={onGetStarted}
             className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
           >
             Get Started Free
-          </Link>
+          </button>
         </div>
       </div>
     </nav>
@@ -47,7 +50,9 @@ function Navbar(): React.ReactElement {
 
 // ── Hero ───────────────────────────────────────────────────────────────────────
 
-function Hero(): React.ReactElement {
+interface HeroProps { onGetStarted: () => void; onSignIn: () => void }
+
+function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 overflow-hidden">
       {/* Background glows */}
@@ -86,18 +91,18 @@ function Hero(): React.ReactElement {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
-          <Link
-            to="/register"
+          <button
+            onClick={onGetStarted}
             className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white font-semibold px-6 py-3 rounded-xl transition-all hover:shadow-[0_0_24px_rgba(124,58,237,0.35)] text-sm"
           >
             Start for Free →
-          </Link>
-          <Link
-            to="/login"
+          </button>
+          <button
+            onClick={onSignIn}
             className="text-secondary hover:text-primary border border-white/[0.1] hover:border-white/[0.2] px-6 py-3 rounded-xl text-sm transition-all"
           >
             Sign In
-          </Link>
+          </button>
         </div>
 
         <p className="text-muted text-xs">
@@ -699,13 +704,24 @@ function Footer(): React.ReactElement {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
-function Landing(): React.ReactElement {
+interface LandingProps { initialModal?: AuthMode }
+
+function Landing({ initialModal }: LandingProps): React.ReactElement {
+  const navigate = useNavigate()
+  const [authModal, setAuthModal] = useState<AuthMode | null>(initialModal ?? null)
+
+  function openModal(mode: AuthMode): void { setAuthModal(mode) }
+  function closeModal(): void {
+    setAuthModal(null)
+    if (initialModal) navigate('/', { replace: true })
+  }
+
   return (
     <div data-theme="dark" className="min-h-screen bg-base text-primary">
-      <Navbar />
+      <Navbar onSignIn={() => openModal('login')} onGetStarted={() => openModal('register')} />
       {/* Offset for fixed navbar */}
       <div className="pt-14">
-        <Hero />
+        <Hero onGetStarted={() => openModal('register')} onSignIn={() => openModal('login')} />
         <Features />
         <Comparison />
         <HowItWorks />
@@ -714,6 +730,10 @@ function Landing(): React.ReactElement {
         <Contact />
         <Footer />
       </div>
+
+      {authModal && (
+        <AuthModal initialMode={authModal} onClose={closeModal} />
+      )}
     </div>
   )
 }
