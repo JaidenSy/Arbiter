@@ -155,6 +155,72 @@ async def get_or_create_user(
     return user
 
 
+async def link_provider(
+    redis,
+    db: AsyncSession,
+    nonce: str,
+    provider: str,
+    provider_user_id: str,
+    email: str,
+    name: str,
+    avatar_url: str | None,
+) -> None:
+    """
+    Link an OAuth provider to an existing user identified by a Redis nonce.
+
+    The nonce was stored by POST /auth/sso/link/initiate and proves the link
+    was initiated by an authenticated user. Single-use — deleted on consumption.
+
+    Raises:
+        HTTPException 400: Invalid/expired nonce, provider already linked elsewhere,
+                           or this user already has this provider linked.
+    """
+    from app.db.models.social_account import SocialAccount
+
+    nonce_key = f"link_intent:{nonce}"
+    user_id_bytes = await redis.get(nonce_key)
+    if user_id_bytes is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Link session expired — please try again",
+        )
+    await redis.delete(nonce_key)
+
+    user_id_str = user_id_bytes.decode("utf-8") if isinstance(user_id_bytes, bytes) else user_id_bytes
+    import uuid as _uuid
+    user = await db.get(User, _uuid.UUID(user_id_str))
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not found")
+
+    # Check the provider_user_id isn't already claimed by a different account
+    existing_sa = await db.scalar(
+        select(SocialAccount).where(
+            SocialAccount.provider == provider,
+            SocialAccount.provider_user_id == provider_user_id,
+        )
+    )
+    if existing_sa is not None and existing_sa.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"This {provider} account is already linked to a different user",
+        )
+    if existing_sa is not None:
+        # Already linked to this user — nothing to do
+        return
+
+    sa = SocialAccount(
+        user_id=user.id,
+        org_id=user.org_id,
+        provider=provider,
+        provider_user_id=provider_user_id,
+        email=email,
+        name=name,
+        avatar_url=avatar_url,
+    )
+    db.add(sa)
+    await db.commit()
+
+
 async def issue_one_time_token(redis, user_id: str) -> str:
     """
     Generate a short-lived one-time token and store the user_id in Redis.

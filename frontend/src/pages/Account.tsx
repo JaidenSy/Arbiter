@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { authClient } from '../api/client'
 
@@ -49,9 +49,29 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export default function Account(): React.ReactElement {
   const { user, refreshUser, logout } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [resendingVerification, setResendingVerification] = useState(false)
   const [resendMsg, setResendMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Social linking state
+  const [linkingProvider, setLinkingProvider] = useState<string | null>(null)
+  const [unlinkingProvider, setUnlinkingProvider] = useState<string | null>(null)
+  const [linkMsg, setLinkMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Detect redirect back from OAuth link flow
+  useEffect(() => {
+    const linked = searchParams.get('linked')
+    const linkError = searchParams.get('link_error')
+    if (linked) {
+      setLinkMsg({ type: 'success', text: `${linked.charAt(0).toUpperCase() + linked.slice(1)} account linked successfully.` })
+      void refreshUser()
+      setSearchParams({}, { replace: true })
+    } else if (linkError) {
+      setLinkMsg({ type: 'error', text: linkError })
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, refreshUser, setSearchParams])
 
   // Profile form
   const [displayName, setDisplayName] = useState(user?.display_name ?? '')
@@ -136,6 +156,35 @@ export default function Account(): React.ReactElement {
       setPwMsg({ type: 'error', text: msg ?? 'Failed to update password.' })
     } finally {
       setPwSaving(false)
+    }
+  }
+
+  async function handleLinkProvider(provider: string): Promise<void> {
+    setLinkingProvider(provider)
+    setLinkMsg(null)
+    try {
+      const res = await authClient.post<{ redirect_url: string }>('/auth/sso/link/initiate', { provider })
+      // Navigate top-level window to start the OAuth dance
+      window.location.href = res.data.redirect_url
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setLinkMsg({ type: 'error', text: msg ?? 'Failed to start link flow.' })
+      setLinkingProvider(null)
+    }
+  }
+
+  async function handleUnlinkProvider(provider: string): Promise<void> {
+    setUnlinkingProvider(provider)
+    setLinkMsg(null)
+    try {
+      await authClient.delete(`/auth/sso/link?provider=${provider}`)
+      await refreshUser()
+      setLinkMsg({ type: 'success', text: `${provider.charAt(0).toUpperCase() + provider.slice(1)} account unlinked.` })
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setLinkMsg({ type: 'error', text: msg ?? 'Failed to unlink account.' })
+    } finally {
+      setUnlinkingProvider(null)
     }
   }
 
@@ -309,29 +358,50 @@ export default function Account(): React.ReactElement {
         <div className="space-y-3">
           {(['google', 'github'] as const).map((provider) => {
             const linked = user.linked_providers.includes(provider)
+            const isLinking = linkingProvider === provider
+            const isUnlinking = unlinkingProvider === provider
             return (
               <div key={provider} className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
                   <span className="text-secondary">
                     {provider === 'google' ? <GoogleIcon /> : <GitHubIcon />}
                   </span>
-                  <span className="text-sm text-primary capitalize">{provider}</span>
+                  <div>
+                    <span className="text-sm text-primary capitalize">{provider}</span>
+                    {linked && (
+                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">
+                        Connected
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span
-                  className={`text-xs px-2.5 py-1 rounded-full border font-medium ${
-                    linked
-                      ? 'text-success bg-success/10 border-success/25'
-                      : 'text-muted bg-white/[0.03] border-white/[0.08]'
-                  }`}
-                >
-                  {linked ? 'Connected' : 'Not connected'}
-                </span>
+                {linked ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleUnlinkProvider(provider)}
+                    disabled={isUnlinking}
+                    className="text-xs text-secondary hover:text-error border border-white/[0.08] hover:border-error/30 hover:bg-error/8 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    {isUnlinking ? 'Unlinking…' : 'Unlink'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void handleLinkProvider(provider)}
+                    disabled={isLinking}
+                    className="text-xs text-secondary hover:text-accent-light border border-white/[0.08] hover:border-accent/40 hover:bg-accent/8 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    {isLinking ? 'Redirecting…' : 'Link'}
+                  </button>
+                )}
               </div>
             )
           })}
-          <p className="text-xs text-muted pt-1">
-            Account linking is coming soon. Sign in with your linked provider anytime.
-          </p>
+          {linkMsg && (
+            <p className={`text-xs pt-1 ${linkMsg.type === 'success' ? 'text-success' : 'text-error'}`}>
+              {linkMsg.text}
+            </p>
+          )}
         </div>
       </Section>
 
