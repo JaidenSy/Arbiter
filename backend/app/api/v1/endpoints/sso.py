@@ -444,6 +444,7 @@ async def link_initiate(
 @router.delete(
     "/sso/link",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Unlink a social provider from the current account",
 )
 async def link_delete(
