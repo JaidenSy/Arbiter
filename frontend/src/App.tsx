@@ -23,6 +23,7 @@ import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import ProtectedRoute from './components/ProtectedRoute'
 import UpgradeModal from './components/UpgradeModal'
+import ErrorBoundary from './components/ErrorBoundary'
 import { useAuth } from './context/AuthContext'
 
 // ── Lazy page imports — each page becomes its own chunk ───────────────────────
@@ -98,7 +99,7 @@ function RootRedirect(): React.ReactElement {
 
 function App(): React.ReactElement {
   return (
-    <>
+    <ErrorBoundary>
     <UpgradeModal />
     <Suspense fallback={<PageLoader />}>
       <Routes>
@@ -201,7 +202,7 @@ function App(): React.ReactElement {
         />
       </Routes>
     </Suspense>
-    </>
+    </ErrorBoundary>
   )
 }
 
