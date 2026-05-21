@@ -102,6 +102,9 @@ def upgrade() -> None:
             updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
         )
     """)
+    _add_col_if_missing("users", "display_name VARCHAR(64)")
+    _add_col_if_missing("users", "is_verified BOOLEAN NOT NULL DEFAULT FALSE")
+    _add_col_if_missing("users", "avatar_url TEXT")
     _add_constraint_if_missing(
         "ALTER TABLE users ADD CONSTRAINT ck_users_role "
         "CHECK (role IN ('owner', 'admin', 'member'))"
@@ -113,9 +116,6 @@ def upgrade() -> None:
         "ALTER TABLE users ADD CONSTRAINT fk_users_org_id "
         "FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE"
     )
-    _add_col_if_missing("users", "display_name VARCHAR(64)")
-    _add_col_if_missing("users", "is_verified BOOLEAN NOT NULL DEFAULT FALSE")
-    _add_col_if_missing("users", "avatar_url TEXT")
 
     # ── refresh_tokens ───────────────────────────────────────────────────────
     op.execute("""
@@ -200,6 +200,8 @@ def upgrade() -> None:
             updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now()
         )
     """)
+    _add_col_if_missing("agents", "org_id UUID")
+    _add_col_if_missing("agents", "scope VARCHAR(32) NOT NULL DEFAULT 'full'")
     _add_constraint_if_missing(
         "ALTER TABLE agents ADD CONSTRAINT fk_agents_org_id "
         "FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE"
@@ -207,8 +209,6 @@ def upgrade() -> None:
     _add_constraint_if_missing(
         "ALTER TABLE agents ADD CONSTRAINT uq_agents_api_key_hash UNIQUE (api_key_hash)"
     )
-    _add_col_if_missing("agents", "org_id UUID")
-    _add_col_if_missing("agents", "scope VARCHAR(32) NOT NULL DEFAULT 'full'")
 
     # ── mcp_servers ──────────────────────────────────────────────────────────
     op.execute("""
@@ -224,6 +224,7 @@ def upgrade() -> None:
             updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now()
         )
     """)
+    _add_col_if_missing("mcp_servers", "org_id UUID")
     _add_constraint_if_missing(
         "ALTER TABLE mcp_servers ADD CONSTRAINT fk_mcp_servers_org_id "
         "FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE"
@@ -232,7 +233,6 @@ def upgrade() -> None:
         "ALTER TABLE mcp_servers ADD CONSTRAINT uq_mcp_server_name_per_org "
         "UNIQUE (org_id, name)"
     )
-    _add_col_if_missing("mcp_servers", "org_id UUID")
 
     # ── tool_permissions ─────────────────────────────────────────────────────
     op.execute("""
@@ -249,6 +249,10 @@ def upgrade() -> None:
             cache_ttl_seconds    INTEGER
         )
     """)
+    _add_col_if_missing("tool_permissions", "org_id UUID")
+    _add_col_if_missing("tool_permissions", "rate_limit_per_minute INTEGER")
+    _add_col_if_missing("tool_permissions", "cache_ttl_seconds INTEGER")
+    _add_col_if_missing("tool_permissions", "granted_by_user_id UUID")
     _add_constraint_if_missing(
         "ALTER TABLE tool_permissions ADD CONSTRAINT fk_tool_permissions_org_id "
         "FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE"
@@ -269,10 +273,6 @@ def upgrade() -> None:
         "ALTER TABLE tool_permissions ADD CONSTRAINT uq_tool_permission "
         "UNIQUE (agent_id, mcp_server_id, tool_name)"
     )
-    _add_col_if_missing("tool_permissions", "org_id UUID")
-    _add_col_if_missing("tool_permissions", "rate_limit_per_minute INTEGER")
-    _add_col_if_missing("tool_permissions", "cache_ttl_seconds INTEGER")
-    _add_col_if_missing("tool_permissions", "granted_by_user_id UUID")
 
     # ── sessions ─────────────────────────────────────────────────────────────
     op.execute("""
@@ -285,6 +285,7 @@ def upgrade() -> None:
             metadata    JSONB       NOT NULL DEFAULT '{}'::jsonb
         )
     """)
+    _add_col_if_missing("sessions", "org_id UUID")
     _add_constraint_if_missing(
         "ALTER TABLE sessions ADD CONSTRAINT fk_sessions_agent_id "
         "FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE"
@@ -293,7 +294,6 @@ def upgrade() -> None:
         "ALTER TABLE sessions ADD CONSTRAINT fk_sessions_org_id "
         "FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE"
     )
-    _add_col_if_missing("sessions", "org_id UUID")
 
     # ── session_events ────────────────────────────────────────────────────────
     op.execute("""
@@ -311,6 +311,7 @@ def upgrade() -> None:
             occurred_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
         )
     """)
+    _add_col_if_missing("session_events", "org_id UUID")
     _add_constraint_if_missing(
         "ALTER TABLE session_events ADD CONSTRAINT fk_session_events_session_id "
         "FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE"
@@ -323,7 +324,6 @@ def upgrade() -> None:
         "ALTER TABLE session_events ADD CONSTRAINT fk_session_events_org_id "
         "FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE"
     )
-    _add_col_if_missing("session_events", "org_id UUID")
 
     # ── cache_entries ─────────────────────────────────────────────────────────
     op.execute("""
@@ -339,6 +339,7 @@ def upgrade() -> None:
             expires_at       TIMESTAMPTZ  NOT NULL
         )
     """)
+    _add_col_if_missing("cache_entries", "org_id UUID")
     _add_constraint_if_missing(
         "ALTER TABLE cache_entries ADD CONSTRAINT fk_cache_entries_org_id "
         "FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE"
@@ -347,7 +348,6 @@ def upgrade() -> None:
         "ALTER TABLE cache_entries ADD CONSTRAINT uq_cache_entry_tool_hash "
         "UNIQUE (tool_name, input_hash)"
     )
-    _add_col_if_missing("cache_entries", "org_id UUID")
 
     # ── vault_secrets ─────────────────────────────────────────────────────────
     op.execute("""
@@ -361,6 +361,7 @@ def upgrade() -> None:
             updated_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
         )
     """)
+    _add_col_if_missing("vault_secrets", "org_id UUID")
     _add_constraint_if_missing(
         "ALTER TABLE vault_secrets ADD CONSTRAINT fk_vault_secrets_org_id "
         "FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE"
@@ -373,7 +374,6 @@ def upgrade() -> None:
         "ALTER TABLE vault_secrets ADD CONSTRAINT uq_vault_secret_name_agent_org "
         "UNIQUE (org_id, name, agent_id)"
     )
-    _add_col_if_missing("vault_secrets", "org_id UUID")
 
     # ── org_invites ───────────────────────────────────────────────────────────
     op.execute("""
