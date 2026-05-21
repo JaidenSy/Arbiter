@@ -9,15 +9,15 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "../api/client";
-import type { Agent, AgentCreateResponse, AgentScope } from "../api/types";
+import type { Agent, AgentCreateResponse, AgentScope, MCPServer, Page } from "../api/types";
 import CopyButton from "../components/CopyButton";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 // ── Data fetchers / mutators ──────────────────────────────────────────────────
 
-const fetchAgents = (): Promise<Agent[]> =>
-  authClient.get<Agent[]>("/agents").then((r) => r.data);
+const fetchAgents = (): Promise<Page<Agent>> =>
+  authClient.get<Page<Agent>>("/agents").then((r) => r.data);
 
 const createAgent = (payload: {
   name: string;
@@ -230,6 +230,145 @@ function ApiKeyModal({
   );
 }
 
+// ── Test Call Modal ───────────────────────────────────────────────────────────
+
+interface TestCallResult {
+  session_id: string
+  tool_name: string
+  result: Record<string, unknown>
+  cache_hit: boolean
+  duration_ms: number | null
+}
+
+interface TestCallModalProps {
+  agent: Agent | null
+  onClose: () => void
+}
+
+function TestCallModal({ agent, onClose }: TestCallModalProps): React.ReactElement | null {
+  const [serverName, setServerName] = useState("")
+  const [toolName, setToolName] = useState("")
+  const [paramsJson, setParamsJson] = useState("{}")
+  const [jsonError, setJsonError] = useState<string | null>(null)
+  const [result, setResult] = useState<TestCallResult | null>(null)
+  const [callError, setCallError] = useState<string | null>(null)
+
+  const { data: serversPage } = useQuery<Page<MCPServer>>({
+    queryKey: ["mcp-servers"],
+    queryFn: () => authClient.get<Page<MCPServer>>("/mcp-servers").then((r) => r.data),
+    enabled: !!agent,
+  })
+  const servers = serversPage?.items ?? []
+
+  React.useEffect(() => {
+    if (agent) {
+      setServerName(servers.length > 0 ? servers[0].name : "")
+      setToolName("")
+      setParamsJson("{}")
+      setJsonError(null)
+      setResult(null)
+      setCallError(null)
+    }
+  }, [agent, servers])
+
+  const mutation = useMutation({
+    mutationFn: (payload: { server_name: string; tool_name: string; params: Record<string, unknown> }) =>
+      authClient.post<TestCallResult>(`/agents/${agent!.id}/test-call`, payload).then((r) => r.data),
+    onSuccess: (data) => {
+      setResult(data)
+      setCallError(null)
+    },
+    onError: (err: unknown) => {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setCallError(detail ?? "Call failed")
+      setResult(null)
+    },
+  })
+
+  const handleRun = (): void => {
+    setJsonError(null)
+    let params: Record<string, unknown> = {}
+    try {
+      params = JSON.parse(paramsJson) as Record<string, unknown>
+    } catch {
+      setJsonError("Invalid JSON")
+      return
+    }
+    mutation.mutate({ server_name: serverName, tool_name: toolName.trim(), params })
+  }
+
+  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
+
+  if (!agent) return null
+
+  return (
+    <Modal isOpen onClose={onClose} title={`Test Call — ${agent.name}`}>
+      <div className="space-y-4">
+        <div>
+          <label className={labelClass}>MCP Server</label>
+          <select value={serverName} onChange={(e) => setServerName(e.target.value)} className={inputClass}>
+            {servers.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+            {servers.length === 0 && <option value="">No servers registered</option>}
+          </select>
+        </div>
+
+        <div>
+          <label className={labelClass}>Tool Name</label>
+          <input
+            type="text"
+            value={toolName}
+            onChange={(e) => setToolName(e.target.value)}
+            placeholder="e.g. echo"
+            className={`${inputClass} font-mono`}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Params (JSON)</label>
+          <textarea
+            value={paramsJson}
+            onChange={(e) => setParamsJson(e.target.value)}
+            rows={4}
+            className={`${inputClass} font-mono resize-none`}
+          />
+          {jsonError && <p className="text-error text-xs mt-1">{jsonError}</p>}
+        </div>
+
+        <button
+          type="button"
+          disabled={mutation.isPending || !serverName || !toolName.trim()}
+          onClick={handleRun}
+          className="w-full bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        >
+          {mutation.isPending ? "Running…" : "Run"}
+        </button>
+
+        {callError && (
+          <div className="bg-error/8 border border-error/20 rounded-lg px-3 py-2">
+            <p className="text-error text-xs font-mono">{callError}</p>
+          </div>
+        )}
+
+        {result && (
+          <div className="bg-base border border-white/[0.08] rounded-lg p-3 space-y-2">
+            <div className="flex items-center gap-3 text-xs text-muted">
+              <span className={`font-semibold ${result.cache_hit ? "text-teal-light" : "text-secondary"}`}>
+                {result.cache_hit ? "⚡ Cache hit" : "↗ Live call"}
+              </span>
+              {result.duration_ms != null && <span>{result.duration_ms}ms</span>}
+              <span className="ml-auto font-mono text-[10px]">session {result.session_id.slice(0, 8)}</span>
+            </div>
+            <pre className="text-xs text-primary font-mono whitespace-pre-wrap break-all overflow-auto max-h-48">
+              {JSON.stringify(result.result, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
 // ── Code Snippets Modal ───────────────────────────────────────────────────────
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
@@ -435,11 +574,13 @@ function Agents(): React.ReactElement {
   const [rotateTarget, setRotateTarget] = useState<Agent | null>(null);
   const [snippetAgent, setSnippetAgent] = useState<Agent | null>(null);
   const [renameAgent, setRenameAgent] = useState<Agent | null>(null);
+  const [testCallAgent, setTestCallAgent] = useState<Agent | null>(null);
 
-  const { data: agents, isLoading } = useQuery<Agent[]>({
+  const { data: agentsPage, isLoading } = useQuery<Page<Agent>>({
     queryKey: ["agents"],
     queryFn: fetchAgents,
   });
+  const agents = agentsPage?.items;
 
   const deactivateMutation = useMutation({
     mutationFn: deleteAgent,
@@ -588,6 +729,13 @@ function Agents(): React.ReactElement {
                     <div className="flex items-center justify-end gap-2 opacity-40 group-hover:opacity-100 transition-all">
                       <button
                         type="button"
+                        onClick={() => setTestCallAgent(agent)}
+                        className="text-secondary hover:text-violet-400 hover:bg-violet-500/10 border border-transparent hover:border-violet-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                      >
+                        Test
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setSnippetAgent(agent)}
                         className="text-secondary hover:text-teal-light hover:bg-teal/10 border border-transparent hover:border-teal/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                       >
@@ -663,6 +811,11 @@ function Agents(): React.ReactElement {
         agent={renameAgent}
         onClose={() => setRenameAgent(null)}
         onSuccess={() => void queryClient.invalidateQueries({ queryKey: ["agents"] })}
+      />
+
+      <TestCallModal
+        agent={testCallAgent}
+        onClose={() => setTestCallAgent(null)}
       />
     </div>
   );

@@ -18,12 +18,15 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, Field
-from sqlalchemy import select
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db, require_role
+from app.schemas.pagination import Page
 from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.db.models.user import User
@@ -37,12 +40,25 @@ router = APIRouter(prefix="/vault", tags=["vault"])
 # ── Inline schemas ────────────────────────────────────────────────────────────
 
 
+_SECRET_NAME_RE = re.compile(r"^[A-Za-z0-9_]+$")
+
+
 class SecretCreate(BaseModel):
     """Request body for storing a secret."""
 
-    name: str = Field(..., description="Logical key, e.g. GITHUB_TOKEN")
-    value: str = Field(..., description="Raw secret value — will be encrypted at rest")
+    name: str = Field(..., min_length=1, max_length=128, description="Logical key, e.g. GITHUB_TOKEN")
+    value: str = Field(..., min_length=1, description="Raw secret value — will be encrypted at rest")
     agent_id: uuid.UUID | None = Field(None, description="Scope the secret to a specific agent")
+
+    @field_validator("name")
+    @classmethod
+    def validate_name_format(cls, v: str) -> str:
+        if not _SECRET_NAME_RE.match(v):
+            raise ValueError(
+                "Secret name must contain only letters, numbers, and underscores (A-Za-z0-9_). "
+                "This must match the {{SECRET_NAME}} placeholder syntax used in tool call parameters."
+            )
+        return v
 
 
 class SecretResponse(BaseModel):
@@ -113,20 +129,23 @@ async def create_secret(
 
 @router.get(
     "/secrets",
-    response_model=list[SecretResponse],
+    response_model=Page[SecretResponse],
     summary="List secret names",
 )
 async def list_secrets(
     agent_id: uuid.UUID | None = None,
+    skip: int = 0,
+    limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[SecretResponse]:
+) -> Page[SecretResponse]:
     filters = [VaultSecret.org_id == current_user.org_id]
     if agent_id is not None:
         filters.append(VaultSecret.agent_id == agent_id)
-    result = await db.execute(select(VaultSecret).where(*filters))
+    total = await db.scalar(select(func.count(VaultSecret.id)).where(*filters)) or 0
+    result = await db.execute(select(VaultSecret).where(*filters).offset(skip).limit(limit))
     secrets = result.scalars().all()
-    return [SecretResponse.model_validate(s) for s in secrets]
+    return Page(items=[SecretResponse.model_validate(s) for s in secrets], total=total, skip=skip, limit=limit)
 
 
 @router.get(

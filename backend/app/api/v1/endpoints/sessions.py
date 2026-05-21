@@ -21,11 +21,12 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.dependencies import get_current_user, get_db
+from app.schemas.pagination import Page
 from app.db.models.mcp_server import MCPServer
 from app.db.models.user import User
 from app.db.models.session import Session, SessionEvent
@@ -36,7 +37,7 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 @router.get(
     "",
-    response_model=list[SessionListResponse],
+    response_model=Page[SessionListResponse],
     summary="List sessions",
 )
 async def list_sessions(
@@ -49,23 +50,17 @@ async def list_sessions(
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[SessionListResponse]:
+) -> Page[SessionListResponse]:
     limit = min(limit, 200)
-    query = (
-        select(Session)
-        .where(Session.org_id == current_user.org_id)
-        .order_by(Session.started_at.desc())
-        .offset(skip)
-        .limit(limit)
-    )
+    conditions = [Session.org_id == current_user.org_id]
     if agent_id is not None:
-        query = query.where(Session.agent_id == agent_id)
+        conditions.append(Session.agent_id == agent_id)
     if from_date is not None:
-        query = query.where(Session.started_at >= from_date)
+        conditions.append(Session.started_at >= from_date)
     if to_date is not None:
-        query = query.where(Session.started_at <= to_date)
+        conditions.append(Session.started_at <= to_date)
     if tool_name is not None:
-        query = query.where(
+        conditions.append(
             exists(
                 select(SessionEvent.id).where(
                     SessionEvent.session_id == Session.id,
@@ -74,7 +69,7 @@ async def list_sessions(
             )
         )
     if has_error is True:
-        query = query.where(
+        conditions.append(
             exists(
                 select(SessionEvent.id).where(
                     SessionEvent.session_id == Session.id,
@@ -83,7 +78,7 @@ async def list_sessions(
             )
         )
     elif has_error is False:
-        query = query.where(
+        conditions.append(
             ~exists(
                 select(SessionEvent.id).where(
                     SessionEvent.session_id == Session.id,
@@ -92,9 +87,12 @@ async def list_sessions(
             )
         )
 
-    result = await db.execute(query)
+    total = await db.scalar(select(func.count(Session.id)).where(*conditions)) or 0
+    result = await db.execute(
+        select(Session).where(*conditions).order_by(Session.started_at.desc()).offset(skip).limit(limit)
+    )
     sessions = result.scalars().all()
-    return [SessionListResponse.model_validate(s) for s in sessions]
+    return Page(items=[SessionListResponse.model_validate(s) for s in sessions], total=total, skip=skip, limit=limit)
 
 
 @router.get(
@@ -226,7 +224,7 @@ async def get_session(
 
 @router.get(
     "/{session_id}/events",
-    response_model=list[SessionEventResponse],
+    response_model=Page[SessionEventResponse],
     summary="List events for a session",
 )
 async def list_session_events(
@@ -235,7 +233,7 @@ async def list_session_events(
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[SessionEventResponse]:
+) -> Page[SessionEventResponse]:
     """
     Return paginated audit events for a specific session.
 
@@ -249,7 +247,7 @@ async def list_session_events(
         _current:   Auth guard.
 
     Returns:
-        list[SessionEventResponse]: Events ordered by occurred_at ASC.
+        Page[SessionEventResponse]: Events ordered by occurred_at ASC.
 
     Raises:
         HTTPException 404: If the session does not exist.
@@ -268,6 +266,9 @@ async def list_session_events(
         )
 
     limit = min(limit, 500)
+    total = await db.scalar(
+        select(func.count(SessionEvent.id)).where(SessionEvent.session_id == session_id)
+    ) or 0
     result = await db.execute(
         select(SessionEvent)
         .where(SessionEvent.session_id == session_id)
@@ -291,4 +292,4 @@ async def list_session_events(
         schema_event = SessionEventResponse.model_validate(event)
         schema_event.mcp_server_name = server_map.get(event.mcp_server_id)
         enriched.append(schema_event)
-    return enriched
+    return Page(items=enriched, total=total, skip=skip, limit=limit)

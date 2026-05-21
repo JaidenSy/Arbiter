@@ -10,12 +10,12 @@ import React, { useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "../api/client";
-import type { Agent, Session } from "../api/types";
+import type { Agent, Page, Session } from "../api/types";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 
-const fetchAgents = (): Promise<Agent[]> =>
-  authClient.get<Agent[]>("/agents").then((r) => r.data);
+const fetchAgents = (): Promise<Page<Agent>> =>
+  authClient.get<Page<Agent>>("/agents").then((r) => r.data);
 
 interface SessionFilters {
   agentId: string;
@@ -25,14 +25,14 @@ interface SessionFilters {
   toDate: string;
 }
 
-const fetchSessions = (filters: SessionFilters): Promise<Session[]> => {
+const fetchSessions = (filters: SessionFilters): Promise<Page<Session>> => {
   const params: Record<string, string> = {};
   if (filters.agentId) params.agent_id = filters.agentId;
   if (filters.toolName) params.tool_name = filters.toolName;
   if (filters.hasError) params.has_error = filters.hasError;
   if (filters.fromDate) params.from_date = new Date(filters.fromDate).toISOString();
   if (filters.toDate) params.to_date = new Date(filters.toDate).toISOString();
-  return authClient.get<Session[]>("/sessions", { params }).then((r) => r.data);
+  return authClient.get<Page<Session>>("/sessions", { params }).then((r) => r.data);
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -64,19 +64,22 @@ function Sessions(): React.ReactElement {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const { data: agents } = useQuery<Agent[]>({
+  const { data: agents } = useQuery<Page<Agent>>({
     queryKey: ["agents"],
     queryFn: fetchAgents,
   });
 
-  const { data: sessions, isLoading: sessionsLoading } = useQuery<Session[]>({
+  const { data: sessions, isLoading: sessionsLoading } = useQuery<Page<Session>>({
     queryKey: ["sessions", filters],
     queryFn: () => fetchSessions(filters),
   });
 
+  const agentList = agents?.items ?? [];
+  const sessionList = sessions?.items ?? [];
+
   const agentMap = useMemo(
-    () => new Map(agents?.map((a) => [a.id, a.name]) ?? []),
-    [agents]
+    () => new Map(agentList.map((a) => [a.id, a.name])),
+    [agentList]
   );
 
   const TABLE_COLS = 4;
@@ -98,7 +101,7 @@ function Sessions(): React.ReactElement {
             className="bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent/60 transition-all"
           >
             <option value="">All agents</option>
-            {agents?.map((agent) => (
+            {agentList.map((agent) => (
               <option key={agent.id} value={agent.id}>{agent.name}</option>
             ))}
           </select>
@@ -167,7 +170,7 @@ function Sessions(): React.ReactElement {
                   </tr>
                 ))}
               </>
-            ) : !sessions || sessions.length === 0 ? (
+            ) : sessionList.length === 0 ? (
               <tr>
                 <td colSpan={TABLE_COLS} className="py-20 px-4 text-center">
                   <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
@@ -184,7 +187,7 @@ function Sessions(): React.ReactElement {
                 </td>
               </tr>
             ) : (
-              sessions.map((session) => (
+              sessionList.map((session) => (
                 <tr
                   key={session.id}
                   className={`border-b border-white/[0.05] cursor-pointer hover:bg-white/[0.025] transition-colors group ${''}`}

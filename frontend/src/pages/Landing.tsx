@@ -6,8 +6,9 @@
  */
 
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
+import { useAuth } from '../context/AuthContext'
 
 const SUPPORT_EMAIL: string =
   (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'jaidensy07@gmail.com'
@@ -373,6 +374,17 @@ const pricingTiers: PricingTier[] = [
 ]
 
 function Pricing(): React.ReactElement {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+
+  function handleProCta(): void {
+    if (user) {
+      navigate('/settings?tab=billing')
+    } else {
+      navigate('/register')
+    }
+  }
+
   return (
     <section className="py-24 px-6" id="pricing">
       <div className="max-w-5xl mx-auto">
@@ -420,14 +432,18 @@ function Pricing(): React.ReactElement {
                 >
                   {tier.cta}
                 </a>
+              ) : tier.highlighted ? (
+                <button
+                  type="button"
+                  onClick={handleProCta}
+                  className="block w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+                >
+                  {user ? 'Go to Billing' : tier.cta}
+                </button>
               ) : (
                 <Link
                   to={tier.ctaHref}
-                  className={`block text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                    tier.highlighted
-                      ? 'bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]'
-                      : 'border border-white/[0.1] hover:border-accent/50 text-secondary hover:text-accent-light'
-                  }`}
+                  className="block text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border border-white/[0.1] hover:border-accent/50 text-secondary hover:text-accent-light"
                 >
                   {tier.cta}
                 </Link>

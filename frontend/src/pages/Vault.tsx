@@ -13,19 +13,19 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
-import type { Agent, VaultSecret, VaultSecretWithValue, VaultSecretCreate } from '../api/types'
+import type { Agent, VaultSecret, VaultSecretWithValue, VaultSecretCreate, Page } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import CopyButton from '../components/CopyButton'
 
 // ── Data fetchers / mutators ───────────────────────────────────────────────────
 
-const fetchAgents = (): Promise<Agent[]> =>
-  authClient.get<Agent[]>('/agents').then((r) => r.data)
+const fetchAgents = (): Promise<Page<Agent>> =>
+  authClient.get<Page<Agent>>('/agents').then((r) => r.data)
 
-const fetchSecrets = (agentId: string): Promise<VaultSecret[]> =>
+const fetchSecrets = (agentId: string): Promise<Page<VaultSecret>> =>
   authClient
-    .get<VaultSecret[]>('/vault/secrets', { params: { agent_id: agentId } })
+    .get<Page<VaultSecret>>('/vault/secrets', { params: { agent_id: agentId } })
     .then((r) => r.data)
 
 const fetchSecretById = (id: string): Promise<VaultSecretWithValue> =>
@@ -267,11 +267,12 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
   const [revealedValues, setRevealedValues] = useState<Map<string, string>>(new Map())
   const [revealingId, setRevealingId] = useState<string | null>(null)
 
-  const { data: secrets, isLoading } = useQuery<VaultSecret[]>({
+  const { data: secretsPage, isLoading } = useQuery<Page<VaultSecret>>({
     queryKey: ['vault', agentId],
     queryFn: () => fetchSecrets(agentId),
     enabled: !!agentId,
   })
+  const secrets = secretsPage?.items
 
   const deleteMutation = useMutation({
     mutationFn: deleteSecret,
@@ -476,10 +477,11 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
 function Vault(): React.ReactElement {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
 
-  const { data: agents } = useQuery<Agent[]>({
+  const { data: agentsPage } = useQuery<Page<Agent>>({
     queryKey: ['agents'],
     queryFn: fetchAgents,
   })
+  const agents = agentsPage?.items
 
   useEffect(() => {
     if (!selectedAgentId && agents && agents.length > 0) {

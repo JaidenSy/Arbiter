@@ -157,6 +157,15 @@ class BillingService:
             settings.stripe_webhook_secret,
         )
 
+        await self.dispatch_event(event=event, db=db)
+
+    async def dispatch_event(self, event: dict, db: AsyncSession) -> None:
+        """
+        Dispatch a pre-parsed Stripe event dict to the appropriate handler.
+
+        Separated from handle_webhook so the endpoint can verify the signature
+        and perform idempotency checks before dispatching.
+        """
         event_type: str = event["type"]
         data: dict = event["data"]["object"]
 

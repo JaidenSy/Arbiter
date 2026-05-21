@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { authClient } from '../api/client'
 
@@ -49,6 +49,29 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export default function Account(): React.ReactElement {
   const { user, refreshUser, logout } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const [resendingVerification, setResendingVerification] = useState(false)
+  const [resendMsg, setResendMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Social linking state
+  const [linkingProvider, setLinkingProvider] = useState<string | null>(null)
+  const [unlinkingProvider, setUnlinkingProvider] = useState<string | null>(null)
+  const [linkMsg, setLinkMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Detect redirect back from OAuth link flow
+  useEffect(() => {
+    const linked = searchParams.get('linked')
+    const linkError = searchParams.get('link_error')
+    if (linked) {
+      setLinkMsg({ type: 'success', text: `${linked.charAt(0).toUpperCase() + linked.slice(1)} account linked successfully.` })
+      void refreshUser()
+      setSearchParams({}, { replace: true })
+    } else if (linkError) {
+      setLinkMsg({ type: 'error', text: linkError })
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, refreshUser, setSearchParams])
 
   // Profile form
   const [displayName, setDisplayName] = useState(user?.display_name ?? '')
@@ -73,17 +96,36 @@ export default function Account(): React.ReactElement {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
+  async function handleResendVerification(): Promise<void> {
+    setResendingVerification(true)
+    setResendMsg(null)
+    try {
+      await authClient.post('/auth/send-verification')
+      setResendMsg({ type: 'success', text: 'Verification email sent — check your inbox.' })
+    } catch {
+      setResendMsg({ type: 'error', text: 'Failed to send verification email.' })
+    } finally {
+      setResendingVerification(false)
+    }
+  }
+
   async function handleProfileSave(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     setProfileSaving(true)
     setProfileMsg(null)
+    const emailChanged = email !== user!.email
     try {
-      await authClient.patch('/auth/me', {
+      const res = await authClient.patch<{ pending_email_confirmation?: string | null }>('/auth/me', {
         display_name: displayName.trim() || null,
-        email: email !== user!.email ? email : undefined,
+        email: emailChanged ? email : undefined,
       })
       await refreshUser()
-      setProfileMsg({ type: 'success', text: 'Profile updated.' })
+      if (emailChanged && res.data.pending_email_confirmation) {
+        setEmail(user!.email) // reset field back to current confirmed email
+        setProfileMsg({ type: 'success', text: `Check ${res.data.pending_email_confirmation} for a confirmation link. Your email won't change until you click it.` })
+      } else {
+        setProfileMsg({ type: 'success', text: 'Profile updated.' })
+      }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
       setProfileMsg({ type: 'error', text: msg ?? 'Failed to update profile.' })
@@ -117,6 +159,35 @@ export default function Account(): React.ReactElement {
     }
   }
 
+  async function handleLinkProvider(provider: string): Promise<void> {
+    setLinkingProvider(provider)
+    setLinkMsg(null)
+    try {
+      const res = await authClient.post<{ redirect_url: string }>('/auth/sso/link/initiate', { provider })
+      // Navigate top-level window to start the OAuth dance
+      window.location.href = res.data.redirect_url
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setLinkMsg({ type: 'error', text: msg ?? 'Failed to start link flow.' })
+      setLinkingProvider(null)
+    }
+  }
+
+  async function handleUnlinkProvider(provider: string): Promise<void> {
+    setUnlinkingProvider(provider)
+    setLinkMsg(null)
+    try {
+      await authClient.delete(`/auth/sso/link?provider=${provider}`)
+      await refreshUser()
+      setLinkMsg({ type: 'success', text: `${provider.charAt(0).toUpperCase() + provider.slice(1)} account unlinked.` })
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setLinkMsg({ type: 'error', text: msg ?? 'Failed to unlink account.' })
+    } finally {
+      setUnlinkingProvider(null)
+    }
+  }
+
   async function handleDeleteAccount(): Promise<void> {
     setDeleteLoading(true)
     try {
@@ -138,6 +209,32 @@ export default function Account(): React.ReactElement {
         <h1 className="gradient-text-purple text-xl font-bold">My Account</h1>
         <p className="text-secondary text-sm mt-1">Manage your profile, security, and account settings.</p>
       </div>
+
+      {/* ── Unverified email banner ── */}
+      {!user.is_verified && (
+        <div className="flex items-start gap-3 bg-warning/8 border border-warning/20 rounded-xl px-4 py-3">
+          <svg className="w-4 h-4 text-warning mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-warning text-sm font-medium">Email not verified</p>
+            <p className="text-warning/70 text-xs mt-0.5">Verify your email to unlock plan upgrades and secure your account.</p>
+            {resendMsg && (
+              <p className={`text-xs mt-1.5 ${resendMsg.type === 'success' ? 'text-success' : 'text-error'}`}>
+                {resendMsg.text}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleResendVerification()}
+            disabled={resendingVerification}
+            className="shrink-0 text-xs font-medium text-warning hover:text-white border border-warning/30 hover:border-warning/60 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {resendingVerification ? 'Sending…' : 'Resend'}
+          </button>
+        </div>
+      )}
 
       {/* ── Profile ── */}
       <Section title="Profile">
@@ -261,29 +358,50 @@ export default function Account(): React.ReactElement {
         <div className="space-y-3">
           {(['google', 'github'] as const).map((provider) => {
             const linked = user.linked_providers.includes(provider)
+            const isLinking = linkingProvider === provider
+            const isUnlinking = unlinkingProvider === provider
             return (
               <div key={provider} className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
                   <span className="text-secondary">
                     {provider === 'google' ? <GoogleIcon /> : <GitHubIcon />}
                   </span>
-                  <span className="text-sm text-primary capitalize">{provider}</span>
+                  <div>
+                    <span className="text-sm text-primary capitalize">{provider}</span>
+                    {linked && (
+                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">
+                        Connected
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span
-                  className={`text-xs px-2.5 py-1 rounded-full border font-medium ${
-                    linked
-                      ? 'text-success bg-success/10 border-success/25'
-                      : 'text-muted bg-white/[0.03] border-white/[0.08]'
-                  }`}
-                >
-                  {linked ? 'Connected' : 'Not connected'}
-                </span>
+                {linked ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleUnlinkProvider(provider)}
+                    disabled={isUnlinking}
+                    className="text-xs text-secondary hover:text-error border border-white/[0.08] hover:border-error/30 hover:bg-error/8 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    {isUnlinking ? 'Unlinking…' : 'Unlink'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void handleLinkProvider(provider)}
+                    disabled={isLinking}
+                    className="text-xs text-secondary hover:text-accent-light border border-white/[0.08] hover:border-accent/40 hover:bg-accent/8 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    {isLinking ? 'Redirecting…' : 'Link'}
+                  </button>
+                )}
               </div>
             )
           })}
-          <p className="text-xs text-muted pt-1">
-            Account linking is coming soon. Sign in with your linked provider anytime.
-          </p>
+          {linkMsg && (
+            <p className={`text-xs pt-1 ${linkMsg.type === 'success' ? 'text-success' : 'text-error'}`}>
+              {linkMsg.text}
+            </p>
+          )}
         </div>
       </Section>
 

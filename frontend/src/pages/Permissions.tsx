@@ -10,7 +10,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
-import type { Agent, MCPServer, ToolPermission, ToolPermissionCreate, ToolPermissionUpdate } from '../api/types'
+import type { Agent, MCPServer, Page, ToolPermission, ToolPermissionCreate, ToolPermissionUpdate, ToolPermissionEvent } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useAuth } from '../context/AuthContext'
@@ -18,13 +18,13 @@ import { useAuth } from '../context/AuthContext'
 // ── Data fetchers / mutators ───────────────────────────────────────────────────
 
 const fetchAgents = (): Promise<Agent[]> =>
-  authClient.get<Agent[]>('/agents').then((r) => r.data)
+  authClient.get<Page<Agent>>('/agents').then((r) => r.data.items)
 
 const fetchMCPServers = (): Promise<MCPServer[]> =>
-  authClient.get<MCPServer[]>('/mcp-servers').then((r) => r.data)
+  authClient.get<Page<MCPServer>>('/mcp-servers').then((r) => r.data.items)
 
 const fetchPermissions = (agentId: string): Promise<ToolPermission[]> =>
-  authClient.get<ToolPermission[]>(`/agents/${agentId}/permissions`).then((r) => r.data)
+  authClient.get<Page<ToolPermission>>(`/agents/${agentId}/permissions`).then((r) => r.data.items)
 
 const grantPermission = ({
   agentId,
@@ -45,6 +45,9 @@ const revokePermission = ({
   permissionId: string
 }): Promise<void> =>
   authClient.delete(`/agents/${agentId}/permissions/${permissionId}`).then(() => undefined)
+
+const fetchHistory = (agentId: string): Promise<ToolPermissionEvent[]> =>
+  authClient.get<Page<ToolPermissionEvent>>(`/agents/${agentId}/permissions/history`).then((r) => r.data.items)
 
 const updatePermission = ({
   agentId,
@@ -113,6 +116,7 @@ function GrantModal({
     mutationFn: grantPermission,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
+      void queryClient.invalidateQueries({ queryKey: ['permissions-history', agentId] })
       onClose()
     },
     onError: (err: unknown) => {
@@ -252,6 +256,7 @@ function EditModal({ isOpen, onClose, agentId, permission }: EditModalProps): Re
     mutationFn: updatePermission,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
+      void queryClient.invalidateQueries({ queryKey: ['permissions-history', agentId] })
       onClose()
     },
     onError: (err: unknown) => {
@@ -356,6 +361,139 @@ function SkeletonRow(): React.ReactElement {
   )
 }
 
+// ── History Panel ─────────────────────────────────────────────────────────────
+
+function actionBadge(action: ToolPermissionEvent['action']): React.ReactElement {
+  const styles: Record<string, string> = {
+    granted: 'bg-success/10 text-success border-success/20',
+    revoked: 'bg-error/10 text-error border-error/20',
+    updated: 'bg-accent/10 text-accent-light border-accent/20',
+  }
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${styles[action] ?? ''}`}>
+      {action}
+    </span>
+  )
+}
+
+function formatChanges(changes: Record<string, [unknown, unknown]>): string {
+  return Object.entries(changes)
+    .map(([k, [from, to]]) => {
+      const label = k === 'rate_limit_per_minute' ? 'rate limit' : 'cache TTL'
+      const fmtVal = (v: unknown) => (v == null ? 'none' : String(v))
+      return `${label}: ${fmtVal(from)} → ${fmtVal(to)}`
+    })
+    .join(', ')
+}
+
+const ACTION_FILTERS = ['all', 'granted', 'revoked', 'updated'] as const
+type ActionFilter = typeof ACTION_FILTERS[number]
+
+interface HistoryPanelProps {
+  agentId: string
+}
+
+function HistoryPanel({ agentId }: HistoryPanelProps): React.ReactElement {
+  const [actionFilter, setActionFilter] = useState<ActionFilter>('all')
+  const [sortAsc, setSortAsc] = useState(false)
+
+  const { data: events, isLoading } = useQuery<ToolPermissionEvent[]>({
+    queryKey: ['permissions-history', agentId],
+    queryFn: () => fetchHistory(agentId),
+    enabled: !!agentId,
+  })
+
+  const filtered = (events ?? [])
+    .filter((e) => actionFilter === 'all' || e.action === actionFilter)
+    .sort((a, b) => {
+      const diff = new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime()
+      return sortAsc ? diff : -diff
+    })
+    .slice(0, 10)
+
+  const filterBtn = (f: ActionFilter) => {
+    const active = actionFilter === f
+    return (
+      <button
+        key={f}
+        type="button"
+        onClick={() => setActionFilter(f)}
+        className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-all ${
+          active
+            ? 'bg-accent/15 text-accent-light border border-accent/30'
+            : 'text-muted hover:text-secondary border border-transparent hover:border-white/[0.08]'
+        }`}
+      >
+        {f}
+      </button>
+    )
+  }
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-muted text-xs font-semibold uppercase tracking-widest">Permission History</p>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            {ACTION_FILTERS.map(filterBtn)}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSortAsc((v) => !v)}
+            title={sortAsc ? 'Oldest first' : 'Newest first'}
+            className="ml-1 px-2.5 py-1 rounded-md text-xs text-muted hover:text-secondary border border-transparent hover:border-white/[0.08] transition-all flex items-center gap-1"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
+              {sortAsc
+                ? <><path d="M5 1v8M2 6l3 3 3-3"/></>
+                : <><path d="M5 9V1M2 4l3-3 3 3"/></>}
+            </svg>
+            {sortAsc ? 'Oldest' : 'Newest'}
+          </button>
+        </div>
+      </div>
+      <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+        {isLoading ? (
+          <div className="py-8 flex items-center justify-center">
+            <div className="w-4 h-4 border-2 border-accent/40 border-t-accent rounded-full animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <p className="text-muted text-xs text-center py-8">
+            {events?.length ? 'No events match the filter.' : 'No history yet.'}
+          </p>
+        ) : (
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-white/[0.06]">
+                <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Action</th>
+                <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Tool</th>
+                <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">By</th>
+                <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Changes</th>
+                <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">When</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((e) => (
+                <tr key={e.id} className="border-b border-white/[0.04] last:border-0">
+                  <td className="py-2.5 px-4">{actionBadge(e.action)}</td>
+                  <td className="py-2.5 px-4 font-mono text-xs text-accent-light">{e.tool_name}</td>
+                  <td className="py-2.5 px-4 text-xs text-secondary">{e.performed_by ?? '—'}</td>
+                  <td className="py-2.5 px-4 text-xs text-muted">
+                    {e.changes ? formatChanges(e.changes) : '—'}
+                  </td>
+                  <td className="py-2.5 px-4 font-mono text-xs text-muted">
+                    {new Date(e.occurred_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Permissions Table ──────────────────────────────────────────────────────────
 
 interface PermissionsTableProps {
@@ -381,14 +519,17 @@ function PermissionsTable({
     enabled: !!agentId,
   })
 
+  const invalidateAll = () => {
+    void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
+    void queryClient.invalidateQueries({ queryKey: ['permissions-history', agentId] })
+  }
+
   const revokeMutation = useMutation({
     mutationFn: revokePermission,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
-    },
+    onSuccess: invalidateAll,
     onError: (err) => {
       console.error('Failed to revoke permission', err)
-      void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
+      invalidateAll()
     },
   })
 
@@ -537,6 +678,8 @@ function PermissionsTable({
         message={`Revoke permission for tool "${revokeTarget?.tool_name ?? ''}"? This cannot be undone.`}
         confirmLabel="Revoke"
       />
+
+      <HistoryPanel agentId={agentId} />
     </div>
   )
 }

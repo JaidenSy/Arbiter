@@ -9,14 +9,12 @@ Implements a two-phase semantic cache for MCP tool calls:
 
     Phase 2 — Semantic match:
         sentence-transformers/all-MiniLM-L6-v2 embedding of the input.
-        Cosine similarity search against stored JSONB float arrays in Postgres.
+        pgvector cosine-distance ANN search (single SQL query, no Python loop).
         Threshold controlled by CACHE_SIMILARITY_THRESHOLD env var (default 0.95).
 
 Design decisions:
-    - sentence-transformers/all-MiniLM-L6-v2 is the default model per
-      requirements.txt. The ONNX-based fastembed package was researched but
-      sentence-transformers is already pinned as the project dependency.
-    - Embeddings are stored as JSONB float arrays; no pgvector extension needed.
+    - Embeddings stored as vector(384) using pgvector; cosine distance (<=>)
+      is computed in Postgres, replacing the previous O(n) Python loop.
     - Redis is used as an L1 exact-hash cache to avoid hitting Postgres on
       every repeated identical call.
     - Embedding computation is synchronous (CPU-bound); model is a module-level
@@ -31,7 +29,6 @@ import asyncio
 import hashlib
 import json
 import logging
-import math
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -66,16 +63,6 @@ def _get_model():
                 "Run: pip install sentence-transformers"
             ) from exc
     return _embedding_model
-
-
-def _cosine_similarity(a: list[float], b: list[float]) -> float:
-    """Compute cosine similarity between two equal-length float vectors."""
-    dot = sum(x * y for x, y in zip(a, b))
-    norm_a = math.sqrt(sum(x * x for x in a))
-    norm_b = math.sqrt(sum(x * x for x in b))
-    if norm_a == 0.0 or norm_b == 0.0:
-        return 0.0
-    return dot / (norm_a * norm_b)
 
 
 def _canonical(tool_name: str, input_payload: dict[str, Any]) -> str:
@@ -174,45 +161,35 @@ class CacheService:
             await self._increment_hit_count(entry.id)
             return entry.response_payload
 
-        # ── Phase 2: Postgres semantic similarity ─────────────────────────────
+        # ── Phase 2: pgvector ANN cosine-distance search ──────────────────────
         try:
             query_embedding = await self._compute_embedding_async(canonical)
         except Exception as exc:
             logger.warning("cache: embedding failed, skipping semantic search: %s", exc)
             return None
 
-        # Fetch candidate entries for semantic search — capped to prevent OOM.
+        # cosine_distance = 1 - cosine_similarity; similarity >= threshold means
+        # distance <= 1 - threshold. pgvector's <=> operator returns cosine distance.
+        threshold = settings.cache_similarity_threshold
+        max_distance = 1.0 - threshold
+
         result = await self.db.execute(
-            select(CacheEntry).where(
+            select(CacheEntry)
+            .where(
                 CacheEntry.tool_name == tool_name,
                 CacheEntry.org_id == org_id,
                 CacheEntry.input_embedding.is_not(None),
                 CacheEntry.expires_at > now,
-            ).limit(500)
-        )
-        candidates = result.scalars().all()
-
-        threshold = settings.cache_similarity_threshold
-        best_entry: CacheEntry | None = None
-        best_score = -1.0
-
-        for candidate in candidates:
-            if candidate.input_embedding is None:
-                continue
-            score = _cosine_similarity(query_embedding, candidate.input_embedding)
-            if score > best_score:
-                best_score = score
-                best_entry = candidate
-
-        if best_entry is not None and best_score >= threshold:
-            logger.debug(
-                "cache: L3 semantic hit tool=%r score=%.4f threshold=%.4f",
-                tool_name,
-                best_score,
-                threshold,
+                CacheEntry.input_embedding.op("<=>") (query_embedding) <= max_distance,
             )
-            await self._increment_hit_count(best_entry.id)
-            return best_entry.response_payload
+            .order_by(CacheEntry.input_embedding.op("<=>") (query_embedding))
+            .limit(1)
+        )
+        entry = result.scalar_one_or_none()
+        if entry is not None:
+            logger.debug("cache: L3 pgvector semantic hit tool=%r", tool_name)
+            await self._increment_hit_count(entry.id)
+            return entry.response_payload
 
         logger.debug("cache: miss tool=%r", tool_name)
         return None

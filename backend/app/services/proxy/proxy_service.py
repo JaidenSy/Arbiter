@@ -72,7 +72,7 @@ class ProxyService:
         """
         self.db = db
         self.redis = redis
-        self._rbac = RBACService(db)
+        self._rbac = RBACService(db, redis)
         self._vault = VaultService(db)
         self._cache = CacheService(db, redis)
 

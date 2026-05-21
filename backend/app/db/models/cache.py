@@ -14,6 +14,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -31,8 +32,9 @@ class CacheEntry(Base):
         input_hash:       SHA-256 of the canonical (sorted-key) JSON of the input.
                           Used for exact-match lookups before embedding search.
         input_embedding:  Float array from the sentence-transformer model,
-                          stored as JSONB.  Used for approximate nearest-neighbour
-                          lookup when there is no exact hash match.
+                          stored as vector(384) for pgvector ANN search.
+                          Used for approximate nearest-neighbour lookup when
+                          there is no exact hash match.
         response_payload: Full JSON response from the MCP server.
         hit_count:        Number of times this entry has been served from cache.
         created_at:       When the entry was inserted.
@@ -54,7 +56,7 @@ class CacheEntry(Base):
     )
     tool_name: Mapped[str] = mapped_column(String(255), nullable=False)
     input_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    input_embedding: Mapped[list[float] | None] = mapped_column(JSONB, nullable=True)
+    input_embedding: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
     response_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     hit_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(

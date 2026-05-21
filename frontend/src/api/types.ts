@@ -5,6 +5,13 @@
  * Keep in sync with CODER-A's backend contracts.
  */
 
+export interface Page<T> {
+  items: T[]
+  total: number
+  skip: number
+  limit: number
+}
+
 export type AgentScope = "full" | "read_only" | "vault_read_only";
 
 export interface Agent {
@@ -89,6 +96,17 @@ export interface ToolPermissionCreate {
 export interface ToolPermissionUpdate {
   rate_limit_per_minute: number | null
   cache_ttl_seconds: number | null
+}
+
+export interface ToolPermissionEvent {
+  id: string
+  permission_id: string | null
+  mcp_server_id: string | null
+  tool_name: string
+  action: 'granted' | 'revoked' | 'updated'
+  performed_by: string | null
+  changes: Record<string, [unknown, unknown]> | null
+  occurred_at: string
 }
 
 export interface VaultSecret {

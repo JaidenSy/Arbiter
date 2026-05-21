@@ -39,7 +39,11 @@ from app.schemas.auth import (
     UpdateMeRequest,
 )
 from app.services.auth import auth_service
-from app.services.email.email_service import send_email_verification, send_password_reset
+from app.services.email.email_service import (
+    send_email_change_confirmation,
+    send_email_verification,
+    send_password_reset,
+)
 
 _token_serializer = URLSafeTimedSerializer(settings.app_secret_key)
 
@@ -83,6 +87,7 @@ async def _build_me_response(user: User, db: AsyncSession) -> MeResponse:
         has_password=bool(user.hashed_password),
         linked_providers=linked_providers,
         avatar_url=avatar_url,
+        is_verified=user.is_verified,
     )
 
 
@@ -232,9 +237,14 @@ async def me(
     return await _build_me_response(current_user, db)
 
 
+class UpdateMeResponse(MeResponse):
+    """Extended response for PATCH /auth/me when an email change is pending."""
+    pending_email_confirmation: str | None = None
+
+
 @router.patch(
     "/me",
-    response_model=MeResponse,
+    response_model=UpdateMeResponse,
     status_code=status.HTTP_200_OK,
     summary="Update display name or email",
 )
@@ -242,22 +252,33 @@ async def update_me(
     body: UpdateMeRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> MeResponse:
-    if body.email and body.email != current_user.email:
-        existing = await db.scalar(select(User).where(User.email == str(body.email)))
+) -> UpdateMeResponse:
+    pending_email: str | None = None
+
+    if body.email and str(body.email) != current_user.email:
+        new_email = str(body.email)
+        existing = await db.scalar(select(User).where(User.email == new_email))
         if existing is not None:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="That email is already in use",
             )
-        current_user.email = str(body.email)
+        # Don't update email yet — send a confirmation link to the new address
+        token = _token_serializer.dumps(
+            {"uid": str(current_user.id), "email": new_email},
+            salt="email-change",
+        )
+        confirm_url = f"{settings.frontend_url}/confirm-email-change?token={token}"
+        await send_email_change_confirmation(new_email, confirm_url)
+        pending_email = new_email
 
     if body.display_name is not None:
         current_user.display_name = body.display_name
+        await db.commit()
+        await db.refresh(current_user)
 
-    await db.commit()
-    await db.refresh(current_user)
-    return await _build_me_response(current_user, db)
+    me = await _build_me_response(current_user, db)
+    return UpdateMeResponse(**me.model_dump(), pending_email_confirmation=pending_email)
 
 
 @router.post(
@@ -339,7 +360,7 @@ async def delete_me(
 # ── Email verification ────────────────────────────────────────────────────────
 
 
-@router.post("/send-verification", status_code=status.HTTP_204_NO_CONTENT, summary="Resend verification email")
+@router.post("/send-verification", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Resend verification email")
 async def resend_verification(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -372,6 +393,38 @@ async def verify_email(
     return {"message": "Email verified successfully"}
 
 
+@router.get("/confirm-email-change", status_code=status.HTTP_200_OK, summary="Activate a pending email change")
+async def confirm_email_change(
+    token: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    try:
+        payload = _token_serializer.loads(token, salt="email-change", max_age=86400)
+    except SignatureExpired:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation link has expired")
+    except BadSignature:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid confirmation token")
+
+    user_id: str = payload.get("uid", "")
+    new_email: str = payload.get("email", "")
+    if not user_id or not new_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid confirmation token")
+
+    user = await db.get(User, user_id)
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Guard against the new address being taken by someone else in the meantime
+    conflict = await db.scalar(select(User).where(User.email == new_email, User.id != user.id))
+    if conflict is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That email is already in use")
+
+    user.email = new_email
+    user.is_verified = True
+    await db.commit()
+    return {"message": "Email address updated successfully"}
+
+
 # ── Password reset ────────────────────────────────────────────────────────────
 
 
@@ -384,7 +437,7 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
-@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT, summary="Request password reset email")
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Request password reset email")
 async def forgot_password(
     body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
@@ -399,7 +452,7 @@ async def forgot_password(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT, summary="Reset password using token")
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Reset password using token")
 async def reset_password(
     body: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
