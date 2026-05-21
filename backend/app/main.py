@@ -142,12 +142,25 @@ async def _eviction_loop() -> None:
                     .values(ended_at=now)
                 )
 
+                # Audit log retention — delete sessions (+ events via DB cascade)
+                # older than AUDIT_LOG_RETENTION_DAYS. Skip if set to 0.
+                retention_deleted = 0
+                if settings.audit_log_retention_days > 0:
+                    retention_cutoff = now - timedelta(days=settings.audit_log_retention_days)
+                    retention_result = await db.execute(
+                        delete(Session).where(Session.started_at < retention_cutoff)
+                    )
+                    retention_deleted = retention_result.rowcount
+
                 await db.commit()
                 logger.info(
-                    "eviction: removed %d cache entries, %d tokens; closed %d inactive sessions",
+                    "eviction: removed %d cache entries, %d tokens; "
+                    "closed %d inactive sessions; deleted %d sessions past retention (%d days)",
                     cache_result.rowcount,
                     token_result.rowcount,
                     session_result.rowcount,
+                    retention_deleted,
+                    settings.audit_log_retention_days,
                 )
         except Exception as exc:
             logger.warning("eviction: sweep failed: %s", exc)
