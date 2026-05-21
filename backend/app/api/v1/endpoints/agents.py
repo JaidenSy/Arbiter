@@ -17,7 +17,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
@@ -26,6 +26,7 @@ from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.schemas.agent import AgentCreate, AgentCreateResponse, AgentResponse, AgentUpdate, _VALID_SCOPES
+from app.schemas.pagination import Page
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.services.plan.plan_service import check_resource_limit, check_tool_call_quota
 from app.services.proxy.proxy_service import ProxyService
@@ -105,7 +106,7 @@ async def create_agent(
 
 @router.get(
     "",
-    response_model=list[AgentResponse],
+    response_model=Page[AgentResponse],
     summary="List all agents",
 )
 async def list_agents(
@@ -113,17 +114,14 @@ async def list_agents(
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[AgentResponse]:
+) -> Page[AgentResponse]:
     limit = min(limit, 200)
+    where = (Agent.is_active.is_(True), Agent.org_id == current_user.org_id)
+    total: int = await db.scalar(select(func.count(Agent.id)).where(*where)) or 0
     result = await db.execute(
-        select(Agent)
-        .where(Agent.is_active.is_(True), Agent.org_id == current_user.org_id)
-        .order_by(Agent.created_at.desc())
-        .offset(skip)
-        .limit(limit)
+        select(Agent).where(*where).order_by(Agent.created_at.desc()).offset(skip).limit(limit)
     )
-    agents = result.scalars().all()
-    return [AgentResponse.model_validate(a) for a in agents]
+    return Page(items=[AgentResponse.model_validate(a) for a in result.scalars().all()], total=total, skip=skip, limit=limit)
 
 
 @router.get(

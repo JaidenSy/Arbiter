@@ -9,15 +9,15 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "../api/client";
-import type { Agent, AgentCreateResponse, AgentScope, MCPServer } from "../api/types";
+import type { Agent, AgentCreateResponse, AgentScope, MCPServer, Page } from "../api/types";
 import CopyButton from "../components/CopyButton";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 // ── Data fetchers / mutators ──────────────────────────────────────────────────
 
-const fetchAgents = (): Promise<Agent[]> =>
-  authClient.get<Agent[]>("/agents").then((r) => r.data);
+const fetchAgents = (): Promise<Page<Agent>> =>
+  authClient.get<Page<Agent>>("/agents").then((r) => r.data);
 
 const createAgent = (payload: {
   name: string;
@@ -253,11 +253,12 @@ function TestCallModal({ agent, onClose }: TestCallModalProps): React.ReactEleme
   const [result, setResult] = useState<TestCallResult | null>(null)
   const [callError, setCallError] = useState<string | null>(null)
 
-  const { data: servers = [] } = useQuery<MCPServer[]>({
+  const { data: serversPage } = useQuery<Page<MCPServer>>({
     queryKey: ["mcp-servers"],
-    queryFn: () => authClient.get<MCPServer[]>("/mcp-servers").then((r) => r.data),
+    queryFn: () => authClient.get<Page<MCPServer>>("/mcp-servers").then((r) => r.data),
     enabled: !!agent,
   })
+  const servers = serversPage?.items ?? []
 
   React.useEffect(() => {
     if (agent) {
@@ -575,10 +576,11 @@ function Agents(): React.ReactElement {
   const [renameAgent, setRenameAgent] = useState<Agent | null>(null);
   const [testCallAgent, setTestCallAgent] = useState<Agent | null>(null);
 
-  const { data: agents, isLoading } = useQuery<Agent[]>({
+  const { data: agentsPage, isLoading } = useQuery<Page<Agent>>({
     queryKey: ["agents"],
     queryFn: fetchAgents,
   });
+  const agents = agentsPage?.items;
 
   const deactivateMutation = useMutation({
     mutationFn: deleteAgent,

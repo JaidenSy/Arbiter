@@ -10,7 +10,7 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
-import type { MCPServer, MCPServerCreate, MCPServerUpdate, MCPServerTestResult } from '../api/types'
+import type { MCPServer, MCPServerCreate, MCPServerUpdate, MCPServerTestResult, Page } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Toggle from '../components/Toggle'
@@ -29,8 +29,8 @@ function extractApiError(err: unknown, fallback: string): string {
 
 // ── Data fetchers / mutators ───────────────────────────────────────────────────
 
-const fetchMCPServers = (): Promise<MCPServer[]> =>
-  authClient.get<MCPServer[]>('/mcp-servers').then((r) => r.data)
+const fetchMCPServers = (): Promise<Page<MCPServer>> =>
+  authClient.get<Page<MCPServer>>('/mcp-servers').then((r) => r.data)
 
 const createMCPServer = (payload: MCPServerCreate): Promise<MCPServer> =>
   authClient.post<MCPServer>('/mcp-servers', payload).then((r) => r.data)
@@ -262,11 +262,12 @@ function MCPServers(): React.ReactElement {
     testMutation.mutate(server.id)
   }
 
-  const { data: servers, isLoading } = useQuery<MCPServer[]>({
+  const { data: serversPage, isLoading } = useQuery<Page<MCPServer>>({
     queryKey: ['mcp-servers'],
     queryFn: fetchMCPServers,
     refetchInterval: 30_000,
   })
+  const servers = serversPage?.items
 
   const deleteMutation = useMutation({
     mutationFn: deleteMCPServer,

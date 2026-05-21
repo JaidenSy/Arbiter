@@ -7,6 +7,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react'
 import { authClient } from '../api/client'
+import type { Page } from '../api/types'
 import { useAuth } from '../context/AuthContext'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -124,12 +125,12 @@ function Organization(): React.ReactElement {
     try {
       const [orgRes, membersRes, invitesRes] = await Promise.all([
         authClient.get<OrgInfo>('/org'),
-        authClient.get<Member[]>('/org/members'),
-        isManager ? authClient.get<Invite[]>('/org/invites') : Promise.resolve(null),
+        authClient.get<Page<Member>>('/org/members'),
+        isManager ? authClient.get<Page<Invite>>('/org/invites') : Promise.resolve(null),
       ])
       setOrg(orgRes.data)
-      setMembers(membersRes.data)
-      if (invitesRes) setInvites(invitesRes.data)
+      setMembers(membersRes.data.items)
+      if (invitesRes) setInvites(invitesRes.data.items)
     } catch {
       setError('Failed to load organization data.')
     } finally {

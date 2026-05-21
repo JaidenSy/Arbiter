@@ -20,11 +20,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db, require_role
+from app.schemas.pagination import Page
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
 from app.db.models.user import User
@@ -190,48 +191,60 @@ async def create_tool_permission(
 
 @router.get(
     "/{agent_id}/permissions/history",
-    response_model=list[ToolPermissionEventResponse],
+    response_model=Page[ToolPermissionEventResponse],
     summary="Audit log for an agent's permissions",
 )
 async def list_permission_history(
     agent_id: uuid.UUID,
+    skip: int = 0,
     limit: int = Query(50, le=200),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[ToolPermissionEventResponse]:
+) -> Page[ToolPermissionEventResponse]:
     agent_result = await db.execute(
         select(Agent).where(Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True))
     )
     if agent_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
 
+    total = await db.scalar(
+        select(func.count(ToolPermissionEvent.id)).where(ToolPermissionEvent.agent_id == agent_id)
+    ) or 0
     result = await db.execute(
         select(ToolPermissionEvent)
         .where(ToolPermissionEvent.agent_id == agent_id)
         .order_by(ToolPermissionEvent.occurred_at.desc())
+        .offset(skip)
         .limit(limit)
     )
-    return [ToolPermissionEventResponse.model_validate(e) for e in result.scalars().all()]
+    return Page(items=[ToolPermissionEventResponse.model_validate(e) for e in result.scalars().all()], total=total, skip=skip, limit=limit)
 
 
 @router.get(
     "/{agent_id}/permissions",
-    response_model=list[ToolPermissionResponse],
+    response_model=Page[ToolPermissionResponse],
     summary="List permissions for an agent",
 )
 async def list_tool_permissions(
     agent_id: uuid.UUID,
+    skip: int = 0,
+    limit: int = 200,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[ToolPermissionResponse]:
+) -> Page[ToolPermissionResponse]:
     agent_result = await db.execute(
         select(Agent).where(Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True))
     )
     if agent_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
 
-    result = await db.execute(select(ToolPermission).where(ToolPermission.agent_id == agent_id))
-    return [ToolPermissionResponse.model_validate(p) for p in result.scalars().all()]
+    total = await db.scalar(
+        select(func.count(ToolPermission.id)).where(ToolPermission.agent_id == agent_id)
+    ) or 0
+    result = await db.execute(
+        select(ToolPermission).where(ToolPermission.agent_id == agent_id).offset(skip).limit(limit)
+    )
+    return Page(items=[ToolPermissionResponse.model_validate(p) for p in result.scalars().all()], total=total, skip=skip, limit=limit)
 
 
 @router.patch(

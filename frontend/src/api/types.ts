@@ -5,6 +5,13 @@
  * Keep in sync with CODER-A's backend contracts.
  */
 
+export interface Page<T> {
+  items: T[]
+  total: number
+  skip: number
+  limit: number
+}
+
 export type AgentScope = "full" | "read_only" | "vault_read_only";
 
 export interface Agent {
