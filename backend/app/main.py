@@ -12,7 +12,7 @@ import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import redis.asyncio as aioredis
 from fastapi import FastAPI, HTTPException, Request, status
@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 
-from sqlalchemy import delete, text
+from sqlalchemy import delete, select, text, update
 
 from app.api.v1.endpoints import (
     agents,
@@ -42,33 +42,51 @@ from app.core.config import settings
 from app.db.base import async_session_factory, engine
 from app.db.models.cache import CacheEntry
 from app.db.models.refresh_token import RefreshToken
+from app.db.models.session import Session, SessionEvent
 from app.services.plan.plan_limits import PlanLimitError, QuotaExceededError
 
 logger = logging.getLogger(__name__)
 
 _EVICTION_INTERVAL = 3600  # run every hour
+_SESSION_INACTIVITY_MINUTES = 30
 
 
 async def _eviction_loop() -> None:
-    """Background task: delete expired cache_entries and revoked/expired refresh_tokens."""
+    """Background task: evict expired cache/tokens and close inactive sessions."""
     while True:
         await asyncio.sleep(_EVICTION_INTERVAL)
         try:
             async with async_session_factory() as db:
                 now = datetime.now(tz=timezone.utc)
+                inactivity_cutoff = now - timedelta(minutes=_SESSION_INACTIVITY_MINUTES)
+
                 cache_result = await db.execute(
                     delete(CacheEntry).where(CacheEntry.expires_at <= now)
                 )
                 token_result = await db.execute(
-                    delete(RefreshToken).where(
-                        RefreshToken.expires_at <= now,
-                    )
+                    delete(RefreshToken).where(RefreshToken.expires_at <= now)
                 )
+
+                # Close sessions with no events in the last 30 minutes.
+                recent_session_ids = select(SessionEvent.session_id).where(
+                    SessionEvent.occurred_at > inactivity_cutoff
+                )
+                session_result = await db.execute(
+                    update(Session)
+                    .where(
+                        Session.ended_at.is_(None),
+                        Session.started_at < inactivity_cutoff,
+                        Session.id.not_in(recent_session_ids),
+                    )
+                    .values(ended_at=now)
+                )
+
                 await db.commit()
                 logger.info(
-                    "eviction: removed %d expired cache entries, %d expired refresh tokens",
+                    "eviction: removed %d cache entries, %d tokens; closed %d inactive sessions",
                     cache_result.rowcount,
                     token_result.rowcount,
+                    session_result.rowcount,
                 )
         except Exception as exc:
             logger.warning("eviction: sweep failed: %s", exc)
