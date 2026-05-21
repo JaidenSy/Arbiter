@@ -18,8 +18,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,12 +40,25 @@ router = APIRouter(prefix="/vault", tags=["vault"])
 # ── Inline schemas ────────────────────────────────────────────────────────────
 
 
+_SECRET_NAME_RE = re.compile(r"^[A-Za-z0-9_]+$")
+
+
 class SecretCreate(BaseModel):
     """Request body for storing a secret."""
 
-    name: str = Field(..., description="Logical key, e.g. GITHUB_TOKEN")
-    value: str = Field(..., description="Raw secret value — will be encrypted at rest")
+    name: str = Field(..., min_length=1, max_length=128, description="Logical key, e.g. GITHUB_TOKEN")
+    value: str = Field(..., min_length=1, description="Raw secret value — will be encrypted at rest")
     agent_id: uuid.UUID | None = Field(None, description="Scope the secret to a specific agent")
+
+    @field_validator("name")
+    @classmethod
+    def validate_name_format(cls, v: str) -> str:
+        if not _SECRET_NAME_RE.match(v):
+            raise ValueError(
+                "Secret name must contain only letters, numbers, and underscores (A-Za-z0-9_). "
+                "This must match the {{SECRET_NAME}} placeholder syntax used in tool call parameters."
+            )
+        return v
 
 
 class SecretResponse(BaseModel):

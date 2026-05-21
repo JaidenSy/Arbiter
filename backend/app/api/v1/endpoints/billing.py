@@ -13,6 +13,7 @@ Routes:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import stripe
@@ -23,7 +24,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db, get_redis
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
@@ -280,6 +281,9 @@ async def create_portal(
     return {"url": url}
 
 
+_STRIPE_EVENT_DEDUP_TTL = 72 * 3600  # 72 hours — Stripe retries within this window
+
+
 @router.post(
     "/webhook",
     status_code=status.HTTP_200_OK,
@@ -289,6 +293,7 @@ async def create_portal(
 async def stripe_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
     stripe_signature: str = Header(..., alias="stripe-signature"),
 ) -> dict[str, str]:
     """
@@ -301,29 +306,40 @@ async def stripe_webhook(
     Pydantic body parameter or call request.json(), as either would consume
     the stream and break Stripe's HMAC signature check.
 
-    Args:
-        request:          Raw FastAPI request (for body bytes).
-        db:               Injected async database session.
-        stripe_signature: Value of the stripe-signature header from Stripe.
-
-    Returns:
-        {"status": "ok"} on successful processing.
-
-    Raises:
-        HTTPException 400: On invalid or missing signature.
+    Idempotency: Stripe may retry events on network errors or timeouts. Each
+    event ID is written to Redis after successful processing (72h TTL). Duplicate
+    deliveries of the same event ID are silently acknowledged without re-processing.
     """
     payload = await request.body()
 
+    # Verify signature and parse event before any dedup check.
     try:
-        await billing_service.handle_webhook(
-            payload=payload,
-            sig_header=stripe_signature,
-            db=db,
+        event = await asyncio.to_thread(
+            stripe.Webhook.construct_event,
+            payload,
+            stripe_signature,
+            settings.stripe_webhook_secret,
         )
     except stripe.error.SignatureVerificationError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid Stripe signature",
         )
+
+    event_id: str = event["id"]
+    dedup_key = f"stripe_event:{event_id}"
+
+    # Idempotency check — skip if already processed.
+    if redis is not None:
+        already_processed = await redis.exists(dedup_key)
+        if already_processed:
+            logger.info("billing: skipping duplicate Stripe event %s", event_id)
+            return {"status": "ok"}
+
+    await billing_service.dispatch_event(event=event, db=db)
+
+    # Mark event as processed so retries are no-ops.
+    if redis is not None:
+        await redis.setex(dedup_key, _STRIPE_EVENT_DEDUP_TTL, "1")
 
     return {"status": "ok"}
