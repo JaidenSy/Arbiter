@@ -83,7 +83,7 @@ interface StatMetricProps {
   value: string | number;
   valueClass?: string;
   trend?: "up" | "down" | "neutral";
-  accent?: "purple" | "teal";
+  accent?: "amber" | "teal";
   to?: string;
 }
 
@@ -92,7 +92,7 @@ function StatMetric({
   value,
   valueClass = "text-primary",
   trend,
-  accent = "purple",
+  accent = "amber",
   to,
 }: StatMetricProps): React.ReactElement {
   const inner = (
@@ -201,8 +201,8 @@ function Dashboard(): React.ReactElement {
 
         {/* Greeting header */}
         <div className="mb-8">
-          <h1 className="text-primary text-xl font-semibold">
-            {getGreeting()}, <span className="gradient-text">{userName}</span>
+          <h1 className="font-display text-primary text-xl font-semibold tracking-tight">
+            {getGreeting()}, <span className="text-accent-light">{userName}</span>
           </h1>
           <p className="text-secondary text-sm mt-1">{formatDate()}</p>
         </div>
@@ -223,7 +223,7 @@ function Dashboard(): React.ReactElement {
             </div>
             <Link
               to="/agents"
-              className="flex-shrink-0 bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+              className="flex-shrink-0 bg-accent hover:bg-accent-light text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
             >
               Register Agent →
             </Link>
@@ -236,20 +236,20 @@ function Dashboard(): React.ReactElement {
             label="Active Agents"
             value={statsLoading ? "…" : (stats?.agents_count ?? "—")}
             trend="up"
-            accent="purple"
+            accent="amber"
             to="/agents"
           />
           <StatMetric
             label="MCP Servers"
             value={statsLoading ? "…" : (stats?.servers_count ?? "—")}
-            accent="purple"
+            accent="amber"
             to="/mcp-servers"
           />
           <StatMetric
             label="Tool Calls Today"
             value={statsLoading ? "…" : (stats?.tool_calls_today ?? "—")}
             trend="up"
-            accent="purple"
+            accent="amber"
             to="/sessions"
           />
           <StatMetric
@@ -272,7 +272,7 @@ function Dashboard(): React.ReactElement {
                 : "text-primary"
             }
             trend={stats ? (stats.error_rate_today > 0.05 ? "down" : stats.error_rate_today === 0 ? "up" : "neutral") : "neutral"}
-            accent="purple"
+            accent="amber"
           />
         </div>
 
@@ -332,8 +332,8 @@ function Dashboard(): React.ReactElement {
               >
                 <defs>
                   <linearGradient id="gradCalls" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#7C3AED" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#7C3AED" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#D97706" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#D97706" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="gradHits" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#14B8A6" stopOpacity={0.25} />
@@ -374,7 +374,7 @@ function Dashboard(): React.ReactElement {
                   type="monotone"
                   dataKey="tool_calls"
                   name="Tool Calls"
-                  stroke="#7C3AED"
+                  stroke="#D97706"
                   strokeWidth={1.5}
                   fill="url(#gradCalls)"
                   dot={false}

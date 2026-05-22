@@ -89,7 +89,7 @@ function Sessions(): React.ReactElement {
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="gradient-text-purple text-xl font-bold">Sessions</h1>
+          <h1 className="font-display text-xl font-semibold tracking-tight text-primary">Sessions</h1>
           <p className="text-secondary text-sm mt-1">Full audit log of agent activity and tool calls</p>
         </div>
 

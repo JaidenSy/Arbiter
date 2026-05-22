@@ -218,7 +218,7 @@ function GrantModal({
           <button
             type="submit"
             disabled={mutation.isPending || !mcpServerId || !toolName.trim()}
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
           >
             {mutation.isPending ? 'Granting…' : 'Grant Permission'}
           </button>
@@ -337,7 +337,7 @@ function EditModal({ isOpen, onClose, agentId, permission }: EditModalProps): Re
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
           >
             {mutation.isPending ? 'Saving…' : 'Save Changes'}
           </button>
@@ -555,7 +555,7 @@ function PermissionsTable({
         <button
           type="button"
           onClick={() => setGrantOpen(true)}
-          className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+          className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
         >
           Grant Permission
         </button>
@@ -707,7 +707,7 @@ function Permissions(): React.ReactElement {
   return (
     <div className="p-8 animate-fade-in">
       <div className="mb-8">
-        <h1 className="gradient-text-purple text-xl font-bold">Tool Permissions</h1>
+        <h1 className="font-display text-xl font-semibold tracking-tight text-primary">Tool Permissions</h1>
         <p className="text-secondary text-sm mt-1">Control which tools each agent is allowed to invoke</p>
       </div>
 

@@ -88,13 +88,13 @@ function TraceRow({
     ? "text-red-400"
     : isCacheHit
     ? "text-green-400"
-    : "text-violet-400";
+    : "text-accent-light";
 
   const barColor = isError
     ? "bg-red-500/60"
     : isCacheHit
     ? "bg-green-800"
-    : "bg-violet-600/60";
+    : "bg-accent/60";
 
   return (
     <>
@@ -112,7 +112,7 @@ function TraceRow({
         <td className="py-2 pr-4 pl-0 w-[200px]">
           <span
             className={`font-mono text-xs flex items-center gap-1.5 ${
-              isError ? "text-red-400" : "text-violet-300"
+              isError ? "text-red-400" : "text-accent-light"
             }`}
             title={event.tool_name}
           >

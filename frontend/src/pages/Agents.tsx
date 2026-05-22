@@ -169,7 +169,7 @@ function RegisterModal({
           <button
             type="submit"
             disabled={mutation.isPending || !name.trim()}
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
           >
             {mutation.isPending ? "Registering…" : "Register"}
           </button>
@@ -220,7 +220,7 @@ function ApiKeyModal({
           <button
             type="button"
             onClick={onDismiss}
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
           >
             Dismiss
           </button>
@@ -339,7 +339,7 @@ function TestCallModal({ agent, onClose }: TestCallModalProps): React.ReactEleme
           type="button"
           disabled={mutation.isPending || !serverName || !toolName.trim()}
           onClick={handleRun}
-          className="w-full bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="w-full bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {mutation.isPending ? "Running…" : "Run"}
         </button>
@@ -538,7 +538,7 @@ function RenameModal({ agent, onClose, onSuccess }: RenameModalProps): React.Rea
           <button
             type="submit"
             disabled={mutation.isPending || !name.trim()}
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {mutation.isPending ? "Saving…" : "Save"}
           </button>
@@ -634,12 +634,12 @@ function Agents(): React.ReactElement {
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="gradient-text-purple text-xl font-bold">Agents</h1>
+          <h1 className="font-display text-xl font-semibold tracking-tight text-primary">Agents</h1>
           <p className="text-secondary text-sm mt-1">Registered agent identities and their API keys</p>
         </div>
         <button
           type="button"
-          className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
+          className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_20px_rgba(217,119,6,0.30)]"
           onClick={() => setShowRegisterModal(true)}
         >
           Register Agent
@@ -681,7 +681,7 @@ function Agents(): React.ReactElement {
                   <button
                     type="button"
                     onClick={() => setShowRegisterModal(true)}
-                    className="bg-gradient-to-r from-accent to-violet-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+                    className="bg-accent text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
                   >
                     Register Agent
                   </button>
@@ -730,7 +730,7 @@ function Agents(): React.ReactElement {
                       <button
                         type="button"
                         onClick={() => setTestCallAgent(agent)}
-                        className="text-secondary hover:text-violet-400 hover:bg-violet-500/10 border border-transparent hover:border-violet-500/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                        className="text-secondary hover:text-accent-light hover:bg-accent/10 border border-transparent hover:border-border-accent px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                       >
                         Test
                       </button>
