@@ -70,7 +70,7 @@ function AppLayout({ children }: { children: React.ReactNode }): React.ReactElem
   return (
     <div className="flex min-h-screen bg-base">
       <Sidebar />
-      <main className="flex-1 ml-[52px] min-h-screen">
+      <main className="flex-1 ml-[52px] min-h-screen page-enter">
         {children}
       </main>
     </div>
