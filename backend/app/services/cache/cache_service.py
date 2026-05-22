@@ -101,6 +101,7 @@ class CacheService:
         tool_name: str,
         input_payload: dict[str, Any],
         org_id: Any = None,
+        semantic: bool = True,
     ) -> dict[str, Any] | None:
         """
         Attempt to retrieve a cached response for a tool call.
@@ -108,19 +109,13 @@ class CacheService:
         Lookup order:
             1. Redis L1 cache (exact hash key) — O(1), no DB hit
             2. Postgres exact-hash match — fallback if Redis miss
-            3. Postgres semantic similarity match (embedding cosine search)
-
-        Cache entries are scoped to org_id so tenant responses never bleed
-        across orgs.
+            3. Postgres semantic similarity match (embedding cosine search) — Pro/Enterprise only
 
         Args:
             tool_name:     Name of the MCP tool being called.
             input_payload: The tool call arguments dict.
             org_id:        Organization UUID for tenant isolation.
-
-        Returns:
-            dict: Cached response payload if a match is found.
-            None: If no suitable cache entry exists.
+            semantic:      When False, skip embedding and pgvector search (free tier).
         """
         canonical = _canonical(tool_name, input_payload)
         input_hash = hashlib.sha256(canonical.encode()).hexdigest()
@@ -161,7 +156,11 @@ class CacheService:
             await self._increment_hit_count(entry.id)
             return entry.response_payload
 
-        # ── Phase 2: pgvector ANN cosine-distance search ──────────────────────
+        # ── Phase 2: pgvector ANN cosine-distance search (Pro/Enterprise only) ──
+        if not semantic:
+            logger.debug("cache: miss tool=%r (semantic search not available on free tier)", tool_name)
+            return None
+
         try:
             query_embedding = await self._compute_embedding_async(canonical)
         except Exception as exc:
@@ -201,6 +200,7 @@ class CacheService:
         response_payload: dict[str, Any],
         org_id: Any = None,
         ttl_override: int | None = None,
+        semantic: bool = True,
     ) -> None:
         """
         Store a tool call result in both Redis (L1) and Postgres (L2).
@@ -220,12 +220,13 @@ class CacheService:
         ttl_seconds = ttl_override if ttl_override is not None else settings.cache_ttl_seconds
         expires_at = datetime.now(tz=timezone.utc) + timedelta(seconds=ttl_seconds)
 
-        # Compute embedding (best-effort; proceed even if it fails).
+        # Compute embedding only for Pro/Enterprise — free tier uses exact-match only.
         embedding: list[float] | None = None
-        try:
-            embedding = await self._compute_embedding_async(canonical)
-        except Exception as exc:
-            logger.warning("cache: embedding failed during store: %s", exc)
+        if semantic:
+            try:
+                embedding = await self._compute_embedding_async(canonical)
+            except Exception as exc:
+                logger.warning("cache: embedding failed during store: %s", exc)
 
         # ── Write to Redis ─────────────────────────────────────────────────────
         if self.redis is not None:

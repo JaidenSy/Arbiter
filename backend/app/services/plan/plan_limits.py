@@ -15,20 +15,22 @@ from datetime import datetime, timezone
 
 # ── Plan limits ───────────────────────────────────────────────────────────────
 
-PLAN_LIMITS: dict[str, dict[str, int | None]] = {
+PLAN_LIMITS: dict[str, dict] = {
     "free": {
         "max_agents": 2,
         "max_mcp_servers": 3,
         "max_tool_calls_mo": 5_000,
         "max_vault_secrets": 10,
         "max_members": 3,
+        "semantic_cache": False,  # exact-match only — keeps embedding model off RAM for free orgs
     },
     "pro": {
         "max_agents": 25,
         "max_mcp_servers": 50,
         "max_tool_calls_mo": 100_000,
         "max_vault_secrets": 100,
-        "max_members": None,  # unlimited
+        "max_members": None,
+        "semantic_cache": True,
     },
     "enterprise": {
         "max_agents": None,
@@ -36,6 +38,7 @@ PLAN_LIMITS: dict[str, dict[str, int | None]] = {
         "max_tool_calls_mo": None,
         "max_vault_secrets": None,
         "max_members": None,
+        "semantic_cache": True,
     },
 }
 

@@ -207,6 +207,7 @@ function BillingSection(): React.ReactElement {
                     ['Tool calls / mo', '5K → 100K'],
                     ['Vault secrets', '10 → 100'],
                     ['Team members', '3 → unlimited'],
+                    ['Semantic cache', 'exact-match → AI similarity'],
                   ] as const).map(([label, delta]) => (
                     <li key={label} className="flex items-center justify-between text-xs">
                       <span className="text-secondary">{label}</span>
