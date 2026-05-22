@@ -38,6 +38,7 @@ from app.api.v1.endpoints import (
     sessions,
     sso,
     stats,
+    tasks,
     tool_permissions,
     vault,
 )
@@ -46,6 +47,7 @@ from app.db.base import async_session_factory, engine
 from app.db.models.cache import CacheEntry
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.session import Session, SessionEvent
+from app.db.models.task import Task  # noqa: F401 — register on Base.metadata
 from app.services.plan.plan_limits import PlanLimitError, QuotaExceededError
 
 logger = logging.getLogger(__name__)
@@ -341,6 +343,7 @@ def create_app() -> FastAPI:
     app.include_router(agents.router, prefix=settings.api_prefix)
     app.include_router(mcp_servers.router, prefix=settings.api_prefix)
     app.include_router(sessions.router, prefix=settings.api_prefix)
+    app.include_router(tasks.router, prefix=settings.api_prefix)
     app.include_router(proxy.router, prefix=settings.api_prefix)
     app.include_router(vault.router, prefix=settings.api_prefix)
     app.include_router(tool_permissions.router, prefix=settings.api_prefix)
