@@ -184,6 +184,7 @@ async def create_mcp_server(
         resource="mcp_servers",
         model=MCPServer,
         filter_col=MCPServer.org_id,
+        count_active_only=False,  # count soft-deleted too — prevents slot-cycling exploit
     )
 
     server = MCPServer(

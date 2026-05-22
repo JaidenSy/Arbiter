@@ -75,6 +75,7 @@ async def create_agent(
         resource="agents",
         model=Agent,
         filter_col=Agent.org_id,
+        count_active_only=False,  # count soft-deleted too — prevents slot-cycling exploit
     )
 
     raw_key = security.generate_api_key()

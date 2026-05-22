@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import hmac
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from datetime import date
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
@@ -100,14 +102,30 @@ async def _build_me_response(user: User, db: AsyncSession) -> MeResponse:
     summary="Register a new organization and owner account",
 )
 async def register(
+    request: Request,
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> TokenResponse:
     if not settings.allow_public_registration:
         if not settings.invite_code or not hmac.compare_digest(body.invite_code, settings.invite_code):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Registration requires a valid invite code",
+            )
+
+    # Org creation rate limit — max 3 new orgs per IP per day to prevent
+    # free-tier reset abuse (register new email → new org → reset quota).
+    if redis is not None:
+        client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown").split(",")[0].strip()
+        reg_key = f"org_reg:{client_ip}:{date.today().isoformat()}"
+        reg_count = await redis.incr(reg_key)
+        if reg_count == 1:
+            await redis.expire(reg_key, 86400)  # 24-hour window
+        if reg_count > 3:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many accounts created from this IP. Try again tomorrow.",
             )
 
     user, access_token, refresh_token = await auth_service.register(
