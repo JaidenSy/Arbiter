@@ -1,7 +1,7 @@
 /**
- * NexVault — UpgradeModal.
+ * Arbiter — UpgradeModal.
  *
- * Listens for the global `nexvault:plan_limit` CustomEvent (dispatched by
+ * Listens for the global `arbiter:plan_limit` CustomEvent (dispatched by
  * the Axios interceptors in api/client.ts whenever the backend returns 402)
  * and shows a modal directing the user to upgrade.
  */
@@ -41,7 +41,7 @@ export default function UpgradeModal(): React.ReactElement | null {
 
         <div className="flex gap-3 pt-1">
           <a
-            href="https://nexvault.dev/pricing"
+            href="https://arbiterai.dev/pricing"
             target="_blank"
             rel="noopener noreferrer"
             className="press flex-1 bg-accent hover:bg-accent-light text-white text-center py-2.5 rounded-lg text-sm font-semibold transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"

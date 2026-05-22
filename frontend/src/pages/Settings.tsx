@@ -228,7 +228,7 @@ function BillingSection(): React.ReactElement {
               <p className="text-secondary text-xs">
                 Need unlimited scale, SSO, or a custom SLA?{' '}
                 <a
-                  href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Enterprise`}
+                  href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Enterprise`}
                   className="text-accent-light hover:text-white transition-colors underline underline-offset-2"
                 >
                   Talk to us about Enterprise →
@@ -250,7 +250,7 @@ function BillingSection(): React.ReactElement {
               <p className="text-secondary text-xs">
                 Need unlimited scale, SSO, or a dedicated SLA?{' '}
                 <a
-                  href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Enterprise`}
+                  href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Enterprise`}
                   className="text-accent-light hover:text-white transition-colors underline underline-offset-2"
                 >
                   Talk to us about Enterprise →
@@ -263,7 +263,7 @@ function BillingSection(): React.ReactElement {
             <p className="text-secondary text-sm">
               Enterprise plan —{' '}
               <a
-                href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Enterprise Subscription`}
+                href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Enterprise Subscription`}
                 className="text-accent-light hover:text-white transition-colors"
               >
                 contact us
