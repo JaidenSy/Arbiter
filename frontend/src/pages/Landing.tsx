@@ -10,6 +10,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
 import { useAuth } from '../context/AuthContext'
 import AuthModal, { type AuthMode } from '../components/AuthModal'
+import HeroBackground from '../components/HeroBackground'
 
 const SUPPORT_EMAIL: string =
   (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'jaidensy07@gmail.com'
@@ -55,13 +56,12 @@ interface HeroProps { onGetStarted: () => void; onSignIn: () => void }
 function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 overflow-hidden">
-      {/* Background glows */}
-      <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-accent/10 blur-[140px] pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-teal/8 blur-[140px] pointer-events-none" />
+      {/* Background — shader gradient + particle mesh */}
+      <HeroBackground />
 
-      {/* Dot grid */}
+      {/* Dot grid — kept at very low opacity for texture depth */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-[0.03]"
+        className="absolute inset-0 pointer-events-none opacity-[0.025]"
         style={{
           backgroundImage: 'radial-gradient(circle, #F59E0B 1px, transparent 1px)',
           backgroundSize: '28px 28px',
