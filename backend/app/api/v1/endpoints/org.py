@@ -247,6 +247,21 @@ async def create_invite(
     if body.role == "owner" and current_user.role != "owner":
         raise HTTPException(status_code=403, detail="Only owners can invite other owners")
 
+    # Dedup: prevent multiple pending invites to the same email in the same org
+    existing_invite = await db.scalar(
+        select(OrgInvite).where(
+            OrgInvite.org_id == current_user.org_id,
+            OrgInvite.email == body.email,
+            OrgInvite.accepted_at.is_(None),
+            OrgInvite.expires_at > datetime.now(tz=timezone.utc),
+        )
+    )
+    if existing_invite is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A pending invite for {body.email} already exists. Cancel it first or wait for it to expire.",
+        )
+
     token = secrets.token_urlsafe(48)
     expires_at = datetime.now(tz=timezone.utc) + timedelta(days=7)
 

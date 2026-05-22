@@ -47,6 +47,7 @@ from app.db.models.session import Session, SessionEvent
 from app.db.models.usage_event import UsageEvent
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.services.cache.cache_service import CacheService
+from app.services.plan.plan_limits import PLAN_LIMITS
 from app.services.plan.plan_service import check_tool_call_quota
 from app.services.rbac.rbac_service import RBACService
 from app.services.vault.vault_service import VaultService
@@ -156,13 +157,18 @@ class ProxyService:
                     ),
                 )
 
-        # ── 3. Cache lookup (org-scoped) ───────────────────────────────────────
+        # ── 3. Load org + determine plan features ─────────────────────────────
+        org = await self.db.get(Organization, agent.org_id)
+        semantic_cache = PLAN_LIMITS.get(org.plan_tier, {}).get("semantic_cache", False)
+
+        # ── 3b. Cache lookup (org-scoped) ──────────────────────────────────────
         cached_result = None
         if mcp_server.cache_enabled:
             cached_result = await self._cache.get_cached(
                 tool_name=request.tool_name,
                 input_payload=request.params,
                 org_id=agent.org_id,
+                semantic=semantic_cache,
             )
 
         # Ensure/create session.
@@ -193,7 +199,6 @@ class ProxyService:
             )
 
         # ── 4. Quota check (skipped for cache hits) ───────────────────────────
-        org = await self.db.get(Organization, agent.org_id)
         await check_tool_call_quota(self.redis, self.db, org)
 
         # ── 5. Secret injection ────────────────────────────────────────────────
@@ -322,6 +327,7 @@ class ProxyService:
                     response_payload=response_payload,
                     org_id=agent.org_id,
                     ttl_override=cache_ttl,
+                    semantic=semantic_cache,
                 )
             except Exception as exc:
                 # Cache write failure must not prevent the response.

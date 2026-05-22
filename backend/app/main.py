@@ -195,19 +195,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as exc:
         logger.warning("arbiter: Redis ping failed at startup: %s", exc)
 
-    # Warm up embedding model (best-effort; does not block startup on failure).
-    try:
-        from app.services.cache.cache_service import _get_model
-
-        _get_model()
-        logger.info("arbiter: embedding model loaded")
-    except Exception as exc:
-        logger.warning(
-            "arbiter: embedding model could not be pre-loaded: %s — "
-            "it will be loaded on first semantic cache call",
-            exc,
-        )
-
     # Warn if public registration is open in production.
     if settings.is_production and settings.allow_public_registration:
         logger.warning(
