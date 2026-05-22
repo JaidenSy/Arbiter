@@ -2,42 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Geist via Vercel CDN (heading) + Inter (body) ───────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
 [data-theme="dark"] {
-  --color-base: #07080C;
-  --color-surface: #0E0F16;
-  --color-elevated: #161822;
-  --color-highlight: #1E1B35;
-  --color-overlay: #12131A;
-  --color-accent: #7C3AED;
-  --color-accent-light: #A78BFA;
-  --color-accent-dim: #4C1D95;
+  /* Base surfaces — cool zinc/slate, no blue tint */
+  --color-base: #0A0A0B;
+  --color-surface: #111113;
+  --color-elevated: #18181B;
+  --color-highlight: #27272A;
+  --color-overlay: #141416;
+
+  /* Accent — amber/copper */
+  --color-accent: #D97706;
+  --color-accent-light: #F59E0B;
+  --color-accent-dim: #78350F;
+
+  /* Teal — data/success signal */
   --color-teal: #14B8A6;
   --color-teal-light: #5EEAD4;
-  --color-primary: #F0F0F5;
-  --color-secondary: #7A7A8C;
-  --color-muted: #3A3A4C;
+
+  /* Typography — zinc scale */
+  --color-primary: #FAFAFA;
+  --color-secondary: #A1A1AA;
+  --color-muted: #52525B;
+
+  /* Semantic */
   --color-error: #F87171;
   --color-success: #34D399;
   --color-warning: #FBBF24;
+
+  /* Borders */
+  --color-border: rgba(255,255,255,0.07);
+  --color-border-strong: rgba(255,255,255,0.12);
+  --color-border-accent: rgba(217,119,6,0.35);
 }
 
 [data-theme="light"] {
-  --color-base: #F4F4F8;
+  --color-base: #FAFAF9;
   --color-surface: #FFFFFF;
-  --color-elevated: #EEEEF3;
-  --color-highlight: #E4E2F5;
-  --color-overlay: #FAFAFD;
-  --color-accent: #7C3AED;
-  --color-accent-light: #6D28D9;
-  --color-accent-dim: #DDD6FE;
+  --color-elevated: #F4F4F5;
+  --color-highlight: #E4E4E7;
+  --color-overlay: #FFFFFF;
+
+  --color-accent: #B45309;
+  --color-accent-light: #92400E;
+  --color-accent-dim: #FEF3C7;
+
   --color-teal: #0D9488;
   --color-teal-light: #0F766E;
-  --color-primary: #0D0D14;
-  --color-secondary: #4B4B60;
-  --color-muted: #9090A8;
+
+  --color-primary: #18181B;
+  --color-secondary: #52525B;
+  --color-muted: #A1A1AA;
+
   --color-error: #DC2626;
   --color-success: #059669;
   --color-warning: #D97706;
+
+  --color-border: rgba(0,0,0,0.08);
+  --color-border-strong: rgba(0,0,0,0.14);
+  --color-border-accent: rgba(180,83,9,0.35);
+}
+
+/* Motion easing tokens */
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 * { box-sizing: border-box; }
@@ -53,8 +84,16 @@ body {
   background-color: var(--color-base);
   color: var(--color-primary);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: "cv11", "cv06", "ss01";
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Geist', 'Inter', system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  letter-spacing: -0.011em;
 }
 
 /* Scrollbar */
@@ -64,26 +103,44 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 
 /* Selection */
-::selection { background: rgba(124,58,237,0.35); }
+::selection { background: rgba(217,119,6,0.25); color: var(--color-primary); }
 
-/* Glow utilities */
-.glow-accent { box-shadow: 0 0 20px rgba(124,58,237,0.15); }
-.glow-accent-strong { box-shadow: 0 0 32px rgba(124,58,237,0.28); }
+/* Glow utilities — amber */
+.glow-accent { box-shadow: 0 0 20px rgba(217,119,6,0.15); }
+.glow-accent-strong { box-shadow: 0 0 32px rgba(217,119,6,0.28); }
 .glow-teal { box-shadow: 0 0 20px rgba(20,184,166,0.15); }
 
-/* Gradient text utility */
+/* Gradient text — amber → teal (kept narrow, used sparingly) */
 .gradient-text {
-  background: linear-gradient(135deg, #A78BFA, #5EEAD4);
+  background: linear-gradient(135deg, #F59E0B, #5EEAD4);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.gradient-text-purple {
-  background: linear-gradient(135deg, #A78BFA, #7C3AED);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* ── Motion utilities ───────────────────────────────────────────────────────── */
+
+.press {
+  transition: transform 150ms var(--ease-out-expo);
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: pageEnter 200ms var(--ease-out-expo) both;
+}
+
+@keyframes modalEnter {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.modal-enter {
+  animation: modalEnter 200ms var(--ease-out-expo) both;
 }
 
 /* Animations */
@@ -92,7 +149,7 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in { animation: fadeIn 0.2s ease-out; }
+.animate-fade-in { animation: fadeIn 200ms var(--ease-out-expo); }
 
 @keyframes shimmer {
   0%   { background-position: -400px 0; }
@@ -110,10 +167,10 @@ body {
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
-/* Gradient border cards */
+/* Gradient border cards — amber + teal */
 .card-gradient-border {
   position: relative;
-  border: 1px solid rgba(124,58,237,0.2);
+  border: 1px solid rgba(217,119,6,0.18);
 }
 
 .card-gradient-border::before {
@@ -122,60 +179,70 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(20,184,166,0.15));
+  background: linear-gradient(135deg, rgba(217,119,6,0.3), rgba(20,184,166,0.15));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
 }
 
-/* ── Driver.js tour — dark/purple theme ───────────────────────────────────── */
+/* ── Driver.js tour — zinc/amber theme ───────────────────────────────────── */
 
 .arbiter-tour-popover.driver-popover {
-  background: #1a1625;
+  background: #18181B;
   border: 1px solid rgba(255,255,255,0.10);
   border-radius: 0.75rem;
-  box-shadow: 0 0 24px rgba(124,58,237,0.18), 0 8px 32px rgba(0,0,0,0.5);
-  color: #e2e0f0;
+  box-shadow: 0 0 24px rgba(217,119,6,0.18), 0 8px 32px rgba(0,0,0,0.5);
+  color: #FAFAFA;
   font-family: inherit;
 }
 
 .arbiter-tour-popover .driver-popover-title {
-  color: #c4b5fd;
+  color: #F59E0B;
   font-size: 0.875rem;
   font-weight: 600;
 }
 
 .arbiter-tour-popover .driver-popover-description {
-  color: #a39db8;
+  color: #A1A1AA;
   font-size: 0.8125rem;
   line-height: 1.5;
 }
 
 .arbiter-tour-popover .driver-popover-navigation-btns button {
-  background: rgba(124,58,237,0.15);
-  border: 1px solid rgba(124,58,237,0.35);
-  color: #c4b5fd;
+  background: rgba(217,119,6,0.15);
+  border: 1px solid rgba(217,119,6,0.35);
+  color: #F59E0B;
   border-radius: 0.5rem;
   font-size: 0.75rem;
   padding: 0.375rem 0.875rem;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 150ms var(--ease-out-expo), border-color 150ms var(--ease-out-expo);
 }
 
 .arbiter-tour-popover .driver-popover-navigation-btns button:hover {
-  background: rgba(124,58,237,0.28);
-  border-color: rgba(167,139,250,0.6);
+  background: rgba(217,119,6,0.28);
+  border-color: rgba(245,158,11,0.6);
 }
 
 .arbiter-tour-popover .driver-popover-progress-text {
-  color: #6b6480;
+  color: #52525B;
   font-size: 0.6875rem;
 }
 
 .arbiter-tour-popover .driver-popover-close-btn {
-  color: #6b6480;
+  color: #52525B;
 }
 
 .arbiter-tour-popover .driver-popover-close-btn:hover {
-  color: #a39db8;
+  color: #A1A1AA;
+}
+
+/* ── Reduced motion respect ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
