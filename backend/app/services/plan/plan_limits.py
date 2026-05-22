@@ -17,22 +17,25 @@ from datetime import datetime, timezone
 
 PLAN_LIMITS: dict[str, dict[str, int | None]] = {
     "free": {
-        "max_agents": 3,
-        "max_mcp_servers": 5,
-        "max_tool_calls_mo": 1_000,
+        "max_agents": 2,
+        "max_mcp_servers": 3,
+        "max_tool_calls_mo": 5_000,
         "max_vault_secrets": 10,
+        "max_members": 3,
     },
     "pro": {
         "max_agents": 25,
         "max_mcp_servers": 50,
         "max_tool_calls_mo": 100_000,
         "max_vault_secrets": 100,
+        "max_members": None,  # unlimited
     },
     "enterprise": {
         "max_agents": None,
         "max_mcp_servers": None,
         "max_tool_calls_mo": None,
         "max_vault_secrets": None,
+        "max_members": None,
     },
 }
 

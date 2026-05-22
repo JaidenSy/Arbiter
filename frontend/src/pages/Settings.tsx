@@ -178,7 +178,7 @@ function BillingSection(): React.ReactElement {
 
           {/* CTA buttons */}
           {data.plan === 'free' && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {!isVerified && (
                 <div className="flex items-start gap-3 bg-warning/8 border border-warning/20 rounded-lg px-4 py-3">
                   <svg className="w-4 h-4 text-warning mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -193,33 +193,76 @@ function BillingSection(): React.ReactElement {
                   </div>
                 </div>
               )}
-              <button
-                type="button"
-                disabled={checkoutMutation.isPending || !isVerified}
-                onClick={() => checkoutMutation.mutate()}
-                className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
-              >
-                {checkoutMutation.isPending ? 'Redirecting…' : 'Upgrade to Pro'}
-              </button>
+
+              {/* Pro comparison card */}
+              <div className="bg-surface border border-accent/20 rounded-xl p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-primary">Pro — $29 / month</p>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/15 text-accent-light border border-accent/25 uppercase tracking-wider">Most popular</span>
+                </div>
+                <ul className="space-y-1.5">
+                  {([
+                    ['Agents', '2 → 25'],
+                    ['MCP Servers', '3 → 50'],
+                    ['Tool calls / mo', '5K → 100K'],
+                    ['Vault secrets', '10 → 100'],
+                    ['Team members', '3 → unlimited'],
+                  ] as const).map(([label, delta]) => (
+                    <li key={label} className="flex items-center justify-between text-xs">
+                      <span className="text-secondary">{label}</span>
+                      <span className="font-mono text-accent-light">{delta}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  disabled={checkoutMutation.isPending || !isVerified}
+                  onClick={() => checkoutMutation.mutate()}
+                  className="w-full bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
+                >
+                  {checkoutMutation.isPending ? 'Redirecting…' : 'Upgrade to Pro'}
+                </button>
+              </div>
+
+              <p className="text-secondary text-xs">
+                Need unlimited scale, SSO, or a custom SLA?{' '}
+                <a
+                  href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Enterprise`}
+                  className="text-accent-light hover:text-white transition-colors underline underline-offset-2"
+                >
+                  Talk to us about Enterprise →
+                </a>
+              </p>
             </div>
           )}
 
           {data.plan === 'pro' && (
-            <button
-              type="button"
-              disabled={portalMutation.isPending}
-              onClick={() => portalMutation.mutate()}
-              className="bg-elevated hover:bg-white/[0.07] border border-white/[0.12] hover:border-white/[0.2] text-primary text-sm font-medium px-5 py-2 rounded-lg transition-all"
-            >
-              {portalMutation.isPending ? 'Redirecting…' : 'Manage Subscription'}
-            </button>
+            <div className="space-y-3">
+              <button
+                type="button"
+                disabled={portalMutation.isPending}
+                onClick={() => portalMutation.mutate()}
+                className="bg-elevated hover:bg-white/[0.07] border border-white/[0.12] hover:border-white/[0.2] text-primary text-sm font-medium px-5 py-2 rounded-lg transition-all"
+              >
+                {portalMutation.isPending ? 'Redirecting…' : 'Manage Subscription'}
+              </button>
+              <p className="text-secondary text-xs">
+                Need unlimited scale, SSO, or a dedicated SLA?{' '}
+                <a
+                  href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Enterprise`}
+                  className="text-accent-light hover:text-white transition-colors underline underline-offset-2"
+                >
+                  Talk to us about Enterprise →
+                </a>
+              </p>
+            </div>
           )}
 
           {data.plan === 'enterprise' && (
             <p className="text-secondary text-sm">
               Enterprise plan —{' '}
               <a
-                href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Enterprise Subscription`}
+                href={`mailto:${SUPPORT_EMAIL}?subject=NexVault Enterprise Subscription`}
                 className="text-accent-light hover:text-white transition-colors"
               >
                 contact us
