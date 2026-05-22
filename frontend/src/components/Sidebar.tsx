@@ -33,6 +33,14 @@ const SessionsIcon = (): React.ReactElement => (
   </svg>
 )
 
+const MissionControlIcon = (): React.ReactElement => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9"/>
+    <path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>
+)
+
 const MCPServersIcon = (): React.ReactElement => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
     <rect x="2" y="3" width="20" height="5" rx="1"/>
@@ -301,6 +309,7 @@ function Sidebar(): React.ReactElement {
         <NavItem id="nav-mcp-servers" to="/mcp-servers" icon={<MCPServersIcon />} title="MCP Servers" />
         <NavItem id="nav-vault" to="/vault" icon={<VaultIcon />} title="Vault" />
         <NavItem id="nav-sessions" to="/sessions" icon={<SessionsIcon />} title="Sessions" />
+        <NavItem id="nav-mission-control" to="/mission-control" icon={<MissionControlIcon />} title="Mission Control" />
         <NavItem id="nav-permissions" to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
         <NavItem id="nav-organization" to="/organization" icon={<UsersIcon />} title="Organization" />
       </nav>

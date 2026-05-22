@@ -33,6 +33,7 @@ const Agents       = lazy(() => import('./pages/Agents'))
 const MCPServers   = lazy(() => import('./pages/MCPServers'))
 const Sessions     = lazy(() => import('./pages/Sessions'))
 const SessionTrace = lazy(() => import('./pages/SessionTrace'))
+const MissionControl = lazy(() => import('./pages/MissionControl'))
 const Settings     = lazy(() => import('./pages/Settings'))
 const Permissions  = lazy(() => import('./pages/Permissions'))
 const Vault        = lazy(() => import('./pages/Vault'))
@@ -155,6 +156,14 @@ function App(): React.ReactElement {
           element={
             <ProtectedRoute>
               <AppLayout><SessionTrace /></AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mission-control"
+          element={
+            <ProtectedRoute>
+              <AppLayout><MissionControl /></AppLayout>
             </ProtectedRoute>
           }
         />
