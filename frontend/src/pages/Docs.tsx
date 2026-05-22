@@ -30,7 +30,7 @@ function Navbar(): React.ReactElement {
           </Link>
           <Link
             to="/"
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
           >
             Dashboard
           </Link>
@@ -115,7 +115,7 @@ interface DocSectionProps {
 function DocSection({ id, title, children }: DocSectionProps): React.ReactElement {
   return (
     <section id={id} className="mb-16 scroll-mt-20">
-      <h2 className="gradient-text-purple text-xl font-bold mb-6">{title}</h2>
+      <h2 className="font-display text-xl font-semibold tracking-tight text-primary mb-6">{title}</h2>
       <div className="space-y-4">{children}</div>
     </section>
   )
@@ -406,7 +406,7 @@ function Docs(): React.ReactElement {
 
         <main className="flex-1 min-w-0 animate-fade-in">
           <div className="mb-12">
-            <h1 className="text-2xl font-bold gradient-text-purple mb-2">Documentation</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-primary mb-2">Documentation</h1>
             <p className="text-secondary text-sm">
               Everything you need to integrate Arbiter with your AI agents.
             </p>

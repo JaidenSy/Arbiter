@@ -46,7 +46,7 @@ function VerifyEmail(): React.ReactElement {
     <div className="min-h-screen bg-base flex items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">
         <div className="inline-flex items-center gap-2 mb-8">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-violet-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
             <span className="text-white font-bold text-sm">N</span>
           </div>
           <span className="text-primary font-semibold text-lg tracking-tight">Arbiter</span>
@@ -71,7 +71,7 @@ function VerifyEmail(): React.ReactElement {
               <p className="text-secondary text-sm mb-5">Your account is now fully active.</p>
               <Link
                 to="/dashboard"
-                className="inline-block bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white font-semibold text-sm py-2.5 px-6 rounded-lg transition-all duration-150"
+                className="inline-block bg-accent hover:bg-accent-light text-white font-semibold text-sm py-2.5 px-6 rounded-lg transition-all duration-150"
               >
                 Go to Dashboard
               </Link>

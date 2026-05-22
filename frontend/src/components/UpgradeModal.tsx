@@ -44,13 +44,13 @@ export default function UpgradeModal(): React.ReactElement | null {
             href="https://nexvault.dev/pricing"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 btn-primary text-center py-2.5 rounded-lg text-sm font-semibold"
+            className="press flex-1 bg-accent hover:bg-accent-light text-white text-center py-2.5 rounded-lg text-sm font-semibold transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
           >
-            Upgrade to Pro →
+            Upgrade to Pro
           </a>
           <button
             onClick={() => setPayload(null)}
-            className="flex-1 btn-secondary py-2.5 rounded-lg text-sm"
+            className="press flex-1 border border-border-strong hover:border-white/[0.22] text-secondary hover:text-primary py-2.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
           >
             Maybe Later
           </button>

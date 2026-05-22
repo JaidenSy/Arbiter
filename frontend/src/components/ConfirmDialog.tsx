@@ -30,14 +30,14 @@ function ConfirmDialog({
         <button
           type="button"
           onClick={onClose}
-          className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded text-sm transition-colors"
+          className="press text-secondary hover:text-primary hover:bg-white/[0.05] px-3 py-1.5 rounded text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={handleConfirm}
-          className="text-error hover:bg-red-500/10 px-3 py-1.5 rounded text-sm transition-colors"
+          className="press text-error hover:bg-error/10 px-3 py-1.5 rounded text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
         >
           {confirmLabel}
         </button>

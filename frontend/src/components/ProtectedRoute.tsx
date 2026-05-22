@@ -2,7 +2,7 @@
  * Arbiter — ProtectedRoute component.
  *
  * Wraps routes that require authentication.
- * - Loading: shows centered violet pulse spinner
+ * - Loading: shows centered amber pulse spinner
  * - Unauthenticated: redirects to /login
  * - Authenticated: renders children
  */

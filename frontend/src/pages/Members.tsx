@@ -42,14 +42,14 @@ const VALID_ROLES = ['owner', 'admin', 'member'] as const
 type Role = typeof VALID_ROLES[number]
 
 const ROLE_BADGE: Record<string, string> = {
-  owner: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
+  owner: 'bg-accent/15 text-accent-light border-border-accent',
   admin: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
   member: 'bg-white/5 text-secondary border-white/10',
 }
 
 const PLAN_BADGE: Record<string, string> = {
   free: 'bg-white/5 text-secondary border-white/10',
-  pro: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
+  pro: 'bg-accent/15 text-accent-light border-border-accent',
   enterprise: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
 }
 
@@ -226,7 +226,7 @@ function Organization(): React.ReactElement {
     <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="gradient-text-purple text-xl font-bold">Organization</h1>
+        <h1 className="font-display text-xl font-semibold tracking-tight text-primary">Organization</h1>
         <p className="text-secondary text-sm mt-0.5">Manage your organization settings and members</p>
       </div>
 
@@ -302,7 +302,7 @@ function Organization(): React.ReactElement {
         {isManager && (
           <button
             onClick={() => { setShowInvite(true); setInviteSuccess(''); setInviteError('') }}
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white font-semibold text-sm py-2 px-4 rounded-lg transition-all duration-150"
+            className="bg-accent hover:bg-accent-light text-white font-semibold text-sm py-2 px-4 rounded-lg transition-all duration-150"
           >
             + Invite member
           </button>
@@ -469,7 +469,7 @@ function Organization(): React.ReactElement {
                   <button
                     type="submit"
                     disabled={inviteSubmitting}
-                    className="flex-1 bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-lg transition-all"
+                    className="flex-1 bg-accent hover:bg-accent-light disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-lg transition-all"
                   >
                     {inviteSubmitting ? 'Sending…' : 'Send invite'}
                   </button>
