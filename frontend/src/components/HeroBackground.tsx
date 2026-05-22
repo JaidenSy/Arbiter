@@ -12,6 +12,9 @@ import { useRef, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { ShaderGradient, ShaderGradientCanvas } from '@shader-gradient/react'
 import * as THREE from 'three'
+import ErrorBoundary from './ErrorBoundary'
+
+const dpr = (): number => Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 1.5)
 
 // ── Particle network ──────────────────────────────────────────────────────────
 
@@ -152,60 +155,64 @@ interface HeroBackgroundProps {
   particleOpacity?: number
 }
 
-export default function HeroBackground({ particleOpacity = 1 }: HeroBackgroundProps) {
+function HeroBackgroundInner({ particleOpacity = 1 }: HeroBackgroundProps) {
   const reduced = typeof window !== 'undefined'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
 
-      {/* Layer 1 — shader gradient base */}
-      <div className="absolute inset-0" style={{ opacity: 0.55 }}>
-        <ShaderGradientCanvas
-          style={{ width: '100%', height: '100%', display: 'block' }}
-          pixelDensity={Math.min(window.devicePixelRatio, 1.5)}
-        >
-          <ShaderGradient
-            type="waterPlane"
-            animate={reduced ? false : 'on'}
-            uTime={0}
-            uSpeed={0.12}
-            uStrength={2.5}
-            uDensity={1.2}
-            uFrequency={5.5}
-            uAmplitude={3}
-            positionX={0}
-            positionY={0}
-            positionZ={0}
-            rotationX={50}
-            rotationY={0}
-            rotationZ={-60}
-            color1="#0A0A0B"     // base (nearly black)
-            color2="#1C0A00"     // deep amber-black
-            color3="#78350F"     // amber-900
-            reflection={0.05}
-            wireframe={false}
-            shader="defaults"
-            grain="on"
-            cAzimuthAngle={180}
-          />
-        </ShaderGradientCanvas>
-      </div>
+      {/* Layer 1 — shader gradient base, isolated so WebGL failure doesn't kill particles */}
+      <ErrorBoundary fallback={<div className="absolute inset-0 bg-gradient-to-b from-[#1C0A00] to-[#0A0A0B]" />}>
+        <div className="absolute inset-0" style={{ opacity: 0.55 }}>
+          <ShaderGradientCanvas
+            style={{ width: '100%', height: '100%', display: 'block' }}
+            pixelDensity={dpr()}
+          >
+            <ShaderGradient
+              type="waterPlane"
+              animate={reduced ? false : 'on'}
+              uTime={0}
+              uSpeed={0.12}
+              uStrength={2.5}
+              uDensity={1.2}
+              uFrequency={5.5}
+              uAmplitude={3}
+              positionX={0}
+              positionY={0}
+              positionZ={0}
+              rotationX={50}
+              rotationY={0}
+              rotationZ={-60}
+              color1="#0A0A0B"
+              color2="#1C0A00"
+              color3="#78350F"
+              reflection={0.05}
+              wireframe={false}
+              shader="defaults"
+              grain="on"
+              cAzimuthAngle={180}
+            />
+          </ShaderGradientCanvas>
+        </div>
+      </ErrorBoundary>
 
-      {/* Layer 2 — particle mesh */}
-      <div className="absolute inset-0" style={{ opacity: particleOpacity * 0.7 }}>
-        <Canvas
-          camera={{ position: [0, 0, 18], fov: 50 }}
-          gl={{ antialias: false, alpha: true, powerPreference: 'low-power' }}
-          style={{ background: 'transparent' }}
-          dpr={Math.min(window.devicePixelRatio, 1.5)}
-        >
-          <CameraDrift reduced={reduced} />
-          <ParticleNetwork reduced={reduced} />
-        </Canvas>
-      </div>
+      {/* Layer 2 — particle mesh, isolated so shader failure doesn't kill this */}
+      <ErrorBoundary fallback={null}>
+        <div className="absolute inset-0" style={{ opacity: particleOpacity * 0.7 }}>
+          <Canvas
+            camera={{ position: [0, 0, 18], fov: 50 }}
+            gl={{ antialias: false, alpha: true, powerPreference: 'low-power' }}
+            style={{ background: 'transparent' }}
+            dpr={dpr()}
+          >
+            <CameraDrift reduced={reduced} />
+            <ParticleNetwork reduced={reduced} />
+          </Canvas>
+        </div>
+      </ErrorBoundary>
 
-      {/* Vignette — keeps hero text readable */}
+      {/* Vignette */}
       <div
         className="absolute inset-0"
         style={{
@@ -213,5 +220,15 @@ export default function HeroBackground({ particleOpacity = 1 }: HeroBackgroundPr
         }}
       />
     </div>
+  )
+}
+
+export default function HeroBackground(props: HeroBackgroundProps) {
+  return (
+    <ErrorBoundary fallback={
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-[#1C0A00] via-[#0A0A0B] to-[#0A0A0B]" aria-hidden />
+    }>
+      <HeroBackgroundInner {...props} />
+    </ErrorBoundary>
   )
 }

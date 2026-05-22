@@ -71,7 +71,10 @@ function AppLayout({ children }: { children: React.ReactNode }): React.ReactElem
     <div className="flex min-h-screen bg-base">
       <Sidebar />
       <main className="flex-1 ml-[52px] min-h-screen page-enter">
-        {children}
+        {/* Per-page boundary — keeps the sidebar alive if one page crashes */}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
       </main>
     </div>
   )
@@ -102,8 +105,8 @@ function App(): React.ReactElement {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* ── Public routes (no sidebar) ──────────────────────────────────── */}
-        <Route path="/login" element={<Landing initialModal="login" />} />
-        <Route path="/register" element={<Landing initialModal="register" />} />
+        <Route path="/login" element={<ErrorBoundary><Landing initialModal="login" /></ErrorBoundary>} />
+        <Route path="/register" element={<ErrorBoundary><Landing initialModal="register" /></ErrorBoundary>} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/docs" element={<Docs />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
