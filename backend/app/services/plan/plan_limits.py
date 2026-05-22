@@ -23,6 +23,7 @@ PLAN_LIMITS: dict[str, dict] = {
         "max_vault_secrets": 10,
         "max_members": 3,
         "semantic_cache": False,  # exact-match only — keeps embedding model off RAM for free orgs
+        "mission_control": False,
     },
     "pro": {
         "max_agents": 25,
@@ -31,6 +32,7 @@ PLAN_LIMITS: dict[str, dict] = {
         "max_vault_secrets": 100,
         "max_members": None,
         "semantic_cache": True,
+        "mission_control": True,
     },
     "enterprise": {
         "max_agents": None,
@@ -39,6 +41,7 @@ PLAN_LIMITS: dict[str, dict] = {
         "max_vault_secrets": None,
         "max_members": None,
         "semantic_cache": True,
+        "mission_control": True,
     },
 }
 
