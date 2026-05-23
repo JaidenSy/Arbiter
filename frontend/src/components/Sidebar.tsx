@@ -138,7 +138,7 @@ function NavItem({ to, icon, title, end, id }: NavItemProps): React.ReactElement
         className={({ isActive }) =>
           `relative flex items-center justify-center w-full h-9 rounded-lg focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent transition-[color,background-color,transform] duration-150 ease-[var(--ease-out-expo)] ${
             isActive
-              ? 'text-accent-light'
+              ? 'text-primary bg-accent/[0.07]'
               : 'text-secondary hover:text-primary hover:bg-white/[0.04] group-hover/nav:[&_svg]:translate-x-[1px]'
           }`
         }

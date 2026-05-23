@@ -19,7 +19,7 @@ interface BadgeProps {
 function Badge({ variant, children }: BadgeProps): React.ReactElement {
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono ${variantClasses[variant]}`}
+      className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-mono ${variantClasses[variant]}`}
     >
       {children}
     </span>

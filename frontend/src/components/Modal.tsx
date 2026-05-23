@@ -20,28 +20,32 @@ function Modal({
       if (e.key === "Escape") onClose();
     };
 
+    document.body.style.overflow = 'hidden';
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
       aria-modal="true"
       role="dialog"
       aria-labelledby="modal-title"
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0"
+        className="backdrop-enter absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Dialog */}
-      <div className="modal-enter relative z-10 bg-elevated border border-border-strong rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div className="modal-enter relative z-10 glass-surface border border-border-strong rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 id="modal-title" className="font-display text-primary text-sm font-semibold tracking-tight">
