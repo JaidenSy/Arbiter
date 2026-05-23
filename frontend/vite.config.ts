@@ -11,7 +11,7 @@ export default defineConfig({
           'react-vendor':  ['react', 'react-dom', 'react-router-dom'],
           'query-vendor':  ['@tanstack/react-query'],
           'axios-vendor':  ['axios'],
-          'three-vendor':  ['three', '@react-three/fiber', '@react-three/drei'],
+          'three-vendor':  ['three', '@react-three/fiber'],
         },
       },
     },
