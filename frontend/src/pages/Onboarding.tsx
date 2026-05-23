@@ -323,11 +323,11 @@ function Step4({ agentName, agentApiKey, serverName, onFinish }: Step4Props): Re
       </div>
 
       <div className="space-y-2 text-sm font-mono">
-        <div className="flex justify-between border-b border-white/[0.07] py-2">
+        <div className="flex justify-between border-b border-border py-2">
           <span className="text-secondary">Agent</span>
           <span className="text-white">{agentName}</span>
         </div>
-        <div className="flex justify-between border-b border-white/[0.07] py-2">
+        <div className="flex justify-between border-b border-border py-2">
           <span className="text-secondary">MCP Server</span>
           <span className="text-white">{serverName}</span>
         </div>

@@ -137,7 +137,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
       <div className="flex flex-col gap-2 mt-4">
         {providers.google && (
           <a href={`${API_BASE}/auth/google`}>
-            <button type="button" className="press w-full border border-border-strong bg-elevated/60 hover:bg-elevated hover:border-white/[0.22] text-primary font-medium text-sm py-2.5 px-4 rounded-lg flex items-center gap-3 transition-[background-color,border-color] duration-150 ease-[var(--ease-out-expo)]">
+            <button type="button" className="press w-full border border-border-strong bg-elevated/60 hover:bg-elevated hover:border-border-strong text-primary font-medium text-sm py-2.5 px-4 rounded-lg flex items-center gap-3 transition-[background-color,border-color] duration-150 ease-[var(--ease-out-expo)]">
               <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
                 <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
                 <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
@@ -150,7 +150,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
         )}
         {providers.github && (
           <a href={`${API_BASE}/auth/github`}>
-            <button type="button" className="press w-full border border-border-strong bg-elevated/60 hover:bg-elevated hover:border-white/[0.22] text-primary font-medium text-sm py-2.5 px-4 rounded-lg flex items-center gap-3 transition-[background-color,border-color] duration-150 ease-[var(--ease-out-expo)]">
+            <button type="button" className="press w-full border border-border-strong bg-elevated/60 hover:bg-elevated hover:border-border-strong text-primary font-medium text-sm py-2.5 px-4 rounded-lg flex items-center gap-3 transition-[background-color,border-color] duration-150 ease-[var(--ease-out-expo)]">
               <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
                 <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
               </svg>
@@ -261,7 +261,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
               <button
                 type="submit"
                 disabled={loginSubmitting}
-                className="press w-full bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-lg transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover:shadow-[0_0_20px_rgba(217,119,6,0.35)] mt-2"
+                className="press w-full bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-lg transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard mt-2"
               >
                 {loginSubmitting ? 'Signing in…' : 'Sign in'}
               </button>
@@ -346,7 +346,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
               <button
                 type="submit"
                 disabled={regSubmitting}
-                className="press w-full bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-lg transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover:shadow-[0_0_20px_rgba(217,119,6,0.35)] mt-2"
+                className="press w-full bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-lg transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard mt-2"
               >
                 {regSubmitting ? 'Creating account…' : 'Create account'}
               </button>

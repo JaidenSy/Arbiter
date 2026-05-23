@@ -21,7 +21,7 @@ function JsonViewer({ data, maxHeight = "200px" }: JsonViewerProps): React.React
 
   return (
     <pre
-      className="font-mono text-xs text-secondary bg-base border border-white/[0.07] rounded p-3 overflow-y-auto"
+      className="font-mono text-xs text-secondary bg-base border border-border rounded p-3 overflow-y-auto"
       style={{ maxHeight }}
     >
       {JSON.stringify(data, null, 2)}

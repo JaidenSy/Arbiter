@@ -33,13 +33,13 @@ function Navbar({ onSignIn, onGetStarted }: NavbarProps): React.ReactElement {
         <div className="flex items-center gap-3">
           <button
             onClick={onSignIn}
-            className="press text-secondary hover:text-primary border border-border-strong hover:border-white/[0.22] px-4 py-1.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
+            className="press text-secondary hover:text-primary border border-border-strong hover:border-border-strong px-4 py-1.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
           >
             Sign In
           </button>
           <button
             onClick={onGetStarted}
-            className="press bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
+            className="press bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard"
           >
             Get Started Free
           </button>
@@ -93,13 +93,13 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
           <button
             onClick={onGetStarted}
-            className="press bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover:shadow-[0_0_24px_rgba(217,119,6,0.35)] text-sm"
+            className="press bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard text-sm"
           >
             Start for Free
           </button>
           <button
             onClick={onSignIn}
-            className="press text-secondary hover:text-primary border border-border-strong hover:border-white/[0.22] px-6 py-3 rounded-xl text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
+            className="press text-secondary hover:text-primary border border-border-strong hover:border-border-strong px-6 py-3 rounded-xl text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
           >
             Sign In
           </button>
@@ -534,7 +534,7 @@ function Pricing(): React.ReactElement {
                 <button
                   type="button"
                   onClick={handleProCta}
-                  className="press block w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] bg-accent hover:bg-accent-light text-white hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
+                  className="press block w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] bg-accent hover:bg-accent-light text-white hover-glow-standard"
                 >
                   {user ? 'Go to Billing' : tier.cta}
                 </button>
@@ -652,7 +652,7 @@ function Contact(): React.ReactElement {
         </p>
         <a
           href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Inquiry`}
-          className="press inline-flex items-center gap-2 bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover:shadow-[0_0_24px_rgba(217,119,6,0.35)] text-sm"
+          className="press inline-flex items-center gap-2 bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard text-sm"
         >
           Send us a message
         </a>

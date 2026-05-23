@@ -130,7 +130,7 @@ function StatMetric({
 
 function ShimmerRow(): React.ReactElement {
   return (
-    <tr className="border-b border-white/[0.05]">
+    <tr className="border-b border-border">
       {[5, 6, 4, 2].map((w, i) => (
         <td key={i} className="py-3 px-4">
           <div className={`h-3 skeleton-shimmer rounded`} style={{ width: `${w * 16}px` }} />
@@ -223,7 +223,7 @@ function Dashboard(): React.ReactElement {
             </div>
             <Link
               to="/agents"
-              className="flex-shrink-0 bg-accent hover:bg-accent-light text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
+              className="flex-shrink-0 bg-accent hover:bg-accent-light text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all hover-glow-standard"
             >
               Register Agent →
             </Link>
@@ -231,7 +231,7 @@ function Dashboard(): React.ReactElement {
         )}
 
         {/* Stat strip */}
-        <div className="flex border border-white/[0.07] rounded-xl mb-6 divide-x divide-white/[0.07] overflow-hidden bg-surface glow-accent">
+        <div className="flex border border-border rounded-xl mb-6 divide-x divide-white/[0.07] overflow-hidden bg-surface glow-accent">
           <StatMetric
             label="Active Agents"
             value={statsLoading ? "…" : (stats?.agents_count ?? "—")}
@@ -277,7 +277,7 @@ function Dashboard(): React.ReactElement {
         </div>
 
         {/* Area chart */}
-        <div className="border border-white/[0.07] rounded-xl p-6 mb-6 bg-surface">
+        <div className="border border-border rounded-xl p-6 mb-6 bg-surface">
           <div className="flex items-center justify-between mb-5">
             <div>
               <span className="text-primary text-sm font-semibold">Activity</span>
@@ -295,7 +295,7 @@ function Dashboard(): React.ReactElement {
                   Cache Hits
                 </span>
               </div>
-              <div className="inline-flex border border-white/[0.08] rounded-lg overflow-hidden bg-elevated/50">
+              <div className="inline-flex border border-border rounded-lg overflow-hidden bg-elevated/50">
                 {(["7d", "24h"] as const).map((p) => (
                   <button
                     key={p}
@@ -394,8 +394,8 @@ function Dashboard(): React.ReactElement {
         </div>
 
         {/* Recent sessions */}
-        <div className="border border-white/[0.07] rounded-xl bg-surface overflow-hidden">
-          <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
+        <div className="border border-border rounded-xl bg-surface overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
             <div>
               <h2 className="text-primary text-sm font-semibold">Recent Sessions</h2>
               <p className="text-secondary text-xs mt-0.5">Latest agent activity</p>
@@ -432,7 +432,7 @@ function Dashboard(): React.ReactElement {
           ) : (
             <table className="min-w-full">
               <thead>
-                <tr className="border-b border-white/[0.05]">
+                <tr className="border-b border-border">
                   <th className="py-2.5 px-6 text-left text-xs font-mono text-muted uppercase tracking-wider">Session</th>
                   <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Agent</th>
                   <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Started</th>
@@ -443,7 +443,7 @@ function Dashboard(): React.ReactElement {
                 {sessions.map((session) => (
                   <tr
                     key={session.id}
-                    className="cursor-pointer hover:bg-white/[0.025] transition-colors group border-b border-white/[0.04] last:border-0"
+                    className="cursor-pointer hover:bg-white/[0.025] transition-colors group border-b border-border last:border-0"
                     onClick={() => navigate(`/sessions/${session.id}`)}
                   >
                     <td className="py-3 px-6 text-sm font-mono text-accent-light group-hover:text-white transition-colors">

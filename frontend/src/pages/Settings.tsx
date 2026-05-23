@@ -526,7 +526,7 @@ function CacheSection(): React.ReactElement {
             </div>
           )}
 
-          <div className="pt-2 border-t border-white/[0.06]">
+          <div className="pt-2 border-t border-border">
             <button
               type="button"
               disabled={flushMutation.isPending || stats.active_entries === 0}

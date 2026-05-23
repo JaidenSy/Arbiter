@@ -76,7 +76,7 @@ class ErrorBoundary extends React.Component<Props, State> {
           <p className="text-secondary text-sm mb-4 text-center">An unexpected error occurred. Copy the details below and open an issue if this keeps happening.</p>
 
           {/* Error detail box */}
-          <div className="bg-[#0A0A0B] border border-white/[0.08] rounded-xl p-4 mb-5 text-left space-y-2">
+          <div className="bg-[#0A0A0B] border border-border rounded-xl p-4 mb-5 text-left space-y-2">
             <p className="text-error text-xs font-mono break-all">{error.message}</p>
             {componentStack && (
               <details className="group">
@@ -94,14 +94,14 @@ class ErrorBoundary extends React.Component<Props, State> {
             <button
               type="button"
               onClick={this.handleCopy}
-              className="border border-white/[0.12] hover:border-white/[0.22] text-secondary hover:text-primary text-sm px-4 py-2 rounded-lg transition-colors"
+              className="border border-border-strong hover:border-border-strong text-secondary hover:text-primary text-sm px-4 py-2 rounded-lg transition-colors"
             >
               {copied ? 'Copied!' : 'Copy details'}
             </button>
             <button
               type="button"
               onClick={this.handleReset}
-              className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
+              className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all hover-glow-standard"
             >
               Back to Dashboard
             </button>

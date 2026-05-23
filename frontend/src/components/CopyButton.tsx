@@ -20,7 +20,7 @@ function CopyButton({ text }: CopyButtonProps): React.ReactElement {
       className={`press text-xs border px-2 py-1 rounded font-mono transition-colors duration-150 ease-[var(--ease-out-expo)] ${
         copied
           ? "text-success border-success/30"
-          : "text-secondary hover:text-primary border-border-strong hover:border-white/[0.22]"
+          : "text-secondary hover:text-primary border-border-strong hover:border-border-strong"
       }`}
     >
       {copied ? "Copied!" : "Copy"}

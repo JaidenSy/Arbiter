@@ -177,7 +177,7 @@ function Register(): React.ReactElement {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="press w-full bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-lg transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover:shadow-[0_0_20px_rgba(217,119,6,0.35)] mt-2"
+              className="press w-full bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-lg transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard mt-2"
             >
               {isSubmitting ? 'Creating account…' : 'Create account'}
             </button>

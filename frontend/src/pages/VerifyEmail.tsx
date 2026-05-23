@@ -52,7 +52,7 @@ function VerifyEmail(): React.ReactElement {
           <span className="text-primary font-semibold text-lg tracking-tight">Arbiter</span>
         </div>
 
-        <div className="bg-card border border-white/[0.08] rounded-xl p-8 shadow-xl">
+        <div className="bg-card border border-border rounded-xl p-8 shadow-xl">
           {status === 'loading' && (
             <>
               <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />

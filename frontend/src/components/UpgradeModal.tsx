@@ -44,13 +44,13 @@ export default function UpgradeModal(): React.ReactElement | null {
             href="https://arbiterai.dev/pricing"
             target="_blank"
             rel="noopener noreferrer"
-            className="press flex-1 bg-accent hover:bg-accent-light text-white text-center py-2.5 rounded-lg text-sm font-semibold transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
+            className="press flex-1 bg-accent hover:bg-accent-light text-white text-center py-2.5 rounded-lg text-sm font-semibold transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard"
           >
             Upgrade to Pro
           </a>
           <button
             onClick={() => setPayload(null)}
-            className="press flex-1 border border-border-strong hover:border-white/[0.22] text-secondary hover:text-primary py-2.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
+            className="press flex-1 border border-border-strong hover:border-border-strong text-secondary hover:text-primary py-2.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
           >
             Maybe Later
           </button>
