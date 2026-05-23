@@ -13,6 +13,7 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
+import { Button } from '../components/ui'
 import type { Agent, VaultSecret, VaultSecretWithValue, VaultSecretCreate, Page } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -150,7 +151,7 @@ function SecretFormModal({
     onClose()
   }
 
-  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const inputClass = "w-full bg-base border border-border text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (
@@ -161,7 +162,7 @@ function SecretFormModal({
             Name <span className="text-error normal-case">*</span>
           </label>
           {isRotating ? (
-            <div className="px-3 py-2 bg-base border border-white/[0.07] rounded-lg">
+            <div className="px-3 py-2 bg-base border border-border rounded-lg">
               <span className="font-mono text-sm text-accent-light">{rotateTarget?.name}</span>
             </div>
           ) : (
@@ -215,22 +216,15 @@ function SecretFormModal({
         )}
 
         <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-white/[0.08] hover:border-white/[0.15]"
-          >
-            Cancel
-          </button>
-          <button
+          <Button type="button" variant="secondary" size="sm" onClick={handleClose}>Cancel</Button>
+          <Button
             type="submit"
+            size="sm"
+            isLoading={mutation.isPending}
             disabled={mutation.isPending || !name.trim() || !value.trim()}
-            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
           >
-            {mutation.isPending
-              ? isRotating ? 'Updating…' : 'Adding…'
-              : isRotating ? 'Update Secret' : 'Add Secret'}
-          </button>
+            {isRotating ? 'Update Secret' : 'Add Secret'}
+          </Button>
         </div>
       </form>
     </Modal>
@@ -241,7 +235,7 @@ function SecretFormModal({
 
 function SkeletonRow(): React.ReactElement {
   return (
-    <tr className="border-b border-white/[0.05]">
+    <tr className="border-b border-border">
       {[5, 3, 6, 2].map((w, i) => (
         <td key={i} className="py-3 px-4">
           <div className="skeleton-shimmer h-4 rounded" style={{ width: `${w * 14}px` }} />
@@ -324,28 +318,22 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
             Vault — <span className="text-accent-light">{agentName}</span>
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
-        >
-          Add Secret
-        </button>
+        <Button onClick={() => setAddOpen(true)}>Add Secret</Button>
       </div>
 
       {/* Security banner */}
       {hasSecrets && (
-        <div className="flex items-center gap-2 text-xs text-muted mb-5 bg-elevated/50 border border-white/[0.06] rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 text-xs text-muted mb-5 bg-elevated/50 border border-border rounded-lg px-3 py-2">
           <LockIcon />
           <span>Values are AES-256-GCM encrypted at rest. Revealed values are never stored by this interface.</span>
         </div>
       )}
 
       {/* Table */}
-      <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <table className="min-w-full">
           <thead>
-            <tr className="border-b border-white/[0.06]">
+            <tr className="border-b border-border">
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Name</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Stored</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Value</th>
@@ -381,7 +369,7 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                 return (
                   <tr
                     key={secret.id}
-                    className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-colors ${''}`}
+                    className={`group border-b border-border hover:bg-white/[0.025] transition-colors ${''}`}
                   >
                     <td className="py-3 px-4">
                       <span className="font-mono text-sm text-accent-light">
@@ -411,7 +399,7 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                           type="button"
                           onClick={() => void handleReveal(secret)}
                           disabled={isRevealing}
-                          className="opacity-40 group-hover:opacity-100 text-secondary hover:text-primary border border-white/[0.08] hover:border-white/[0.18] px-2 py-1 rounded-md text-xs transition-all disabled:cursor-wait flex items-center gap-1"
+                          className="text-secondary hover:text-primary border border-border hover:border-border-strong px-2 py-1 rounded-md text-xs transition-all disabled:cursor-wait flex items-center gap-1"
                           aria-label={isRevealed ? 'Hide value' : 'Reveal value'}
                         >
                           {isRevealed ? <EyeClosedIcon /> : <EyeOpenIcon />}
@@ -421,11 +409,11 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                     </td>
 
                     <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           type="button"
                           onClick={() => setRotateTarget(secret)}
-                          className="text-secondary hover:text-primary border border-white/[0.08] hover:border-white/[0.18] px-2 py-1.5 rounded-md text-xs transition-all flex items-center gap-1"
+                          className="text-secondary hover:text-primary border border-border hover:border-border-strong px-2 py-1.5 rounded-md text-xs transition-all flex items-center gap-1"
                           aria-label="Update secret"
                           title="Update"
                         >
@@ -498,19 +486,19 @@ function Vault(): React.ReactElement {
         <p className="text-secondary text-sm mt-1">AES-256-GCM encrypted secrets per agent</p>
       </div>
 
-      <div className="grid gap-6" style={{ gridTemplateColumns: '240px 1fr' }}>
+      <div className="grid grid-cols-[240px_1fr] gap-6">
         {/* Left panel — agent selector */}
         <div>
           <p className="text-muted text-xs font-semibold uppercase tracking-widest mb-3">
             Agents
           </p>
-          <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+          <div className="glass-surface border border-border rounded-xl overflow-hidden">
             {!agents || agents.length === 0 ? (
               <div className="px-4 py-5 flex flex-col items-start gap-3">
                 <p className="text-secondary text-xs">No agents registered yet.</p>
                 <Link
                   to="/agents"
-                  className="border border-white/[0.1] hover:border-accent/50 text-secondary hover:text-accent-light px-4 py-2 rounded-lg text-sm transition-all"
+                  className="border border-border hover:border-accent/50 text-secondary hover:text-accent-light px-4 py-2 rounded-lg text-sm transition-all"
                 >
                   Register Agent
                 </Link>
@@ -523,12 +511,15 @@ function Vault(): React.ReactElement {
                     key={agent.id}
                     type="button"
                     onClick={() => setSelectedAgentId(agent.id)}
-                    className={`w-full text-left flex items-start gap-2.5 px-4 py-3 transition-all duration-150 border-b border-white/[0.05] last:border-0 ${
+                    className={`relative w-full text-left flex items-start gap-2.5 px-4 py-3 transition-all duration-150 border-b border-border last:border-0 overflow-hidden ${
                       isSelected
-                        ? 'bg-accent/8 border-l-2 border-l-accent'
-                        : 'border-l-2 border-l-transparent hover:bg-white/[0.025]'
+                        ? 'bg-accent/[0.07] border border-border-accent'
+                        : 'hover:bg-white/[0.025]'
                     }`}
                   >
+                    {isSelected && (
+                      <span aria-hidden className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-full" />
+                    )}
                     <span
                       className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${
                         agent.is_active ? 'bg-success' : 'bg-muted'
@@ -554,7 +545,7 @@ function Vault(): React.ReactElement {
         {selectedAgent ? (
           <SecretsTable agentId={selectedAgent.id} agentName={selectedAgent.name} />
         ) : (
-          <div className="flex flex-col items-center justify-center gap-3 text-center py-20 bg-surface border border-white/[0.07] rounded-xl">
+          <div className="flex flex-col items-center justify-center gap-3 text-center py-20 bg-surface border border-border rounded-xl">
             <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
               <svg className="text-accent-light" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <rect x="2" y="3" width="20" height="18" rx="1"/>
