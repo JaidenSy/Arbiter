@@ -633,7 +633,7 @@ function PermissionsTable({
                       : <span className="italic">default</span>}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <div className="inline-flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                    <div className="inline-flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => setEditTarget(perm)}
