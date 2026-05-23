@@ -151,7 +151,7 @@ function BillingSection(): React.ReactElement {
 
           {/* Usage bars */}
           {data.plan !== 'enterprise' && (
-            <div className="space-y-4 bg-surface border border-white/[0.07] rounded-xl p-5">
+            <div className="space-y-4 bg-surface border border-border rounded-xl p-5">
               <p className="text-xs font-semibold text-secondary uppercase tracking-widest mb-1">Usage</p>
               <UsageBar
                 label="Tool calls this month"
@@ -219,7 +219,7 @@ function BillingSection(): React.ReactElement {
                   type="button"
                   disabled={checkoutMutation.isPending || !isVerified}
                   onClick={() => checkoutMutation.mutate()}
-                  className="w-full bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all hover:shadow-[0_0_20px_rgba(217,119,6,0.30)]"
+                  className="w-full bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2 rounded-lg transition-all hover-glow-standard"
                 >
                   {checkoutMutation.isPending ? 'Redirecting…' : 'Upgrade to Pro'}
                 </button>
@@ -243,7 +243,7 @@ function BillingSection(): React.ReactElement {
                 type="button"
                 disabled={portalMutation.isPending}
                 onClick={() => portalMutation.mutate()}
-                className="bg-elevated hover:bg-white/[0.07] border border-white/[0.12] hover:border-white/[0.2] text-primary text-sm font-medium px-5 py-2 rounded-lg transition-all"
+                className="bg-elevated hover:bg-white/[0.07] border border-border-strong hover:border-border-strong text-primary text-sm font-medium px-5 py-2 rounded-lg transition-all"
               >
                 {portalMutation.isPending ? 'Redirecting…' : 'Manage Subscription'}
               </button>
@@ -324,12 +324,12 @@ function ApiKeySection(): React.ReactElement {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="nx_..."
-              className="flex-1 bg-base border border-white/[0.12] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+              className="flex-1 bg-base border border-border-strong text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
             />
             <button
               type="button"
               onClick={() => setShowKey((v) => !v)}
-              className="text-secondary hover:text-primary bg-elevated hover:bg-white/[0.07] border border-white/[0.1] hover:border-white/[0.18] px-3 py-2 rounded-lg text-sm transition-all"
+              className="text-secondary hover:text-primary bg-elevated hover:bg-white/[0.07] border border-border hover:border-border-strong px-3 py-2 rounded-lg text-sm transition-all"
             >
               {showKey ? 'Hide' : 'Show'}
             </button>
@@ -343,7 +343,7 @@ function ApiKeySection(): React.ReactElement {
             className={`text-sm font-semibold px-4 py-2 rounded-lg transition-all ${
               saved
                 ? 'bg-success/15 text-success border border-success/25'
-                : 'bg-accent hover:bg-accent-light text-white hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]'
+                : 'bg-accent hover:bg-accent-light text-white hover-glow-standard'
             }`}
           >
             {saved ? 'Saved' : 'Save'}
@@ -404,14 +404,14 @@ function GatewayUrlSection(): React.ReactElement {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="http://localhost:8000/api/v1"
-            className="w-full bg-base border border-white/[0.12] text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+            className="w-full bg-base border border-border-strong text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
           />
         </div>
 
         <button
           type="button"
           onClick={handleSave}
-          className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
+          className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover-glow-standard"
         >
           {saved ? 'Saving…' : 'Save'}
         </button>
@@ -432,11 +432,11 @@ function AboutSection(): React.ReactElement {
   return (
     <div>
       <SectionHeader title="About" />
-      <div className="max-w-xl bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+      <div className="max-w-xl bg-surface border border-border rounded-xl overflow-hidden">
         {info.map(([label, value], idx) => (
           <div
             key={label}
-            className={`flex items-center gap-8 px-5 py-3 ${idx < info.length - 1 ? 'border-b border-white/[0.05]' : ''}`}
+            className={`flex items-center gap-8 px-5 py-3 ${idx < info.length - 1 ? 'border-b border-border' : ''}`}
           >
             <span className="text-muted text-xs font-mono w-24 shrink-0">{label}</span>
             <span className="text-primary text-sm font-mono">{value}</span>
@@ -568,7 +568,7 @@ function Settings(): React.ReactElement {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-white/[0.08] mb-6 max-w-2xl">
+      <div className="flex gap-1 border-b border-border mb-6 max-w-3xl">
         {TABS.map(tab => (
           <button
             key={tab.id}
@@ -576,7 +576,7 @@ function Settings(): React.ReactElement {
             className={`px-4 py-2 text-sm font-medium transition-all border-b-2 -mb-px ${
               activeTab === tab.id
                 ? 'text-primary border-accent'
-                : 'text-secondary border-transparent hover:text-primary hover:border-white/[0.2]'
+                : 'text-secondary border-transparent hover:text-primary hover:border-border-strong'
             }`}
           >
             {tab.label}
@@ -585,35 +585,35 @@ function Settings(): React.ReactElement {
       </div>
 
       {/* Tab content */}
-      <div className="max-w-2xl">
+      <div className="max-w-3xl">
         {activeTab === 'general' && (
-          <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+          <div className="bg-surface border border-border rounded-xl p-6">
             <AppearanceSection />
           </div>
         )}
 
         {activeTab === 'billing' && (
-          <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+          <div className="bg-surface border border-border rounded-xl p-6">
             <BillingSection />
           </div>
         )}
 
         {activeTab === 'developer' && (
           <div className="space-y-4">
-            <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+            <div className="bg-surface border border-border rounded-xl p-6">
               <ApiKeySection />
             </div>
-            <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+            <div className="bg-surface border border-border rounded-xl p-6">
               <GatewayUrlSection />
             </div>
-            <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+            <div className="bg-surface border border-border rounded-xl p-6">
               <CacheSection />
             </div>
           </div>
         )}
 
         {activeTab === 'about' && (
-          <div className="bg-surface border border-white/[0.07] rounded-xl p-6">
+          <div className="bg-surface border border-border rounded-xl p-6">
             <AboutSection />
           </div>
         )}
