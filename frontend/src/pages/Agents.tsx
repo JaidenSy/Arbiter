@@ -6,13 +6,14 @@
  *   - Deactivating (deleting) an agent via a confirmation dialog
  */
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "../api/client";
 import type { Agent, AgentCreateResponse, AgentScope, MCPServer, Page } from "../api/types";
 import CopyButton from "../components/CopyButton";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { Button, Input } from "../components/ui";
 
 // ── Data fetchers / mutators ──────────────────────────────────────────────────
 
@@ -99,14 +100,13 @@ function RegisterModal({
           <label htmlFor="agent-name" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
             Name <span className="text-error normal-case">*</span>
           </label>
-          <input
+          <Input
             id="agent-name"
             type="text"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. my-agent"
-            className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
           />
         </div>
 
@@ -120,7 +120,7 @@ function RegisterModal({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Optional description…"
-            className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all resize-none"
+            className="w-full bg-base border border-border text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-border-accent focus:ring-1 focus:ring-accent/25 transition-all resize-none"
           />
         </div>
 
@@ -139,7 +139,7 @@ function RegisterModal({
                 className={`w-full text-left px-3.5 py-2.5 rounded-lg border transition-all duration-150 ${
                   scope === opt.value
                     ? 'border-accent/60 bg-accent/8 ring-1 ring-accent/25'
-                    : 'border-white/[0.08] bg-base hover:border-white/[0.15] hover:bg-white/[0.02]'
+                    : 'border-border bg-base hover:border-border-strong hover:bg-white/[0.02]'
                 }`}
               >
                 <span className={`text-sm font-medium block ${scope === opt.value ? 'text-accent-light' : 'text-primary'}`}>
@@ -159,20 +159,17 @@ function RegisterModal({
         )}
 
         <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-white/[0.08] hover:border-white/[0.15]"
-          >
+          <Button type="button" variant="secondary" size="sm" onClick={handleClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
+            size="sm"
+            isLoading={mutation.isPending}
             disabled={mutation.isPending || !name.trim()}
-            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
           >
-            {mutation.isPending ? "Registering…" : "Register"}
-          </button>
+            Register
+          </Button>
         </div>
       </form>
     </Modal>
@@ -208,7 +205,7 @@ function ApiKeyModal({
           <p className="text-xs font-semibold text-secondary mb-2 uppercase tracking-widest">
             API Key
           </p>
-          <div className="bg-base border border-white/[0.08] rounded-lg p-3 flex items-start gap-2">
+          <div className="bg-base border border-border rounded-lg p-3 flex items-start gap-2">
             <code className="text-xs font-mono text-accent-light flex-1 break-all">
               {apiKey ?? ""}
             </code>
@@ -217,13 +214,7 @@ function ApiKeyModal({
         </div>
 
         <div className="flex justify-end pt-2">
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
-          >
-            Dismiss
-          </button>
+          <Button size="sm" onClick={onDismiss}>Dismiss</Button>
         </div>
       </div>
     </Modal>
@@ -297,7 +288,7 @@ function TestCallModal({ agent, onClose }: TestCallModalProps): React.ReactEleme
     mutation.mutate({ server_name: serverName, tool_name: toolName.trim(), params })
   }
 
-  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const sharedInputClass = "w-full bg-base border border-border text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-border-accent focus:ring-1 focus:ring-accent/25 transition-all"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   if (!agent) return null
@@ -307,7 +298,7 @@ function TestCallModal({ agent, onClose }: TestCallModalProps): React.ReactEleme
       <div className="space-y-4">
         <div>
           <label className={labelClass}>MCP Server</label>
-          <select value={serverName} onChange={(e) => setServerName(e.target.value)} className={inputClass}>
+          <select value={serverName} onChange={(e) => setServerName(e.target.value)} className={sharedInputClass}>
             {servers.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
             {servers.length === 0 && <option value="">No servers registered</option>}
           </select>
@@ -315,12 +306,12 @@ function TestCallModal({ agent, onClose }: TestCallModalProps): React.ReactEleme
 
         <div>
           <label className={labelClass}>Tool Name</label>
-          <input
+          <Input
             type="text"
             value={toolName}
             onChange={(e) => setToolName(e.target.value)}
             placeholder="e.g. echo"
-            className={`${inputClass} font-mono`}
+            inputClassName="font-mono"
           />
         </div>
 
@@ -330,19 +321,19 @@ function TestCallModal({ agent, onClose }: TestCallModalProps): React.ReactEleme
             value={paramsJson}
             onChange={(e) => setParamsJson(e.target.value)}
             rows={4}
-            className={`${inputClass} font-mono resize-none`}
+            className={`${sharedInputClass} font-mono resize-none`}
           />
           {jsonError && <p className="text-error text-xs mt-1">{jsonError}</p>}
         </div>
 
-        <button
-          type="button"
+        <Button
+          className="w-full"
+          isLoading={mutation.isPending}
           disabled={mutation.isPending || !serverName || !toolName.trim()}
           onClick={handleRun}
-          className="w-full bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
-          {mutation.isPending ? "Running…" : "Run"}
-        </button>
+          Run
+        </Button>
 
         {callError && (
           <div className="bg-error/8 border border-error/20 rounded-lg px-3 py-2">
@@ -351,7 +342,7 @@ function TestCallModal({ agent, onClose }: TestCallModalProps): React.ReactEleme
         )}
 
         {result && (
-          <div className="bg-base border border-white/[0.08] rounded-lg p-3 space-y-2">
+          <div className="bg-base border border-border rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-3 text-xs text-muted">
               <span className={`font-semibold ${result.cache_hit ? "text-teal-light" : "text-secondary"}`}>
                 {result.cache_hit ? "⚡ Cache hit" : "↗ Live call"}
@@ -436,7 +427,7 @@ function SnippetModal({ agent, onClose }: SnippetModalProps): React.ReactElement
         </p>
 
         {/* Tab bar */}
-        <div className="inline-flex border border-white/[0.08] rounded-lg overflow-hidden bg-elevated/50">
+        <div className="inline-flex border border-border rounded-lg overflow-hidden bg-elevated/50">
           {(["Python", "curl", "TypeScript"] as const).map((t) => (
             <button
               key={t}
@@ -454,7 +445,7 @@ function SnippetModal({ agent, onClose }: SnippetModalProps): React.ReactElement
 
         {/* Code block */}
         <div className="relative group">
-          <pre className="bg-base border border-white/[0.08] rounded-lg p-4 text-xs font-mono text-secondary overflow-x-auto leading-relaxed whitespace-pre-wrap">
+          <pre className="bg-base border border-border rounded-lg p-4 text-xs font-mono text-secondary overflow-x-auto leading-relaxed whitespace-pre-wrap">
             {snippets[tab]}
           </pre>
           <div className="absolute top-2 right-2">
@@ -508,12 +499,11 @@ function RenameModal({ agent, onClose, onSuccess }: RenameModalProps): React.Rea
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">Name</label>
-          <input
+          <Input
             type="text"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
           />
         </div>
         <div>
@@ -522,7 +512,7 @@ function RenameModal({ agent, onClose, onSuccess }: RenameModalProps): React.Rea
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all resize-none"
+            className="w-full bg-elevated border border-border text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-border-accent focus:ring-1 focus:ring-accent/25 transition-all resize-none"
           />
         </div>
         {error && (
@@ -532,27 +522,87 @@ function RenameModal({ agent, onClose, onSuccess }: RenameModalProps): React.Rea
           </div>
         )}
         <div className="flex justify-end gap-3 pt-2">
-          <button type="button" onClick={onClose} className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-white/[0.08] hover:border-white/[0.15]">
-            Cancel
-          </button>
-          <button
+          <Button type="button" variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
+          <Button
             type="submit"
+            size="sm"
+            isLoading={mutation.isPending}
             disabled={mutation.isPending || !name.trim()}
-            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            {mutation.isPending ? "Saving…" : "Save"}
-          </button>
+            Save
+          </Button>
         </div>
       </form>
     </Modal>
   );
 }
 
+// ── Overflow menu for destructive actions ─────────────────────────────────────
+
+interface OverflowMenuProps {
+  agent:        Agent
+  onRotate:     (a: Agent) => void
+  onDeactivate: (a: Agent) => void
+}
+
+function OverflowMenu({ agent, onRotate, onDeactivate }: OverflowMenuProps): React.ReactElement {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onMouse(e: MouseEvent): void {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    function onKey(e: KeyboardEvent): void {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onMouse)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onMouse)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-label="More actions"
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center justify-center h-7 w-7 text-secondary hover:text-primary hover:bg-white/[0.05] border border-transparent hover:border-border rounded-lg text-sm transition-all"
+      >
+        ⋯
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-20 bg-elevated border border-border-strong rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.3)] py-1 min-w-[140px]">
+          <button
+            type="button"
+            onClick={() => { onRotate(agent); setOpen(false); }}
+            className="flex items-center w-full px-3 py-2 text-xs text-warning hover:bg-warning/10 transition-colors"
+          >
+            Rotate Key
+          </button>
+          <div className="border-t border-border my-0.5" />
+          <button
+            type="button"
+            onClick={() => { onDeactivate(agent); setOpen(false); }}
+            className="flex items-center w-full px-3 py-2 text-xs text-error hover:bg-error/10 transition-colors"
+          >
+            Deactivate
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Skeleton rows ─────────────────────────────────────────────────────────────
 
 function SkeletonRow(): React.ReactElement {
   return (
-    <tr className="border-b border-white/[0.05]">
+    <tr className="border-b border-border">
       {[5, 8, 3, 4, 2].map((w, i) => (
         <td key={i} className="py-3 px-4">
           <div className="h-3 skeleton-shimmer rounded" style={{ width: `${w * 14}px` }} />
@@ -637,20 +687,16 @@ function Agents(): React.ReactElement {
           <h1 className="font-display text-xl font-semibold tracking-tight text-primary">Agents</h1>
           <p className="text-secondary text-sm mt-1">Registered agent identities and their API keys</p>
         </div>
-        <button
-          type="button"
-          className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_20px_rgba(217,119,6,0.30)]"
-          onClick={() => setShowRegisterModal(true)}
-        >
+        <Button onClick={() => setShowRegisterModal(true)}>
           Register Agent
-        </button>
+        </Button>
       </div>
 
       {/* Table card */}
-      <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <table className="min-w-full">
           <thead>
-            <tr className="border-b border-white/[0.06]">
+            <tr className="border-b border-border">
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Name</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Description</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Status</th>
@@ -678,20 +724,16 @@ function Agents(): React.ReactElement {
                   </div>
                   <p className="text-primary text-sm font-medium mb-1">No agents registered yet</p>
                   <p className="text-secondary text-xs max-w-xs mx-auto mb-4">Register your first agent to start routing tool calls through Arbiter.</p>
-                  <button
-                    type="button"
-                    onClick={() => setShowRegisterModal(true)}
-                    className="bg-accent text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(217,119,6,0.30)]"
-                  >
+                  <Button onClick={() => setShowRegisterModal(true)}>
                     Register Agent
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ) : (
               agents.map((agent) => (
                 <tr
                   key={agent.id}
-                  className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-all duration-150 ${''}`}
+                  className={`group border-b border-border hover:bg-white/[0.025] transition-all duration-150 ${''}`}
                 >
                   <td className="py-3 px-4 text-sm font-medium text-primary">
                     {agent.name}
@@ -726,42 +768,21 @@ function Agents(): React.ReactElement {
                     {formatDate(agent.created_at)}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-40 group-hover:opacity-100 transition-all">
-                      <button
-                        type="button"
-                        onClick={() => setTestCallAgent(agent)}
-                        className="text-secondary hover:text-accent-light hover:bg-accent/10 border border-transparent hover:border-border-accent px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      >
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => setTestCallAgent(agent)}>
                         Test
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSnippetAgent(agent)}
-                        className="text-secondary hover:text-teal-light hover:bg-teal/10 border border-transparent hover:border-teal/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      >
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setSnippetAgent(agent)}>
                         Snippets
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRenameAgent(agent)}
-                        className="text-secondary hover:text-primary hover:bg-white/[0.05] border border-transparent hover:border-white/[0.1] px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      >
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setRenameAgent(agent)}>
                         Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRotateTarget(agent)}
-                        className="text-secondary hover:text-warning hover:bg-warning/10 border border-transparent hover:border-warning/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      >
-                        Rotate Key
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeactivateTarget(agent)}
-                        className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      >
-                        Deactivate
-                      </button>
+                      </Button>
+                      <OverflowMenu
+                        agent={agent}
+                        onRotate={setRotateTarget}
+                        onDeactivate={setDeactivateTarget}
+                      />
                     </div>
                   </td>
                 </tr>
