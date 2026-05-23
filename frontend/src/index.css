@@ -37,6 +37,35 @@
   --color-border: rgba(255,255,255,0.07);
   --color-border-strong: rgba(255,255,255,0.12);
   --color-border-accent: rgba(217,119,6,0.35);
+  --color-border-accent-hover: rgba(245,158,11,0.55);
+
+  /* Surface RGB vals for rgba() composition with backdrop-filter glass */
+  --color-elevated-rgb: 24, 24, 27;
+  --color-surface-rgb:  17, 17, 19;
+  --color-base-rgb:     10, 10, 11;
+
+  /* Aurora hero gradient */
+  --gradient-aurora-hero:
+    radial-gradient(
+      ellipse 80% 40% at 50% -5%,
+      rgba(217,119,6,0.13) 0%,
+      transparent 70%
+    );
+
+  /* Tile ambient gradients */
+  --gradient-tile-amber:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(217,119,6,0.07) 0%, transparent 60%);
+  --gradient-tile-teal:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(20,184,166,0.06) 0%, transparent 60%);
+  --gradient-tile-warning:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(251,191,36,0.05) 0%, transparent 60%);
+  --gradient-tile-error:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(248,113,113,0.05) 0%, transparent 60%);
+
+  /* Mesh gradient for premium surfaces */
+  --gradient-mesh-subtle:
+    radial-gradient(at 25% 15%, rgba(217,119,6,0.05) 0px, transparent 50%),
+    radial-gradient(at 75% 85%, rgba(20,184,166,0.03) 0px, transparent 50%);
 }
 
 [data-theme="light"] {
@@ -66,12 +95,60 @@
   --color-border: rgba(0,0,0,0.08);
   --color-border-strong: rgba(0,0,0,0.14);
   --color-border-accent: rgba(180,83,9,0.35);
+  --color-border-accent-hover: rgba(146,64,14,0.50);
+
+  --color-elevated-rgb: 244, 244, 245;
+  --color-surface-rgb:  255, 255, 255;
+  --color-base-rgb:     250, 250, 249;
+
+  --gradient-aurora-hero:
+    radial-gradient(
+      ellipse 80% 40% at 50% -5%,
+      rgba(180,83,9,0.08) 0%,
+      transparent 70%
+    );
+
+  --gradient-tile-amber:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(180,83,9,0.05) 0%, transparent 60%);
+  --gradient-tile-teal:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(13,148,136,0.04) 0%, transparent 60%);
+  --gradient-tile-warning:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(202,138,4,0.04) 0%, transparent 60%);
+  --gradient-tile-error:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(220,38,38,0.04) 0%, transparent 60%);
+
+  --gradient-mesh-subtle:
+    radial-gradient(at 25% 15%, rgba(180,83,9,0.04) 0px, transparent 50%),
+    radial-gradient(at 75% 85%, rgba(13,148,136,0.02) 0px, transparent 50%);
 }
 
-/* Motion easing tokens */
+/* Motion easing tokens + gradient system + glow ladder + motion durations */
 :root {
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* Glow ladder — three rungs of amber luminance */
+  --glow-none:     none;
+  --glow-subtle:   0 0 12px rgba(217,119,6,0.10);
+  --glow-standard: 0 0 20px rgba(217,119,6,0.22);
+  --glow-hero:     0 0 32px rgba(217,119,6,0.40), 0 0 64px rgba(217,119,6,0.15);
+
+  /* Teal glow for cache/success tiles */
+  --glow-teal-subtle: 0 0 12px rgba(20,184,166,0.10);
+
+  /* Motion durations */
+  --duration-instant: 100ms;
+  --duration-fast:    150ms;
+  --duration-base:    220ms;
+  --duration-slow:    320ms;
+  --duration-crawl:   500ms;
+
+  /* Stagger delays for tile mount */
+  --stagger-1: 40ms;
+  --stagger-2: 80ms;
+  --stagger-3: 120ms;
+  --stagger-4: 160ms;
+  --stagger-5: 200ms;
 }
 
 * { box-sizing: border-box; }
@@ -111,10 +188,54 @@ h1, h2, h3, h4, h5, h6 {
 ::selection { background: rgba(217,119,6,0.25); color: var(--color-primary); }
 [data-theme="light"] ::selection { background: rgba(180,83,9,0.22); color: var(--color-primary); }
 
-/* Glow utilities — amber */
-.glow-accent { box-shadow: 0 0 20px rgba(217,119,6,0.15); }
-.glow-accent-strong { box-shadow: 0 0 32px rgba(217,119,6,0.28); }
-.glow-teal { box-shadow: 0 0 20px rgba(20,184,166,0.15); }
+/* Glow ladder utilities */
+.glow-none     { box-shadow: var(--glow-none); }
+.glow-subtle   { box-shadow: var(--glow-subtle); }
+.glow-standard { box-shadow: var(--glow-standard); }
+.glow-hero     { box-shadow: var(--glow-hero); }
+.glow-teal     { box-shadow: 0 0 20px rgba(20,184,166,0.15); }
+
+/* Aliases for backwards compatibility — will be removed after migration */
+.glow-accent        { box-shadow: var(--glow-standard); }
+.glow-accent-strong { box-shadow: var(--glow-hero); }
+
+/* Hover glow variants */
+.hover-glow-subtle:hover   { box-shadow: var(--glow-subtle); }
+.hover-glow-standard:hover { box-shadow: var(--glow-standard); }
+.hover-glow-hero:hover     { box-shadow: var(--glow-hero); }
+
+/* ── Typography — kicker and display scale ──────────────────────────────── */
+.kicker {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent-light);
+  line-height: 1;
+}
+
+.hero-display {
+  font-family: 'Geist', 'Inter', system-ui, sans-serif;
+  font-size: clamp(2.5rem, 5vw, 3.75rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.03;
+  text-wrap: balance;
+}
+
+/* ── Glass surface utility ───────────────────────────────────────────────── */
+.glass-surface {
+  background: rgba(var(--color-elevated-rgb), 0.90);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Tile gradient backgrounds ───────────────────────────────────────────── */
+.tile-amber   { background: var(--gradient-tile-amber),   var(--color-surface); }
+.tile-teal    { background: var(--gradient-tile-teal),    var(--color-surface); }
+.tile-warning { background: var(--gradient-tile-warning), var(--color-surface); }
+.tile-error   { background: var(--gradient-tile-error),   var(--color-surface); }
 
 /* Gradient text — amber → teal (kept narrow, used sparingly) */
 .gradient-text {
@@ -245,6 +366,56 @@ h1, h2, h3, h4, h5, h6 {
 
 .arbiter-tour-popover .driver-popover-close-btn:hover {
   color: var(--color-secondary);
+}
+
+/* ── New keyframes ───────────────────────────────────────────────────────── */
+@keyframes backdropEnter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.backdrop-enter {
+  animation: backdropEnter var(--duration-fast) var(--ease-out-expo) both;
+}
+
+@keyframes tileMount {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.tile-mount {
+  animation: tileMount var(--duration-base) var(--ease-out-quart) both;
+}
+
+@keyframes successRing {
+  0%   { box-shadow: 0 0 0 0   rgba(52,211,153,0.45); }
+  60%  { box-shadow: 0 0 0 10px rgba(52,211,153,0); }
+  100% { box-shadow: 0 0 0 0   rgba(52,211,153,0); }
+}
+.success-ring {
+  animation: successRing 600ms var(--ease-out-expo) both;
+}
+
+@keyframes valuePop {
+  from { opacity: 0.4; transform: translateY(-3px); }
+  to   { opacity: 1;   transform: translateY(0); }
+}
+.value-pop {
+  animation: valuePop 180ms var(--ease-out-expo) both;
+}
+
+/* Stagger helpers */
+.stagger-1 { animation-delay: var(--stagger-1); }
+.stagger-2 { animation-delay: var(--stagger-2); }
+.stagger-3 { animation-delay: var(--stagger-3); }
+.stagger-4 { animation-delay: var(--stagger-4); }
+.stagger-5 { animation-delay: var(--stagger-5); }
+
+/* Command palette open */
+@keyframes paletteOpen {
+  from { opacity: 0; transform: scale(0.97) translateY(-8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.palette-open {
+  animation: paletteOpen 180ms var(--ease-out-expo) both;
 }
 
 /* ── Reduced motion respect ─────────────────────────────────────────────────── */
