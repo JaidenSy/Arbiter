@@ -52,6 +52,12 @@
       transparent 70%
     );
 
+  /* Ambient background — extends aurora palette across all pages */
+  --gradient-ambient:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(120,53,15,0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(217,119,6,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(28,10,0,0.45) 0%, transparent 50%);
+
   /* Tile ambient gradients */
   --gradient-tile-amber:
     radial-gradient(ellipse 120% 80% at 10% 0%, rgba(217,119,6,0.07) 0%, transparent 60%);
@@ -107,6 +113,10 @@
       rgba(180,83,9,0.08) 0%,
       transparent 70%
     );
+
+  --gradient-ambient:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(180,83,9,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(180,83,9,0.05) 0%, transparent 55%);
 
   --gradient-tile-amber:
     radial-gradient(ellipse 120% 80% at 10% 0%, rgba(180,83,9,0.05) 0%, transparent 60%);
@@ -236,6 +246,15 @@ h1, h2, h3, h4, h5, h6 {
 .tile-teal    { background: var(--gradient-tile-teal),    var(--color-surface); }
 .tile-warning { background: var(--gradient-tile-warning), var(--color-surface); }
 .tile-error   { background: var(--gradient-tile-error),   var(--color-surface); }
+
+/* ── Ambient aurora background — fixed behind all pages ─────────────────── */
+.app-ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--gradient-ambient);
+}
 
 /* Gradient text — amber → teal (kept narrow, used sparingly) */
 .gradient-text {

@@ -68,6 +68,13 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         }}
       />
 
+      {/* Bottom fade — blends WebGL hero into ambient-lit sections below */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-52 pointer-events-none"
+        style={{ background: 'linear-gradient(to bottom, transparent, var(--color-base))' }}
+        aria-hidden
+      />
+
       <div className="relative max-w-3xl mx-auto animate-fade-in">
         {/* Beta badge */}
         <div className="inline-flex items-center gap-2 bg-accent/10 border border-border-accent rounded-full px-3 py-1 mb-8">
@@ -717,7 +724,7 @@ function Landing({ initialModal }: LandingProps): React.ReactElement {
   }
 
   return (
-    <div data-theme="dark" className="min-h-screen bg-base text-primary">
+    <div data-theme="dark" className="min-h-screen text-primary">
       <Navbar onSignIn={() => openModal('login')} onGetStarted={() => openModal('register')} />
       {/* Offset for fixed navbar */}
       <div className="pt-14">

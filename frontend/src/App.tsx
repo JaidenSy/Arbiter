@@ -68,7 +68,7 @@ function PageLoader(): React.ReactElement {
 
 function AppLayout({ children }: { children: React.ReactNode }): React.ReactElement {
   return (
-    <div className="flex min-h-screen bg-base">
+    <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 ml-[52px] min-h-screen page-enter">
         {/* Per-page boundary — keeps the sidebar alive if one page crashes */}
@@ -101,6 +101,7 @@ function RootRedirect(): React.ReactElement {
 function App(): React.ReactElement {
   return (
     <ErrorBoundary>
+    <div className="app-ambient-bg" aria-hidden />
     <UpgradeModal />
     <Suspense fallback={<PageLoader />}>
       <Routes>
