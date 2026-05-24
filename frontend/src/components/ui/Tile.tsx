@@ -75,12 +75,15 @@ export function Tile({
         {label}
       </p>
       <div className="flex items-baseline gap-2">
-        <span className={`text-2xl font-mono font-light tabular-nums text-primary ${valueClass}`}>
+        <span
+          key={String(value)}
+          className={`value-pop text-2xl font-mono font-light tabular-nums text-primary ${valueClass}`}
+        >
           {value}
         </span>
-        {trend && trendValue && (
+        {trend && (
           <span className={`text-xs font-mono ${trendColor[trend]}`}>
-            {trendIcon[trend]} {trendValue}
+            {trendIcon[trend]}{trendValue ? ` ${trendValue}` : ''}
           </span>
         )}
       </div>

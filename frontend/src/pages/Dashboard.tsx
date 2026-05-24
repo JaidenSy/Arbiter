@@ -1,12 +1,3 @@
-/**
- * Arbiter — Dashboard page.
- *
- * Landing page showing a high-level overview of gateway activity:
- *   - 5 stat metrics (agents, servers, tool calls, cache hit rate, error rate)
- *   - Area chart — real historical data from /stats/history with 7d/24h toggle
- *   - Recent sessions table (last 10, click-through to /sessions)
- */
-
 import React, { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -20,9 +11,11 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { authClient } from "../api/client";
-import type { Agent, DashboardStats, Page, Session, StatsHistoryResponse } from "../api/types";
+import type { Agent, DashboardStats, HistoryBucket, Page, Session, StatsHistoryResponse } from "../api/types";
 import UsageStrip from "../components/UsageStrip";
+import { Tile } from "../components/ui/Tile";
 import { useAuth } from "../context/AuthContext";
+import { CHART_COLORS } from "../chartColors";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 
@@ -36,6 +29,9 @@ const fetchRecentSessions = (): Promise<Session[]> =>
 
 const fetchAgents = (): Promise<Page<Agent>> =>
   authClient.get<Page<Agent>>("/agents").then((r) => r.data);
+
+const fetchHistory = (period: string): Promise<StatsHistoryResponse> =>
+  authClient.get<StatsHistoryResponse>(`/stats/history?period=${period}`).then((r) => r.data);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -76,54 +72,8 @@ function formatDate(): string {
   });
 }
 
-// ── Stat metric card ──────────────────────────────────────────────────────────
-
-interface StatMetricProps {
-  label: string;
-  value: string | number;
-  valueClass?: string;
-  trend?: "up" | "down" | "neutral";
-  accent?: "amber" | "teal";
-  to?: string;
-}
-
-function StatMetric({
-  label,
-  value,
-  valueClass = "text-primary",
-  trend,
-  accent = "amber",
-  to,
-}: StatMetricProps): React.ReactElement {
-  const inner = (
-    <>
-      <div className={`absolute -top-6 -right-6 w-16 h-16 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${accent === 'teal' ? 'bg-teal/20' : 'bg-accent/15'}`} />
-      <p className="text-muted text-xs font-mono tracking-wider uppercase mb-2 relative">
-        {label}
-      </p>
-      <div className="flex items-end gap-2 relative">
-        <p className={`text-3xl font-mono font-light tabular-nums ${valueClass}`}>{value}</p>
-        {trend && (
-          <span className={`text-xs mb-1 font-semibold ${trend === 'up' ? 'text-success' : trend === 'down' ? 'text-error' : 'text-secondary'}`}>
-            {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '—'}
-          </span>
-        )}
-      </div>
-      {to && (
-        <p className="text-muted text-[10px] font-mono mt-2 opacity-0 group-hover:opacity-100 transition-opacity relative">
-          View all →
-        </p>
-      )}
-    </>
-  );
-
-  const cls = `flex-1 px-6 py-5 group hover:bg-white/[0.02] transition-all duration-150 relative overflow-hidden ${to ? 'cursor-pointer' : ''}`;
-
-  return to ? (
-    <Link to={to} className={cls}>{inner}</Link>
-  ) : (
-    <div className={cls}>{inner}</div>
-  );
+function last12(buckets: HistoryBucket[]): HistoryBucket[] {
+  return buckets.slice(-12);
 }
 
 // ── Skeleton shimmer row ──────────────────────────────────────────────────────
@@ -133,7 +83,7 @@ function ShimmerRow(): React.ReactElement {
     <tr className="border-b border-border">
       {[5, 6, 4, 2].map((w, i) => (
         <td key={i} className="py-3 px-4">
-          <div className={`h-3 skeleton-shimmer rounded`} style={{ width: `${w * 16}px` }} />
+          <div className="h-3 skeleton-shimmer rounded" style={{ width: `${w * 16}px` }} />
         </td>
       ))}
     </tr>
@@ -166,17 +116,28 @@ function Dashboard(): React.ReactElement {
   });
   const agents = agentsPage?.items;
 
+  // Period-based history for the main activity chart
   const { data: history } = useQuery({
     queryKey: ["stats-history", period],
-    queryFn: () =>
-      authClient
-        .get<StatsHistoryResponse>(`/stats/history?period=${period}`)
-        .then((r) => r.data),
+    queryFn: () => fetchHistory(period),
     refetchInterval: 60_000,
+  });
+
+  // Always-24h history for sparklines in metric tiles
+  const { data: history24h } = useQuery({
+    queryKey: ["stats-history", "24h"],
+    queryFn: () => fetchHistory("24h"),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 
   const chartData = history?.buckets ?? [];
   const allEmpty = chartData.length > 0 && chartData.every((b) => b.tool_calls === 0);
+
+  const sparklineBuckets = last12(history24h?.buckets ?? []);
+  const sparklineCalls = sparklineBuckets.map((b) => b.tool_calls);
+  const sparklineCache = sparklineBuckets.map((b) => b.cache_hit_rate * 100);
+  const sparklineErrors = sparklineBuckets.map((b) => b.errors);
 
   const agentMap = useMemo(
     () => new Map(agents?.map((a) => [a.id, a.name]) ?? []),
@@ -197,10 +158,10 @@ function Dashboard(): React.ReactElement {
   return (
     <div>
       <UsageStrip />
-      <div className="p-6 md:p-8 max-w-[1400px] animate-fade-in">
+      <div className="p-6 md:p-8 max-w-[1400px]">
 
         {/* Greeting header */}
-        <div className="mb-8">
+        <div className="mb-8 animate-fade-in">
           <h1 className="font-display text-primary text-xl font-semibold tracking-tight">
             {getGreeting()}, <span className="text-accent-light">{userName}</span>
           </h1>
@@ -230,167 +191,179 @@ function Dashboard(): React.ReactElement {
           </div>
         )}
 
-        {/* Stat strip */}
-        <div className="flex border border-border rounded-xl mb-6 divide-x divide-white/[0.07] overflow-hidden bg-surface glow-accent">
-          <StatMetric
+        {/* ── Bento Row 1: Activity Chart + right-column metric tiles ── */}
+        <div className="grid grid-cols-[3fr_1fr] gap-3 mb-3">
+
+          {/* Activity Chart — left column */}
+          <div className="border border-border rounded-xl p-6 bg-surface tile-mount stagger-1">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <span className="text-primary text-sm font-semibold">Activity</span>
+                <p className="text-secondary text-xs mt-0.5">Tool calls & cache hits over time</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1.5 text-xs text-muted font-mono">
+                    <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0" />
+                    Tool Calls
+                  </span>
+                  <span className="flex items-center gap-1.5 text-xs text-muted font-mono">
+                    <span className="w-2 h-2 rounded-full bg-teal flex-shrink-0" />
+                    Cache Hits
+                  </span>
+                </div>
+                <div className="inline-flex border border-border rounded-lg overflow-hidden bg-elevated/50">
+                  {(["7d", "24h"] as const).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPeriod(p)}
+                      className={`px-3.5 py-1.5 text-xs font-medium transition-all duration-150 focus:outline-none ${
+                        period === p
+                          ? "bg-accent/15 text-accent-light border-accent/30"
+                          : "text-muted hover:text-secondary hover:bg-elevated/80"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {history === undefined ? (
+              <div className="skeleton-shimmer rounded-lg h-[200px] w-full" />
+            ) : allEmpty ? (
+              <div className="h-[200px] flex flex-col items-center justify-center gap-2">
+                <svg className="text-muted" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                <span className="text-muted text-xs font-mono">
+                  No activity in the last {period}
+                </span>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart
+                  data={chartData}
+                  margin={{ top: 4, right: 0, left: -20, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="gradCalls" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={CHART_COLORS.amber} stopOpacity={0.35} />
+                      <stop offset="95%" stopColor={CHART_COLORS.amber} stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gradHits" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={CHART_COLORS.teal} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={CHART_COLORS.teal} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(255,255,255,0.04)"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="label"
+                    stroke="transparent"
+                    tick={{ fill: "#3A3A4C", fontSize: 11, fontFamily: "monospace" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="transparent"
+                    tick={{ fill: "#3A3A4C", fontSize: 11, fontFamily: "monospace" }}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "#0E0F16",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontFamily: "monospace",
+                    }}
+                    labelStyle={{ color: "#7A7A8C", marginBottom: 4 }}
+                    itemStyle={{ color: "#F0F0F5" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="tool_calls"
+                    name="Tool Calls"
+                    stroke={CHART_COLORS.amber}
+                    strokeWidth={1.5}
+                    fill="url(#gradCalls)"
+                    dot={false}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="cache_hits"
+                    name="Cache Hits"
+                    stroke={CHART_COLORS.teal}
+                    strokeWidth={1.5}
+                    fill="url(#gradHits)"
+                    dot={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Right column — stacked metric tiles */}
+          <div className="flex flex-col gap-3">
+            <Tile
+              variant="teal"
+              label="Cache Hit Rate"
+              value={statsLoading ? "…" : cacheRatePct}
+              valueClass={stats ? cacheRateColorClass(stats.cache_hit_rate_today) : ""}
+              trend={stats ? (stats.cache_hit_rate_today >= 0.5 ? "up" : "down") : undefined}
+              sparklineData={sparklineCache}
+              sparklineColor="var(--color-teal)"
+              mountDelay={2}
+              className="flex-1"
+            />
+            <Tile
+              variant="error"
+              label="Error Rate"
+              value={statsLoading ? "…" : errorRatePct}
+              valueClass={stats ? errorRateColorClass(stats.error_rate_today) : ""}
+              trend={stats ? (stats.error_rate_today === 0 ? "up" : stats.error_rate_today > 0.05 ? "down" : "neutral") : undefined}
+              sparklineData={sparklineErrors}
+              sparklineColor="var(--color-error)"
+              mountDelay={3}
+              className="flex-1"
+            />
+          </div>
+        </div>
+
+        {/* ── Bento Row 2: Agent, Server, Tool Call tiles ── */}
+        <div className="grid grid-cols-[1fr_1fr_2fr] gap-3 mb-6">
+          <Tile
+            variant="amber"
             label="Active Agents"
             value={statsLoading ? "…" : (stats?.agents_count ?? "—")}
             trend="up"
-            accent="amber"
             to="/agents"
+            mountDelay={4}
           />
-          <StatMetric
+          <Tile
+            variant="default"
             label="MCP Servers"
             value={statsLoading ? "…" : (stats?.servers_count ?? "—")}
-            accent="amber"
             to="/mcp-servers"
+            mountDelay={4}
           />
-          <StatMetric
+          <Tile
+            variant="teal"
             label="Tool Calls Today"
-            value={statsLoading ? "…" : (stats?.tool_calls_today ?? "—")}
+            value={statsLoading ? "…" : (stats?.tool_calls_today?.toLocaleString() ?? "—")}
             trend="up"
-            accent="amber"
             to="/sessions"
+            sparklineData={sparklineCalls}
+            sparklineColor="var(--color-teal)"
+            mountDelay={5}
           />
-          <StatMetric
-            label="Cache Hit Rate"
-            value={statsLoading ? "…" : cacheRatePct}
-            valueClass={
-              stats
-                ? cacheRateColorClass(stats.cache_hit_rate_today)
-                : "text-primary"
-            }
-            trend={stats && stats.cache_hit_rate_today >= 0.5 ? "up" : "down"}
-            accent="teal"
-          />
-          <StatMetric
-            label="Error Rate Today"
-            value={statsLoading ? "…" : errorRatePct}
-            valueClass={
-              stats
-                ? errorRateColorClass(stats.error_rate_today)
-                : "text-primary"
-            }
-            trend={stats ? (stats.error_rate_today > 0.05 ? "down" : stats.error_rate_today === 0 ? "up" : "neutral") : "neutral"}
-            accent="amber"
-          />
-        </div>
-
-        {/* Area chart */}
-        <div className="border border-border rounded-xl p-6 mb-6 bg-surface">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <span className="text-primary text-sm font-semibold">Activity</span>
-              <p className="text-secondary text-xs mt-0.5">Tool calls & cache hits over time</p>
-            </div>
-            <div className="flex items-center gap-4">
-              {/* Chart legend */}
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1.5 text-xs text-muted font-mono">
-                  <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0" />
-                  Tool Calls
-                </span>
-                <span className="flex items-center gap-1.5 text-xs text-muted font-mono">
-                  <span className="w-2 h-2 rounded-full bg-teal flex-shrink-0" />
-                  Cache Hits
-                </span>
-              </div>
-              <div className="inline-flex border border-border rounded-lg overflow-hidden bg-elevated/50">
-                {(["7d", "24h"] as const).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPeriod(p)}
-                    className={`px-3.5 py-1.5 text-xs font-medium transition-all duration-150 focus:outline-none ${
-                      period === p
-                        ? "bg-accent/15 text-accent-light border-accent/30"
-                        : "text-muted hover:text-secondary hover:bg-elevated/80"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {history === undefined ? (
-            <div className="skeleton-shimmer rounded-lg h-[180px] w-full" />
-          ) : allEmpty ? (
-            <div className="h-[180px] flex flex-col items-center justify-center gap-2">
-              <svg className="text-muted" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-              </svg>
-              <span className="text-muted text-xs font-mono">
-                No activity in the last {period}
-              </span>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart
-                data={chartData}
-                margin={{ top: 4, right: 0, left: -20, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="gradCalls" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#D97706" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#D97706" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gradHits" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#14B8A6" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#14B8A6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="rgba(255,255,255,0.04)"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="label"
-                  stroke="transparent"
-                  tick={{ fill: "#3A3A4C", fontSize: 11, fontFamily: "monospace" }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="transparent"
-                  tick={{ fill: "#3A3A4C", fontSize: 11, fontFamily: "monospace" }}
-                  tickLine={false}
-                  axisLine={false}
-                  allowDecimals={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "#0E0F16",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontFamily: "monospace",
-                  }}
-                  labelStyle={{ color: "#7A7A8C", marginBottom: 4 }}
-                  itemStyle={{ color: "#F0F0F5" }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="tool_calls"
-                  name="Tool Calls"
-                  stroke="#D97706"
-                  strokeWidth={1.5}
-                  fill="url(#gradCalls)"
-                  dot={false}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="cache_hits"
-                  name="Cache Hits"
-                  stroke="#14B8A6"
-                  strokeWidth={1.5}
-                  fill="url(#gradHits)"
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
         </div>
 
         {/* Recent sessions */}
