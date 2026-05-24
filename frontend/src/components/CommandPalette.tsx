@@ -208,10 +208,9 @@ export function CommandPalette(): React.ReactElement | null {
   const agentItems  = items.filter((i) => i.group === 'agents')
 
   // Track global indices for selection highlight
-  let cursor = 0
-  const navStart    = cursor;    cursor += navItems.length
-  const actionStart = cursor;    cursor += actionItems.length
-  const agentStart  = cursor;
+  const navStart    = 0
+  const actionStart = navItems.length
+  const agentStart  = navItems.length + actionItems.length
 
   if (!isOpen) return null
 

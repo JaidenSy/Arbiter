@@ -15,7 +15,7 @@ import type { Agent, DashboardStats, HistoryBucket, Page, Session, StatsHistoryR
 import UsageStrip from "../components/UsageStrip";
 import { Tile } from "../components/ui/Tile";
 import { useAuth } from "../context/AuthContext";
-import { CHART_COLORS } from "../chartColors";
+import { CHART_COLORS, CHART_TOOLTIP_STYLE } from "../chartColors";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 
@@ -265,27 +265,21 @@ function Dashboard(): React.ReactElement {
                   <XAxis
                     dataKey="label"
                     stroke="transparent"
-                    tick={{ fill: "#3A3A4C", fontSize: 11, fontFamily: "monospace" }}
+                    tick={CHART_TOOLTIP_STYLE.tick}
                     tickLine={false}
                     axisLine={false}
                   />
                   <YAxis
                     stroke="transparent"
-                    tick={{ fill: "#3A3A4C", fontSize: 11, fontFamily: "monospace" }}
+                    tick={CHART_TOOLTIP_STYLE.tick}
                     tickLine={false}
                     axisLine={false}
                     allowDecimals={false}
                   />
                   <Tooltip
-                    contentStyle={{
-                      background: "#0E0F16",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      fontFamily: "monospace",
-                    }}
-                    labelStyle={{ color: "#7A7A8C", marginBottom: 4 }}
-                    itemStyle={{ color: "#F0F0F5" }}
+                    contentStyle={CHART_TOOLTIP_STYLE.content}
+                    labelStyle={CHART_TOOLTIP_STYLE.label}
+                    itemStyle={CHART_TOOLTIP_STYLE.item}
                   />
                   <Area
                     type="monotone"
