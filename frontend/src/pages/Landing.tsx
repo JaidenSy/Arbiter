@@ -39,7 +39,7 @@ function Navbar({ onSignIn, onGetStarted }: NavbarProps): React.ReactElement {
           </button>
           <button
             onClick={onGetStarted}
-            className="press bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard"
+            className="press bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors duration-150 ease-[var(--ease-out-expo)]"
           >
             Get Started Free
           </button>
@@ -59,6 +59,13 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
       {/* Background — shader gradient + particle mesh */}
       <HeroBackground />
 
+      {/* Aurora overlay — warm amber focal glow from top center */}
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'var(--gradient-aurora-hero)' }}
+      />
+
       {/* Dot grid — kept at very low opacity for texture depth */}
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.025]"
@@ -75,32 +82,43 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         aria-hidden
       />
 
-      <div className="relative max-w-3xl mx-auto animate-fade-in">
-        {/* Beta badge */}
-        <div className="inline-flex items-center gap-2 bg-accent/10 border border-border-accent rounded-full px-3 py-1 mb-8">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-          <span className="text-accent-light text-xs font-medium tracking-wide">Now in Beta</span>
-        </div>
+      <div className="relative max-w-3xl mx-auto">
+        {/* Kicker label */}
+        <p
+          className="kicker mb-5"
+          style={{ animationDelay: '0ms' }}
+        >
+          MCP Security Gateway
+        </p>
 
-        {/* Headline — Geist, tighter tracking, primary color for confidence */}
-        <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.75rem] font-semibold text-primary leading-[1.05] tracking-tight mb-6">
+        {/* Hero headline — staggered entrance */}
+        <h1
+          className="hero-display text-primary mb-6 animate-fade-in"
+          style={{ animationDelay: '60ms', animationFillMode: 'both' }}
+        >
           Your AI agents are running
           <br />
           <span className="text-secondary">without guardrails.</span>
         </h1>
 
         {/* Subheadline */}
-        <p className="text-secondary text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-10">
+        <p
+          className="text-secondary text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-10 animate-fade-in"
+          style={{ animationDelay: '120ms', animationFillMode: 'both' }}
+        >
           Shared credentials, no audit trail, agents that can call any tool they want.
           Arbiter fixes all of it — cryptographic agent identity, tool-level permissions,
           an encrypted secrets vault, and full observability through a single MCP gateway.
         </p>
 
-        {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+        {/* CTAs — hero-glow only on primary CTA */}
+        <div
+          className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6 animate-fade-in"
+          style={{ animationDelay: '200ms', animationFillMode: 'both' }}
+        >
           <button
             onClick={onGetStarted}
-            className="press bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard text-sm"
+            className="press bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-hero text-sm"
           >
             Start for Free
           </button>
@@ -112,12 +130,18 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
           </button>
         </div>
 
-        <p className="text-muted text-xs">
+        <p
+          className="text-muted text-xs animate-fade-in"
+          style={{ animationDelay: '200ms', animationFillMode: 'both' }}
+        >
           Free plan includes 3 agents · 1,000 tool calls/mo · No credit card required
         </p>
 
         {/* Terminal demo */}
-        <div className="mt-14 bg-surface/85 backdrop-blur-sm border border-border-strong rounded-2xl p-5 text-left max-w-xl mx-auto shadow-2xl">
+        <div
+          className="mt-14 bg-surface/85 backdrop-blur-sm border border-border-strong rounded-2xl p-5 text-left max-w-xl mx-auto shadow-2xl animate-fade-in"
+          style={{ animationDelay: '280ms', animationFillMode: 'both' }}
+        >
           <div className="flex items-center gap-1.5 mb-4">
             <span className="w-2.5 h-2.5 rounded-full bg-error/70" />
             <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
@@ -245,20 +269,28 @@ function Features(): React.ReactElement {
           <div className="w-10 h-px bg-accent/60 mx-auto" />
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {features.map((f) => (
-            <div
-              key={f.title}
-              className="bg-surface border border-border rounded-2xl p-6 hover:border-border-strong transition-colors duration-200 ease-[var(--ease-out-expo)] group"
-            >
-              <div className="w-9 h-9 rounded-lg bg-accent/[0.08] border border-border-accent flex items-center justify-center text-accent-light mb-4 group-hover:bg-accent/[0.12] transition-colors duration-200">
-                {f.icon}
+        {/* Grid — 4-col desktop bento: wide(2)+narrow(1)+narrow(1) / narrow(1)+wide(2)+narrow(1) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {features.map((f, i) => {
+            // Agent Identity (0) and Full Observability (4) span 2 cols
+            const isWide = i === 0 || i === 4
+            return (
+              <div
+                key={f.title}
+                className={[
+                  'bg-surface border border-border rounded-2xl p-6',
+                  'hover:border-border-strong transition-colors duration-200 ease-[var(--ease-out-expo)] group',
+                  isWide ? 'lg:col-span-2 sm:col-span-2' : '',
+                ].filter(Boolean).join(' ')}
+              >
+                <div className="w-9 h-9 rounded-lg bg-accent/[0.08] border border-border-accent flex items-center justify-center text-accent-light mb-4 group-hover:bg-accent/[0.12] transition-colors duration-200">
+                  {f.icon}
+                </div>
+                <h3 className="font-display text-primary font-semibold text-sm tracking-tight mb-2">{f.title}</h3>
+                <p className="text-secondary text-sm leading-relaxed">{f.description}</p>
               </div>
-              <h3 className="font-display text-primary font-semibold text-sm tracking-tight mb-2">{f.title}</h3>
-              <p className="text-secondary text-sm leading-relaxed">{f.description}</p>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>
