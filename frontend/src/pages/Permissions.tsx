@@ -736,12 +736,15 @@ function Permissions(): React.ReactElement {
                     key={agent.id}
                     type="button"
                     onClick={() => setSelectedAgentId(agent.id)}
-                    className={`w-full text-left flex items-center gap-2.5 px-4 py-3 transition-all duration-150 border-b border-border last:border-0 ${
+                    className={`relative w-full text-left flex items-center gap-2.5 px-4 py-3 transition-all duration-150 border-b border-border last:border-0 ${
                       isSelected
-                        ? 'bg-accent/8 border-l-2 border-l-accent'
-                        : 'border-l-2 border-l-transparent hover:bg-white/[0.025]'
+                        ? 'bg-accent/[0.07] border border-border-accent'
+                        : 'hover:bg-white/[0.025]'
                     }`}
                   >
+                    {isSelected && (
+                      <span aria-hidden className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-full" />
+                    )}
                     <span
                       className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                         agent.is_active ? 'bg-success' : 'bg-muted'
