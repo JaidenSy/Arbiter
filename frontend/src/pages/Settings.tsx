@@ -7,8 +7,8 @@
  *   - About (version, MCP spec, license)
  */
 
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
 import type { BillingStatus, CacheStats } from '../api/types'
@@ -558,7 +558,23 @@ const TABS: { id: Tab; label: string }[] = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function Settings(): React.ReactElement {
-  const [activeTab, setActiveTab] = useState<Tab>('general')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const tab = searchParams.get('tab')
+    return (tab === 'general' || tab === 'billing' || tab === 'developer' || tab === 'about') ? tab : 'general'
+  })
+
+  const handleTabChange = (tab: Tab): void => {
+    setActiveTab(tab)
+    setSearchParams({ tab }, { replace: true })
+  }
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'general' || tab === 'billing' || tab === 'developer' || tab === 'about') {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
 
   return (
     <div className="p-8 animate-fade-in">
@@ -572,7 +588,7 @@ function Settings(): React.ReactElement {
         {TABS.map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             className={`px-4 py-2 text-sm font-medium transition-all border-b-2 -mb-px ${
               activeTab === tab.id
                 ? 'text-primary border-accent'
