@@ -288,12 +288,15 @@ function MCPServers(): React.ReactElement {
   const [deactivateTarget, setDeactivateTarget] = useState<MCPServer | null>(null)
   const [testingId, setTestingId] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<{ id: string; result: MCPServerTestResult } | null>(null)
+  const testResultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const testMutation = useMutation({
     mutationFn: testMCPServer,
     onSuccess: (data, id) => {
+      if (testResultTimerRef.current) clearTimeout(testResultTimerRef.current)
       setTestResult({ id, result: data })
       setTestingId(null)
+      testResultTimerRef.current = setTimeout(() => setTestResult(null), 8000)
     },
     onError: () => {
       setTestingId(null)
@@ -301,6 +304,7 @@ function MCPServers(): React.ReactElement {
   })
 
   const handleTestClick = (server: MCPServer): void => {
+    if (testResultTimerRef.current) clearTimeout(testResultTimerRef.current)
     setTestingId(server.id)
     setTestResult(null)
     testMutation.mutate(server.id)
@@ -359,6 +363,7 @@ function MCPServers(): React.ReactElement {
 
       {/* Table card */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="min-w-full">
           <thead>
             <tr className="border-b border-border">
@@ -482,6 +487,7 @@ function MCPServers(): React.ReactElement {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <ServerFormModal
