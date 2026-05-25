@@ -133,16 +133,14 @@ function Sessions(): React.ReactElement {
               <option value="false">No errors</option>
             </select>
             <Input
-              type="text"
-              placeholder="From YYYY-MM-DD"
+              type="date"
               value={filters.fromDate}
               onChange={(e) => setFilter("fromDate", e.target.value)}
               inputClassName="w-36"
             />
             <span className="text-muted text-xs">→</span>
             <Input
-              type="text"
-              placeholder="To YYYY-MM-DD"
+              type="date"
               value={filters.toDate}
               onChange={(e) => setFilter("toDate", e.target.value)}
               inputClassName="w-36"
@@ -196,6 +194,7 @@ function Sessions(): React.ReactElement {
 
       {/* Table card */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="min-w-full">
           <thead>
             <tr className="border-b border-border">
@@ -258,6 +257,7 @@ function Sessions(): React.ReactElement {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}
