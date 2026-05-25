@@ -82,7 +82,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         aria-hidden
       />
 
-      <div className="relative max-w-3xl mx-auto">
+      <div className="relative max-w-3xl mx-auto pt-28 sm:pt-24 lg:pt-20">
         {/* Kicker label */}
         <p
           className="kicker mb-5"
@@ -758,8 +758,7 @@ function Landing({ initialModal }: LandingProps): React.ReactElement {
   return (
     <div data-theme="dark" className="min-h-screen text-primary">
       <Navbar onSignIn={() => openModal('login')} onGetStarted={() => openModal('register')} />
-      {/* Offset for fixed navbar */}
-      <div className="pt-14">
+      <div>
         <Hero onGetStarted={() => openModal('register')} onSignIn={() => openModal('login')} />
         <Features />
         <Comparison />

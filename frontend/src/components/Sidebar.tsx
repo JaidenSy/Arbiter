@@ -195,7 +195,7 @@ function UserAvatar(): React.ReactElement | null {
   const handleLogout = (): void => {
     setOpen(false)
     void logout().then(() => {
-      window.location.href = '/login'
+      window.location.href = '/'
     })
   }
 
