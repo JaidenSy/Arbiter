@@ -9,6 +9,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { authClient } from '../api/client'
 import type { Page } from '../api/types'
 import { useAuth } from '../context/AuthContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -43,14 +44,14 @@ type Role = typeof VALID_ROLES[number]
 
 const ROLE_BADGE: Record<string, string> = {
   owner: 'bg-accent/15 text-accent-light border-border-accent',
-  admin: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
-  member: 'bg-white/5 text-secondary border-white/10',
+  admin: 'bg-teal/10 text-teal-light border-teal/20',
+  member: 'bg-elevated text-secondary border-border',
 }
 
 const PLAN_BADGE: Record<string, string> = {
-  free: 'bg-white/5 text-secondary border-white/10',
+  free: 'bg-elevated text-secondary border-border',
   pro: 'bg-accent/15 text-accent-light border-border-accent',
-  enterprise: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  enterprise: 'bg-warning/10 text-warning border-warning/20',
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -111,6 +112,9 @@ function Organization(): React.ReactElement {
   const [renameValue, setRenameValue] = useState('')
   const [renameError, setRenameError] = useState('')
   const [renameSaving, setRenameSaving] = useState(false)
+
+  // Remove member confirm dialog state
+  const [removeMemberId, setRemoveMemberId] = useState<string | null>(null)
 
   // Invite modal state
   const [showInvite, setShowInvite] = useState(false)
@@ -173,8 +177,7 @@ function Organization(): React.ReactElement {
     }
   }
 
-  async function handleRemoveMember(memberId: string) {
-    if (!confirm('Remove this member from your organization?')) return
+  async function doRemoveMember(memberId: string) {
     try {
       await authClient.delete(`/org/members/${memberId}`)
       setMembers(prev => prev.filter(m => m.id !== memberId))
@@ -351,7 +354,7 @@ function Organization(): React.ReactElement {
                     <td className="px-5 py-3.5 text-right">
                       {!isSelf && (
                         <button
-                          onClick={() => void handleRemoveMember(m.id)}
+                          onClick={() => setRemoveMemberId(m.id)}
                           className="text-muted hover:text-error text-xs transition-colors"
                         >
                           Remove
@@ -405,6 +408,16 @@ function Organization(): React.ReactElement {
           </div>
         </div>
       )}
+
+      {/* Remove member confirm dialog */}
+      <ConfirmDialog
+        isOpen={removeMemberId !== null}
+        onClose={() => setRemoveMemberId(null)}
+        onConfirm={() => { if (removeMemberId) void doRemoveMember(removeMemberId) }}
+        title="Remove member"
+        message="Are you sure you want to remove this member from your organization? This action cannot be undone."
+        confirmLabel="Remove"
+      />
 
       {/* Invite modal */}
       {showInvite && (
