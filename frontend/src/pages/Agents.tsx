@@ -603,7 +603,7 @@ function OverflowMenu({ agent, onRotate, onDeactivate }: OverflowMenuProps): Rea
 function SkeletonRow(): React.ReactElement {
   return (
     <tr className="border-b border-border">
-      {[5, 8, 3, 4, 2].map((w, i) => (
+      {[5, 8, 3, 4, 2, 3].map((w, i) => (
         <td key={i} className="py-3 px-4">
           <div className="h-3 skeleton-shimmer rounded" style={{ width: `${w * 14}px` }} />
         </td>
@@ -694,6 +694,7 @@ function Agents(): React.ReactElement {
 
       {/* Table card */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="min-w-full">
           <thead>
             <tr className="border-b border-border">
@@ -714,7 +715,7 @@ function Agents(): React.ReactElement {
               </>
             ) : !agents || agents.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-20 px-4 text-center">
+                <td colSpan={6} className="py-20 px-4 text-center">
                   <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
                     <svg className="text-accent-light" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                       <rect x="2" y="3" width="20" height="14" rx="2"/>
@@ -790,6 +791,7 @@ function Agents(): React.ReactElement {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <RegisterModal
