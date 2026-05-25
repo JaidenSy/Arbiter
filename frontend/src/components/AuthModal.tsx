@@ -165,7 +165,12 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-modal-title"
+    >
       {/* Blurred backdrop — click to close */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -191,7 +196,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
           <div className="text-center mb-6">
             <div className="flex items-center justify-center gap-3 mb-2">
               <ArbiterMark size={32} />
-              <span className="font-display text-primary font-semibold text-2xl tracking-tight">Arbiter</span>
+              <span id="auth-modal-title" className="font-display text-primary font-semibold text-2xl tracking-tight">Arbiter</span>
             </div>
           </div>
 
