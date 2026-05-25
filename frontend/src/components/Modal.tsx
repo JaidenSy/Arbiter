@@ -32,7 +32,7 @@ function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
       aria-modal="true"
       role="dialog"
       aria-labelledby="modal-title"
@@ -45,9 +45,9 @@ function Modal({
       />
 
       {/* Dialog */}
-      <div className="modal-enter relative z-10 glass-surface border border-border-strong rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+      <div className="modal-enter relative z-10 glass-surface border border-border-strong rounded-2xl w-full max-w-md shadow-2xl flex flex-col my-auto max-h-[calc(100vh-2rem)]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
           <h2 id="modal-title" className="font-display text-primary text-sm font-semibold tracking-tight">
             {title}
           </h2>
@@ -65,7 +65,7 @@ function Modal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5">
+        <div className="px-6 py-5 overflow-y-auto">
           {children}
         </div>
       </div>
