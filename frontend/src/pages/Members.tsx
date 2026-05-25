@@ -219,8 +219,28 @@ function Organization(): React.ReactElement {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-48">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
+        <div>
+          <div className="h-5 skeleton-shimmer rounded w-40 mb-2" />
+          <div className="h-3 skeleton-shimmer rounded w-64" />
+        </div>
+        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+          <div className="border-b border-border px-5 py-3 flex gap-8">
+            {['w-24', 'w-16', 'w-20'].map((w, i) => (
+              <div key={i} className={`h-2.5 skeleton-shimmer rounded ${w}`} />
+            ))}
+          </div>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-8 px-5 py-3.5 border-b border-border last:border-0">
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 skeleton-shimmer rounded w-32" />
+                <div className="h-2.5 skeleton-shimmer rounded w-48" />
+              </div>
+              <div className="h-5 skeleton-shimmer rounded-full w-16" />
+              <div className="h-3 skeleton-shimmer rounded w-24" />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -242,7 +262,7 @@ function Organization(): React.ReactElement {
 
       {/* Org info card */}
       {org && (
-        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+        <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-secondary uppercase tracking-widest mb-1">Organization name</p>
@@ -313,7 +333,7 @@ function Organization(): React.ReactElement {
       </div>
 
       {/* Members table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
@@ -373,7 +393,7 @@ function Organization(): React.ReactElement {
       {isManager && invites.length > 0 && (
         <div>
           <h2 className="text-sm font-semibold text-secondary uppercase tracking-widest mb-3">Pending Invites</h2>
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
