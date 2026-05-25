@@ -259,7 +259,7 @@ function Dashboard(): React.ReactElement {
                   </defs>
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke="rgba(255,255,255,0.04)"
+                    stroke="var(--color-border)"
                     vertical={false}
                   />
                   <XAxis

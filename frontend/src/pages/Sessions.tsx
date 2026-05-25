@@ -26,13 +26,17 @@ interface SessionFilters {
   toDate: string;
 }
 
-const fetchSessions = (filters: SessionFilters): Promise<Page<Session>> => {
+const PAGE_SIZE = 20;
+
+const fetchSessions = (filters: SessionFilters, skip: number): Promise<Page<Session>> => {
   const params: Record<string, string> = {};
   if (filters.agentId) params.agent_id = filters.agentId;
   if (filters.toolName) params.tool_name = filters.toolName;
   if (filters.hasError) params.has_error = filters.hasError;
   if (filters.fromDate) params.from_date = new Date(filters.fromDate).toISOString();
   if (filters.toDate) params.to_date = new Date(filters.toDate).toISOString();
+  params.skip = String(skip);
+  params.limit = String(PAGE_SIZE);
   return authClient.get<Page<Session>>("/sessions", { params }).then((r) => r.data);
 };
 
@@ -61,7 +65,10 @@ function Sessions(): React.ReactElement {
     toDate: "",
   });
 
+  const [page, setPage] = useState(0);
+
   const setFilter = <K extends keyof SessionFilters>(key: K, value: SessionFilters[K]): void => {
+    setPage(0); // reset to first page on filter change
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -71,12 +78,14 @@ function Sessions(): React.ReactElement {
   });
 
   const { data: sessions, isLoading: sessionsLoading } = useQuery<Page<Session>>({
-    queryKey: ["sessions", filters],
-    queryFn: () => fetchSessions(filters),
+    queryKey: ["sessions", filters, page],
+    queryFn: () => fetchSessions(filters, page * PAGE_SIZE),
   });
 
   const agentList = agents?.items ?? [];
   const sessionList = sessions?.items ?? [];
+  const totalSessions = sessions?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalSessions / PAGE_SIZE));
 
   const agentMap = useMemo(
     () => new Map(agentList.map((a) => [a.id, a.name])),
@@ -124,16 +133,14 @@ function Sessions(): React.ReactElement {
               <option value="false">No errors</option>
             </select>
             <Input
-              type="text"
-              placeholder="From YYYY-MM-DD"
+              type="date"
               value={filters.fromDate}
               onChange={(e) => setFilter("fromDate", e.target.value)}
               inputClassName="w-36"
             />
             <span className="text-muted text-xs">→</span>
             <Input
-              type="text"
-              placeholder="To YYYY-MM-DD"
+              type="date"
               value={filters.toDate}
               onChange={(e) => setFilter("toDate", e.target.value)}
               inputClassName="w-36"
@@ -175,7 +182,7 @@ function Sessions(): React.ReactElement {
               )}
               <button
                 type="button"
-                onClick={() => setFilters({ agentId: "", toolName: "", hasError: "", fromDate: "", toDate: "" })}
+                onClick={() => { setFilters({ agentId: "", toolName: "", hasError: "", fromDate: "", toDate: "" }); setPage(0); }}
                 className="text-muted hover:text-secondary text-xs px-2 py-0.5 rounded-lg hover:bg-elevated/60 transition-all"
               >
                 Clear all
@@ -187,6 +194,7 @@ function Sessions(): React.ReactElement {
 
       {/* Table card */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="min-w-full">
           <thead>
             <tr className="border-b border-border">
@@ -249,7 +257,33 @@ function Sessions(): React.ReactElement {
             )}
           </tbody>
         </table>
+        </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 mt-4">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="border border-border rounded-lg px-3 py-1.5 text-sm text-secondary hover:text-primary disabled:opacity-40 transition-colors"
+          >
+            ← Previous
+          </button>
+          <span className="text-secondary text-sm">
+            Page {page + 1} of {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+            className="border border-border rounded-lg px-3 py-1.5 text-sm text-secondary hover:text-primary disabled:opacity-40 transition-colors"
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

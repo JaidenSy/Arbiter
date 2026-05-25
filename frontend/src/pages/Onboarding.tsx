@@ -35,10 +35,10 @@ function ProgressDots({ total, current }: ProgressDotsProps): React.ReactElement
             key={i}
             className={`w-2 h-2 rounded-full transition-colors ${
               isDone
-                ? 'bg-green-400'
+                ? 'bg-success'
                 : isActive
                 ? 'bg-accent'
-                : 'bg-white/20'
+                : 'bg-muted/40'
             }`}
           />
         )
@@ -57,7 +57,7 @@ interface Step1Props {
 function Step1({ orgName, onNext }: Step1Props): React.ReactElement {
   return (
     <div className="text-center space-y-6">
-      <h1 className="text-white text-2xl font-mono font-semibold">
+      <h1 className="text-primary text-2xl font-mono font-semibold">
         Welcome to Arbiter, {orgName}
       </h1>
       <p className="text-secondary text-sm font-mono leading-relaxed max-w-sm mx-auto">
@@ -117,7 +117,7 @@ function Step2({ onNext }: Step2Props): React.ReactElement {
   return (
     <div className="space-y-6 max-w-md w-full mx-auto">
       <div>
-        <h2 className="text-white text-lg font-mono font-semibold mb-1">Register your first agent</h2>
+        <h2 className="text-primary text-lg font-mono font-semibold mb-1">Register your first agent</h2>
         <p className="text-secondary text-xs font-mono">Each agent gets a unique API key used to authenticate tool calls.</p>
       </div>
 
@@ -125,7 +125,7 @@ function Step2({ onNext }: Step2Props): React.ReactElement {
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
             <label htmlFor="agent-name" className="block text-xs text-secondary mb-1 uppercase tracking-wider">
-              Agent Name <span className="text-red-400">*</span>
+              Agent Name <span className="text-error">*</span>
             </label>
             <input
               id="agent-name"
@@ -134,7 +134,7 @@ function Step2({ onNext }: Step2Props): React.ReactElement {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. my-agent"
-              className="w-full bg-base border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+              className="w-full bg-base border border-border-strong text-primary font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
           </div>
 
@@ -148,11 +148,11 @@ function Step2({ onNext }: Step2Props): React.ReactElement {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional"
-              className="w-full bg-base border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+              className="w-full bg-base border border-border-strong text-primary font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
             />
           </div>
 
-          {error && <p className="text-red-400 text-xs font-mono">{error}</p>}
+          {error && <p className="text-error text-xs font-mono">{error}</p>}
 
           <button
             type="submit"
@@ -164,15 +164,15 @@ function Step2({ onNext }: Step2Props): React.ReactElement {
         </form>
       ) : (
         <div className="space-y-4">
-          <div className="bg-yellow-950/40 border border-yellow-800/50 rounded p-3">
-            <p className="text-yellow-400 text-xs font-mono font-semibold">
+          <div className="bg-warning/8 border border-warning/20 rounded p-3">
+            <p className="text-warning text-xs font-mono font-semibold">
               This key is shown once. Copy it now — you won't be able to retrieve it later.
             </p>
           </div>
 
           <div>
             <p className="text-xs text-secondary mb-2 font-mono uppercase tracking-wider">API Key</p>
-            <div className="bg-base border border-white/10 rounded p-3 flex items-start gap-2">
+            <div className="bg-base border border-border-strong rounded p-3 flex items-start gap-2">
               <code className="text-xs font-mono text-accent-light flex-1 break-all">
                 {createdKey}
               </code>
@@ -230,14 +230,14 @@ function Step3({ onNext }: Step3Props): React.ReactElement {
   return (
     <div className="space-y-6 max-w-md w-full mx-auto">
       <div>
-        <h2 className="text-white text-lg font-mono font-semibold mb-1">Add your first MCP server</h2>
+        <h2 className="text-primary text-lg font-mono font-semibold mb-1">Add your first MCP server</h2>
         <p className="text-secondary text-xs font-mono">MCP servers expose tools your agents can call through the gateway.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="server-name" className="block text-xs text-secondary mb-1 uppercase tracking-wider">
-            Server Name <span className="text-red-400">*</span>
+            Server Name <span className="text-error">*</span>
           </label>
           <input
             id="server-name"
@@ -246,13 +246,13 @@ function Step3({ onNext }: Step3Props): React.ReactElement {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. filesystem"
-            className="w-full bg-base border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+            className="w-full bg-base border border-border-strong text-primary font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
           />
         </div>
 
         <div>
           <label htmlFor="server-url" className="block text-xs text-secondary mb-1 uppercase tracking-wider">
-            Server URL <span className="text-red-400">*</span>
+            Server URL <span className="text-error">*</span>
           </label>
           <input
             id="server-url"
@@ -261,7 +261,7 @@ function Step3({ onNext }: Step3Props): React.ReactElement {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="http://localhost:8001"
-            className="w-full bg-base border border-white/10 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
+            className="w-full bg-base border border-border-strong text-primary font-mono text-sm px-3 py-2 rounded focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-colors"
           />
         </div>
 
@@ -271,7 +271,7 @@ function Step3({ onNext }: Step3Props): React.ReactElement {
             role="switch"
             aria-checked={cacheEnabled}
             onClick={() => setCacheEnabled(!cacheEnabled)}
-            className={`relative w-9 h-5 rounded-full transition-colors ${cacheEnabled ? 'bg-accent' : 'bg-base border border-white/10'}`}
+            className={`relative w-9 h-5 rounded-full transition-colors ${cacheEnabled ? 'bg-accent' : 'bg-base border border-border-strong'}`}
           >
             <span
               className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${cacheEnabled ? 'translate-x-4' : ''}`}
@@ -280,7 +280,7 @@ function Step3({ onNext }: Step3Props): React.ReactElement {
           <span className="text-xs text-secondary font-mono">Enable semantic caching</span>
         </div>
 
-        {error && <p className="text-red-400 text-xs font-mono">{error}</p>}
+        {error && <p className="text-error text-xs font-mono">{error}</p>}
 
         <button
           type="submit"
@@ -317,25 +317,25 @@ function Step4({ agentName, agentApiKey, serverName, onFinish }: Step4Props): Re
   return (
     <div className="space-y-6 max-w-lg w-full mx-auto">
       <div className="text-center">
-        <div className="text-green-400 text-4xl mb-3">✓</div>
-        <h2 className="text-white text-lg font-mono font-semibold mb-1">You're all set</h2>
+        <div className="text-success text-4xl mb-3">✓</div>
+        <h2 className="text-primary text-lg font-mono font-semibold mb-1">You're all set</h2>
         <p className="text-secondary text-xs font-mono">Here's a summary of what was created.</p>
       </div>
 
       <div className="space-y-2 text-sm font-mono">
         <div className="flex justify-between border-b border-border py-2">
           <span className="text-secondary">Agent</span>
-          <span className="text-white">{agentName}</span>
+          <span className="text-primary">{agentName}</span>
         </div>
         <div className="flex justify-between border-b border-border py-2">
           <span className="text-secondary">MCP Server</span>
-          <span className="text-white">{serverName}</span>
+          <span className="text-primary">{serverName}</span>
         </div>
       </div>
 
       <div>
         <p className="text-xs text-secondary mb-2 font-mono uppercase tracking-wider">Make your first tool call</p>
-        <div className="bg-base border border-white/10 rounded p-3 flex items-start gap-2">
+        <div className="bg-base border border-border-strong rounded p-3 flex items-start gap-2">
           <pre className="text-xs font-mono text-accent-light flex-1 overflow-x-auto whitespace-pre-wrap break-all">
             {curlSnippet}
           </pre>
@@ -400,7 +400,7 @@ function Onboarding(): React.ReactElement {
   const orgName = user?.org_name ?? 'your organization'
 
   return (
-    <div className="min-h-screen bg-base flex flex-col items-center justify-center font-mono px-4 py-12">
+    <div className="min-h-screen bg-base flex flex-col items-center justify-center px-4 py-12">
       <ProgressDots total={4} current={step} />
 
       {step === 0 && <Step1 orgName={orgName} onNext={handleStep1Next} />}

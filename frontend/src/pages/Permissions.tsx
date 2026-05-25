@@ -690,7 +690,7 @@ function PermissionsTable({
 function Permissions(): React.ReactElement {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
 
-  const { data: agentsPage } = useQuery<Page<Agent>>({
+  const { data: agentsPage, isLoading: agentsLoading } = useQuery<Page<Agent>>({
     queryKey: ['agents'],
     queryFn: fetchAgents,
   })
@@ -718,7 +718,16 @@ function Permissions(): React.ReactElement {
             Agents
           </p>
           <div className="bg-surface border border-border rounded-xl overflow-hidden">
-            {agents.length === 0 ? (
+            {agentsLoading ? (
+              <div className="divide-y divide-border">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="px-4 py-3 flex items-center gap-2.5">
+                    <div className="w-1.5 h-1.5 rounded-full skeleton-shimmer flex-shrink-0" />
+                    <div className="h-3 skeleton-shimmer rounded" style={{ width: `${60 + i * 20}px` }} />
+                  </div>
+                ))}
+              </div>
+            ) : agents.length === 0 ? (
               <div className="px-4 py-5 flex flex-col items-start gap-3">
                 <p className="text-secondary text-xs">No agents registered.</p>
                 <Link

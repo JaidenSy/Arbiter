@@ -19,7 +19,7 @@
  */
 
 import React, { Suspense, lazy } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import ProtectedRoute from './components/ProtectedRoute'
 import UpgradeModal from './components/UpgradeModal'
@@ -49,6 +49,30 @@ const VerifyEmail         = lazy(() => import('./pages/VerifyEmail'))
 const ConfirmEmailChange  = lazy(() => import('./pages/ConfirmEmailChange'))
 const AcceptInvite        = lazy(() => import('./pages/AcceptInvite'))
 const Members        = lazy(() => import('./pages/Members'))
+
+// ── 404 page ──────────────────────────────────────────────────────────────────
+
+function NotFound(): React.ReactElement {
+  return (
+    <div className="min-h-screen bg-base flex items-center justify-center p-8">
+      <div className="text-center max-w-sm">
+        <p className="text-muted font-mono text-sm uppercase tracking-widest mb-3">404</p>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-primary mb-2">
+          Page not found
+        </h1>
+        <p className="text-secondary text-sm mb-8">
+          The page you're looking for doesn't exist or has been moved.
+        </p>
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 bg-accent hover:bg-accent-light text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-all"
+        >
+          Go to Dashboard
+        </Link>
+      </div>
+    </div>
+  )
+}
 
 // ── Shared loading fallback ───────────────────────────────────────────────────
 
@@ -210,6 +234,9 @@ function App(): React.ReactElement {
             </ProtectedRoute>
           }
         />
+
+        {/* ── Catch-all 404 ───────────────────────────────────────────────── */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
     </ErrorBoundary>
