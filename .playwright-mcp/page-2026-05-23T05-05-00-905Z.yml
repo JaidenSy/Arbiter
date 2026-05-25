@@ -1,0 +1,4 @@
+- generic [active]:
+  - link "Skip to content":
+    - /url: "#geist-skip-nav"
+  - alert [ref=e1]

@@ -24,8 +24,8 @@ const GitHubIcon = (): React.ReactElement => (
 
 function Section({ title, children }: { title: string; children: React.ReactNode }): React.ReactElement {
   return (
-    <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-white/[0.07]">
+    <div className="bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-border">
         <h2 className="text-sm font-semibold text-primary">{title}</h2>
       </div>
       <div className="p-6">{children}</div>
@@ -206,7 +206,7 @@ export default function Account(): React.ReactElement {
     <div className="max-w-2xl mx-auto px-6 py-10 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="gradient-text-purple text-xl font-bold">My Account</h1>
+        <h1 className="font-display text-xl font-semibold tracking-tight text-primary">My Account</h1>
         <p className="text-secondary text-sm mt-1">Manage your profile, security, and account settings.</p>
       </div>
 
@@ -240,12 +240,12 @@ export default function Account(): React.ReactElement {
       <Section title="Profile">
         <form onSubmit={(e) => void handleProfileSave(e)} className="space-y-5">
           {/* Avatar */}
-          <div className="flex items-center gap-4 pb-4 border-b border-white/[0.06]">
+          <div className="flex items-center gap-4 pb-4 border-b border-border">
             {user.avatar_url ? (
               <img
                 src={user.avatar_url}
                 alt="Avatar"
-                className="w-12 h-12 rounded-full border border-white/[0.12]"
+                className="w-12 h-12 rounded-full border border-border-strong"
               />
             ) : (
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-accent/30 to-teal/20 border border-accent/40 flex items-center justify-center text-accent-light font-mono font-semibold text-lg">
@@ -265,7 +265,7 @@ export default function Account(): React.ReactElement {
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Your name"
               maxLength={64}
-              className="w-full bg-base border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-accent/50 transition-colors"
+              className="w-full bg-base border border-border rounded-lg px-3 py-2 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-accent/50 transition-colors"
             />
           </Field>
 
@@ -274,7 +274,7 @@ export default function Account(): React.ReactElement {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-base border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
+              className="w-full bg-base border border-border rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
             />
           </Field>
 
@@ -307,7 +307,7 @@ export default function Account(): React.ReactElement {
                 onChange={(e) => setCurrentPw(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="w-full bg-base border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
+                className="w-full bg-base border border-border rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
               />
             </Field>
 
@@ -319,7 +319,7 @@ export default function Account(): React.ReactElement {
                 required
                 minLength={8}
                 autoComplete="new-password"
-                className="w-full bg-base border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
+                className="w-full bg-base border border-border rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
               />
             </Field>
 
@@ -330,7 +330,7 @@ export default function Account(): React.ReactElement {
                 onChange={(e) => setConfirmPw(e.target.value)}
                 required
                 autoComplete="new-password"
-                className="w-full bg-base border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
+                className="w-full bg-base border border-border rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent/50 transition-colors"
               />
             </Field>
 
@@ -380,7 +380,7 @@ export default function Account(): React.ReactElement {
                     type="button"
                     onClick={() => void handleUnlinkProvider(provider)}
                     disabled={isUnlinking}
-                    className="text-xs text-secondary hover:text-error border border-white/[0.08] hover:border-error/30 hover:bg-error/8 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+                    className="text-xs text-secondary hover:text-error border border-border hover:border-error/30 hover:bg-error/8 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
                   >
                     {isUnlinking ? 'Unlinking…' : 'Unlink'}
                   </button>
@@ -389,7 +389,7 @@ export default function Account(): React.ReactElement {
                     type="button"
                     onClick={() => void handleLinkProvider(provider)}
                     disabled={isLinking}
-                    className="text-xs text-secondary hover:text-accent-light border border-white/[0.08] hover:border-accent/40 hover:bg-accent/8 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+                    className="text-xs text-secondary hover:text-accent-light border border-border hover:border-accent/40 hover:bg-accent/8 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
                   >
                     {isLinking ? 'Redirecting…' : 'Link'}
                   </button>
@@ -427,7 +427,7 @@ export default function Account(): React.ReactElement {
       {/* ── Delete confirmation modal ── */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-overlay border border-white/[0.12] rounded-xl shadow-2xl p-6 w-full max-w-sm">
+          <div className="bg-overlay border border-border-strong rounded-xl shadow-2xl p-6 w-full max-w-sm">
             <h3 className="text-base font-semibold text-primary mb-2">Delete your account?</h3>
             <p className="text-sm text-secondary mb-6">
               This will immediately deactivate your account and sign you out everywhere. This action cannot be undone.
@@ -436,7 +436,7 @@ export default function Account(): React.ReactElement {
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 text-sm text-secondary hover:text-primary border border-white/[0.1] hover:border-white/[0.2] rounded-lg transition-colors"
+                className="px-4 py-2 text-sm text-secondary hover:text-primary border border-border hover:border-border-strong rounded-lg transition-colors"
               >
                 Cancel
               </button>

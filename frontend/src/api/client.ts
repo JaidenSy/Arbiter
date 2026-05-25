@@ -26,7 +26,7 @@ export interface PlanLimitPayload {
   limit: number;
   plan: string;
 }
-export const PLAN_LIMIT_EVENT = "nexvault:plan_limit";
+export const PLAN_LIMIT_EVENT = "arbiter:plan_limit";
 function dispatchPlanLimit(payload: PlanLimitPayload): void {
   window.dispatchEvent(new CustomEvent(PLAN_LIMIT_EVENT, { detail: payload }));
 }

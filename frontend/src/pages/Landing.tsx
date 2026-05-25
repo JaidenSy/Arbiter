@@ -10,6 +10,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
 import { useAuth } from '../context/AuthContext'
 import AuthModal, { type AuthMode } from '../components/AuthModal'
+import HeroBackground from '../components/HeroBackground'
 
 const SUPPORT_EMAIL: string =
   (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'jaidensy07@gmail.com'
@@ -20,25 +21,25 @@ interface NavbarProps { onSignIn: () => void; onGetStarted: () => void }
 
 function Navbar({ onSignIn, onGetStarted }: NavbarProps): React.ReactElement {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-base/80 backdrop-blur-md border-b border-white/[0.06]">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-base/85 backdrop-blur-md border-b border-border">
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2.5">
-          <ArbiterMark size={30} />
-          <span className="text-primary font-semibold text-sm tracking-wide">Arbiter</span>
+          <ArbiterMark size={26} />
+          <span className="font-display text-primary font-semibold text-sm tracking-tight">Arbiter</span>
         </div>
 
         {/* Right nav */}
         <div className="flex items-center gap-3">
           <button
             onClick={onSignIn}
-            className="text-secondary hover:text-primary border border-white/[0.1] hover:border-white/[0.2] px-4 py-1.5 rounded-lg text-sm transition-all"
+            className="press text-secondary hover:text-primary border border-border-strong hover:border-border-strong px-4 py-1.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
           >
             Sign In
           </button>
           <button
             onClick={onGetStarted}
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+            className="press bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors duration-150 ease-[var(--ease-out-expo)]"
           >
             Get Started Free
           </button>
@@ -55,62 +56,92 @@ interface HeroProps { onGetStarted: () => void; onSignIn: () => void }
 function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 overflow-hidden">
-      {/* Background glows */}
-      <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-accent/10 blur-[140px] pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-teal/8 blur-[140px] pointer-events-none" />
+      {/* Background — shader gradient + particle mesh */}
+      <HeroBackground />
 
-      {/* Dot grid */}
+      {/* Aurora overlay — warm amber focal glow from top center */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-[0.03]"
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'var(--gradient-aurora-hero)' }}
+      />
+
+      {/* Dot grid — kept at very low opacity for texture depth */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.025]"
         style={{
-          backgroundImage: 'radial-gradient(circle, #A78BFA 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(circle, #F59E0B 1px, transparent 1px)',
           backgroundSize: '28px 28px',
         }}
       />
 
-      <div className="relative max-w-3xl mx-auto animate-fade-in">
-        {/* Beta badge */}
-        <div className="inline-flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-full px-3 py-1 mb-8">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-          <span className="text-accent-light text-xs font-medium">Now in Beta</span>
-        </div>
+      {/* Bottom fade — blends WebGL hero into ambient-lit sections below */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-52 pointer-events-none"
+        style={{ background: 'linear-gradient(to bottom, transparent, var(--color-base))' }}
+        aria-hidden
+      />
 
-        {/* Headline */}
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-primary leading-tight mb-6">
+      <div className="relative max-w-3xl mx-auto">
+        {/* Kicker label */}
+        <p
+          className="kicker mb-5"
+          style={{ animationDelay: '0ms' }}
+        >
+          MCP Security Gateway
+        </p>
+
+        {/* Hero headline — staggered entrance */}
+        <h1
+          className="hero-display text-primary mb-6 animate-fade-in"
+          style={{ animationDelay: '60ms', animationFillMode: 'both' }}
+        >
           Your AI agents are running
           <br />
-          <span className="gradient-text">without guardrails.</span>
+          <span className="text-secondary">without guardrails.</span>
         </h1>
 
         {/* Subheadline */}
-        <p className="text-secondary text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed mb-10">
+        <p
+          className="text-secondary text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-10 animate-fade-in"
+          style={{ animationDelay: '120ms', animationFillMode: 'both' }}
+        >
           Shared credentials, no audit trail, agents that can call any tool they want.
           Arbiter fixes all of it — cryptographic agent identity, tool-level permissions,
           an encrypted secrets vault, and full observability through a single MCP gateway.
         </p>
 
-        {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+        {/* CTAs — hero-glow only on primary CTA */}
+        <div
+          className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6 animate-fade-in"
+          style={{ animationDelay: '200ms', animationFillMode: 'both' }}
+        >
           <button
             onClick={onGetStarted}
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white font-semibold px-6 py-3 rounded-xl transition-all hover:shadow-[0_0_24px_rgba(124,58,237,0.35)] text-sm"
+            className="press bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-hero text-sm"
           >
-            Start for Free →
+            Start for Free
           </button>
           <button
             onClick={onSignIn}
-            className="text-secondary hover:text-primary border border-white/[0.1] hover:border-white/[0.2] px-6 py-3 rounded-xl text-sm transition-all"
+            className="press text-secondary hover:text-primary border border-border-strong hover:border-border-strong px-6 py-3 rounded-xl text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
           >
             Sign In
           </button>
         </div>
 
-        <p className="text-muted text-xs">
+        <p
+          className="text-muted text-xs animate-fade-in"
+          style={{ animationDelay: '200ms', animationFillMode: 'both' }}
+        >
           Free plan includes 3 agents · 1,000 tool calls/mo · No credit card required
         </p>
 
         {/* Terminal demo */}
-        <div className="mt-14 bg-surface/80 backdrop-blur-sm border border-white/[0.08] rounded-2xl p-5 text-left max-w-xl mx-auto shadow-2xl">
+        <div
+          className="mt-14 bg-surface/85 backdrop-blur-sm border border-border-strong rounded-2xl p-5 text-left max-w-xl mx-auto shadow-2xl animate-fade-in"
+          style={{ animationDelay: '280ms', animationFillMode: 'both' }}
+        >
           <div className="flex items-center gap-1.5 mb-4">
             <span className="w-2.5 h-2.5 rounded-full bg-error/70" />
             <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
@@ -232,26 +263,34 @@ function Features(): React.ReactElement {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-primary mb-4">
+          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">
             Everything your agents need
           </h2>
-          <div className="w-16 h-0.5 bg-gradient-to-r from-accent to-teal mx-auto" />
+          <div className="w-10 h-px bg-accent/60 mx-auto" />
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {features.map((f) => (
-            <div
-              key={f.title}
-              className="bg-surface border border-white/[0.07] rounded-2xl p-6 hover:border-accent/30 transition-all group"
-            >
-              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent-light mb-4 group-hover:bg-accent/15 transition-colors">
-                {f.icon}
+        {/* Grid — 4-col desktop bento: wide(2)+narrow(1)+narrow(1) / narrow(1)+wide(2)+narrow(1) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {features.map((f, i) => {
+            // Agent Identity (0) and Full Observability (4) span 2 cols
+            const isWide = i === 0 || i === 4
+            return (
+              <div
+                key={f.title}
+                className={[
+                  'bg-surface border border-border rounded-2xl p-6',
+                  'hover:border-border-strong transition-colors duration-200 ease-[var(--ease-out-expo)] group',
+                  isWide ? 'lg:col-span-2 sm:col-span-2' : '',
+                ].filter(Boolean).join(' ')}
+              >
+                <div className="w-9 h-9 rounded-lg bg-accent/[0.08] border border-border-accent flex items-center justify-center text-accent-light mb-4 group-hover:bg-accent/[0.12] transition-colors duration-200">
+                  {f.icon}
+                </div>
+                <h3 className="font-display text-primary font-semibold text-sm tracking-tight mb-2">{f.title}</h3>
+                <p className="text-secondary text-sm leading-relaxed">{f.description}</p>
               </div>
-              <h3 className="text-primary font-semibold text-sm mb-2">{f.title}</h3>
-              <p className="text-secondary text-sm leading-relaxed">{f.description}</p>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>
@@ -295,8 +334,8 @@ function Comparison(): React.ReactElement {
     <section className="py-24 px-6 bg-surface/30">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-primary mb-4">How Arbiter compares</h2>
-          <div className="w-16 h-0.5 bg-gradient-to-r from-accent to-teal mx-auto mb-6" />
+          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">How Arbiter compares</h2>
+          <div className="w-10 h-px bg-accent/60 mx-auto mb-6" />
           <p className="text-secondary text-base max-w-xl mx-auto">
             LiteLLM and Portkey solve LLM routing. Arbiter solves MCP security.
           </p>
@@ -305,7 +344,7 @@ function Comparison(): React.ReactElement {
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="border-b border-white/[0.08]">
+              <tr className="border-b border-border-strong">
                 <th className="text-left py-3 pr-6 text-secondary font-normal w-[45%]" />
                 <th className="py-3 px-4 text-center">
                   <span className="text-accent-light font-semibold">Arbiter</span>
@@ -317,12 +356,12 @@ function Comparison(): React.ReactElement {
             </thead>
             <tbody>
               {rows.map((row, i) => (
-                <tr key={row.feature} className={`border-b border-white/[0.05] ${i % 2 === 0 ? 'bg-white/[0.01]' : ''}`}>
+                <tr key={row.feature} className={`border-b border-border ${i % 2 === 0 ? 'bg-white/[0.015]' : ''}`}>
                   <td className="py-3.5 pr-6 text-secondary">
                     <span className="inline-flex items-center gap-2 flex-wrap">
                       {row.feature}
                       {row.enterpriseOnly && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-accent/30 text-accent-light bg-accent/10 leading-none whitespace-nowrap">
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-border-accent text-accent-light bg-accent/10 leading-none whitespace-nowrap">
                           Enterprise
                         </span>
                       )}
@@ -334,7 +373,7 @@ function Comparison(): React.ReactElement {
                   <td className="py-3.5 px-4 text-center">{renderCell(row.diy)}</td>
                 </tr>
               ))}
-              <tr className="border-t border-accent/20 bg-accent/[0.04]">
+              <tr className="border-t border-border-accent bg-accent/[0.05]">
                 <td className="py-3.5 pr-6 text-primary font-semibold">Cost</td>
                 <td className="py-3.5 px-4 text-center text-accent-light font-semibold text-xs">$0–$29/mo</td>
                 <td className="py-3.5 px-4 text-center text-secondary text-xs">Free/OSS</td>
@@ -384,25 +423,25 @@ function HowItWorks(): React.ReactElement {
     <section className="py-24 px-6 bg-surface/30">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-primary mb-4">Up and running in minutes</h2>
-          <div className="w-16 h-0.5 bg-gradient-to-r from-accent to-teal mx-auto" />
+          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Up and running in minutes</h2>
+          <div className="w-10 h-px bg-accent/60 mx-auto" />
         </div>
 
         <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Connecting line (desktop) */}
-          <div className="hidden md:block absolute top-8 left-1/6 right-1/6 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+          <div className="hidden md:block absolute top-6 left-1/6 right-1/6 h-px bg-border-strong" />
 
           {steps.map((step) => (
             <div key={step.number} className="relative flex flex-col gap-4">
-              {/* Number badge */}
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent to-violet-700 flex items-center justify-center flex-shrink-0 shadow-[0_0_24px_rgba(124,58,237,0.25)]">
-                <span className="font-mono font-bold text-white text-lg">{step.number}</span>
+              {/* Number badge — solid amber, no purple glow */}
+              <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
+                <span className="font-mono font-semibold text-base tracking-tight" style={{ color: 'rgba(255,255,255,0.95)' }}>{step.number}</span>
               </div>
 
               <div>
-                <h3 className="text-primary font-semibold text-sm mb-1.5">{step.title}</h3>
+                <h3 className="font-display text-primary font-semibold text-sm tracking-tight mb-1.5">{step.title}</h3>
                 <p className="text-secondary text-sm leading-relaxed mb-3">{step.description}</p>
-                <pre className="bg-elevated border border-white/[0.07] rounded-lg px-4 py-3 font-mono text-xs text-teal-light leading-relaxed whitespace-pre-wrap">
+                <pre className="bg-elevated border border-border rounded-lg px-4 py-3 font-mono text-xs text-teal-light leading-relaxed whitespace-pre-wrap">
                   {step.code}
                 </pre>
               </div>
@@ -487,29 +526,29 @@ function Pricing(): React.ReactElement {
     <section className="py-24 px-6" id="pricing">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-primary mb-4">Simple, transparent pricing</h2>
-          <div className="w-16 h-0.5 bg-gradient-to-r from-accent to-teal mx-auto" />
+          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Simple, transparent pricing</h2>
+          <div className="w-10 h-px bg-accent/60 mx-auto" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
           {pricingTiers.map((tier) => (
             <div
               key={tier.name}
-              className={`flex flex-col rounded-2xl p-7 transition-all ${
+              className={`flex flex-col rounded-2xl p-7 transition-colors duration-200 ${
                 tier.highlighted
-                  ? 'bg-surface border border-accent/40 glow-accent scale-[1.03] shadow-2xl'
-                  : 'bg-surface border border-white/[0.07]'
+                  ? 'bg-surface border border-border-accent shadow-[0_0_32px_rgba(217,119,6,0.10)]'
+                  : 'bg-surface border border-border'
               }`}
             >
               {tier.highlighted && (
-                <div className="inline-flex self-start mb-4 px-2.5 py-0.5 rounded-full bg-accent/15 border border-accent/30">
-                  <span className="text-accent-light text-xs font-medium">Most popular</span>
+                <div className="inline-flex self-start mb-4 px-2.5 py-0.5 rounded-full bg-accent/15 border border-border-accent">
+                  <span className="text-accent-light text-xs font-medium tracking-wide">Most popular</span>
                 </div>
               )}
-              <p className="text-primary font-bold text-lg mb-1">{tier.name}</p>
+              <p className="font-display text-primary font-semibold text-base tracking-tight mb-1">{tier.name}</p>
               <div className="flex items-baseline gap-0.5 mb-5">
-                <span className="text-3xl font-bold text-primary">{tier.price}</span>
-                {tier.period && <span className="text-secondary text-sm">{tier.period}</span>}
+                <span className="font-display text-3xl font-semibold tracking-tight text-primary">{tier.price}</span>
+                {tier.period && <span className="text-muted text-sm">{tier.period}</span>}
               </div>
 
               <ul className="flex-1 space-y-2.5 mb-7">
@@ -526,7 +565,7 @@ function Pricing(): React.ReactElement {
               {tier.ctaHref.startsWith('mailto') ? (
                 <a
                   href={tier.ctaHref}
-                  className="block text-center border border-white/[0.1] hover:border-accent/50 text-secondary hover:text-accent-light px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                  className="press block text-center border border-border-strong hover:border-border-accent text-secondary hover:text-accent-light px-4 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 ease-[var(--ease-out-expo)]"
                 >
                   {tier.cta}
                 </a>
@@ -534,14 +573,14 @@ function Pricing(): React.ReactElement {
                 <button
                   type="button"
                   onClick={handleProCta}
-                  className="block w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+                  className="press block w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] bg-accent hover:bg-accent-light text-white hover-glow-standard"
                 >
                   {user ? 'Go to Billing' : tier.cta}
                 </button>
               ) : (
                 <Link
                   to={tier.ctaHref}
-                  className="block text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all border border-white/[0.1] hover:border-accent/50 text-secondary hover:text-accent-light"
+                  className="press block text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-150 ease-[var(--ease-out-expo)] border border-border-strong hover:border-border-accent text-secondary hover:text-accent-light"
                 >
                   {tier.cta}
                 </Link>
@@ -596,8 +635,8 @@ function FAQ(): React.ReactElement {
     <section className="py-24 px-6 bg-surface/30">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-primary mb-4">Common questions</h2>
-          <div className="w-16 h-0.5 bg-gradient-to-r from-accent to-teal mx-auto" />
+          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Common questions</h2>
+          <div className="w-10 h-px bg-accent/60 mx-auto" />
         </div>
 
         <div className="space-y-3">
@@ -606,12 +645,12 @@ function FAQ(): React.ReactElement {
             return (
               <div
                 key={item.question}
-                className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden transition-all"
+                className="bg-surface border border-border hover:border-border-strong rounded-xl overflow-hidden transition-colors duration-200"
               >
                 <button
                   type="button"
                   onClick={() => setOpenIdx(isOpen ? null : idx)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left gap-4"
+                  className="w-full flex items-center justify-between px-5 py-4 text-left gap-4 hover:bg-white/[0.02] transition-colors duration-150"
                 >
                   <span className="text-primary text-sm font-medium">{item.question}</span>
                   <svg
@@ -652,7 +691,7 @@ function Contact(): React.ReactElement {
         </p>
         <a
           href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Inquiry`}
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white font-semibold px-6 py-3 rounded-xl transition-all hover:shadow-[0_0_24px_rgba(124,58,237,0.35)] text-sm"
+          className="press inline-flex items-center gap-2 bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard text-sm"
         >
           Send us a message
         </a>
@@ -665,12 +704,12 @@ function Contact(): React.ReactElement {
 
 function Footer(): React.ReactElement {
   return (
-    <footer className="bg-surface border-t border-white/[0.06] px-6 py-8">
+    <footer className="bg-surface border-t border-border px-6 py-8">
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* Left — logo + copyright */}
         <div className="flex items-center gap-2.5">
-          <ArbiterMark size={24} />
-          <span className="text-primary font-semibold text-sm">Arbiter</span>
+          <ArbiterMark size={22} />
+          <span className="font-display text-primary font-semibold text-sm tracking-tight">Arbiter</span>
           <span className="text-muted text-xs ml-2">© 2026 Arbiter. All rights reserved.</span>
         </div>
 
@@ -717,7 +756,7 @@ function Landing({ initialModal }: LandingProps): React.ReactElement {
   }
 
   return (
-    <div data-theme="dark" className="min-h-screen bg-base text-primary">
+    <div data-theme="dark" className="min-h-screen text-primary">
       <Navbar onSignIn={() => openModal('login')} onGetStarted={() => openModal('register')} />
       {/* Offset for fixed navbar */}
       <div className="pt-14">

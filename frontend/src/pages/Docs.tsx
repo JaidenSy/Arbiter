@@ -13,7 +13,7 @@ import { ArbiterMark } from '../components/ArbiterLogo'
 
 function Navbar(): React.ReactElement {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-base/80 backdrop-blur-md border-b border-white/[0.06]">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-base/80 backdrop-blur-md border-b border-border">
       <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5">
           <ArbiterMark size={28} />
@@ -24,13 +24,13 @@ function Navbar(): React.ReactElement {
         <div className="flex items-center gap-3">
           <Link
             to="/login"
-            className="text-secondary hover:text-primary border border-white/[0.1] hover:border-white/[0.2] px-4 py-1.5 rounded-lg text-sm transition-all"
+            className="text-secondary hover:text-primary border border-border hover:border-border-strong px-4 py-1.5 rounded-lg text-sm transition-all"
           >
             Sign In
           </Link>
           <Link
             to="/"
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-all hover-glow-standard"
           >
             Dashboard
           </Link>
@@ -90,7 +90,7 @@ function DocsSidebar({ activeId, onNav }: DocsSidebarProps): React.ReactElement 
 
 function Code({ children }: { children: React.ReactNode }): React.ReactElement {
   return (
-    <pre className="bg-elevated rounded-lg p-4 font-mono text-sm text-teal-light overflow-x-auto leading-relaxed whitespace-pre-wrap border border-white/[0.06]">
+    <pre className="bg-elevated rounded-lg p-4 font-mono text-sm text-teal-light overflow-x-auto leading-relaxed whitespace-pre-wrap border border-border">
       {children}
     </pre>
   )
@@ -115,7 +115,7 @@ interface DocSectionProps {
 function DocSection({ id, title, children }: DocSectionProps): React.ReactElement {
   return (
     <section id={id} className="mb-16 scroll-mt-20">
-      <h2 className="gradient-text-purple text-xl font-bold mb-6">{title}</h2>
+      <h2 className="font-display text-xl font-semibold tracking-tight text-primary mb-6">{title}</h2>
       <div className="space-y-4">{children}</div>
     </section>
   )
@@ -135,10 +135,10 @@ function Endpoint({ method, path, description }: EndpointProps): React.ReactElem
     POST: 'text-accent-light bg-accent/10 border-accent/20',
     DELETE: 'text-error bg-error/10 border-error/20',
   }
-  const color = methodColors[method] ?? 'text-secondary bg-elevated border-white/[0.1]'
+  const color = methodColors[method] ?? 'text-secondary bg-elevated border-border'
 
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-white/[0.05] last:border-0">
+    <div className="flex items-start gap-3 py-3 border-b border-border last:border-0">
       <span
         className={`inline-block px-2 py-0.5 rounded text-xs font-mono font-semibold border flex-shrink-0 mt-0.5 ${color}`}
       >
@@ -196,7 +196,7 @@ function DocsContent(): React.ReactElement {
           Arbiter uses two authentication mechanisms depending on context.
         </p>
 
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-5">
+        <div className="bg-surface border border-border rounded-xl p-5">
           <h3 className="text-primary font-semibold text-sm mb-3">Agent API calls</h3>
           <p className="text-secondary text-xs mb-3">
             All agent tool calls use a Bearer token in the <InlineCode>Authorization</InlineCode> header.
@@ -205,7 +205,7 @@ function DocsContent(): React.ReactElement {
           <Code>Authorization: Bearer nxai_{'<your-agent-key>'}</Code>
         </div>
 
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-5">
+        <div className="bg-surface border border-border rounded-xl p-5">
           <h3 className="text-primary font-semibold text-sm mb-3">User JWT (dashboard)</h3>
           <p className="text-secondary text-xs mb-3">
             Dashboard API calls use a JWT obtained via the login endpoint.
@@ -224,7 +224,7 @@ function DocsContent(): React.ReactElement {
           Registration gives the agent a unique cryptographic API key.
         </p>
 
-        <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+        <div className="bg-surface border border-border rounded-xl overflow-hidden">
           <Endpoint method="POST" path="/api/v1/agents" description="Register a new agent. Returns an api_key (shown once — store it immediately)." />
           <Endpoint method="GET" path="/api/v1/agents" description="List all agents for the authenticated user." />
           <Endpoint method="DELETE" path="/api/v1/agents/:id" description="Deactivate an agent. All its permissions are revoked." />
@@ -252,7 +252,7 @@ POST /api/v1/agents
           Use <InlineCode>*</InlineCode> to grant all tools on an MCP server.
         </p>
 
-        <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+        <div className="bg-surface border border-border rounded-xl overflow-hidden">
           <Endpoint method="POST" path="/api/v1/tool-permissions" description="Grant a specific tool (or *) to an agent." />
           <Endpoint method="DELETE" path="/api/v1/tool-permissions/:id" description="Revoke a tool permission immediately." />
         </div>
@@ -276,7 +276,7 @@ POST /api/v1/tool-permissions
           Secrets are injected into tool calls at call time. They never leave the vault unencrypted.
         </p>
 
-        <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+        <div className="bg-surface border border-border rounded-xl overflow-hidden">
           <Endpoint method="POST" path="/api/v1/vault" description="Store a secret. The value is encrypted immediately on write." />
           <Endpoint method="GET" path="/api/v1/vault" description="List secrets. Names only; values are never returned." />
           <Endpoint method="GET" path="/api/v1/vault/:name" description="Retrieve and decrypt a specific secret value." />
@@ -301,14 +301,14 @@ POST /api/v1/vault
           without hitting the upstream MCP server, reducing latency and API costs.
         </p>
 
-        <div className="bg-surface border border-white/[0.07] rounded-xl p-5 space-y-3">
+        <div className="bg-surface border border-border rounded-xl p-5 space-y-3">
           {[
             { label: 'Cache TTL', value: '1 hour (default)' },
             { label: 'Cache key', value: 'agent_id + tool_name + arguments hash' },
             { label: 'Cache hit indicator', value: 'Shown in session trace as cached: true' },
             { label: 'Configuration', value: 'Automatic. No setup required.' },
           ].map((row) => (
-            <div key={row.label} className="flex items-center justify-between text-sm border-b border-white/[0.05] last:border-0 pb-3 last:pb-0">
+            <div key={row.label} className="flex items-center justify-between text-sm border-b border-border last:border-0 pb-3 last:pb-0">
               <span className="text-secondary">{row.label}</span>
               <span className="font-mono text-xs text-accent-light">{row.value}</span>
             </div>
@@ -323,7 +323,7 @@ POST /api/v1/vault
           by agent and time window. Full request/response payloads are stored and queryable.
         </p>
 
-        <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+        <div className="bg-surface border border-border rounded-xl overflow-hidden">
           <Endpoint method="GET" path="/api/v1/sessions" description="List all sessions. Filter by agent_id or date range." />
           <Endpoint method="GET" path="/api/v1/sessions/:id" description="Get full session trace with all tool call events." />
         </div>
@@ -406,7 +406,7 @@ function Docs(): React.ReactElement {
 
         <main className="flex-1 min-w-0 animate-fade-in">
           <div className="mb-12">
-            <h1 className="text-2xl font-bold gradient-text-purple mb-2">Documentation</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-primary mb-2">Documentation</h1>
             <p className="text-secondary text-sm">
               Everything you need to integrate Arbiter with your AI agents.
             </p>

@@ -55,7 +55,7 @@ interface StatPillProps {
 function StatPill({ label, colorClass = "text-secondary" }: StatPillProps): React.ReactElement {
   return (
     <span
-      className={`font-mono text-xs px-2 py-1 border border-white/[0.07] bg-surface ${colorClass}`}
+      className={`font-mono text-xs px-2 py-1 border border-border bg-surface ${colorClass}`}
     >
       {label}
     </span>
@@ -88,18 +88,18 @@ function TraceRow({
     ? "text-red-400"
     : isCacheHit
     ? "text-green-400"
-    : "text-violet-400";
+    : "text-accent-light";
 
   const barColor = isError
     ? "bg-red-500/60"
     : isCacheHit
     ? "bg-green-800"
-    : "bg-violet-600/60";
+    : "bg-accent/60";
 
   return (
     <>
       <tr
-        className={`border-b border-white/[0.07] cursor-pointer group transition-colors ${
+        className={`border-b border-border cursor-pointer group transition-colors ${
           isSelected
             ? "bg-accent/10 border-accent/30"
             : isError
@@ -112,7 +112,7 @@ function TraceRow({
         <td className="py-2 pr-4 pl-0 w-[200px]">
           <span
             className={`font-mono text-xs flex items-center gap-1.5 ${
-              isError ? "text-red-400" : "text-violet-300"
+              isError ? "text-red-400" : "text-accent-light"
             }`}
             title={event.tool_name}
           >
@@ -173,7 +173,7 @@ function TraceRow({
 
       {/* Expanded detail */}
       {isExpanded && (
-        <tr className="border-b border-white/[0.07]">
+        <tr className="border-b border-border">
           <td colSpan={3} className="p-0">
             <div className="grid grid-cols-2 gap-4 p-4 bg-surface">
               <div>
@@ -238,8 +238,8 @@ function DiffPanel({ eventA, eventB, onClose }: DiffPanelProps): React.ReactElem
   const hasChanges = lines.some((l) => l.type !== "same");
 
   return (
-    <div className="mt-6 border border-white/[0.1] rounded-xl overflow-hidden bg-surface">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.07]">
+    <div className="mt-6 border border-border rounded-xl overflow-hidden bg-surface">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-border">
         <div className="flex items-center gap-3">
           <span className="text-primary text-xs font-semibold">Compare Events</span>
           <span className="text-muted text-xs font-mono">{eventA.tool_name}</span>
@@ -247,7 +247,7 @@ function DiffPanel({ eventA, eventB, onClose }: DiffPanelProps): React.ReactElem
           <span className="text-muted text-xs font-mono">{eventB.tool_name}</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="inline-flex border border-white/[0.08] rounded-lg overflow-hidden">
+          <div className="inline-flex border border-border rounded-lg overflow-hidden">
             {(["request", "response"] as const).map((f) => (
               <button
                 key={f}
@@ -415,7 +415,7 @@ function SessionTrace(): React.ReactElement {
               className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
                 compareMode
                   ? "bg-accent/15 text-accent-light border-accent/30"
-                  : "border-white/[0.1] text-muted hover:text-secondary"
+                  : "border-border text-muted hover:text-secondary"
               }`}
             >
               {compareMode ? "Exit Compare" : "Compare"}
@@ -425,7 +425,7 @@ function SessionTrace(): React.ReactElement {
       </div>
 
       {/* Summary strip */}
-      <div className="bg-surface border-y border-white/[0.07] px-6 py-3 mb-8">
+      <div className="bg-surface border-y border-border px-6 py-3 mb-8">
         <p className="font-mono text-xs text-secondary">
           Total: {totalDuration}ms
           <span className="mx-2 text-muted">·</span>

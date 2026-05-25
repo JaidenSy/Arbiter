@@ -147,7 +147,7 @@ function GrantModal({
     onClose()
   }
 
-  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const inputClass = "w-full bg-base border border-border text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (
@@ -195,7 +195,7 @@ function GrantModal({
 
         <div>
           <label className={labelClass}>Granted By</label>
-          <div className="px-3 py-2 bg-base border border-white/[0.07] rounded-lg text-sm text-secondary">
+          <div className="px-3 py-2 bg-base border border-border rounded-lg text-sm text-secondary">
             {user?.display_name ?? user?.email ?? '—'}
           </div>
         </div>
@@ -211,14 +211,14 @@ function GrantModal({
           <button
             type="button"
             onClick={handleClose}
-            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-white/[0.08] hover:border-white/[0.15]"
+            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-border hover:border-border-strong"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={mutation.isPending || !mcpServerId || !toolName.trim()}
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover-glow-standard"
           >
             {mutation.isPending ? 'Granting…' : 'Grant Permission'}
           </button>
@@ -278,13 +278,13 @@ function EditModal({ isOpen, onClose, agentId, permission }: EditModalProps): Re
     })
   }
 
-  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all font-mono"
+  const inputClass = "w-full bg-base border border-border text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all font-mono"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Edit Permission">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="bg-base border border-white/[0.07] rounded-lg px-3 py-2 space-y-0.5">
+        <div className="bg-base border border-border rounded-lg px-3 py-2 space-y-0.5">
           <p className="text-xs text-muted">Tool</p>
           <p className="text-sm font-mono text-accent-light">{permission?.tool_name ?? '—'}</p>
         </div>
@@ -330,14 +330,14 @@ function EditModal({ isOpen, onClose, agentId, permission }: EditModalProps): Re
           <button
             type="button"
             onClick={onClose}
-            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-white/[0.08] hover:border-white/[0.15]"
+            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-border hover:border-border-strong"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover-glow-standard"
           >
             {mutation.isPending ? 'Saving…' : 'Save Changes'}
           </button>
@@ -351,7 +351,7 @@ function EditModal({ isOpen, onClose, agentId, permission }: EditModalProps): Re
 
 function SkeletonRow(): React.ReactElement {
   return (
-    <tr className="border-b border-white/[0.05]">
+    <tr className="border-b border-border">
       {[5, 4, 4, 4, 3, 3, 2].map((w, i) => (
         <td key={i} className="py-3 px-4">
           <div className="skeleton-shimmer h-4 rounded" style={{ width: `${w * 14}px` }} />
@@ -421,7 +421,7 @@ function HistoryPanel({ agentId }: HistoryPanelProps): React.ReactElement {
         className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-all ${
           active
             ? 'bg-accent/15 text-accent-light border border-accent/30'
-            : 'text-muted hover:text-secondary border border-transparent hover:border-white/[0.08]'
+            : 'text-muted hover:text-secondary border border-transparent hover:border-border'
         }`}
       >
         {f}
@@ -441,7 +441,7 @@ function HistoryPanel({ agentId }: HistoryPanelProps): React.ReactElement {
             type="button"
             onClick={() => setSortAsc((v) => !v)}
             title={sortAsc ? 'Oldest first' : 'Newest first'}
-            className="ml-1 px-2.5 py-1 rounded-md text-xs text-muted hover:text-secondary border border-transparent hover:border-white/[0.08] transition-all flex items-center gap-1"
+            className="ml-1 px-2.5 py-1 rounded-md text-xs text-muted hover:text-secondary border border-transparent hover:border-border transition-all flex items-center gap-1"
           >
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
               {sortAsc
@@ -452,7 +452,7 @@ function HistoryPanel({ agentId }: HistoryPanelProps): React.ReactElement {
           </button>
         </div>
       </div>
-      <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         {isLoading ? (
           <div className="py-8 flex items-center justify-center">
             <div className="w-4 h-4 border-2 border-accent/40 border-t-accent rounded-full animate-spin" />
@@ -464,7 +464,7 @@ function HistoryPanel({ agentId }: HistoryPanelProps): React.ReactElement {
         ) : (
           <table className="min-w-full">
             <thead>
-              <tr className="border-b border-white/[0.06]">
+              <tr className="border-b border-border">
                 <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Action</th>
                 <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Tool</th>
                 <th className="py-2.5 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">By</th>
@@ -474,7 +474,7 @@ function HistoryPanel({ agentId }: HistoryPanelProps): React.ReactElement {
             </thead>
             <tbody>
               {filtered.map((e) => (
-                <tr key={e.id} className="border-b border-white/[0.04] last:border-0">
+                <tr key={e.id} className="border-b border-border last:border-0">
                   <td className="py-2.5 px-4">{actionBadge(e.action)}</td>
                   <td className="py-2.5 px-4 font-mono text-xs text-accent-light">{e.tool_name}</td>
                   <td className="py-2.5 px-4 text-xs text-secondary">{e.performed_by ?? '—'}</td>
@@ -555,17 +555,17 @@ function PermissionsTable({
         <button
           type="button"
           onClick={() => setGrantOpen(true)}
-          className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
+          className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover-glow-standard"
         >
           Grant Permission
         </button>
       </div>
 
       {/* Table */}
-      <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <table className="min-w-full">
           <thead>
-            <tr className="border-b border-white/[0.06]">
+            <tr className="border-b border-border">
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">MCP Server</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Tool</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Granted At</th>
@@ -599,7 +599,7 @@ function PermissionsTable({
               permissions.map((perm) => (
                 <tr
                   key={perm.id}
-                  className={`group border-b border-white/[0.05] hover:bg-white/[0.025] transition-colors ${''}`}
+                  className={`group border-b border-border hover:bg-white/[0.025] transition-colors ${''}`}
                 >
                   <td className="py-3 px-4 text-sm text-primary font-medium">
                     {serverName(perm.mcp_server_id)}
@@ -633,11 +633,11 @@ function PermissionsTable({
                       : <span className="italic">default</span>}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <div className="inline-flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                    <div className="inline-flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => setEditTarget(perm)}
-                        className="text-secondary hover:text-primary hover:bg-white/[0.06] border border-transparent hover:border-white/[0.1] px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                        className="text-secondary hover:text-primary hover:bg-white/[0.06] border border-transparent hover:border-border px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                       >
                         Edit
                       </button>
@@ -707,7 +707,7 @@ function Permissions(): React.ReactElement {
   return (
     <div className="p-8 animate-fade-in">
       <div className="mb-8">
-        <h1 className="gradient-text-purple text-xl font-bold">Tool Permissions</h1>
+        <h1 className="font-display text-xl font-semibold tracking-tight text-primary">Tool Permissions</h1>
         <p className="text-secondary text-sm mt-1">Control which tools each agent is allowed to invoke</p>
       </div>
 
@@ -717,13 +717,13 @@ function Permissions(): React.ReactElement {
           <p className="text-muted text-xs font-semibold uppercase tracking-widest mb-3">
             Agents
           </p>
-          <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
             {agents.length === 0 ? (
               <div className="px-4 py-5 flex flex-col items-start gap-3">
                 <p className="text-secondary text-xs">No agents registered.</p>
                 <Link
                   to="/agents"
-                  className="border border-white/[0.1] hover:border-accent/50 text-secondary hover:text-accent-light px-4 py-2 rounded-lg text-sm transition-all"
+                  className="border border-border hover:border-accent/50 text-secondary hover:text-accent-light px-4 py-2 rounded-lg text-sm transition-all"
                 >
                   Register Agent
                 </Link>
@@ -736,12 +736,15 @@ function Permissions(): React.ReactElement {
                     key={agent.id}
                     type="button"
                     onClick={() => setSelectedAgentId(agent.id)}
-                    className={`w-full text-left flex items-center gap-2.5 px-4 py-3 transition-all duration-150 border-b border-white/[0.05] last:border-0 ${
+                    className={`relative w-full text-left flex items-center gap-2.5 px-4 py-3 transition-all duration-150 border-b border-border last:border-0 ${
                       isSelected
-                        ? 'bg-accent/8 border-l-2 border-l-accent'
-                        : 'border-l-2 border-l-transparent hover:bg-white/[0.025]'
+                        ? 'bg-accent/[0.07] border border-border-accent'
+                        : 'hover:bg-white/[0.025]'
                     }`}
                   >
+                    {isSelected && (
+                      <span aria-hidden className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-full" />
+                    )}
                     <span
                       className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                         agent.is_active ? 'bg-success' : 'bg-muted'
@@ -763,7 +766,7 @@ function Permissions(): React.ReactElement {
             servers={servers}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center gap-3 text-center py-20 bg-surface border border-white/[0.07] rounded-xl">
+          <div className="flex flex-col items-center justify-center gap-3 text-center py-20 bg-surface border border-border rounded-xl">
             <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
               <svg className="text-accent-light" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <rect x="3" y="11" width="18" height="11" rx="1"/>

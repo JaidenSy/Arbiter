@@ -59,7 +59,7 @@ function Register(): React.ReactElement {
     }
   }
 
-  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 focus:border-accent/60 transition-all duration-150 placeholder:text-muted"
+  const inputClass = "w-full bg-base border border-border-strong text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-[border-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] placeholder:text-muted"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (
@@ -72,21 +72,18 @@ function Register(): React.ReactElement {
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.035]"
         style={{
-          backgroundImage: 'radial-gradient(circle, #A78BFA 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(circle, #F59E0B 1px, transparent 1px)',
           backgroundSize: '28px 28px',
         }}
       />
 
       <div className="relative w-full max-w-sm px-4 animate-fade-in">
         {/* Card */}
-        <div className="bg-surface/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-8 shadow-2xl">
-          {/* Subtle top gradient line */}
-          <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-teal/50 to-transparent rounded-full" />
-
+        <div className="bg-surface/85 backdrop-blur-xl border border-border-strong rounded-2xl p-8 shadow-2xl">
           {/* Wordmark */}
           <div className="text-center mb-8">
-            <span className="gradient-text font-bold text-3xl tracking-tight">Arbiter</span>
-            <p className="text-secondary text-sm mt-2 font-medium">Create your organization</p>
+            <span className="font-display text-primary font-semibold text-3xl tracking-tight">Arbiter</span>
+            <p className="text-secondary text-sm mt-2">Create your organization</p>
           </div>
 
           <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
@@ -180,7 +177,7 @@ function Register(): React.ReactElement {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-lg transition-all duration-150 hover:shadow-[0_0_20px_rgba(124,58,237,0.35)] mt-2"
+              className="press w-full bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-lg transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard mt-2"
             >
               {isSubmitting ? 'Creating account…' : 'Create account'}
             </button>

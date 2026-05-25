@@ -11,6 +11,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "../api/client";
 import type { Agent, Page, Session } from "../api/types";
+import { Input } from "../components/ui";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 
@@ -89,68 +90,106 @@ function Sessions(): React.ReactElement {
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="gradient-text-purple text-xl font-bold">Sessions</h1>
+          <h1 className="font-display text-xl font-semibold tracking-tight text-primary">Sessions</h1>
           <p className="text-secondary text-sm mt-1">Full audit log of agent activity and tool calls</p>
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <select
-            value={filters.agentId}
-            onChange={(e) => setFilter("agentId", e.target.value)}
-            className="bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent/60 transition-all"
-          >
-            <option value="">All agents</option>
-            {agentList.map((agent) => (
-              <option key={agent.id} value={agent.id}>{agent.name}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            placeholder="Tool name"
-            value={filters.toolName}
-            onChange={(e) => setFilter("toolName", e.target.value)}
-            className="bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent/60 transition-all w-36"
-          />
-          <select
-            value={filters.hasError}
-            onChange={(e) => setFilter("hasError", e.target.value)}
-            className="bg-elevated border border-white/[0.1] text-primary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent/60 transition-all"
-          >
-            <option value="">All results</option>
-            <option value="true">Errors only</option>
-            <option value="false">No errors</option>
-          </select>
-          <input
-            type="date"
-            value={filters.fromDate}
-            onChange={(e) => setFilter("fromDate", e.target.value)}
-            className="bg-elevated border border-white/[0.1] text-secondary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent/60 transition-all"
-          />
-          <span className="text-muted text-xs">→</span>
-          <input
-            type="date"
-            value={filters.toDate}
-            onChange={(e) => setFilter("toDate", e.target.value)}
-            className="bg-elevated border border-white/[0.1] text-secondary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-accent/60 transition-all"
-          />
-          {(filters.agentId || filters.toolName || filters.hasError || filters.fromDate || filters.toDate) && (
-            <button
-              type="button"
-              onClick={() => setFilters({ agentId: "", toolName: "", hasError: "", fromDate: "", toDate: "" })}
-              className="text-muted hover:text-secondary text-xs px-2 py-1.5 rounded-lg hover:bg-elevated/60 transition-all"
+        <div className="flex flex-col gap-2 items-end">
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={filters.agentId}
+              onChange={(e) => setFilter("agentId", e.target.value)}
+              className="bg-elevated border border-border text-primary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-border-accent transition-all"
             >
-              Clear
-            </button>
+              <option value="">All agents</option>
+              {agentList.map((agent) => (
+                <option key={agent.id} value={agent.id}>{agent.name}</option>
+              ))}
+            </select>
+            <Input
+              type="text"
+              placeholder="Tool name"
+              value={filters.toolName}
+              onChange={(e) => setFilter("toolName", e.target.value)}
+              inputClassName="w-36"
+            />
+            <select
+              value={filters.hasError}
+              onChange={(e) => setFilter("hasError", e.target.value)}
+              className="bg-elevated border border-border text-primary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:border-border-accent transition-all"
+            >
+              <option value="">All results</option>
+              <option value="true">Errors only</option>
+              <option value="false">No errors</option>
+            </select>
+            <Input
+              type="text"
+              placeholder="From YYYY-MM-DD"
+              value={filters.fromDate}
+              onChange={(e) => setFilter("fromDate", e.target.value)}
+              inputClassName="w-36"
+            />
+            <span className="text-muted text-xs">→</span>
+            <Input
+              type="text"
+              placeholder="To YYYY-MM-DD"
+              value={filters.toDate}
+              onChange={(e) => setFilter("toDate", e.target.value)}
+              inputClassName="w-36"
+            />
+          </div>
+
+          {/* Active filter chips */}
+          {(filters.agentId || filters.toolName || filters.hasError || filters.fromDate || filters.toDate) && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {filters.agentId && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent/10 border border-border-accent text-accent-light">
+                  agent: {agentList.find((a) => a.id === filters.agentId)?.name ?? filters.agentId}
+                  <button aria-label="Remove agent filter" onClick={() => setFilter("agentId", "")} className="text-accent-light/60 hover:text-accent-light">×</button>
+                </span>
+              )}
+              {filters.toolName && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent/10 border border-border-accent text-accent-light">
+                  tool: {filters.toolName}
+                  <button aria-label="Remove tool filter" onClick={() => setFilter("toolName", "")} className="text-accent-light/60 hover:text-accent-light">×</button>
+                </span>
+              )}
+              {filters.hasError && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent/10 border border-border-accent text-accent-light">
+                  {filters.hasError === "true" ? "errors only" : "no errors"}
+                  <button aria-label="Remove error filter" onClick={() => setFilter("hasError", "")} className="text-accent-light/60 hover:text-accent-light">×</button>
+                </span>
+              )}
+              {filters.fromDate && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent/10 border border-border-accent text-accent-light">
+                  from: {filters.fromDate}
+                  <button aria-label="Remove from-date filter" onClick={() => setFilter("fromDate", "")} className="text-accent-light/60 hover:text-accent-light">×</button>
+                </span>
+              )}
+              {filters.toDate && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-accent/10 border border-border-accent text-accent-light">
+                  to: {filters.toDate}
+                  <button aria-label="Remove to-date filter" onClick={() => setFilter("toDate", "")} className="text-accent-light/60 hover:text-accent-light">×</button>
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setFilters({ agentId: "", toolName: "", hasError: "", fromDate: "", toDate: "" })}
+                className="text-muted hover:text-secondary text-xs px-2 py-0.5 rounded-lg hover:bg-elevated/60 transition-all"
+              >
+                Clear all
+              </button>
+            </div>
           )}
         </div>
       </div>
 
       {/* Table card */}
-      <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <table className="min-w-full">
           <thead>
-            <tr className="border-b border-white/[0.06]">
+            <tr className="border-b border-border">
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Session</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Agent</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Started</th>
@@ -161,7 +200,7 @@ function Sessions(): React.ReactElement {
             {sessionsLoading ? (
               <>
                 {[1, 2, 3, 4].map((i) => (
-                  <tr key={i} className="border-b border-white/[0.05]">
+                  <tr key={i} className="border-b border-border">
                     {[80, 96, 64, 32].map((w, j) => (
                       <td key={j} className="py-3 px-4">
                         <div className="h-3 skeleton-shimmer rounded" style={{ width: w }} />
@@ -190,7 +229,7 @@ function Sessions(): React.ReactElement {
               sessionList.map((session) => (
                 <tr
                   key={session.id}
-                  className={`border-b border-white/[0.05] cursor-pointer hover:bg-white/[0.025] transition-colors group ${''}`}
+                  className={`border-b border-border cursor-pointer hover:bg-white/[0.025] transition-colors group ${''}`}
                   onClick={() => navigate(`/sessions/${session.id}`)}
                 >
                   <td className="py-3 px-4 text-sm font-mono text-accent-light group-hover:text-white transition-colors">

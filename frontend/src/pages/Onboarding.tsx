@@ -69,7 +69,7 @@ function Step1({ orgName, onNext }: Step1Props): React.ReactElement {
       </p>
       <button
         onClick={onNext}
-        className="bg-accent hover:bg-violet-600 text-white font-mono text-sm px-6 py-2 rounded transition-colors"
+        className="bg-accent hover:bg-accent-light text-white font-mono text-sm px-6 py-2 rounded transition-colors"
       >
         Get started →
       </button>
@@ -157,7 +157,7 @@ function Step2({ onNext }: Step2Props): React.ReactElement {
           <button
             type="submit"
             disabled={mutation.isPending || !name.trim()}
-            className="bg-accent hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-mono text-sm px-4 py-2 rounded transition-colors"
+            className="bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-mono text-sm px-4 py-2 rounded transition-colors"
           >
             {mutation.isPending ? 'Registering…' : 'Register agent'}
           </button>
@@ -182,7 +182,7 @@ function Step2({ onNext }: Step2Props): React.ReactElement {
 
           <button
             onClick={() => onNext(createdName, createdKey)}
-            className="bg-accent hover:bg-violet-600 text-white font-mono text-sm px-4 py-2 rounded transition-colors"
+            className="bg-accent hover:bg-accent-light text-white font-mono text-sm px-4 py-2 rounded transition-colors"
           >
             Next →
           </button>
@@ -285,7 +285,7 @@ function Step3({ onNext }: Step3Props): React.ReactElement {
         <button
           type="submit"
           disabled={mutation.isPending || !name.trim() || !url.trim()}
-          className="bg-accent hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-mono text-sm px-4 py-2 rounded transition-colors"
+          className="bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-mono text-sm px-4 py-2 rounded transition-colors"
         >
           {mutation.isPending ? 'Adding…' : 'Add server'}
         </button>
@@ -323,11 +323,11 @@ function Step4({ agentName, agentApiKey, serverName, onFinish }: Step4Props): Re
       </div>
 
       <div className="space-y-2 text-sm font-mono">
-        <div className="flex justify-between border-b border-white/[0.07] py-2">
+        <div className="flex justify-between border-b border-border py-2">
           <span className="text-secondary">Agent</span>
           <span className="text-white">{agentName}</span>
         </div>
-        <div className="flex justify-between border-b border-white/[0.07] py-2">
+        <div className="flex justify-between border-b border-border py-2">
           <span className="text-secondary">MCP Server</span>
           <span className="text-white">{serverName}</span>
         </div>
@@ -345,7 +345,7 @@ function Step4({ agentName, agentApiKey, serverName, onFinish }: Step4Props): Re
 
       <button
         onClick={onFinish}
-        className="w-full bg-accent hover:bg-violet-600 text-white font-mono text-sm py-2 rounded transition-colors"
+        className="w-full bg-accent hover:bg-accent-light text-white font-mono text-sm py-2 rounded transition-colors"
       >
         Go to Dashboard →
       </button>

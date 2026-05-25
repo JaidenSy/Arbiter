@@ -1,43 +1,164 @@
+/* ── Geist via Vercel CDN (heading) + Inter (body) ───────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 [data-theme="dark"] {
-  --color-base: #07080C;
-  --color-surface: #0E0F16;
-  --color-elevated: #161822;
-  --color-highlight: #1E1B35;
-  --color-overlay: #12131A;
-  --color-accent: #7C3AED;
-  --color-accent-light: #A78BFA;
-  --color-accent-dim: #4C1D95;
+  /* Base surfaces — cool zinc/slate, no blue tint */
+  --color-base: #0A0A0B;
+  --color-surface: #111113;
+  --color-elevated: #18181B;
+  --color-highlight: #27272A;
+  --color-overlay: #141416;
+
+  /* Accent — amber/copper */
+  --color-accent: #D97706;
+  --color-accent-light: #F59E0B;
+  --color-accent-dim: #78350F;
+  --color-accent-wash: #1C1410;    /* dark amber tint surface */
+
+  /* Teal — data/success signal */
   --color-teal: #14B8A6;
   --color-teal-light: #5EEAD4;
-  --color-primary: #F0F0F5;
-  --color-secondary: #7A7A8C;
-  --color-muted: #3A3A4C;
+
+  /* Typography — zinc scale */
+  --color-primary: #FAFAFA;
+  --color-secondary: #A1A1AA;
+  --color-muted: #52525B;
+
+  /* Semantic */
   --color-error: #F87171;
   --color-success: #34D399;
   --color-warning: #FBBF24;
+
+  /* Borders */
+  --color-border: rgba(255,255,255,0.07);
+  --color-border-strong: rgba(255,255,255,0.12);
+  --color-border-accent: rgba(217,119,6,0.35);
+  --color-border-accent-hover: rgba(245,158,11,0.55);
+
+  /* Surface RGB vals for rgba() composition with backdrop-filter glass */
+  --color-elevated-rgb: 24, 24, 27;
+  --color-surface-rgb:  17, 17, 19;
+  --color-base-rgb:     10, 10, 11;
+
+  /* Aurora hero gradient */
+  --gradient-aurora-hero:
+    radial-gradient(
+      ellipse 80% 40% at 50% -5%,
+      rgba(217,119,6,0.13) 0%,
+      transparent 70%
+    );
+
+  /* Ambient background — extends aurora palette across all pages */
+  --gradient-ambient:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(120,53,15,0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(217,119,6,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(28,10,0,0.45) 0%, transparent 50%);
+
+  /* Tile ambient gradients */
+  --gradient-tile-amber:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(217,119,6,0.07) 0%, transparent 60%);
+  --gradient-tile-teal:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(20,184,166,0.06) 0%, transparent 60%);
+  --gradient-tile-warning:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(251,191,36,0.05) 0%, transparent 60%);
+  --gradient-tile-error:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(248,113,113,0.05) 0%, transparent 60%);
+
+  /* Mesh gradient for premium surfaces */
+  --gradient-mesh-subtle:
+    radial-gradient(at 25% 15%, rgba(217,119,6,0.05) 0px, transparent 50%),
+    radial-gradient(at 75% 85%, rgba(20,184,166,0.03) 0px, transparent 50%);
 }
 
 [data-theme="light"] {
-  --color-base: #F4F4F8;
+  --color-base: #FAFAF9;
   --color-surface: #FFFFFF;
-  --color-elevated: #EEEEF3;
-  --color-highlight: #E4E2F5;
-  --color-overlay: #FAFAFD;
-  --color-accent: #7C3AED;
-  --color-accent-light: #6D28D9;
-  --color-accent-dim: #DDD6FE;
+  --color-elevated: #F4F4F5;
+  --color-highlight: #E4E4E7;
+  --color-overlay: #FFFFFF;
+
+  /* Accent ramp matches dark-mode direction (light = lighter, dim = recessive) */
+  --color-accent: #B45309;        /* amber-700 — primary CTA in light */
+  --color-accent-light: #D97706;  /* amber-600 — hover/lift */
+  --color-accent-dim: #92400E;    /* amber-800 — recessive foreground */
+  --color-accent-wash: #FEF3C7;   /* amber-100 — pale background tint, opt-in */
+
   --color-teal: #0D9488;
   --color-teal-light: #0F766E;
-  --color-primary: #0D0D14;
-  --color-secondary: #4B4B60;
-  --color-muted: #9090A8;
+
+  --color-primary: #18181B;
+  --color-secondary: #52525B;
+  --color-muted: #A1A1AA;
+
   --color-error: #DC2626;
   --color-success: #059669;
-  --color-warning: #D97706;
+  --color-warning: #CA8A04;       /* yellow-600 — separates from accent */
+
+  --color-border: rgba(0,0,0,0.08);
+  --color-border-strong: rgba(0,0,0,0.14);
+  --color-border-accent: rgba(180,83,9,0.35);
+  --color-border-accent-hover: rgba(146,64,14,0.50);
+
+  --color-elevated-rgb: 244, 244, 245;
+  --color-surface-rgb:  255, 255, 255;
+  --color-base-rgb:     250, 250, 249;
+
+  --gradient-aurora-hero:
+    radial-gradient(
+      ellipse 80% 40% at 50% -5%,
+      rgba(180,83,9,0.08) 0%,
+      transparent 70%
+    );
+
+  --gradient-ambient:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(180,83,9,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(180,83,9,0.05) 0%, transparent 55%);
+
+  --gradient-tile-amber:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(180,83,9,0.05) 0%, transparent 60%);
+  --gradient-tile-teal:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(13,148,136,0.04) 0%, transparent 60%);
+  --gradient-tile-warning:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(202,138,4,0.04) 0%, transparent 60%);
+  --gradient-tile-error:
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(220,38,38,0.04) 0%, transparent 60%);
+
+  --gradient-mesh-subtle:
+    radial-gradient(at 25% 15%, rgba(180,83,9,0.04) 0px, transparent 50%),
+    radial-gradient(at 75% 85%, rgba(13,148,136,0.02) 0px, transparent 50%);
+}
+
+/* Motion easing tokens + gradient system + glow ladder + motion durations */
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* Glow ladder — three rungs of amber luminance */
+  --glow-none:     none;
+  --glow-subtle:   0 0 12px rgba(217,119,6,0.10);
+  --glow-standard: 0 0 20px rgba(217,119,6,0.22);
+  --glow-hero:     0 0 32px rgba(217,119,6,0.40), 0 0 64px rgba(217,119,6,0.15);
+
+  /* Teal glow for cache/success tiles */
+  --glow-teal-subtle: 0 0 12px rgba(20,184,166,0.10);
+
+  /* Motion durations */
+  --duration-instant: 100ms;
+  --duration-fast:    150ms;
+  --duration-base:    220ms;
+  --duration-slow:    320ms;
+  --duration-crawl:   500ms;
+
+  /* Stagger delays for tile mount */
+  --stagger-1: 40ms;
+  --stagger-2: 80ms;
+  --stagger-3: 120ms;
+  --stagger-4: 160ms;
+  --stagger-5: 200ms;
 }
 
 * { box-sizing: border-box; }
@@ -53,8 +174,16 @@ body {
   background-color: var(--color-base);
   color: var(--color-primary);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: "cv11", "cv06", "ss01";
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Geist', 'Inter', system-ui, sans-serif;
+  font-feature-settings: "ss01";
+  letter-spacing: -0.014em;
 }
 
 /* Scrollbar */
@@ -62,28 +191,102 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.30); }
 
 /* Selection */
-::selection { background: rgba(124,58,237,0.35); }
+::selection { background: rgba(217,119,6,0.25); color: var(--color-primary); }
+[data-theme="light"] ::selection { background: rgba(180,83,9,0.22); color: var(--color-primary); }
 
-/* Glow utilities */
-.glow-accent { box-shadow: 0 0 20px rgba(124,58,237,0.15); }
-.glow-accent-strong { box-shadow: 0 0 32px rgba(124,58,237,0.28); }
-.glow-teal { box-shadow: 0 0 20px rgba(20,184,166,0.15); }
+/* Glow ladder utilities */
+.glow-none     { box-shadow: var(--glow-none); }
+.glow-subtle   { box-shadow: var(--glow-subtle); }
+.glow-standard { box-shadow: var(--glow-standard); }
+.glow-hero     { box-shadow: var(--glow-hero); }
+.glow-teal     { box-shadow: 0 0 20px rgba(20,184,166,0.15); }
 
-/* Gradient text utility */
+/* Aliases for backwards compatibility — will be removed after migration */
+.glow-accent        { box-shadow: var(--glow-standard); }
+.glow-accent-strong { box-shadow: var(--glow-hero); }
+
+/* Hover glow variants */
+.hover-glow-subtle:hover   { box-shadow: var(--glow-subtle); }
+.hover-glow-standard:hover { box-shadow: var(--glow-standard); }
+.hover-glow-hero:hover     { box-shadow: var(--glow-hero); }
+
+/* ── Typography — kicker and display scale ──────────────────────────────── */
+.kicker {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent-light);
+  line-height: 1;
+}
+
+.hero-display {
+  font-family: 'Geist', 'Inter', system-ui, sans-serif;
+  font-size: clamp(2.5rem, 5vw, 3.75rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.03;
+  text-wrap: balance;
+}
+
+/* ── Glass surface utility ───────────────────────────────────────────────── */
+.glass-surface {
+  background: rgba(var(--color-elevated-rgb), 0.90);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Tile gradient backgrounds ───────────────────────────────────────────── */
+.tile-amber   { background: var(--gradient-tile-amber),   var(--color-surface); }
+.tile-teal    { background: var(--gradient-tile-teal),    var(--color-surface); }
+.tile-warning { background: var(--gradient-tile-warning), var(--color-surface); }
+.tile-error   { background: var(--gradient-tile-error),   var(--color-surface); }
+
+/* ── Ambient aurora background — fixed behind all pages ─────────────────── */
+.app-ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--gradient-ambient);
+}
+
+/* Gradient text — amber → teal (kept narrow, used sparingly) */
 .gradient-text {
-  background: linear-gradient(135deg, #A78BFA, #5EEAD4);
+  background: linear-gradient(135deg, var(--color-accent-light), var(--color-teal-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.gradient-text-purple {
-  background: linear-gradient(135deg, #A78BFA, #7C3AED);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* ── Motion utilities ───────────────────────────────────────────────────────── */
+
+.press {
+  transition: transform 150ms var(--ease-out-expo);
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: pageEnter 220ms var(--ease-out-quart) both;
+}
+
+@keyframes modalEnter {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.modal-enter {
+  animation: modalEnter 200ms var(--ease-out-expo) both;
 }
 
 /* Animations */
@@ -92,7 +295,7 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in { animation: fadeIn 0.2s ease-out; }
+.animate-fade-in { animation: fadeIn 200ms var(--ease-out-expo); }
 
 @keyframes shimmer {
   0%   { background-position: -400px 0; }
@@ -110,10 +313,10 @@ body {
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
-/* Gradient border cards */
+/* Gradient border cards — amber + teal */
 .card-gradient-border {
   position: relative;
-  border: 1px solid rgba(124,58,237,0.2);
+  border: 1px solid rgba(217,119,6,0.18);
 }
 
 .card-gradient-border::before {
@@ -122,60 +325,124 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(20,184,166,0.15));
+  background: linear-gradient(135deg, rgba(217,119,6,0.3), rgba(20,184,166,0.15));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
 }
 
-/* ── Driver.js tour — dark/purple theme ───────────────────────────────────── */
+/* ── Driver.js tour — themed via tokens (works in dark + light) ───────────── */
 
 .arbiter-tour-popover.driver-popover {
-  background: #1a1625;
-  border: 1px solid rgba(255,255,255,0.10);
+  background: var(--color-elevated);
+  border: 1px solid var(--color-border-strong);
   border-radius: 0.75rem;
-  box-shadow: 0 0 24px rgba(124,58,237,0.18), 0 8px 32px rgba(0,0,0,0.5);
-  color: #e2e0f0;
+  box-shadow: 0 0 24px rgba(217,119,6,0.18), 0 8px 32px rgba(0,0,0,0.35);
+  color: var(--color-primary);
   font-family: inherit;
 }
 
 .arbiter-tour-popover .driver-popover-title {
-  color: #c4b5fd;
+  color: var(--color-accent-light);
   font-size: 0.875rem;
   font-weight: 600;
 }
 
 .arbiter-tour-popover .driver-popover-description {
-  color: #a39db8;
+  color: var(--color-secondary);
   font-size: 0.8125rem;
   line-height: 1.5;
 }
 
 .arbiter-tour-popover .driver-popover-navigation-btns button {
-  background: rgba(124,58,237,0.15);
-  border: 1px solid rgba(124,58,237,0.35);
-  color: #c4b5fd;
+  background: rgba(217,119,6,0.15);
+  border: 1px solid var(--color-border-accent);
+  color: var(--color-accent-light);
   border-radius: 0.5rem;
   font-size: 0.75rem;
   padding: 0.375rem 0.875rem;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 150ms var(--ease-out-expo), border-color 150ms var(--ease-out-expo), transform 150ms var(--ease-out-expo);
 }
 
 .arbiter-tour-popover .driver-popover-navigation-btns button:hover {
-  background: rgba(124,58,237,0.28);
-  border-color: rgba(167,139,250,0.6);
+  background: rgba(217,119,6,0.28);
+  border-color: rgba(245,158,11,0.6);
+}
+
+.arbiter-tour-popover .driver-popover-navigation-btns button:active {
+  transform: scale(0.97);
 }
 
 .arbiter-tour-popover .driver-popover-progress-text {
-  color: #6b6480;
+  color: var(--color-muted);
   font-size: 0.6875rem;
 }
 
 .arbiter-tour-popover .driver-popover-close-btn {
-  color: #6b6480;
+  color: var(--color-muted);
 }
 
 .arbiter-tour-popover .driver-popover-close-btn:hover {
-  color: #a39db8;
+  color: var(--color-secondary);
+}
+
+/* ── New keyframes ───────────────────────────────────────────────────────── */
+@keyframes backdropEnter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.backdrop-enter {
+  animation: backdropEnter var(--duration-fast) var(--ease-out-expo) both;
+}
+
+@keyframes tileMount {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.tile-mount {
+  animation: tileMount var(--duration-base) var(--ease-out-quart) both;
+}
+
+@keyframes successRing {
+  0%   { box-shadow: 0 0 0 0   rgba(52,211,153,0.45); }
+  60%  { box-shadow: 0 0 0 10px rgba(52,211,153,0); }
+  100% { box-shadow: 0 0 0 0   rgba(52,211,153,0); }
+}
+.success-ring {
+  animation: successRing 600ms var(--ease-out-expo) both;
+}
+
+@keyframes valuePop {
+  from { opacity: 0.4; transform: translateY(-3px); }
+  to   { opacity: 1;   transform: translateY(0); }
+}
+.value-pop {
+  animation: valuePop 180ms var(--ease-out-expo) both;
+}
+
+/* Stagger helpers */
+.stagger-1 { animation-delay: var(--stagger-1); }
+.stagger-2 { animation-delay: var(--stagger-2); }
+.stagger-3 { animation-delay: var(--stagger-3); }
+.stagger-4 { animation-delay: var(--stagger-4); }
+.stagger-5 { animation-delay: var(--stagger-5); }
+
+/* Command palette open */
+@keyframes paletteOpen {
+  from { opacity: 0; transform: scale(0.97) translateY(-8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.palette-open {
+  animation: paletteOpen 180ms var(--ease-out-expo) both;
+}
+
+/* ── Reduced motion respect ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -93,24 +93,21 @@ function Login(): React.ReactElement {
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.035]"
         style={{
-          backgroundImage: 'radial-gradient(circle, #A78BFA 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(circle, #F59E0B 1px, transparent 1px)',
           backgroundSize: '28px 28px',
         }}
       />
 
       <div className="relative w-full max-w-sm px-4 animate-fade-in">
         {/* Card */}
-        <div className="bg-surface/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-8 shadow-2xl">
-          {/* Subtle top gradient line */}
-          <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent rounded-full" />
-
+        <div className="bg-surface/85 backdrop-blur-xl border border-border-strong rounded-2xl p-8 shadow-2xl">
           {/* Wordmark */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-3 mb-2">
-              <ArbiterMark size={40} />
-              <span className="gradient-text font-bold text-3xl tracking-tight">Arbiter</span>
+              <ArbiterMark size={36} />
+              <span className="font-display text-primary font-semibold text-3xl tracking-tight">Arbiter</span>
             </div>
-            <p className="text-secondary text-sm mt-2 font-medium">The identity layer for your AI agents</p>
+            <p className="text-secondary text-sm mt-2">The identity layer for your AI agents</p>
           </div>
 
           <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
@@ -126,7 +123,7 @@ function Login(): React.ReactElement {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 focus:border-accent/60 transition-all duration-150 placeholder:text-muted"
+                className="w-full bg-base border border-border-strong text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-[border-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] placeholder:text-muted"
               />
             </div>
 
@@ -142,12 +139,12 @@ function Login(): React.ReactElement {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-base border border-white/[0.1] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 focus:border-accent/60 transition-all duration-150 placeholder:text-muted"
+                className="w-full bg-base border border-border-strong text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-[border-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] placeholder:text-muted"
               />
             </div>
 
             <div className="flex justify-end -mt-1">
-              <Link to="/forgot-password" className="text-xs text-accent-light hover:text-white transition-colors">
+              <Link to="/forgot-password" className="text-xs text-accent-light hover:text-primary transition-colors">
                 Forgot password?
               </Link>
             </div>
@@ -169,7 +166,7 @@ function Login(): React.ReactElement {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-lg transition-all duration-150 hover:shadow-[0_0_20px_rgba(124,58,237,0.35)] mt-2"
+              className="press w-full bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-lg transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard mt-2"
             >
               {isSubmitting ? 'Signing in…' : 'Sign in'}
             </button>
@@ -177,7 +174,7 @@ function Login(): React.ReactElement {
 
           <p className="text-center text-xs text-secondary mt-5">
             Don't have an account?{' '}
-            <Link to="/register" className="text-accent-light hover:text-white font-medium transition-colors">
+            <Link to="/register" className="text-accent-light hover:text-primary font-medium transition-colors">
               Create one
             </Link>
           </p>
@@ -185,9 +182,9 @@ function Login(): React.ReactElement {
           {(providers.google || providers.github) && (
             <>
               <div className="flex items-center gap-3 mt-5">
-                <div className="flex-1 border-t border-white/[0.08]" />
+                <div className="flex-1 border-t border-border" />
                 <span className="text-secondary text-xs font-medium">or continue with</span>
-                <div className="flex-1 border-t border-white/[0.08]" />
+                <div className="flex-1 border-t border-border" />
               </div>
 
               <div className="flex flex-col gap-2 mt-4">
@@ -195,7 +192,7 @@ function Login(): React.ReactElement {
                   <a href={`${API_BASE}/auth/google`}>
                     <button
                       type="button"
-                      className="w-full border border-white/[0.1] bg-elevated/60 hover:bg-elevated hover:border-white/[0.18] text-primary font-medium text-sm py-2.5 px-4 rounded-lg flex items-center gap-3 transition-all duration-150"
+                      className="press w-full border border-border-strong bg-elevated/60 hover:bg-elevated hover:border-border-strong text-primary font-medium text-sm py-2.5 px-4 rounded-lg flex items-center gap-3 transition-[background-color,border-color] duration-150 ease-[var(--ease-out-expo)]"
                     >
                       <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
                         <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
@@ -212,7 +209,7 @@ function Login(): React.ReactElement {
                   <a href={`${API_BASE}/auth/github`}>
                     <button
                       type="button"
-                      className="w-full border border-white/[0.1] bg-elevated/60 hover:bg-elevated hover:border-white/[0.18] text-primary font-medium text-sm py-2.5 px-4 rounded-lg flex items-center gap-3 transition-all duration-150"
+                      className="press w-full border border-border-strong bg-elevated/60 hover:bg-elevated hover:border-border-strong text-primary font-medium text-sm py-2.5 px-4 rounded-lg flex items-center gap-3 transition-[background-color,border-color] duration-150 ease-[var(--ease-out-expo)]"
                     >
                       <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
                         <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>

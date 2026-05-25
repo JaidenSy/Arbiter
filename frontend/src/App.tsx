@@ -19,11 +19,13 @@
  */
 
 import React, { Suspense, lazy } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import ProtectedRoute from './components/ProtectedRoute'
 import UpgradeModal from './components/UpgradeModal'
 import ErrorBoundary from './components/ErrorBoundary'
+import CommandPalette from './components/CommandPalette'
+import { PaletteProvider } from './context/PaletteContext'
 import { useAuth } from './context/AuthContext'
 
 // ── Lazy page imports — each page becomes its own chunk ───────────────────────
@@ -67,11 +69,18 @@ function PageLoader(): React.ReactElement {
 // ── Layout wrapper for sidebar pages ─────────────────────────────────────────
 
 function AppLayout({ children }: { children: React.ReactNode }): React.ReactElement {
+  const { pathname } = useLocation()
   return (
-    <div className="flex min-h-screen bg-base">
+    <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 ml-[52px] min-h-screen">
-        {children}
+        {/* Per-page boundary — keeps the sidebar alive if one page crashes */}
+        <ErrorBoundary>
+          {/* Key on pathname re-triggers page-enter animation on every route change */}
+          <div key={pathname} className="page-enter">
+            {children}
+          </div>
+        </ErrorBoundary>
       </main>
     </div>
   )
@@ -97,13 +106,16 @@ function RootRedirect(): React.ReactElement {
 
 function App(): React.ReactElement {
   return (
+    <PaletteProvider>
     <ErrorBoundary>
+    <div className="app-ambient-bg" aria-hidden />
     <UpgradeModal />
+    <CommandPalette />
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* ── Public routes (no sidebar) ──────────────────────────────────── */}
-        <Route path="/login" element={<Landing initialModal="login" />} />
-        <Route path="/register" element={<Landing initialModal="register" />} />
+        <Route path="/login" element={<ErrorBoundary><Landing initialModal="login" /></ErrorBoundary>} />
+        <Route path="/register" element={<ErrorBoundary><Landing initialModal="register" /></ErrorBoundary>} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/docs" element={<Docs />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -201,6 +213,7 @@ function App(): React.ReactElement {
       </Routes>
     </Suspense>
     </ErrorBoundary>
+    </PaletteProvider>
   )
 }
 
