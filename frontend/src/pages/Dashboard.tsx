@@ -158,7 +158,7 @@ function Dashboard(): React.ReactElement {
   return (
     <div>
       <UsageStrip />
-      <div className="p-6 md:p-8 max-w-[1400px]">
+      <div className="p-6 md:p-8 max-w-[1400px] mx-auto">
 
         {/* Greeting header */}
         <div className="mb-8 animate-fade-in">
