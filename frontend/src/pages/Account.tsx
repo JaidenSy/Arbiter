@@ -89,6 +89,7 @@ export default function Account(): React.ReactElement {
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   if (!user) return <></>
 
@@ -190,13 +191,15 @@ export default function Account(): React.ReactElement {
 
   async function handleDeleteAccount(): Promise<void> {
     setDeleteLoading(true)
+    setDeleteError(null)
     try {
       await authClient.delete('/auth/me')
       await logout()
       navigate('/login')
-    } catch {
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setDeleteError(msg ?? 'Failed to delete account. Please try again.')
       setDeleteLoading(false)
-      setShowDeleteConfirm(false)
     }
   }
 
@@ -426,16 +429,27 @@ export default function Account(): React.ReactElement {
 
       {/* ── Delete confirmation modal ── */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-title"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        >
           <div className="bg-overlay border border-border-strong rounded-xl shadow-2xl p-6 w-full max-w-sm">
-            <h3 className="text-base font-semibold text-primary mb-2">Delete your account?</h3>
-            <p className="text-sm text-secondary mb-6">
+            <h3 id="delete-account-title" className="text-base font-semibold text-primary mb-2">Delete your account?</h3>
+            <p className="text-sm text-secondary mb-4">
               This will immediately deactivate your account and sign you out everywhere. This action cannot be undone.
             </p>
+            {deleteError && (
+              <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2 mb-4">
+                <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
+                <p className="text-error text-xs">{deleteError}</p>
+              </div>
+            )}
             <div className="flex gap-3 justify-end">
               <button
                 type="button"
-                onClick={() => setShowDeleteConfirm(false)}
+                onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}
                 className="px-4 py-2 text-sm text-secondary hover:text-primary border border-border hover:border-border-strong rounded-lg transition-colors"
               >
                 Cancel
