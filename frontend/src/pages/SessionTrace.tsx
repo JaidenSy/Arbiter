@@ -85,15 +85,15 @@ function TraceRow({
   const isCacheHit = event.cache_hit;
 
   const dotColor = isError
-    ? "text-red-400"
+    ? "text-error"
     : isCacheHit
-    ? "text-green-400"
+    ? "text-success"
     : "text-accent-light";
 
   const barColor = isError
-    ? "bg-red-500/60"
+    ? "bg-error/60"
     : isCacheHit
-    ? "bg-green-800"
+    ? "bg-success/40"
     : "bg-accent/60";
 
   return (
@@ -103,7 +103,7 @@ function TraceRow({
           isSelected
             ? "bg-accent/10 border-accent/30"
             : isError
-            ? "bg-red-950/20"
+            ? "bg-error/8"
             : "hover:bg-elevated"
         }`}
         onClick={onToggle}
@@ -112,7 +112,7 @@ function TraceRow({
         <td className="py-2 pr-4 pl-0 w-[200px]">
           <span
             className={`font-mono text-xs flex items-center gap-1.5 ${
-              isError ? "text-red-400" : "text-accent-light"
+              isError ? "text-error" : "text-accent-light"
             }`}
             title={event.tool_name}
           >
@@ -149,8 +149,8 @@ function TraceRow({
             <span
               className={`font-mono text-[10px] px-1.5 py-0.5 border ${
                 isCacheHit
-                  ? "bg-green-900/50 border-green-700/50 text-green-400"
-                  : "bg-white/5 border-white/10 text-muted"
+                  ? "bg-success/10 border-success/20 text-success"
+                  : "bg-elevated border-border text-muted"
               }`}
             >
               {isCacheHit ? "HIT" : "MISS"}
@@ -190,7 +190,7 @@ function TraceRow({
               </div>
               {event.error && (
                 <div className="col-span-2">
-                  <p className="text-red-400 text-xs font-mono">
+                  <p className="text-error text-xs font-mono">
                     Error: {event.error}
                   </p>
                 </div>
@@ -347,12 +347,12 @@ function SessionTrace(): React.ReactElement {
 
   const cacheRateColor =
     cacheHitRate >= 70
-      ? "text-green-400"
+      ? "text-success"
       : cacheHitRate >= 40
-      ? "text-amber-400"
-      : "text-red-400";
+      ? "text-warning"
+      : "text-error";
 
-  const errorColor = errorCount > 0 ? "text-red-400" : "text-muted";
+  const errorColor = errorCount > 0 ? "text-error" : "text-muted";
 
   // ── Loading skeleton ─────────────────────────────────────────────────────────
 
