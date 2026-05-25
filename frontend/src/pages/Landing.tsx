@@ -715,11 +715,8 @@ function Footer(): React.ReactElement {
 
         {/* Right — nav */}
         <div className="flex items-center gap-5">
-          <Link to="/login" className="text-secondary hover:text-primary text-xs transition-colors">
+          <Link to="/" className="text-secondary hover:text-primary text-xs transition-colors">
             Dashboard
-          </Link>
-          <Link to="/docs" className="text-secondary hover:text-primary text-xs transition-colors">
-            Docs
           </Link>
           <a
             href="/api/v1/docs"
