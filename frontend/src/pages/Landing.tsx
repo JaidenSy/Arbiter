@@ -82,7 +82,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         aria-hidden
       />
 
-      <div className="relative max-w-3xl mx-auto pt-14">
+      <div className="relative max-w-3xl mx-auto pt-28 sm:pt-24 lg:pt-20">
         {/* Kicker label */}
         <p
           className="kicker mb-5"

@@ -14,7 +14,7 @@ import { ShaderGradient, ShaderGradientCanvas } from '@shader-gradient/react'
 import * as THREE from 'three'
 import ErrorBoundary from './ErrorBoundary'
 
-const dpr = (): number => Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 1.5)
+const dpr = (): number => Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 2)
 
 // ── Particle network ──────────────────────────────────────────────────────────
 
@@ -174,9 +174,9 @@ function HeroBackgroundInner({ particleOpacity = 1 }: HeroBackgroundProps) {
               animate={reduced ? false : 'on'}
               uTime={0}
               uSpeed={0.12}
-              uStrength={2.5}
+              uStrength={2.0}
               uDensity={1.2}
-              uFrequency={5.5}
+              uFrequency={3.5}
               uAmplitude={3}
               positionX={0}
               positionY={0}
@@ -190,7 +190,7 @@ function HeroBackgroundInner({ particleOpacity = 1 }: HeroBackgroundProps) {
               reflection={0.05}
               wireframe={false}
               shader="defaults"
-              grain="on"
+              grain="off"
               cAzimuthAngle={180}
             />
           </ShaderGradientCanvas>
@@ -202,7 +202,7 @@ function HeroBackgroundInner({ particleOpacity = 1 }: HeroBackgroundProps) {
         <div className="absolute inset-0" style={{ opacity: particleOpacity * 0.7 }}>
           <Canvas
             camera={{ position: [0, 0, 18], fov: 50 }}
-            gl={{ antialias: false, alpha: true, powerPreference: 'low-power' }}
+            gl={{ antialias: true, alpha: true, powerPreference: 'low-power' }}
             style={{ background: 'transparent' }}
             dpr={dpr()}
           >
