@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext'
 import { authClient } from '../api/client'
 import type { DashboardStats } from '../api/types'
 
-const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
+const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'support@arbiterai.dev'
 
 // ── Plan limit constants (mirrors backend plan_limits.py) ────────────────────
 
