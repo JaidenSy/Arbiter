@@ -368,8 +368,8 @@ function Onboarding(): React.ReactElement {
   const syncStatus = async (): Promise<void> => {
     try {
       await authClient.get('/onboarding/status')
-    } catch {
-      // Non-blocking — endpoint may not exist yet
+    } catch (err) {
+      console.error('[Onboarding] syncStatus failed:', err)
     }
   }
 
