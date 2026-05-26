@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext'
 import { ArbiterMark } from './ArbiterLogo'
 import { useTour } from '../hooks/useTour'
 
-const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
+const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'support@arbiterai.dev'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 

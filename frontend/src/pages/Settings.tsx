@@ -16,7 +16,7 @@ import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import Toggle from '../components/Toggle'
 
-const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
+const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'support@arbiterai.dev'
 
 // ── Usage progress bar ────────────────────────────────────────────────────────
 
@@ -117,7 +117,7 @@ function BillingSection(): React.ReactElement {
       <SectionHeader title="Billing" subtitle="Manage your plan and usage limits" />
 
       {isLoading && (
-        <div className="space-y-2 max-w-xl">
+        <div className="space-y-2 max-w-2xl">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="skeleton-shimmer h-6 rounded-lg" />
           ))}
@@ -125,14 +125,14 @@ function BillingSection(): React.ReactElement {
       )}
 
       {isError && (
-        <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2 max-w-xl">
+        <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2 max-w-2xl">
           <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
           <p className="text-error text-sm">Failed to load billing status.</p>
         </div>
       )}
 
       {data && (
-        <div className="max-w-xl space-y-5">
+        <div className="max-w-2xl space-y-5">
           {/* Plan badge */}
           <div className="flex items-center gap-3">
             <span className="text-secondary text-xs font-mono">Current plan</span>
@@ -309,7 +309,7 @@ function ApiKeySection(): React.ReactElement {
   return (
     <div>
       <SectionHeader title="API Key" subtitle="Gateway key stored locally in your browser" />
-      <div className="max-w-xl space-y-4">
+      <div className="max-w-2xl space-y-4">
         <div>
           <label htmlFor="api-key-input" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
             Gateway API Key
@@ -388,7 +388,7 @@ function GatewayUrlSection(): React.ReactElement {
   return (
     <div>
       <SectionHeader title="Gateway URL" subtitle="Base URL of the Arbiter backend API" />
-      <div className="max-w-xl space-y-4">
+      <div className="max-w-2xl space-y-4">
         <div>
           <label htmlFor="gateway-url-input" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
             Gateway URL
@@ -432,7 +432,7 @@ function AboutSection(): React.ReactElement {
   return (
     <div>
       <SectionHeader title="About" />
-      <div className="max-w-xl bg-surface border border-border rounded-xl overflow-hidden">
+      <div className="max-w-2xl bg-surface border border-border rounded-xl overflow-hidden">
         {info.map(([label, value], idx) => (
           <div
             key={label}
@@ -455,7 +455,7 @@ function AppearanceSection(): React.ReactElement {
   return (
     <div>
       <SectionHeader title="Appearance" subtitle="Customize the look of the dashboard" />
-      <div className="flex items-center justify-between max-w-xl">
+      <div className="flex items-center justify-between max-w-2xl">
         <div>
           <p className="text-primary text-sm font-medium">Theme</p>
           <p className="text-secondary text-xs mt-0.5">{theme === 'dark' ? 'Dark mode' : 'Light mode'}</p>
@@ -584,7 +584,7 @@ function Settings(): React.ReactElement {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-border mb-6 max-w-3xl">
+      <div className="flex gap-1 border-b border-border mb-6 max-w-4xl">
         {TABS.map(tab => (
           <button
             key={tab.id}
@@ -601,7 +601,7 @@ function Settings(): React.ReactElement {
       </div>
 
       {/* Tab content */}
-      <div className="max-w-3xl">
+      <div className="max-w-4xl">
         {activeTab === 'general' && (
           <div className="bg-surface border border-border rounded-xl p-6">
             <AppearanceSection />

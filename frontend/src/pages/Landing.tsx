@@ -13,7 +13,7 @@ import AuthModal, { type AuthMode } from '../components/AuthModal'
 import HeroBackground from '../components/HeroBackground'
 
 const SUPPORT_EMAIL: string =
-  (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'jaidensy07@gmail.com'
+  (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'support@arbiterai.dev'
 
 // ── Navbar ─────────────────────────────────────────────────────────────────────
 
