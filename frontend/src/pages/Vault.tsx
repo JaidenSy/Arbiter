@@ -492,7 +492,7 @@ function Vault(): React.ReactElement {
           <p className="text-muted text-xs font-semibold uppercase tracking-widest mb-3">
             Agents
           </p>
-          <div className="glass-surface border border-border rounded-xl overflow-hidden">
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
             {!agents || agents.length === 0 ? (
               <div className="px-4 py-5 flex flex-col items-start gap-3">
                 <p className="text-secondary text-xs">No agents registered yet.</p>

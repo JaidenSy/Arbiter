@@ -69,6 +69,13 @@ const UsersIcon = (): React.ReactElement => (
   </svg>
 )
 
+const AccountIcon = (): React.ReactElement => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="8" r="4"/>
+    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+  </svg>
+)
+
 const SettingsIcon = (): React.ReactElement => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -304,6 +311,7 @@ function Sidebar(): React.ReactElement {
         <NavItem id="nav-sessions" to="/sessions" icon={<SessionsIcon />} title="Sessions" />
         <NavItem id="nav-permissions" to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
         <NavItem id="nav-organization" to="/organization" icon={<UsersIcon />} title="Organization" />
+        <NavItem id="nav-account" to="/account" icon={<AccountIcon />} title="Account" />
       </nav>
 
       {/* Bottom divider */}
