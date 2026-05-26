@@ -14,8 +14,6 @@
  *   /login       → Landing + login modal pre-opened
  *   /register    → Landing + register modal pre-opened
  *
- * Protected wizard (no sidebar):
- *   /onboarding  → Onboarding wizard (new users only)
  */
 
 import React, { Suspense, lazy } from 'react'
@@ -38,7 +36,6 @@ const SessionTrace = lazy(() => import('./pages/SessionTrace'))
 const Settings     = lazy(() => import('./pages/Settings'))
 const Permissions  = lazy(() => import('./pages/Permissions'))
 const Vault        = lazy(() => import('./pages/Vault'))
-const Onboarding   = lazy(() => import('./pages/Onboarding'))
 const AuthCallback = lazy(() => import('./pages/AuthCallback'))
 const Landing        = lazy(() => import('./pages/Landing'))
 const Docs           = lazy(() => import('./pages/Docs'))
@@ -147,16 +144,6 @@ function App(): React.ReactElement {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/confirm-email-change" element={<ConfirmEmailChange />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
-
-        {/* ── Protected onboarding (no sidebar) ───────────────────────────── */}
-        <Route
-          path="/onboarding"
-          element={
-            <ProtectedRoute>
-              <Onboarding />
-            </ProtectedRoute>
-          }
-        />
 
         {/* ── Root — smart redirect ────────────────────────────────────────── */}
         <Route path="/" element={<RootRedirect />} />

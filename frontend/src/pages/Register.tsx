@@ -44,7 +44,7 @@ function Register(): React.ReactElement {
 
     try {
       await register(orgName.trim(), email.trim(), password, inviteCode.trim())
-      navigate('/onboarding')
+      navigate('/')
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number; data?: { detail?: string } } })?.response
       if (status?.status === 409) {

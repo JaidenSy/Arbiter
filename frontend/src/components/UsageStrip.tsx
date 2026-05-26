@@ -18,7 +18,7 @@ const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'support@arb
 // ── Plan limit constants (mirrors backend plan_limits.py) ────────────────────
 
 const PLAN_LIMITS: Record<string, { agents: number | null; toolCalls: number | null }> = {
-  free:       { agents: 3,  toolCalls: 1_000 },
+  free:       { agents: 2,  toolCalls: 5_000 },
   pro:        { agents: 25, toolCalls: 100_000 },
   enterprise: { agents: null, toolCalls: null },
 }
