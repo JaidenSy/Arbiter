@@ -11,7 +11,6 @@ import { ArbiterMark } from './ArbiterLogo'
 
 export type AuthMode = 'login' | 'register'
 
-interface OnboardingStatus { complete: boolean }
 interface ProvidersResponse { google: boolean; github: boolean }
 
 const API_BASE: string =
@@ -84,10 +83,6 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
     setLoginSubmitting(true)
     try {
       await login(email.trim(), password)
-      try {
-        const res = await authClient.get<OnboardingStatus>('/onboarding/status')
-        if (!res.data.complete) { navigate('/onboarding'); return }
-      } catch { /* no onboarding endpoint — fall through */ }
       navigate('/')
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status
@@ -114,7 +109,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
     setRegSubmitting(true)
     try {
       await register(orgName.trim(), regEmail.trim(), regPassword, inviteCode.trim())
-      navigate('/onboarding')
+      navigate('/')
     } catch (err: unknown) {
       const res = (err as { response?: { status?: number; data?: { detail?: string } } })?.response
       if (res?.status === 409) setRegError('An account with that email already exists.')

@@ -28,10 +28,6 @@ interface TokenResponse {
   expires_in: number
 }
 
-interface OnboardingStatus {
-  complete: boolean
-}
-
 function AuthCallback(): React.ReactElement {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -59,17 +55,6 @@ function AuthCallback(): React.ReactElement {
 
         // Hydrate auth context so ProtectedRoute / RootRedirect see the user immediately
         await refreshUser()
-
-        // Check onboarding status
-        try {
-          const onb = await authClient.get<OnboardingStatus>('/onboarding/status')
-          if (!onb.data.complete) {
-            void navigate('/onboarding', { replace: true })
-            return
-          }
-        } catch {
-          // /onboarding/status error → go to dashboard
-        }
 
         void navigate('/', { replace: true })
       } catch {

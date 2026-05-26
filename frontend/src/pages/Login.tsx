@@ -11,10 +11,6 @@ import { useAuth } from '../context/AuthContext'
 import { authClient } from '../api/client'
 import { ArbiterMark } from '../components/ArbiterLogo'
 
-interface OnboardingStatus {
-  complete: boolean
-}
-
 interface ProvidersResponse {
   google: boolean
   github: boolean
@@ -59,16 +55,6 @@ function Login(): React.ReactElement {
 
     try {
       await login(email.trim(), password)
-
-      try {
-        const res = await authClient.get<OnboardingStatus>('/onboarding/status')
-        if (!res.data.complete) {
-          navigate('/onboarding')
-          return
-        }
-      } catch {
-        // If endpoint doesn't exist yet, go to dashboard
-      }
 
       navigate('/')
     } catch (err: unknown) {
