@@ -625,6 +625,14 @@ function Agents(): React.ReactElement {
   const [snippetAgent, setSnippetAgent] = useState<Agent | null>(null);
   const [renameAgent, setRenameAgent] = useState<Agent | null>(null);
   const [testCallAgent, setTestCallAgent] = useState<Agent | null>(null);
+  const [successBanner, setSuccessBanner] = useState<string | null>(null);
+  const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showBanner = (msg: string): void => {
+    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+    setSuccessBanner(msg);
+    bannerTimerRef.current = setTimeout(() => setSuccessBanner(null), 3000);
+  };
 
   const { data: agentsPage, isLoading } = useQuery<Page<Agent>>({
     queryKey: ["agents"],
@@ -636,6 +644,7 @@ function Agents(): React.ReactElement {
     mutationFn: deleteAgent,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["agents"] });
+      showBanner('Agent deactivated');
     },
     onError: (err) => {
       console.error("Failed to deactivate agent", err);
@@ -681,6 +690,12 @@ function Agents(): React.ReactElement {
 
   return (
     <div className="p-8 animate-fade-in">
+      {successBanner && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 bg-success/10 border border-success/20 text-success rounded-lg px-4 py-2.5 text-sm shadow-lg animate-fade-in">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          {successBanner}
+        </div>
+      )}
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -833,7 +848,10 @@ function Agents(): React.ReactElement {
       <RenameModal
         agent={renameAgent}
         onClose={() => setRenameAgent(null)}
-        onSuccess={() => void queryClient.invalidateQueries({ queryKey: ["agents"] })}
+        onSuccess={() => {
+          void queryClient.invalidateQueries({ queryKey: ["agents"] });
+          showBanner('Agent renamed');
+        }}
       />
 
       <TestCallModal
