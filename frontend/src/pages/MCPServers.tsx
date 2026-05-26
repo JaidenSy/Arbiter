@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
 import type { MCPServer, MCPServerCreate, MCPServerUpdate, MCPServerTestResult, Page } from '../api/types'
@@ -221,12 +222,17 @@ function ServerOverflowMenu({ server, onDeactivate }: {
   onDeactivate: (s: MCPServer) => void
 }): React.ReactElement {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
     function onMouse(e: MouseEvent): void {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false)
     }
     function onKey(e: KeyboardEvent): void {
       if (e.key === 'Escape') setOpen(false)
@@ -239,18 +245,31 @@ function ServerOverflowMenu({ server, onDeactivate }: {
     }
   }, [open])
 
+  const handleToggle = (): void => {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+    }
+    setOpen((o) => !o)
+  }
+
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={btnRef}
         type="button"
         aria-label="More actions"
-        onClick={() => setOpen((o) => !o)}
+        onClick={handleToggle}
         className="inline-flex items-center justify-center h-7 w-7 text-secondary hover:text-primary hover:bg-white/[0.05] border border-transparent hover:border-border rounded-lg text-sm transition-all"
       >
         ⋯
       </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-20 bg-elevated border border-border-strong rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.3)] py-1 min-w-[140px]">
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+          className="bg-elevated border border-border-strong rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.3)] py-1 min-w-[140px]"
+        >
           <button
             type="button"
             onClick={() => { onDeactivate(server); setOpen(false); }}
@@ -258,9 +277,10 @@ function ServerOverflowMenu({ server, onDeactivate }: {
           >
             Deactivate
           </button>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   )
 }
 
