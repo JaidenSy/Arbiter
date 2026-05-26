@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ function Modal({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 overflow-y-auto"
       aria-modal="true"
@@ -75,7 +76,7 @@ function Modal({
 
       </div>
     </div>
-  );
+  , document.body);
 }
 
 export default Modal;
