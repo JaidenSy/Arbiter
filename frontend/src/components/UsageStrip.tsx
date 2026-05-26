@@ -121,7 +121,7 @@ function UsageStrip(): React.ReactElement | null {
         <>
           <Sep />
           <Link
-            to="/settings#billing"
+            to="/settings?tab=billing"
             className="text-accent-light hover:text-primary transition-colors duration-150 font-medium"
           >
             Upgrade →
