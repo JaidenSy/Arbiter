@@ -7,13 +7,15 @@
  *   - Deactivating (deleting) a server via a confirmation dialog
  */
 
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
 import type { MCPServer, MCPServerCreate, MCPServerUpdate, MCPServerTestResult, Page } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Toggle from '../components/Toggle'
+import { Button } from '../components/ui'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -128,7 +130,7 @@ function ServerFormModal({
     onClose()
   }
 
-  const inputClass = "w-full bg-base border border-white/[0.1] text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const inputClass = "w-full bg-base border border-border text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (
@@ -198,25 +200,87 @@ function ServerFormModal({
         )}
 
         <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-white/[0.08] hover:border-white/[0.15]"
-          >
-            Cancel
-          </button>
-          <button
+          <Button type="button" variant="secondary" size="sm" onClick={handleClose}>Cancel</Button>
+          <Button
             type="submit"
+            size="sm"
+            isLoading={isPending}
             disabled={isPending || !name.trim() || !baseUrl.trim()}
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
           >
-            {isPending
-              ? isEditing ? 'Saving…' : 'Adding…'
-              : isEditing ? 'Save' : 'Add Server'}
-          </button>
+            {isEditing ? 'Save' : 'Add Server'}
+          </Button>
         </div>
       </form>
     </Modal>
+  )
+}
+
+// ── Server overflow menu (Deactivate) ─────────────────────────────────────────
+
+function ServerOverflowMenu({ server, onDeactivate }: {
+  server: MCPServer
+  onDeactivate: (s: MCPServer) => void
+}): React.ReactElement {
+  const [open, setOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 })
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onMouse(e: MouseEvent): void {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false)
+    }
+    function onKey(e: KeyboardEvent): void {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onMouse)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onMouse)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const handleToggle = (): void => {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+    }
+    setOpen((o) => !o)
+  }
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        aria-label="More actions"
+        onClick={handleToggle}
+        className="inline-flex items-center justify-center h-7 w-7 text-secondary hover:text-primary hover:bg-white/[0.05] border border-transparent hover:border-border rounded-lg text-sm transition-all"
+      >
+        ⋯
+      </button>
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+          className="bg-elevated border border-border-strong rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.3)] py-1 min-w-[140px]"
+        >
+          <button
+            type="button"
+            onClick={() => { onDeactivate(server); setOpen(false); }}
+            className="flex items-center w-full px-3 py-2 text-xs text-error hover:bg-error/10 transition-colors"
+          >
+            Deactivate
+          </button>
+        </div>,
+        document.body
+      )}
+    </>
   )
 }
 
@@ -224,7 +288,7 @@ function ServerFormModal({
 
 function SkeletonRow(): React.ReactElement {
   return (
-    <tr className="border-b border-white/[0.05]">
+    <tr className="border-b border-border">
       {[4, 8, 6, 3, 3, 2].map((w, i) => (
         <td key={i} className="py-3 px-4">
           <div className="h-3 skeleton-shimmer rounded" style={{ width: `${w * 14}px` }} />
@@ -244,12 +308,15 @@ function MCPServers(): React.ReactElement {
   const [deactivateTarget, setDeactivateTarget] = useState<MCPServer | null>(null)
   const [testingId, setTestingId] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<{ id: string; result: MCPServerTestResult } | null>(null)
+  const testResultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const testMutation = useMutation({
     mutationFn: testMCPServer,
     onSuccess: (data, id) => {
+      if (testResultTimerRef.current) clearTimeout(testResultTimerRef.current)
       setTestResult({ id, result: data })
       setTestingId(null)
+      testResultTimerRef.current = setTimeout(() => setTestResult(null), 8000)
     },
     onError: () => {
       setTestingId(null)
@@ -257,6 +324,7 @@ function MCPServers(): React.ReactElement {
   })
 
   const handleTestClick = (server: MCPServer): void => {
+    if (testResultTimerRef.current) clearTimeout(testResultTimerRef.current)
     setTestingId(server.id)
     setTestResult(null)
     testMutation.mutate(server.id)
@@ -307,23 +375,18 @@ function MCPServers(): React.ReactElement {
       {/* Page header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="gradient-text-purple text-xl font-bold">MCP Servers</h1>
+          <h1 className="font-display text-xl font-semibold tracking-tight text-primary">MCP Servers</h1>
           <p className="text-secondary text-sm mt-1">Connected tool servers proxied through Arbiter</p>
         </div>
-        <button
-          type="button"
-          className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
-          onClick={handleAddClick}
-        >
-          Add Server
-        </button>
+        <Button onClick={handleAddClick}>Add Server</Button>
       </div>
 
       {/* Table card */}
-      <div className="bg-surface border border-white/[0.07] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="min-w-full">
           <thead>
-            <tr className="border-b border-white/[0.06]">
+            <tr className="border-b border-border">
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Name</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Base URL</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Description</th>
@@ -354,20 +417,14 @@ function MCPServers(): React.ReactElement {
                   </div>
                   <p className="text-primary text-sm font-medium mb-1">No MCP servers registered</p>
                   <p className="text-secondary text-xs max-w-xs mx-auto mb-4">Add a server to start routing tool calls through Arbiter.</p>
-                  <button
-                    type="button"
-                    onClick={handleAddClick}
-                    className="bg-gradient-to-r from-accent to-violet-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover:shadow-[0_0_16px_rgba(124,58,237,0.3)]"
-                  >
-                    Add Server
-                  </button>
+                  <Button onClick={handleAddClick}>Add Server</Button>
                 </td>
               </tr>
             ) : (
               servers.map((server) => (
                 <tr
                   key={server.id}
-                  className="group border-b border-white/[0.05] hover:bg-white/[0.025] transition-all duration-150"
+                  className="group border-b border-border hover:bg-white/[0.025] transition-all duration-150"
                 >
                   <td className="py-3 px-4">
                     <span
@@ -427,29 +484,22 @@ function MCPServers(): React.ReactElement {
                           : `✗ ${testResult.result.error ?? 'unreachable'}`}
                       </span>
                     )}
-                    <div className="inline-flex items-center gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
+                    <div className="inline-flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         disabled={testingId === server.id}
                         onClick={() => handleTestClick(server)}
-                        className="text-secondary hover:text-teal-light hover:bg-teal/10 border border-transparent hover:border-teal/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-50"
                       >
                         {testingId === server.id ? 'Testing…' : 'Test'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleEditClick(server)}
-                        className="text-secondary hover:text-primary border border-white/[0.08] hover:border-white/[0.18] px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      >
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleEditClick(server)}>
                         Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeactivateTarget(server)}
-                        className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      >
-                        Deactivate
-                      </button>
+                      </Button>
+                      <ServerOverflowMenu
+                        server={server}
+                        onDeactivate={setDeactivateTarget}
+                      />
                     </div>
                   </td>
                 </tr>
@@ -457,6 +507,7 @@ function MCPServers(): React.ReactElement {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <ServerFormModal

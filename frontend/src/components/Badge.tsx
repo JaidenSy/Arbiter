@@ -1,11 +1,14 @@
 import React from "react";
 
-export type BadgeVariant = "success" | "neutral" | "error";
+export type BadgeVariant = "success" | "neutral" | "error" | "accent" | "warning";
 
+// Tokenized badges — zinc neutrals and amber accent, no green/red literals
 const variantClasses: Record<BadgeVariant, string> = {
-  success: "bg-green-950 text-green-400 border border-green-900",
-  neutral: "bg-white/5 text-secondary border border-white/10",
-  error: "bg-red-950 text-red-400 border border-red-900",
+  success: "bg-success/10 text-success border border-success/25",
+  neutral: "bg-elevated text-secondary border border-border-strong",
+  error:   "bg-error/10 text-error border border-error/25",
+  accent:  "bg-accent/10 text-accent-light border border-border-accent",
+  warning: "bg-warning/10 text-warning border border-warning/25",
 };
 
 interface BadgeProps {
@@ -16,7 +19,7 @@ interface BadgeProps {
 function Badge({ variant, children }: BadgeProps): React.ReactElement {
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono ${variantClasses[variant]}`}
+      className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-mono ${variantClasses[variant]}`}
     >
       {children}
     </span>

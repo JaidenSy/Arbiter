@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext'
 import { ArbiterMark } from './ArbiterLogo'
 import { useTour } from '../hooks/useTour'
 
-const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
+const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'support@arbiterai.dev'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -69,6 +69,13 @@ const UsersIcon = (): React.ReactElement => (
   </svg>
 )
 
+const AccountIcon = (): React.ReactElement => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="8" r="4"/>
+    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+  </svg>
+)
+
 const SettingsIcon = (): React.ReactElement => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -87,7 +94,7 @@ function ThemeToggleButton(): React.ReactElement {
         type="button"
         onClick={toggleTheme}
         aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        className="w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-white/[0.05] transition-all"
+        className="press w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-white/[0.04] transition-[color,background-color] duration-150 ease-[var(--ease-out-expo)]"
       >
         {theme === 'dark' ? (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -108,10 +115,10 @@ function ThemeToggleButton(): React.ReactElement {
         )}
       </button>
       {/* Tooltip */}
-      <div className="pointer-events-none absolute left-[52px] top-1/2 -translate-y-1/2 ml-1 z-50 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150">
-        <div className="bg-overlay border border-white/[0.12] text-primary text-xs font-medium px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap">
+      <div className="pointer-events-none absolute left-[52px] top-1/2 -translate-y-1/2 ml-1 z-50 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 ease-[var(--ease-out-expo)]">
+        <div className="bg-elevated border border-border-strong text-primary text-xs font-medium px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap">
           {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-overlay" />
+          <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-elevated" />
         </div>
       </div>
     </div>
@@ -136,27 +143,33 @@ function NavItem({ to, icon, title, end, id }: NavItemProps): React.ReactElement
         end={end}
         aria-label={title}
         className={({ isActive }) =>
-          `relative flex items-center justify-center w-full h-9 rounded-lg transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent ${
+          `relative flex items-center justify-center w-full h-9 rounded-lg focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-accent transition-[color,background-color,transform] duration-150 ease-[var(--ease-out-expo)] ${
             isActive
-              ? 'text-accent-light bg-accent/10 shadow-[0_0_12px_rgba(124,58,237,0.2)]'
-              : 'text-secondary hover:text-primary hover:bg-white/[0.05]'
+              ? 'text-primary bg-accent/[0.07]'
+              : 'text-secondary hover:text-primary hover:bg-white/[0.04] group-hover/nav:[&_svg]:translate-x-[1px]'
           }`
         }
       >
         {({ isActive }) => (
           <>
+            {/* Active marker — precise 2px amber bar, no glow */}
             {isActive && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent-light rounded-full -ml-2 shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
+              <span
+                aria-hidden="true"
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-5 bg-accent rounded-r-full -ml-2"
+              />
             )}
-            {icon}
+            <span className="transition-transform duration-150 ease-[var(--ease-out-expo)]">
+              {icon}
+            </span>
           </>
         )}
       </NavLink>
       {/* Tooltip */}
-      <div className="pointer-events-none absolute left-[52px] top-1/2 -translate-y-1/2 ml-1 z-50 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150">
-        <div className="bg-overlay border border-white/[0.12] text-primary text-xs font-medium px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap">
+      <div className="pointer-events-none absolute left-[52px] top-1/2 -translate-y-1/2 ml-1 z-50 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 ease-[var(--ease-out-expo)]">
+        <div className="bg-elevated border border-border-strong text-primary text-xs font-medium px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap">
           {title}
-          <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-overlay" />
+          <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-elevated" />
         </div>
       </div>
     </div>
@@ -189,7 +202,7 @@ function UserAvatar(): React.ReactElement | null {
   const handleLogout = (): void => {
     setOpen(false)
     void logout().then(() => {
-      window.location.href = '/login'
+      window.location.href = '/'
     })
   }
 
@@ -199,43 +212,41 @@ function UserAvatar(): React.ReactElement | null {
         type="button"
         title={user.email}
         onClick={() => setOpen(!open)}
-        className="w-8 h-8 rounded-full bg-gradient-to-br from-accent/30 to-teal/20 border border-accent/40 text-accent-light font-mono text-xs font-semibold flex items-center justify-center hover:border-accent/70 hover:shadow-[0_0_12px_rgba(124,58,237,0.25)] transition-all duration-150"
+        className="press w-8 h-8 rounded-full bg-elevated border border-border-strong text-secondary font-mono text-xs font-semibold flex items-center justify-center hover:border-accent/50 hover:text-accent-light transition-[border-color,color] duration-150 ease-[var(--ease-out-expo)]"
       >
         {initial}
       </button>
 
       {open && (
-        <div className="animate-fade-in absolute left-[52px] bottom-0 ml-2 w-60 bg-overlay border border-white/[0.12] rounded-xl shadow-2xl z-50 py-2 overflow-hidden backdrop-blur-sm">
-          {/* Subtle top gradient accent */}
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
-          <div className="px-3 pb-2.5 border-b border-white/[0.07]">
+        <div className="modal-enter origin-bottom-left absolute left-[52px] bottom-0 ml-2 w-60 bg-elevated border border-border-strong rounded-xl shadow-2xl z-50 py-2 overflow-hidden">
+          <div className="px-3 pb-2.5 border-b border-border">
             <p className="text-primary text-sm font-medium truncate">{user.email}</p>
             <p className="text-secondary text-xs mt-0.5 capitalize">{user.role}</p>
             <p className="text-muted text-xs mt-0.5 truncate font-mono">{user.org_name}</p>
           </div>
           <div className="px-3 pt-2 pb-1">
-            <span className="inline-flex items-center gap-1 text-accent-light bg-accent/10 border border-accent/25 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1 text-accent-light bg-accent/10 border border-border-accent rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
               {planLabel}
             </span>
           </div>
-          <div className="border-t border-white/[0.07] mt-1 pt-1">
+          <div className="border-t border-border mt-1 pt-1">
             <a
               href="/account"
               onClick={() => setOpen(false)}
-              className="flex items-center w-full px-3 py-1.5 text-xs text-secondary hover:text-primary hover:bg-white/[0.05] transition-colors"
+              className="flex items-center w-full px-3 py-1.5 text-xs text-secondary hover:text-primary hover:bg-white/[0.04] transition-colors duration-150"
             >
               My Account
             </a>
             <a
               href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Support`}
-              className="flex items-center w-full px-3 py-1.5 text-xs text-secondary hover:text-primary hover:bg-white/[0.05] transition-colors rounded-md mx-0"
+              className="flex items-center w-full px-3 py-1.5 text-xs text-secondary hover:text-primary hover:bg-white/[0.04] transition-colors duration-150 rounded-md mx-0"
             >
               Contact Support
             </a>
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full text-left px-3 py-1.5 text-xs text-secondary hover:text-error hover:bg-error/5 transition-colors"
+              className="w-full text-left px-3 py-1.5 text-xs text-secondary hover:text-error hover:bg-error/5 transition-colors duration-150"
             >
               Sign out
             </button>
@@ -255,7 +266,7 @@ function HelpButton({ onStart }: { onStart: () => void }): React.ReactElement {
         type="button"
         aria-label="Product walkthrough"
         onClick={onStart}
-        className="w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-white/[0.05] transition-all"
+        className="press w-8 h-8 rounded-lg flex items-center justify-center text-secondary hover:text-primary hover:bg-white/[0.04] transition-[color,background-color] duration-150 ease-[var(--ease-out-expo)]"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10"/>
@@ -263,10 +274,10 @@ function HelpButton({ onStart }: { onStart: () => void }): React.ReactElement {
           <line x1="12" y1="17" x2="12.01" y2="17"/>
         </svg>
       </button>
-      <div className="pointer-events-none absolute left-[52px] top-1/2 -translate-y-1/2 ml-1 z-50 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150">
-        <div className="bg-overlay border border-white/[0.12] text-primary text-xs font-medium px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap">
+      <div className="pointer-events-none absolute left-[52px] top-1/2 -translate-y-1/2 ml-1 z-50 opacity-0 group-hover/nav:opacity-100 transition-opacity duration-150 ease-[var(--ease-out-expo)]">
+        <div className="bg-elevated border border-border-strong text-primary text-xs font-medium px-2.5 py-1.5 rounded-md shadow-xl whitespace-nowrap">
           Help / Walkthrough
-          <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-overlay" />
+          <span className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-elevated" />
         </div>
       </div>
     </div>
@@ -278,21 +289,18 @@ function HelpButton({ onStart }: { onStart: () => void }): React.ReactElement {
 function Sidebar(): React.ReactElement {
   const { startTour } = useTour()
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[52px] bg-gradient-to-b from-surface to-base border-r border-white/[0.06] flex flex-col z-40">
-      {/* Subtle vertical accent line at top */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
-
+    <aside className="fixed left-0 top-0 h-screen w-[52px] bg-surface border-r border-border flex flex-col z-40">
       {/* Logo */}
       <NavLink
         to="/"
-        className="flex items-center justify-center h-[52px] select-none"
+        className="press flex items-center justify-center h-[52px] select-none"
         aria-label="Arbiter home"
       >
-        <ArbiterMark size={32} />
+        <ArbiterMark size={28} />
       </NavLink>
 
       {/* Top divider */}
-      <div className="mx-3 border-t border-white/[0.06]" />
+      <div className="mx-3 border-t border-border" />
 
       {/* Main nav */}
       <nav className="flex flex-col flex-1 pt-2 gap-0.5">
@@ -303,10 +311,11 @@ function Sidebar(): React.ReactElement {
         <NavItem id="nav-sessions" to="/sessions" icon={<SessionsIcon />} title="Sessions" />
         <NavItem id="nav-permissions" to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
         <NavItem id="nav-organization" to="/organization" icon={<UsersIcon />} title="Organization" />
+        <NavItem id="nav-account" to="/account" icon={<AccountIcon />} title="Account" />
       </nav>
 
       {/* Bottom divider */}
-      <div className="mx-3 border-t border-white/[0.06]" />
+      <div className="mx-3 border-t border-border" />
 
       {/* Settings + user at bottom */}
       <div className="pb-2 flex flex-col items-center gap-0.5 pt-2">

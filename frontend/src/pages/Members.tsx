@@ -9,6 +9,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { authClient } from '../api/client'
 import type { Page } from '../api/types'
 import { useAuth } from '../context/AuthContext'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,15 +43,15 @@ const VALID_ROLES = ['owner', 'admin', 'member'] as const
 type Role = typeof VALID_ROLES[number]
 
 const ROLE_BADGE: Record<string, string> = {
-  owner: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
-  admin: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
-  member: 'bg-white/5 text-secondary border-white/10',
+  owner: 'bg-accent/15 text-accent-light border-border-accent',
+  admin: 'bg-teal/10 text-teal-light border-teal/20',
+  member: 'bg-elevated text-secondary border-border',
 }
 
 const PLAN_BADGE: Record<string, string> = {
-  free: 'bg-white/5 text-secondary border-white/10',
-  pro: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
-  enterprise: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  free: 'bg-elevated text-secondary border-border',
+  pro: 'bg-accent/15 text-accent-light border-border-accent',
+  enterprise: 'bg-warning/10 text-warning border-warning/20',
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -81,7 +82,7 @@ function SelectField({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none w-full bg-base border border-white/[0.12] text-primary text-sm px-3.5 py-2.5 pr-9 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 transition-all cursor-pointer"
+        className="appearance-none w-full bg-base border border-border-strong text-primary text-sm px-3.5 py-2.5 pr-9 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 transition-all cursor-pointer"
       >
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -111,6 +112,9 @@ function Organization(): React.ReactElement {
   const [renameValue, setRenameValue] = useState('')
   const [renameError, setRenameError] = useState('')
   const [renameSaving, setRenameSaving] = useState(false)
+
+  // Remove member confirm dialog state
+  const [removeMemberId, setRemoveMemberId] = useState<string | null>(null)
 
   // Invite modal state
   const [showInvite, setShowInvite] = useState(false)
@@ -173,8 +177,7 @@ function Organization(): React.ReactElement {
     }
   }
 
-  async function handleRemoveMember(memberId: string) {
-    if (!confirm('Remove this member from your organization?')) return
+  async function doRemoveMember(memberId: string) {
     try {
       await authClient.delete(`/org/members/${memberId}`)
       setMembers(prev => prev.filter(m => m.id !== memberId))
@@ -216,8 +219,28 @@ function Organization(): React.ReactElement {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-48">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
+        <div>
+          <div className="h-5 skeleton-shimmer rounded w-40 mb-2" />
+          <div className="h-3 skeleton-shimmer rounded w-64" />
+        </div>
+        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+          <div className="border-b border-border px-5 py-3 flex gap-8">
+            {['w-24', 'w-16', 'w-20'].map((w, i) => (
+              <div key={i} className={`h-2.5 skeleton-shimmer rounded ${w}`} />
+            ))}
+          </div>
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-8 px-5 py-3.5 border-b border-border last:border-0">
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 skeleton-shimmer rounded w-32" />
+                <div className="h-2.5 skeleton-shimmer rounded w-48" />
+              </div>
+              <div className="h-5 skeleton-shimmer rounded-full w-16" />
+              <div className="h-3 skeleton-shimmer rounded w-24" />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -226,7 +249,7 @@ function Organization(): React.ReactElement {
     <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="gradient-text-purple text-xl font-bold">Organization</h1>
+        <h1 className="font-display text-xl font-semibold tracking-tight text-primary">Organization</h1>
         <p className="text-secondary text-sm mt-0.5">Manage your organization settings and members</p>
       </div>
 
@@ -239,7 +262,7 @@ function Organization(): React.ReactElement {
 
       {/* Org info card */}
       {org && (
-        <div className="bg-card border border-white/[0.08] rounded-xl p-5 space-y-4">
+        <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-secondary uppercase tracking-widest mb-1">Organization name</p>
@@ -251,7 +274,7 @@ function Organization(): React.ReactElement {
                     onChange={(e) => setRenameValue(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') void saveRename(); if (e.key === 'Escape') setRenaming(false) }}
                     autoFocus
-                    className="bg-base border border-white/[0.12] text-primary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 w-full max-w-xs transition-all"
+                    className="bg-base border border-border-strong text-primary text-sm px-3 py-1.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 w-full max-w-xs transition-all"
                   />
                   <button
                     onClick={() => void saveRename()}
@@ -280,7 +303,7 @@ function Organization(): React.ReactElement {
               {org.plan_tier}
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-4 pt-1 border-t border-white/[0.06]">
+          <div className="grid grid-cols-2 gap-4 pt-1 border-t border-border">
             <div>
               <p className="text-xs text-muted mb-0.5">Slug</p>
               <p className="text-sm text-secondary font-mono">{org.slug}</p>
@@ -302,7 +325,7 @@ function Organization(): React.ReactElement {
         {isManager && (
           <button
             onClick={() => { setShowInvite(true); setInviteSuccess(''); setInviteError('') }}
-            className="bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 text-white font-semibold text-sm py-2 px-4 rounded-lg transition-all duration-150"
+            className="bg-accent hover:bg-accent-light text-white font-semibold text-sm py-2 px-4 rounded-lg transition-all duration-150"
           >
             + Invite member
           </button>
@@ -310,10 +333,10 @@ function Organization(): React.ReactElement {
       </div>
 
       {/* Members table */}
-      <div className="bg-card border border-white/[0.08] rounded-xl overflow-hidden">
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/[0.06]">
+            <tr className="border-b border-border">
               <th className="text-left text-xs font-semibold text-secondary uppercase tracking-widest px-5 py-3">Member</th>
               <th className="text-left text-xs font-semibold text-secondary uppercase tracking-widest px-5 py-3">Role</th>
               <th className="text-left text-xs font-semibold text-secondary uppercase tracking-widest px-5 py-3">Joined</th>
@@ -324,7 +347,7 @@ function Organization(): React.ReactElement {
             {members.map((m) => {
               const isSelf = m.id === user?.id
               return (
-                <tr key={m.id} className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors">
+                <tr key={m.id} className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="font-medium text-primary">{m.display_name ?? m.email}</div>
                     {m.display_name && <div className="text-muted text-xs">{m.email}</div>}
@@ -351,7 +374,7 @@ function Organization(): React.ReactElement {
                     <td className="px-5 py-3.5 text-right">
                       {!isSelf && (
                         <button
-                          onClick={() => void handleRemoveMember(m.id)}
+                          onClick={() => setRemoveMemberId(m.id)}
                           className="text-muted hover:text-error text-xs transition-colors"
                         >
                           Remove
@@ -370,10 +393,10 @@ function Organization(): React.ReactElement {
       {isManager && invites.length > 0 && (
         <div>
           <h2 className="text-sm font-semibold text-secondary uppercase tracking-widest mb-3">Pending Invites</h2>
-          <div className="bg-card border border-white/[0.08] rounded-xl overflow-hidden">
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06]">
+                <tr className="border-b border-border">
                   <th className="text-left text-xs font-semibold text-secondary uppercase tracking-widest px-5 py-3">Email</th>
                   <th className="text-left text-xs font-semibold text-secondary uppercase tracking-widest px-5 py-3">Role</th>
                   <th className="text-left text-xs font-semibold text-secondary uppercase tracking-widest px-5 py-3">Expires</th>
@@ -382,7 +405,7 @@ function Organization(): React.ReactElement {
               </thead>
               <tbody>
                 {invites.map((inv) => (
-                  <tr key={inv.id} className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors">
+                  <tr key={inv.id} className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors">
                     <td className="px-5 py-3.5 text-primary">{inv.email}</td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-block text-xs font-medium border rounded-full px-2.5 py-0.5 ${ROLE_BADGE[inv.role] ?? ROLE_BADGE['member']}`}>
@@ -406,10 +429,20 @@ function Organization(): React.ReactElement {
         </div>
       )}
 
+      {/* Remove member confirm dialog */}
+      <ConfirmDialog
+        isOpen={removeMemberId !== null}
+        onClose={() => setRemoveMemberId(null)}
+        onConfirm={() => { if (removeMemberId) void doRemoveMember(removeMemberId) }}
+        title="Remove member"
+        message="Are you sure you want to remove this member from your organization? This action cannot be undone."
+        confirmLabel="Remove"
+      />
+
       {/* Invite modal */}
       {showInvite && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowInvite(false)}>
-          <div className="bg-surface border border-white/[0.12] rounded-xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-surface border border-border-strong rounded-xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-base font-bold text-primary mb-4">Invite a member</h2>
 
             {inviteSuccess ? (
@@ -434,7 +467,7 @@ function Organization(): React.ReactElement {
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     placeholder="colleague@company.com"
-                    className="w-full bg-base border border-white/[0.12] text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 transition-all placeholder:text-muted"
+                    className="w-full bg-base border border-border-strong text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 transition-all placeholder:text-muted"
                   />
                 </div>
 
@@ -462,14 +495,14 @@ function Organization(): React.ReactElement {
                   <button
                     type="button"
                     onClick={() => setShowInvite(false)}
-                    className="flex-1 border border-white/[0.1] text-secondary hover:text-primary text-sm font-medium py-2.5 rounded-lg transition-colors"
+                    className="flex-1 border border-border text-secondary hover:text-primary text-sm font-medium py-2.5 rounded-lg transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={inviteSubmitting}
-                    className="flex-1 bg-gradient-to-r from-accent to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-lg transition-all"
+                    className="flex-1 bg-accent hover:bg-accent-light disabled:opacity-50 text-white font-semibold text-sm py-2.5 rounded-lg transition-all"
                   >
                     {inviteSubmitting ? 'Sending…' : 'Send invite'}
                   </button>

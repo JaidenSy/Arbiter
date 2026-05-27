@@ -13,12 +13,12 @@ import { useAuth } from '../context/AuthContext'
 import { authClient } from '../api/client'
 import type { DashboardStats } from '../api/types'
 
-const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'jaidensy07@gmail.com'
+const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'support@arbiterai.dev'
 
 // ── Plan limit constants (mirrors backend plan_limits.py) ────────────────────
 
 const PLAN_LIMITS: Record<string, { agents: number | null; toolCalls: number | null }> = {
-  free:       { agents: 3,  toolCalls: 1_000 },
+  free:       { agents: 2,  toolCalls: 5_000 },
   pro:        { agents: 25, toolCalls: 100_000 },
   enterprise: { agents: null, toolCalls: null },
 }
@@ -43,7 +43,7 @@ const fetchStats = (): Promise<DashboardStats> =>
 // ── Separator ─────────────────────────────────────────────────────────────────
 
 function Sep(): React.ReactElement {
-  return <span className="w-px h-3.5 bg-white/[0.1] flex-shrink-0" />
+  return <span className="w-px h-3.5 bg-border-strong flex-shrink-0" />
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -78,16 +78,16 @@ function UsageStrip(): React.ReactElement | null {
   const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1)
 
   return (
-    <div className="flex items-center gap-3 px-8 py-2 bg-gradient-to-r from-surface via-surface to-surface/80 border-b border-white/[0.06] text-xs font-mono text-secondary flex-wrap">
+    <div className="flex items-center gap-3 px-8 py-2 bg-surface border-b border-border text-xs font-mono text-secondary flex-wrap">
       {/* Plan badge */}
       <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
         plan === 'enterprise'
-          ? 'bg-violet-500/15 text-violet-300 border border-violet-500/25'
+          ? 'bg-accent/15 text-accent-light border border-border-accent'
           : plan === 'pro'
           ? 'bg-teal/10 text-teal-light border border-teal/20'
           : 'bg-accent/10 text-accent-light border border-accent/20'
       }`}>
-        <span className={`w-1 h-1 rounded-full ${plan === 'enterprise' ? 'bg-violet-400' : plan === 'pro' ? 'bg-teal-light' : 'bg-accent-light'}`} />
+        <span className={`w-1 h-1 rounded-full ${plan === 'enterprise' ? 'bg-accent-light' : plan === 'pro' ? 'bg-teal-light' : 'bg-accent-light'}`} />
         {planLabel}
       </span>
 
@@ -121,8 +121,8 @@ function UsageStrip(): React.ReactElement | null {
         <>
           <Sep />
           <Link
-            to="/settings#billing"
-            className="text-accent-light hover:text-white transition-colors font-medium"
+            to="/settings?tab=billing"
+            className="text-accent-light hover:text-primary transition-colors duration-150 font-medium"
           >
             Upgrade →
           </Link>
@@ -133,7 +133,7 @@ function UsageStrip(): React.ReactElement | null {
           <Sep />
           <a
             href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Enterprise`}
-            className="text-accent-light hover:text-white transition-colors font-medium"
+            className="text-accent-light hover:text-primary transition-colors duration-150 font-medium"
           >
             Contact Sales →
           </a>
