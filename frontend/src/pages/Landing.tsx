@@ -134,7 +134,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
           className="text-muted text-xs animate-fade-in"
           style={{ animationDelay: '200ms', animationFillMode: 'both' }}
         >
-          Free plan includes 3 agents · 1,000 tool calls/mo · No credit card required
+          Free plan includes 2 agents · 5,000 tool calls/mo · No credit card required
         </p>
 
         {/* Terminal demo */}
@@ -471,9 +471,9 @@ const pricingTiers: PricingTier[] = [
     price: '$0',
     period: '/mo',
     features: [
-      '3 agents',
+      '2 agents',
       '5 MCP servers',
-      '1,000 tool calls/mo',
+      '5,000 tool calls/mo',
       '10 vault secrets',
       'Community support',
     ],
