@@ -50,6 +50,7 @@ export interface MCPServerUpdate {
   base_url?: string;
   description?: string | null;
   cache_enabled?: boolean;
+  is_active?: boolean;
 }
 
 export interface SessionEvent {
