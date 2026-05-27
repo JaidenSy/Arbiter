@@ -93,6 +93,7 @@ class MCPServerUpdate(BaseModel):
     base_url: str | None = None
     description: str | None = None
     cache_enabled: bool | None = None
+    is_active: bool | None = None
 
     @field_validator("base_url")
     @classmethod
@@ -184,7 +185,7 @@ async def create_mcp_server(
         resource="mcp_servers",
         model=MCPServer,
         filter_col=MCPServer.org_id,
-        count_active_only=False,  # count soft-deleted too — prevents slot-cycling exploit
+        count_active_only=True,
     )
 
     server = MCPServer(
@@ -226,14 +227,12 @@ async def list_mcp_servers(
     """
     limit = min(limit, 200)
     total = await db.scalar(
-        select(func.count(MCPServer.id)).where(
-            MCPServer.is_active.is_(True), MCPServer.org_id == current_user.org_id
-        )
+        select(func.count(MCPServer.id)).where(MCPServer.org_id == current_user.org_id)
     ) or 0
     result = await db.execute(
         select(MCPServer)
-        .where(MCPServer.is_active.is_(True), MCPServer.org_id == current_user.org_id)
-        .order_by(MCPServer.created_at.desc())
+        .where(MCPServer.org_id == current_user.org_id)
+        .order_by(MCPServer.is_active.desc(), MCPServer.created_at.desc())
         .offset(skip)
         .limit(limit)
     )
@@ -313,7 +312,6 @@ async def update_mcp_server(
         select(MCPServer).where(
             MCPServer.id == server_id,
             MCPServer.org_id == current_user.org_id,
-            MCPServer.is_active.is_(True),
         )
     )
     server = result.scalar_one_or_none()
@@ -321,6 +319,15 @@ async def update_mcp_server(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"MCP server {server_id} not found",
+        )
+
+    if body.is_active is True and not server.is_active:
+        org = await db.get(Organization, current_user.org_id)
+        if org is None:
+            raise HTTPException(status_code=500, detail="Org not found")
+        await check_resource_limit(
+            db=db, org=org, resource="mcp_servers",
+            model=MCPServer, filter_col=MCPServer.org_id, count_active_only=True,
         )
 
     if body.name is not None:
@@ -331,6 +338,8 @@ async def update_mcp_server(
         server.description = body.description
     if body.cache_enabled is not None:
         server.cache_enabled = body.cache_enabled
+    if body.is_active is not None:
+        server.is_active = body.is_active
 
     await db.commit()
     await db.refresh(server)
@@ -368,7 +377,7 @@ async def delete_mcp_server(
             detail=f"MCP server {server_id} not found",
         )
 
-    server.is_active = False
+    await db.delete(server)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
