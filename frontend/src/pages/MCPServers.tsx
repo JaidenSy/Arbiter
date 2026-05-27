@@ -16,6 +16,7 @@ import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Toggle from '../components/Toggle'
 import { Button } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,8 @@ function ServerFormModal({
   onClose,
   editTarget,
 }: ServerFormModalProps): React.ReactElement | null {
+  const { user } = useAuth()
+  const isPro = user?.org_plan !== 'free'
   const queryClient = useQueryClient()
 
   const [name, setName] = useState(editTarget?.name ?? '')
@@ -184,12 +187,19 @@ function ServerFormModal({
           />
         </div>
 
-        <div className="flex items-center justify-between py-1">
+        <div className={`flex items-center justify-between py-1 ${!isPro ? 'opacity-50' : ''}`}>
           <div>
-            <span className="text-sm text-primary font-medium">Cache enabled</span>
-            <p className="text-xs text-secondary mt-0.5">Cache tool responses for faster repeated calls</p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-primary font-medium">Cache enabled</span>
+              {!isPro && (
+                <span className="text-[10px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/20">Pro</span>
+              )}
+            </div>
+            <p className="text-xs text-secondary mt-0.5">
+              {isPro ? 'Cache tool responses for faster repeated calls' : 'Upgrade to Pro to enable response caching'}
+            </p>
           </div>
-          <Toggle checked={cacheEnabled} onChange={setCacheEnabled} />
+          <Toggle checked={isPro ? cacheEnabled : false} onChange={isPro ? setCacheEnabled : () => {}} />
         </div>
 
         {error && (
