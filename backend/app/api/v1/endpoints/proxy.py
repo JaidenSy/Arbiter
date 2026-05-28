@@ -154,7 +154,7 @@ async def tools_list(
                 json=jsonrpc_body,
                 headers={
                     "Content-Type": "application/json",
-                    "Accept": "application/json",
+                    "Accept": "application/json, text/event-stream",
                 },
             )
         if resp.status_code >= 400:
