@@ -404,7 +404,18 @@ async def test_mcp_server(
     if server is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {server_id} not found")
 
+    import json as _json
     import time
+
+    def _parse_mcp_response(r: httpx.Response) -> dict:
+        """Parse JSON or SSE-wrapped JSON from an MCP Streamable HTTP response."""
+        if "text/event-stream" in r.headers.get("content-type", ""):
+            for line in r.text.splitlines():
+                if line.startswith("data: "):
+                    return _json.loads(line[6:])
+            return {}
+        return r.json()
+
     url = server.base_url.rstrip("/")
     _MCP_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
     try:
@@ -423,7 +434,7 @@ async def test_mcp_server(
         latency_ms = int((time.monotonic() - t0) * 1000)
         if resp.status_code >= 400:
             return MCPServerTestResponse(reachable=False, error=f"HTTP {resp.status_code}", latency_ms=latency_ms)
-        data = resp.json()
+        data = _parse_mcp_response(resp)
         tools = data.get("result", {}).get("tools", [])
         return MCPServerTestResponse(reachable=True, tool_count=len(tools), latency_ms=latency_ms)
     except Exception as exc:
