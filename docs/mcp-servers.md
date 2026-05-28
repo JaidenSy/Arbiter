@@ -1,19 +1,134 @@
 # MCP Servers
 
-An MCP server in Arbiter is a registered upstream that agents route tool calls through. Arbiter proxies JSON-RPC 2.0 requests to these servers, applies RBAC, injects vault secrets, and caches responses.
+An MCP server in Arbiter is a registered upstream that agents route tool calls through. Arbiter proxies JSON-RPC 2.0 requests to these servers, applying RBAC, vault secret injection, rate limiting, and caching along the way.
+
+---
+
+## Transport requirement
+
+Arbiter communicates with MCP servers using the **MCP Streamable HTTP transport** (the current MCP standard). Every tool call is a `POST` with:
+
+```
+Content-Type: application/json
+Accept: application/json, text/event-stream
+```
+
+The server may respond with either plain JSON or an SSE-formatted body (`data: {...}\n\n`) — Arbiter handles both. The Arbiter test endpoint performs a full MCP handshake (initialize → tools/list) to validate connectivity.
+
+> **SSE-only servers are not supported.** If your server only supports the legacy SSE transport (GET `/sse` + POST `/messages`), wrap it with supergateway (see below).
+
+---
+
+## URL format
+
+`base_url` must point to the server's MCP endpoint directly — Arbiter POSTs JSON-RPC to it as-is. For Streamable HTTP servers this is typically the `/mcp` path:
+
+```
+https://my-mcp-server.example.com/mcp    # remote server
+http://mcp-filesystem:3001/mcp           # Docker Compose service
+http://127.0.0.1:3001/mcp               # localhost
+```
+
+**Do not** set `base_url` to just the host root unless the server explicitly serves MCP at `/`.
+
+---
+
+## Server types and setup
+
+### Native Streamable HTTP servers
+
+These servers speak Streamable HTTP out of the box (e.g. `@playwright/mcp`, most newer MCP packages). Register them directly with their `/mcp` endpoint.
+
+```bash
+# Start playwright MCP on port 3200
+npx @playwright/mcp --port 3200 --headless
+# base_url → http://localhost:3200/mcp
+```
+
+**Allowed-hosts**: Some servers (like `@playwright/mcp`) validate the `Host` header and only accept requests from specified origins. If you are exposing the server through a tunnel or reverse proxy, pass the tunnel hostname:
+
+```bash
+npx @playwright/mcp --port 3200 --headless --allowed-hosts your-tunnel-domain.example.com
+```
+
+Without this, requests arriving with a non-localhost `Host` header will be rejected with 403.
+
+### stdio-only servers
+
+Many MCP packages (e.g. `@modelcontextprotocol/server-github`, `mcpvault`) communicate via stdin/stdout and have no built-in HTTP server. Use [supergateway](https://github.com/supermachine-ai/supergateway) to bridge them to Streamable HTTP:
+
+```bash
+# Install
+brew install supergateway   # macOS
+npm install -g supergateway # or via npm
+
+# Wrap a stdio server
+supergateway \
+  --stdio "npx -y @modelcontextprotocol/server-github" \
+  --port 3300 \
+  --outputTransport streamableHttp
+
+# base_url → http://localhost:3300/mcp
+```
+
+Pass environment variables to the stdio command as normal shell env vars:
+
+```bash
+GITHUB_PERSONAL_ACCESS_TOKEN=ghp_... supergateway \
+  --stdio "npx -y @modelcontextprotocol/server-github" \
+  --port 3300 \
+  --outputTransport streamableHttp
+```
+
+> **`--outputTransport streamableHttp` is required.** Without it, supergateway defaults to SSE transport (served at `/sse`) which Arbiter cannot use.
+
+---
+
+## Exposing local servers to a hosted Arbiter
+
+If your Arbiter backend is hosted (e.g. Railway, Fly) but your MCP servers run locally, you need a tunnel to make them reachable. [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) is free and supports multiple ingress rules in a single tunnel.
+
+**Example config (`~/.cloudflared/config.yml`):**
+
+```yaml
+tunnel: <your-tunnel-id>
+credentials-file: /path/to/<tunnel-id>.json
+
+ingress:
+  - hostname: obsidian.yourdomain.com
+    service: http://localhost:3100
+  - hostname: playwright.yourdomain.com
+    service: http://localhost:3200
+  - hostname: github.yourdomain.com
+    service: http://localhost:3300
+  - service: http_status:404
+```
+
+Run: `cloudflared tunnel run <tunnel-name>`
+
+DNS records for each hostname must exist in Cloudflare and be set to **Proxied** (orange cloud).
+
+With this setup your `base_url` values become:
+
+```
+https://obsidian.yourdomain.com/mcp
+https://playwright.yourdomain.com/mcp
+https://github.yourdomain.com/mcp
+```
+
+---
 
 ## Register a server
 
 ```bash
-curl -s -X POST http://localhost:8000/api/v1/mcp-servers \
+curl -s -X POST https://your-arbiter.example.com/api/v1/mcp-servers \
+  -H "Authorization: Bearer <user-token>" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "filesystem",
-    "url": "http://mcp-filesystem:3001",
-    "description": "Local filesystem read/write",
-    "cache_enabled": true,
-    "cache_ttl_seconds": 300,
-    "cache_similarity_threshold": 0.92
+    "name": "github",
+    "base_url": "https://github.yourdomain.com/mcp",
+    "description": "GitHub API via MCP",
+    "cache_enabled": false
   }'
 ```
 
@@ -22,121 +137,100 @@ Response:
 ```json
 {
   "id": "c4d5e6f7-8a9b-0c1d-2e3f-4a5b6c7d8e9f",
-  "name": "filesystem",
-  "url": "http://mcp-filesystem:3001",
-  "cache_enabled": true,
-  "cache_ttl_seconds": 300,
-  "cache_similarity_threshold": 0.92,
+  "name": "github",
+  "base_url": "https://github.yourdomain.com/mcp",
+  "description": "GitHub API via MCP",
+  "cache_enabled": false,
+  "is_active": true,
   "created_at": "2026-04-01T12:00:00Z"
 }
 ```
 
-The `name` field is the slug agents reference via the `X-MCP-Server` request header.
+The `name` field is the slug agents use when making proxy calls (`"server_name": "github"`).
 
 ## Fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | yes | Unique slug. Used in `X-MCP-Server` header and logs. Lowercase, hyphens allowed. |
-| `url` | string | yes | Base URL of the upstream MCP server. Must be reachable from the Arbiter container. |
-| `description` | string | no | Human-readable description. Shown in the dashboard. |
-| `cache_enabled` | bool | no | Default `true`. Set to `false` for side-effectful servers (see below). |
-| `cache_ttl_seconds` | int | no | Default `300`. How long cached responses are valid. |
-| `cache_similarity_threshold` | float | no | Default `0.92`. Cosine similarity floor for L3 semantic cache hits. Range 0.0–1.0. |
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `name` | string | yes | — | Unique slug. Used in proxy calls and logs. |
+| `base_url` | string | yes | — | Full MCP endpoint URL (e.g. `https://host/mcp`). |
+| `description` | string | no | null | Human-readable label shown in the dashboard. |
+| `cache_enabled` | bool | no | `true` | Set `false` for side-effectful servers (see below). |
 
-## URL format
-
-The `base_url` must be the full MCP endpoint URL — Arbiter POSTs JSON-RPC directly to it. For servers using the Streamable HTTP transport (the modern default), this is typically the `/mcp` path:
-
-```
-http://mcp-filesystem:3001/mcp      # Docker Compose service (Streamable HTTP)
-http://127.0.0.1:3001/mcp           # Localhost (Streamable HTTP)
-https://my-mcp-server.example.com/mcp  # Remote server (Streamable HTTP)
-```
-
-If you are wrapping a stdio-only server with `supergateway`, start it with `--outputTransport streamablehttp` and set `base_url` to `{host}/mcp`.
+---
 
 ## Testing connectivity
 
-Use the **Test** button in the dashboard (or `POST /mcp-servers/{id}/test`) to verify an MCP server is reachable. Arbiter sends a `tools/list` JSON-RPC call directly to `base_url` and returns the tool count and latency. If the test fails, confirm `base_url` points to the server's MCP endpoint (e.g. `/mcp`), not just the host root.
+Use the **Test** button in the dashboard or `POST /mcp-servers/{id}/test` to validate a server before granting agents access.
+
+The test performs a full MCP handshake:
+1. `initialize` — establishes protocol version and capabilities
+2. `tools/list` — retrieves the list of available tools
+
+On success it returns tool count and round-trip latency. On failure it returns the HTTP status or error message.
+
+**Common failures:**
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `HTTP 406` | Server received wrong `Accept` header | Upgrade Arbiter — older versions sent `Accept: application/json` only |
+| `HTTP 403` | Server rejected `Host` header | Add `--allowed-hosts <tunnel-hostname>` when starting the server |
+| `HTTP 404` | Wrong `base_url` path | Ensure `base_url` ends in `/mcp`, not just the host root |
+| `HTTP 502` | Arbiter can't reach the server | Check the server is running and the tunnel/URL is correct |
+| `Expecting value` | Server returned SSE body that failed JSON parse | Upgrade Arbiter — older versions didn't handle SSE-formatted responses |
+| `Connection refused` | Nothing listening on that port | Start the MCP server (or supergateway wrapper) first |
+
+---
 
 ## The `cache_enabled` flag
 
-This flag controls whether Arbiter caches responses from this server and serves cached results on future matching requests.
+**Set `false` for side-effectful servers** — anything that sends messages, charges money, mutates external state, or produces time-sensitive results (GitHub writes, Stripe, email, Slack).
 
-**Set `cache_enabled: false` for servers that have side effects**: anything that sends messages, charges money, mutates external state, or produces time-sensitive results.
+**Set `true` (or omit) for read-heavy, idempotent servers** — file reads, database queries, search indexes, knowledge bases.
+
+When `cache_enabled` is `false`, Arbiter skips all cache layers on both reads and writes.
+
+---
+
+## Disable and re-enable
+
+Servers can be disabled without deleting them. A disabled server is invisible to agents and does not count against your active server quota, but its configuration is preserved so it can be re-enabled later.
+
+From the dashboard: open the overflow menu (⋯) on any server row and select **Disable** or **Enable**.
+
+Via API:
 
 ```bash
-# Register a Stripe MCP server — never serve stale cached responses
-curl -s -X POST http://localhost:8000/api/v1/mcp-servers \
+# Disable
+curl -s -X PATCH https://your-arbiter.example.com/api/v1/mcp-servers/<id> \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "stripe",
-    "url": "http://mcp-stripe:3002",
-    "cache_enabled": false
-  }'
-```
+  -d '{"is_active": false}'
 
-**Set `cache_enabled: true` (or omit it) for read-heavy, idempotent servers**: file reads, database queries, search indexes, reference data.
-
-```bash
-curl -s -X POST http://localhost:8000/api/v1/mcp-servers \
+# Re-enable
+curl -s -X PATCH https://your-arbiter.example.com/api/v1/mcp-servers/<id> \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "postgres-readonly",
-    "url": "http://mcp-pg:3003",
-    "cache_enabled": true,
-    "cache_ttl_seconds": 60
-  }'
+  -d '{"is_active": true}'
 ```
 
-When `cache_enabled` is `false`, Arbiter skips all three cache layers (Redis, Postgres exact, Postgres semantic) on both reads and writes. The `cache_ttl_seconds` and `cache_similarity_threshold` fields are ignored.
+On plans with an active server limit, re-enabling a server when at the limit prompts you to select an active server to swap out.
 
-## How the three cache layers interact with `cache_enabled`
-
-For servers where `cache_enabled: true`, every tool call goes through:
-
-1. **L1 — Redis exact match**: SHA-256 hash of canonical JSON params. O(1). ~1ms.
-2. **L2 — Postgres exact match**: same hash in the `cache_db` table. Used if Redis is cold.
-3. **L3 — Postgres semantic match**: cosine similarity between the incoming request embedding and stored embeddings. Threshold: `cache_similarity_threshold`.
-
-On a cache miss at all three layers, the request goes upstream, and the response is written to Redis + Postgres asynchronously (non-blocking).
-
-See [vault.md](./vault.md) for how secrets are injected before the request is forwarded.
-
-## List registered servers
-
-```bash
-curl -s http://localhost:8000/api/v1/mcp-servers
-```
-
-## Update a server
-
-```bash
-curl -s -X PATCH http://localhost:8000/api/v1/mcp-servers/c4d5e6f7-... \
-  -H "Content-Type: application/json" \
-  -d '{"cache_ttl_seconds": 600}'
-```
+---
 
 ## Delete a server
 
+Deletion is permanent and removes all associated tool permissions. Session history and audit events referencing the server are preserved.
+
 ```bash
-curl -s -X DELETE http://localhost:8000/api/v1/mcp-servers/c4d5e6f7-...
+curl -s -X DELETE https://your-arbiter.example.com/api/v1/mcp-servers/<id> \
+  -H "Authorization: Bearer <token>"
 ```
 
-Deleting a server removes all associated permissions from the `tool_permissions` table. Cached responses are not immediately purged from Redis or Postgres. They expire naturally according to `cache_ttl_seconds`.
+---
 
 ## `tools/list` filtering
 
-When an agent calls `tools/list` on a server, Arbiter filters the returned tool list to only include tools the agent has permission to call. Agents never see tool names they are not permitted to use. This prevents information leakage about the server's capabilities.
+When an agent calls `tools/list`, Arbiter filters the response to only include tools that agent is permitted to call — preventing information leakage about capabilities the agent cannot access.
 
-```bash
-# Agent sends tools/list
-curl -s -X POST http://localhost:8000/api/v1/proxy/tool-call \
-  -H "Authorization: Bearer nxai_..." \
-  -H "X-MCP-Server: filesystem" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
-```
-
-The response only contains tools the agent is permitted to call, not the full list exposed by the upstream server.
+See [rbac.md](./rbac.md) for how to grant tool permissions to agents.
