@@ -23,6 +23,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import UpgradeModal from './components/UpgradeModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import CommandPalette from './components/CommandPalette'
+import VerificationBanner from './components/VerificationBanner'
 import { PaletteProvider } from './context/PaletteContext'
 import { useAuth } from './context/AuthContext'
 
@@ -94,11 +95,12 @@ function AppLayout({ children }: { children: React.ReactNode }): React.ReactElem
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 ml-[52px] min-h-screen">
+      <main className="flex-1 ml-[52px] min-h-screen flex flex-col">
+        <VerificationBanner />
         {/* Per-page boundary — keeps the sidebar alive if one page crashes */}
         <ErrorBoundary>
           {/* Key on pathname re-triggers page-enter animation on every route change */}
-          <div key={pathname} className="page-enter">
+          <div key={pathname} className="page-enter flex-1">
             {children}
           </div>
         </ErrorBoundary>

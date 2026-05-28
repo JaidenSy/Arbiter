@@ -104,6 +104,9 @@ async def get_or_create_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Account is deactivated",
             )
+        # OAuth provider has verified this email — mark the user as verified.
+        if not existing_user.is_verified:
+            existing_user.is_verified = True
         sa = SocialAccount(
             user_id=existing_user.id,
             org_id=existing_user.org_id,
@@ -136,6 +139,7 @@ async def get_or_create_user(
         hashed_password="",  # SSO-only account — no password login
         role="owner",
         is_active=True,
+        is_verified=True,  # OAuth provider verified the email — no additional step needed
     )
     db.add(user)
     await db.flush()

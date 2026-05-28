@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_agent, get_db, get_redis
+from app.core.dependencies import get_current_agent, get_db, get_redis, require_org_verified
 from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
@@ -35,6 +35,7 @@ router = APIRouter(prefix="/proxy", tags=["proxy"])
     response_model=ToolCallResponse,
     status_code=status.HTTP_200_OK,
     summary="Invoke an MCP tool through the Arbiter gateway",
+    dependencies=[Depends(require_org_verified)],
 )
 async def tool_call(
     body: ToolCallRequest,
@@ -106,6 +107,7 @@ class ToolsListResponse(BaseModel):
     response_model=ToolsListResponse,
     status_code=status.HTTP_200_OK,
     summary="List tools available on an MCP server (RBAC-filtered)",
+    dependencies=[Depends(require_org_verified)],
 )
 async def tools_list(
     body: ToolsListRequest,
