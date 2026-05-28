@@ -254,7 +254,14 @@ class ProxyService:
                     logger.warning("proxy: Redis session store failed: %s", exc)
 
             try:
-                json_body = http_resp.json()
+                if "text/event-stream" in http_resp.headers.get("content-type", ""):
+                    json_body = {}
+                    for line in http_resp.text.splitlines():
+                        if line.startswith("data: "):
+                            json_body = json.loads(line[6:])
+                            break
+                else:
+                    json_body = http_resp.json()
             except Exception:
                 # Non-JSON response — wrap as text.
                 json_body = {"content": [{"type": "text", "text": http_resp.text}]}
