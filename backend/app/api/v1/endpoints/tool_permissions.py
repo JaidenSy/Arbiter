@@ -6,6 +6,7 @@ tools on which MCP servers.  Permissions are agent-scoped sub-resources.
 
 Routes:
     POST   /agents/{agent_id}/permissions                  — grant a permission
+    POST   /agents/{agent_id}/permissions/batch            — grant multiple permissions at once
     GET    /agents/{agent_id}/permissions                  — list permissions for an agent
     PATCH  /agents/{agent_id}/permissions/{permission_id}  — update rate limits
     DELETE /agents/{agent_id}/permissions/{permission_id}  — revoke a permission
@@ -187,6 +188,73 @@ async def create_tool_permission(
 
     await db.refresh(permission)
     return ToolPermissionResponse.model_validate(permission)
+
+
+class ToolPermissionBatchCreate(BaseModel):
+    """Request body for granting multiple tool permissions at once."""
+    permissions: list[ToolPermissionCreate] = Field(..., min_length=1)
+
+
+class ToolPermissionBatchResponse(BaseModel):
+    granted: list[ToolPermissionResponse]
+    skipped: int  # count of duplicates that were silently ignored
+
+
+@router.post(
+    "/{agent_id}/permissions/batch",
+    response_model=ToolPermissionBatchResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Grant multiple tool permissions at once",
+)
+async def batch_create_tool_permissions(
+    agent_id: uuid.UUID,
+    body: ToolPermissionBatchCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("owner", "admin")),
+) -> ToolPermissionBatchResponse:
+    """Grant several tool permissions in a single request. Duplicate entries are skipped."""
+    agent_result = await db.execute(
+        select(Agent).where(Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True))
+    )
+    if agent_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
+
+    granted: list[ToolPermissionResponse] = []
+    skipped = 0
+
+    for item in body.permissions:
+        server_result = await db.execute(
+            select(MCPServer).where(
+                MCPServer.id == item.mcp_server_id,
+                MCPServer.org_id == current_user.org_id,
+                MCPServer.is_active.is_(True),
+            )
+        )
+        if server_result.scalar_one_or_none() is None:
+            continue
+
+        permission = ToolPermission(
+            org_id=current_user.org_id,
+            agent_id=agent_id,
+            mcp_server_id=item.mcp_server_id,
+            tool_name=item.tool_name,
+            rate_limit_per_minute=item.rate_limit_per_minute,
+            cache_ttl_seconds=item.cache_ttl_seconds,
+            granted_by=current_user.display_name or current_user.email,
+            granted_by_user_id=current_user.id,
+        )
+        db.add(permission)
+        try:
+            await db.flush()
+            await _log_event(db, action="granted", permission=permission, current_user=current_user)
+            await db.commit()
+            await db.refresh(permission)
+            granted.append(ToolPermissionResponse.model_validate(permission))
+        except IntegrityError:
+            await db.rollback()
+            skipped += 1
+
+    return ToolPermissionBatchResponse(granted=granted, skipped=skipped)
 
 
 @router.get(

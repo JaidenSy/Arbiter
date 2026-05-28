@@ -87,11 +87,25 @@ export interface ToolPermission {
   cache_ttl_seconds: number | null;
 }
 
+export interface MCPServerTool {
+  name: string
+  description: string | null
+}
+
 export interface ToolPermissionCreate {
   mcp_server_id: string
   tool_name: string
   rate_limit_per_minute?: number | null
   cache_ttl_seconds?: number | null
+}
+
+export interface ToolPermissionBatchCreate {
+  permissions: ToolPermissionCreate[]
+}
+
+export interface ToolPermissionBatchResponse {
+  granted: ToolPermission[]
+  skipped: number
 }
 
 export interface ToolPermissionUpdate {
