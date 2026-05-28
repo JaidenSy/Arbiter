@@ -88,6 +88,7 @@ async def create_agent(
         api_key_hash=key_hash,
         is_active=True,
         scope=body.scope,
+        rate_limit_per_minute=body.rate_limit_per_minute,
     )
     db.add(agent)
     await db.commit()
@@ -99,6 +100,7 @@ async def create_agent(
         description=agent.description,
         is_active=agent.is_active,
         scope=agent.scope,
+        rate_limit_per_minute=agent.rate_limit_per_minute,
         created_at=agent.created_at,
         updated_at=agent.updated_at,
         api_key=raw_key,
@@ -186,6 +188,8 @@ async def update_agent(
         agent.name = body.name
     if body.description is not None:
         agent.description = body.description
+    if "rate_limit_per_minute" in body.model_fields_set:
+        agent.rate_limit_per_minute = body.rate_limit_per_minute
 
     await db.commit()
     await db.refresh(agent)

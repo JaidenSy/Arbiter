@@ -157,6 +157,22 @@ class ProxyService:
                     ),
                 )
 
+        # ── 2c. Agent-level aggregate rate limiting ────────────────────────────
+        if agent.rate_limit_per_minute is not None:
+            minute_bucket = int(time.time() // 60)
+            agent_rl_key = f"rl:agent:{agent.id}:{minute_bucket}"
+            agent_count = await self.redis.incr(agent_rl_key)
+            if agent_count == 1:
+                await self.redis.expire(agent_rl_key, 120)
+            if agent_count > agent.rate_limit_per_minute:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail=(
+                        f"Agent rate limit exceeded: {agent.name!r} may make at most "
+                        f"{agent.rate_limit_per_minute} tool calls per minute across all tools"
+                    ),
+                )
+
         # ── 3. Load org + determine plan features ─────────────────────────────
         org = await self.db.get(Organization, agent.org_id)
         semantic_cache = PLAN_LIMITS.get(org.plan_tier, {}).get("semantic_cache", False)

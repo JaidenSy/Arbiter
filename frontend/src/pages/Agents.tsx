@@ -25,13 +25,14 @@ const createAgent = (payload: {
   name: string;
   description: string;
   scope: AgentScope;
+  rate_limit_per_minute?: number | null;
 }): Promise<AgentCreateResponse> =>
   authClient.post<AgentCreateResponse>("/agents", payload).then((r) => r.data);
 
 const deleteAgent = (id: string): Promise<void> =>
   authClient.delete(`/agents/${id}`).then(() => undefined);
 
-const updateAgent = (id: string, payload: { name?: string; description?: string }): Promise<Agent> =>
+const updateAgent = (id: string, payload: { name?: string; description?: string; rate_limit_per_minute?: number | null }): Promise<Agent> =>
   authClient.patch<Agent>(`/agents/${id}`, payload).then((r) => r.data);
 
 const rotateAgentKey = (id: string): Promise<AgentCreateResponse> =>
@@ -63,6 +64,7 @@ function RegisterModal({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [scope, setScope] = useState<AgentScope>("full");
+  const [rateLimit, setRateLimit] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -71,6 +73,7 @@ function RegisterModal({
       setName("");
       setDescription("");
       setScope("full");
+      setRateLimit("");
       setError(null);
       onSuccess(data);
     },
@@ -83,13 +86,19 @@ function RegisterModal({
     e.preventDefault();
     if (!name.trim()) return;
     setError(null);
-    mutation.mutate({ name: name.trim(), description: description.trim(), scope });
+    mutation.mutate({
+      name: name.trim(),
+      description: description.trim(),
+      scope,
+      rate_limit_per_minute: rateLimit.trim() !== "" ? Number(rateLimit) : null,
+    });
   };
 
   const handleClose = (): void => {
     setName("");
     setDescription("");
     setScope("full");
+    setRateLimit("");
     setError(null);
     onClose();
   };
@@ -150,6 +159,20 @@ function RegisterModal({
               </button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="agent-rate-limit" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
+            Rate Limit <span className="text-muted normal-case font-normal">(total calls/min — leave blank for unlimited)</span>
+          </label>
+          <Input
+            id="agent-rate-limit"
+            type="number"
+            min={1}
+            value={rateLimit}
+            onChange={(e) => setRateLimit(e.target.value)}
+            placeholder="Unlimited"
+          />
         </div>
 
         {error && (
@@ -469,10 +492,11 @@ interface RenameModalProps {
 function RenameModal({ agent, onClose, onSuccess }: RenameModalProps): React.ReactElement | null {
   const [name, setName] = useState(agent?.name ?? "");
   const [description, setDescription] = useState(agent?.description ?? "");
+  const [rateLimit, setRateLimit] = useState(agent?.rate_limit_per_minute != null ? String(agent.rate_limit_per_minute) : "");
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: (payload: { name?: string; description?: string }) =>
+    mutationFn: (payload: { name?: string; description?: string; rate_limit_per_minute?: number | null }) =>
       updateAgent(agent!.id, payload),
     onSuccess: () => {
       onSuccess();
@@ -488,9 +512,11 @@ function RenameModal({ agent, onClose, onSuccess }: RenameModalProps): React.Rea
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     setError(null);
-    const payload: { name?: string; description?: string } = {};
+    const newRateLimit = rateLimit.trim() !== "" ? Number(rateLimit) : null;
+    const payload: { name?: string; description?: string; rate_limit_per_minute?: number | null } = {};
     if (name.trim() !== agent.name) payload.name = name.trim();
     if (description.trim() !== (agent.description ?? "")) payload.description = description.trim();
+    if (newRateLimit !== agent.rate_limit_per_minute) payload.rate_limit_per_minute = newRateLimit;
     if (Object.keys(payload).length === 0) { onClose(); return; }
     mutation.mutate(payload);
   };
@@ -514,6 +540,18 @@ function RenameModal({ agent, onClose, onSuccess }: RenameModalProps): React.Rea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="w-full bg-elevated border border-border text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-border-accent focus:ring-1 focus:ring-accent/25 transition-all resize-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
+            Rate Limit <span className="text-muted normal-case font-normal">(total calls/min — leave blank for unlimited)</span>
+          </label>
+          <Input
+            type="number"
+            min={1}
+            value={rateLimit}
+            onChange={(e) => setRateLimit(e.target.value)}
+            placeholder="Unlimited"
           />
         </div>
         {error && (
@@ -737,6 +775,7 @@ function Agents(): React.ReactElement {
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Description</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Status</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Scope</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Rate Limit</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Created</th>
               <th className="py-3 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">Actions</th>
             </tr>
@@ -799,6 +838,11 @@ function Agents(): React.ReactElement {
                     }`}>
                       {agent.scope === "full" ? "Full" : agent.scope === "read_only" ? "Read Only" : "Vault RO"}
                     </span>
+                  </td>
+                  <td className="py-3 px-4 font-mono text-xs text-muted">
+                    {agent.rate_limit_per_minute != null
+                      ? <span className="text-primary">{agent.rate_limit_per_minute}/min</span>
+                      : <span className="italic">unlimited</span>}
                   </td>
                   <td className="py-3 px-4 font-mono text-xs text-muted">
                     {formatDate(agent.created_at)}
