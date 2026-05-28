@@ -20,6 +20,7 @@ export interface Agent {
   description: string | null;
   is_active: boolean;
   scope: AgentScope;
+  rate_limit_per_minute: number | null;
   created_at: string;
 }
 

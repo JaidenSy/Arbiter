@@ -31,6 +31,11 @@ class AgentCreate(BaseModel):
         "full",
         description="Permission scope: 'full', 'read_only' (no vault writes), or 'vault_read_only' (no tool calls)",
     )
+    rate_limit_per_minute: int | None = Field(
+        None,
+        ge=1,
+        description="Max total tool calls per minute across all tools. Null = unlimited.",
+    )
 
 
 class AgentResponse(BaseModel):
@@ -45,6 +50,7 @@ class AgentResponse(BaseModel):
     description: str | None
     is_active: bool
     scope: str
+    rate_limit_per_minute: int | None
     created_at: datetime
     updated_at: datetime
 
@@ -56,6 +62,7 @@ class AgentUpdate(BaseModel):
 
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = Field(None, max_length=1000)
+    rate_limit_per_minute: int | None = Field(None, ge=1)
 
 
 class AgentCreateResponse(AgentResponse):
