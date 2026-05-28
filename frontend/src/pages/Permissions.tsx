@@ -10,10 +10,9 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
-import type { Agent, MCPServer, MCPServerTool, Page, ToolPermission, ToolPermissionBatchCreate, ToolPermissionBatchResponse, ToolPermissionCreate, ToolPermissionUpdate, ToolPermissionEvent } from '../api/types'
+import type { Agent, MCPServer, MCPServerTool, Page, ToolPermission, ToolPermissionBatchCreate, ToolPermissionBatchResponse, ToolPermissionUpdate, ToolPermissionEvent } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
-import { useAuth } from '../context/AuthContext'
 
 // ── Data fetchers / mutators ───────────────────────────────────────────────────
 
