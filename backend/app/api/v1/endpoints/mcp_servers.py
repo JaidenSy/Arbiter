@@ -4,16 +4,19 @@ Arbiter — API endpoints: MCP Servers.
 CRUD management of MCP server registrations.
 
 Routes:
-    POST   /mcp-servers          — register a new MCP server
-    GET    /mcp-servers          — list all active MCP servers
-    GET    /mcp-servers/{id}     — get a single server
-    PATCH  /mcp-servers/{id}     — update name, url, description, or cache_enabled
-    DELETE /mcp-servers/{id}     — soft-delete
+    POST   /mcp-servers               — register a new MCP server
+    GET    /mcp-servers               — list all active MCP servers
+    GET    /mcp-servers/{id}          — get a single server
+    PATCH  /mcp-servers/{id}          — update name, url, description, or cache_enabled
+    DELETE /mcp-servers/{id}          — soft-delete
+    POST   /mcp-servers/{id}/test     — test connectivity
+    GET    /mcp-servers/{id}/tools    — discover available tools
 """
 
 from __future__ import annotations
 
 import ipaddress
+import json as _json
 import socket
 import uuid
 from urllib.parse import urlparse
@@ -30,6 +33,34 @@ from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.services.plan.plan_service import check_resource_limit
+
+_MCP_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+
+
+def _parse_mcp_response(r: httpx.Response) -> dict:
+    """Parse JSON or SSE-wrapped JSON from an MCP Streamable HTTP response."""
+    if "text/event-stream" in r.headers.get("content-type", ""):
+        for line in r.text.splitlines():
+            if line.startswith("data: "):
+                return _json.loads(line[6:])
+        return {}
+    return r.json()
+
+
+async def _mcp_tools_list(base_url: str) -> list[dict]:
+    """Perform MCP initialize + tools/list handshake, return raw tools list."""
+    url = base_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        init_resp = await client.post(url, json={
+            "jsonrpc": "2.0", "id": "init", "method": "initialize",
+            "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "arbiter-discover", "version": "1.0"}},
+        }, headers=_MCP_HEADERS)
+        session_headers = dict(_MCP_HEADERS)
+        if session_id := init_resp.headers.get("Mcp-Session-Id"):
+            session_headers["Mcp-Session-Id"] = session_id
+        resp = await client.post(url, json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}, headers=session_headers)
+    data = _parse_mcp_response(resp)
+    return data.get("result", {}).get("tools", [])
 
 _PRIVATE_NETS = [
     ipaddress.ip_network(cidr) for cidr in (
@@ -404,38 +435,44 @@ async def test_mcp_server(
     if server is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {server_id} not found")
 
-    import json as _json
     import time
-
-    def _parse_mcp_response(r: httpx.Response) -> dict:
-        """Parse JSON or SSE-wrapped JSON from an MCP Streamable HTTP response."""
-        if "text/event-stream" in r.headers.get("content-type", ""):
-            for line in r.text.splitlines():
-                if line.startswith("data: "):
-                    return _json.loads(line[6:])
-            return {}
-        return r.json()
-
-    url = server.base_url.rstrip("/")
-    _MCP_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
     try:
         t0 = time.monotonic()
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            # MCP Streamable HTTP requires an initialize handshake before tools/list.
-            init_resp = await client.post(url, json={
-                "jsonrpc": "2.0", "id": "init", "method": "initialize",
-                "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "arbiter-test", "version": "1.0"}},
-            }, headers=_MCP_HEADERS)
-            session_headers = dict(_MCP_HEADERS)
-            if session_id := init_resp.headers.get("Mcp-Session-Id"):
-                session_headers["Mcp-Session-Id"] = session_id
-
-            resp = await client.post(url, json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}, headers=session_headers)
+        tools = await _mcp_tools_list(server.base_url)
         latency_ms = int((time.monotonic() - t0) * 1000)
-        if resp.status_code >= 400:
-            return MCPServerTestResponse(reachable=False, error=f"HTTP {resp.status_code}", latency_ms=latency_ms)
-        data = _parse_mcp_response(resp)
-        tools = data.get("result", {}).get("tools", [])
         return MCPServerTestResponse(reachable=True, tool_count=len(tools), latency_ms=latency_ms)
     except Exception as exc:
         return MCPServerTestResponse(reachable=False, error=str(exc))
+
+
+class MCPToolInfo(BaseModel):
+    name: str
+    description: str | None = None
+
+
+@router.get(
+    "/{server_id}/tools",
+    response_model=list[MCPToolInfo],
+    summary="Discover tools available on an MCP server",
+)
+async def list_mcp_server_tools(
+    server_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[MCPToolInfo]:
+    """Return the tools/list from the upstream MCP server for display in the UI."""
+    result = await db.execute(
+        select(MCPServer).where(
+            MCPServer.id == server_id,
+            MCPServer.org_id == current_user.org_id,
+            MCPServer.is_active.is_(True),
+        )
+    )
+    server = result.scalar_one_or_none()
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {server_id} not found")
+    try:
+        tools = await _mcp_tools_list(server.base_url)
+        return [MCPToolInfo(name=t.get("name", ""), description=t.get("description")) for t in tools]
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not fetch tools: {exc}") from exc

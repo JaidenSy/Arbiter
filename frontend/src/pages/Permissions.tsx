@@ -10,7 +10,7 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
-import type { Agent, MCPServer, Page, ToolPermission, ToolPermissionCreate, ToolPermissionUpdate, ToolPermissionEvent } from '../api/types'
+import type { Agent, MCPServer, MCPServerTool, Page, ToolPermission, ToolPermissionBatchCreate, ToolPermissionBatchResponse, ToolPermissionCreate, ToolPermissionUpdate, ToolPermissionEvent } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useAuth } from '../context/AuthContext'
@@ -26,15 +26,18 @@ const fetchMCPServers = (): Promise<Page<MCPServer>> =>
 const fetchPermissions = (agentId: string): Promise<ToolPermission[]> =>
   authClient.get<Page<ToolPermission>>(`/agents/${agentId}/permissions`).then((r) => r.data.items)
 
-const grantPermission = ({
+const fetchServerTools = (serverId: string): Promise<MCPServerTool[]> =>
+  authClient.get<MCPServerTool[]>(`/mcp-servers/${serverId}/tools`).then((r) => r.data)
+
+const grantPermissionsBatch = ({
   agentId,
   payload,
 }: {
   agentId: string
-  payload: ToolPermissionCreate
-}): Promise<ToolPermission> =>
+  payload: ToolPermissionBatchCreate
+}): Promise<ToolPermissionBatchResponse> =>
   authClient
-    .post<ToolPermission>(`/agents/${agentId}/permissions`, payload)
+    .post<ToolPermissionBatchResponse>(`/agents/${agentId}/permissions/batch`, payload)
     .then((r) => r.data)
 
 const revokePermission = ({
@@ -91,113 +94,143 @@ interface GrantModalProps {
   servers: MCPServer[]
 }
 
-function GrantModal({
-  isOpen,
-  onClose,
-  agentId,
-  servers,
-}: GrantModalProps): React.ReactElement | null {
+function GrantModal({ isOpen, onClose, agentId, servers }: GrantModalProps): React.ReactElement | null {
   const queryClient = useQueryClient()
-  const { user } = useAuth()
 
+  const activeServers = servers.filter((s) => s.is_active)
   const [mcpServerId, setMcpServerId] = useState('')
-  const [toolName, setToolName] = useState('')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
 
   React.useEffect(() => {
     if (isOpen) {
-      setMcpServerId(servers.length > 0 ? servers[0].id : '')
-      setToolName('')
+      const first = activeServers.length > 0 ? activeServers[0].id : ''
+      setMcpServerId(first)
+      setSelected(new Set())
       setError(null)
     }
-  }, [isOpen, servers])
+  }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { data: tools, isFetching: toolsFetching, isError: toolsError } = useQuery<MCPServerTool[]>({
+    queryKey: ['server-tools', mcpServerId],
+    queryFn: () => fetchServerTools(mcpServerId),
+    enabled: !!mcpServerId,
+    staleTime: 30_000,
+  })
+
+  // Reset selection when server changes
+  React.useEffect(() => { setSelected(new Set()) }, [mcpServerId])
+
+  const allSelected = tools && tools.length > 0 && tools.every((t) => selected.has(t.name))
+
+  const toggleTool = (name: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      next.has(name) ? next.delete(name) : next.add(name)
+      return next
+    })
+
+  const toggleAll = () =>
+    setSelected(allSelected ? new Set() : new Set(tools?.map((t) => t.name) ?? []))
 
   const mutation = useMutation({
-    mutationFn: grantPermission,
-    onSuccess: () => {
+    mutationFn: grantPermissionsBatch,
+    onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
       void queryClient.invalidateQueries({ queryKey: ['permissions-history', agentId] })
-      onClose()
+      if (result.skipped > 0 && result.granted.length === 0) {
+        setError(`All ${result.skipped} selected permissions already exist.`)
+      } else {
+        onClose()
+      }
     },
     onError: (err: unknown) => {
-      const httpStatus = (err as { response?: { status?: number } })?.response?.status
-      if (httpStatus === 409) {
-        setError('This permission already exists.')
-      } else {
-        setError(extractApiError(err, 'Failed to grant permission. Please try again.'))
-      }
+      setError(extractApiError(err, 'Failed to grant permissions.'))
     },
   })
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault()
-    if (!mcpServerId || !toolName.trim()) return
+    if (!mcpServerId || selected.size === 0) return
     setError(null)
     mutation.mutate({
       agentId,
       payload: {
-        mcp_server_id: mcpServerId,
-        tool_name: toolName.trim(),
+        permissions: Array.from(selected).map((tool_name) => ({ mcp_server_id: mcpServerId, tool_name })),
       },
     })
   }
 
-  const handleClose = (): void => {
-    setError(null)
-    onClose()
-  }
-
-  const inputClass = "w-full bg-base border border-border text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const selectClass = "w-full bg-base border border-border text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Grant Permission">
+    <Modal isOpen={isOpen} onClose={onClose} title="Grant Permissions">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Server picker */}
         <div>
-          <label htmlFor="perm-server" className={labelClass}>
-            MCP Server <span className="text-error normal-case">*</span>
-          </label>
+          <label htmlFor="perm-server" className={labelClass}>MCP Server</label>
           <select
             id="perm-server"
-            required
             value={mcpServerId}
             onChange={(e) => setMcpServerId(e.target.value)}
-            className={inputClass}
+            className={selectClass}
           >
-            {servers.length === 0 && (
-              <option value="" disabled>No servers available</option>
-            )}
-            {servers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
+            {activeServers.length === 0 && <option value="" disabled>No active servers</option>}
+            {activeServers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
 
+        {/* Tool checklist */}
         <div>
-          <label htmlFor="perm-tool" className={labelClass}>
-            Tool Name <span className="text-error normal-case">*</span>
-          </label>
-          <input
-            id="perm-tool"
-            type="text"
-            required
-            value={toolName}
-            onChange={(e) => setToolName(e.target.value)}
-            placeholder="e.g. read_file or *"
-            className={`${inputClass} font-mono`}
-          />
-          <p className="text-xs text-muted mt-1.5">
-            Use <code className="font-mono text-accent-light">*</code> to grant access to all tools on this server.
-          </p>
-        </div>
-
-        <div>
-          <label className={labelClass}>Granted By</label>
-          <div className="px-3 py-2 bg-base border border-border rounded-lg text-sm text-secondary">
-            {user?.display_name ?? user?.email ?? '—'}
+          <div className="flex items-center justify-between mb-1.5">
+            <span className={labelClass.replace(' mb-1.5', '')}>Tools</span>
+            {tools && tools.length > 0 && (
+              <button type="button" onClick={toggleAll} className="text-xs text-accent-light hover:underline">
+                {allSelected ? 'Deselect all' : 'Select all'}
+              </button>
+            )}
           </div>
+
+          <div className="border border-border rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+            {toolsFetching ? (
+              <div className="flex items-center justify-center py-8 gap-2 text-muted text-xs">
+                <div className="w-3.5 h-3.5 border-2 border-accent/40 border-t-accent rounded-full animate-spin" />
+                Fetching tools…
+              </div>
+            ) : toolsError || !tools ? (
+              <p className="text-xs text-error text-center py-6 px-4">
+                Could not load tools. Check the server is reachable and try again.
+              </p>
+            ) : tools.length === 0 ? (
+              <p className="text-xs text-muted text-center py-6">No tools found on this server.</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {tools.map((tool) => (
+                  <li key={tool.name}>
+                    <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-white/[0.025] cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(tool.name)}
+                        onChange={() => toggleTool(tool.name)}
+                        className="mt-0.5 accent-amber-500 flex-shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-mono text-xs text-accent-light">{tool.name}</p>
+                        {tool.description && (
+                          <p className="text-xs text-muted mt-0.5 leading-relaxed">{tool.description}</p>
+                        )}
+                      </div>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {selected.size > 0 && (
+            <p className="text-xs text-secondary mt-1.5">{selected.size} tool{selected.size !== 1 ? 's' : ''} selected</p>
+          )}
         </div>
 
         {error && (
@@ -208,19 +241,14 @@ function GrantModal({
         )}
 
         <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-border hover:border-border-strong"
-          >
+          <button type="button" onClick={onClose}
+            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-border hover:border-border-strong">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={mutation.isPending || !mcpServerId || !toolName.trim()}
-            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover-glow-standard"
-          >
-            {mutation.isPending ? 'Granting…' : 'Grant Permission'}
+          <button type="submit"
+            disabled={mutation.isPending || selected.size === 0}
+            className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover-glow-standard">
+            {mutation.isPending ? 'Granting…' : `Grant ${selected.size > 0 ? selected.size : ''} Permission${selected.size !== 1 ? 's' : ''}`}
           </button>
         </div>
       </form>
