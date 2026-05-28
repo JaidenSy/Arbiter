@@ -91,21 +91,24 @@ interface GrantModalProps {
   onClose: () => void
   agentId: string
   servers: MCPServer[]
+  initialServerId?: string
 }
 
-function GrantModal({ isOpen, onClose, agentId, servers }: GrantModalProps): React.ReactElement | null {
+function GrantModal({ isOpen, onClose, agentId, servers, initialServerId }: GrantModalProps): React.ReactElement | null {
   const queryClient = useQueryClient()
 
   const activeServers = servers.filter((s) => s.is_active)
   const [mcpServerId, setMcpServerId] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [search, setSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   React.useEffect(() => {
     if (isOpen) {
-      const first = activeServers.length > 0 ? activeServers[0].id : ''
+      const first = initialServerId ?? (activeServers.length > 0 ? activeServers[0].id : '')
       setMcpServerId(first)
       setSelected(new Set())
+      setSearch('')
       setError(null)
     }
   }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -117,20 +120,25 @@ function GrantModal({ isOpen, onClose, agentId, servers }: GrantModalProps): Rea
     staleTime: 30_000,
   })
 
-  // Reset selection when server changes
-  React.useEffect(() => { setSelected(new Set()) }, [mcpServerId])
+  React.useEffect(() => { setSelected(new Set()); setSearch('') }, [mcpServerId])
 
-  const allSelected = tools && tools.length > 0 && tools.every((t) => selected.has(t.name))
+  const filteredTools = (tools ?? []).filter((t) => {
+    const q = search.toLowerCase()
+    return !q || t.name.toLowerCase().includes(q) || (t.description ?? '').toLowerCase().includes(q)
+  })
+
+  const allFilteredSelected = filteredTools.length > 0 && filteredTools.every((t) => selected.has(t.name))
 
   const toggleTool = (name: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev)
-      next.has(name) ? next.delete(name) : next.add(name)
-      return next
-    })
+    setSelected((prev) => { const n = new Set(prev); n.has(name) ? n.delete(name) : n.add(name); return n })
 
   const toggleAll = () =>
-    setSelected(allSelected ? new Set() : new Set(tools?.map((t) => t.name) ?? []))
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (allFilteredSelected) filteredTools.forEach((t) => next.delete(t.name))
+      else filteredTools.forEach((t) => next.add(t.name))
+      return next
+    })
 
   const mutation = useMutation({
     mutationFn: grantPermissionsBatch,
@@ -143,53 +151,53 @@ function GrantModal({ isOpen, onClose, agentId, servers }: GrantModalProps): Rea
         onClose()
       }
     },
-    onError: (err: unknown) => {
-      setError(extractApiError(err, 'Failed to grant permissions.'))
-    },
+    onError: (err: unknown) => { setError(extractApiError(err, 'Failed to grant permissions.')) },
   })
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault()
     if (!mcpServerId || selected.size === 0) return
     setError(null)
-    mutation.mutate({
-      agentId,
-      payload: {
-        permissions: Array.from(selected).map((tool_name) => ({ mcp_server_id: mcpServerId, tool_name })),
-      },
-    })
+    mutation.mutate({ agentId, payload: { permissions: Array.from(selected).map((tool_name) => ({ mcp_server_id: mcpServerId, tool_name })) } })
   }
 
-  const selectClass = "w-full bg-base border border-border text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
+  const inputClass = "w-full bg-base border border-border text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
   const labelClass = "block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest"
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Grant Permissions">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Server picker */}
         <div>
           <label htmlFor="perm-server" className={labelClass}>MCP Server</label>
-          <select
-            id="perm-server"
-            value={mcpServerId}
-            onChange={(e) => setMcpServerId(e.target.value)}
-            className={selectClass}
-          >
+          <select id="perm-server" value={mcpServerId} onChange={(e) => setMcpServerId(e.target.value)} className={inputClass}>
             {activeServers.length === 0 && <option value="" disabled>No active servers</option>}
             {activeServers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
 
-        {/* Tool checklist */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <span className={labelClass.replace(' mb-1.5', '')}>Tools</span>
-            {tools && tools.length > 0 && (
+            <span className="text-xs font-semibold text-secondary uppercase tracking-widest">Tools</span>
+            {filteredTools.length > 0 && (
               <button type="button" onClick={toggleAll} className="text-xs text-accent-light hover:underline">
-                {allSelected ? 'Deselect all' : 'Select all'}
+                {allFilteredSelected ? 'Deselect all' : 'Select all'}
               </button>
             )}
           </div>
+
+          {/* Search */}
+          {tools && tools.length > 4 && (
+            <div className="relative mb-2">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input
+                type="text"
+                placeholder="Search tools…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={`${inputClass} pl-8 py-1.5`}
+              />
+            </div>
+          )}
 
           <div className="border border-border rounded-lg overflow-hidden max-h-64 overflow-y-auto">
             {toolsFetching ? (
@@ -198,27 +206,18 @@ function GrantModal({ isOpen, onClose, agentId, servers }: GrantModalProps): Rea
                 Fetching tools…
               </div>
             ) : toolsError || !tools ? (
-              <p className="text-xs text-error text-center py-6 px-4">
-                Could not load tools. Check the server is reachable and try again.
-              </p>
-            ) : tools.length === 0 ? (
-              <p className="text-xs text-muted text-center py-6">No tools found on this server.</p>
+              <p className="text-xs text-error text-center py-6 px-4">Could not load tools. Check the server is reachable.</p>
+            ) : filteredTools.length === 0 ? (
+              <p className="text-xs text-muted text-center py-6">{search ? 'No tools match your search.' : 'No tools found on this server.'}</p>
             ) : (
               <ul className="divide-y divide-border">
-                {tools.map((tool) => (
+                {filteredTools.map((tool) => (
                   <li key={tool.name}>
                     <label className="flex items-start gap-3 px-3 py-2.5 hover:bg-white/[0.025] cursor-pointer transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(tool.name)}
-                        onChange={() => toggleTool(tool.name)}
-                        className="mt-0.5 accent-amber-500 flex-shrink-0"
-                      />
+                      <input type="checkbox" checked={selected.has(tool.name)} onChange={() => toggleTool(tool.name)} className="mt-0.5 accent-amber-500 flex-shrink-0" />
                       <div className="min-w-0">
                         <p className="font-mono text-xs text-accent-light">{tool.name}</p>
-                        {tool.description && (
-                          <p className="text-xs text-muted mt-0.5 leading-relaxed">{tool.description}</p>
-                        )}
+                        {tool.description && <p className="text-xs text-muted mt-0.5 leading-relaxed">{tool.description}</p>}
                       </div>
                     </label>
                   </li>
@@ -228,7 +227,7 @@ function GrantModal({ isOpen, onClose, agentId, servers }: GrantModalProps): Rea
           </div>
 
           {selected.size > 0 && (
-            <p className="text-xs text-secondary mt-1.5">{selected.size} tool{selected.size !== 1 ? 's' : ''} selected</p>
+            <p className="text-xs text-secondary mt-1.5">{selected.size} tool{selected.size !== 1 ? 's' : ''} selected{search ? ` (${filteredTools.filter(t => selected.has(t.name)).length} visible)` : ''}</p>
           )}
         </div>
 
@@ -240,12 +239,10 @@ function GrantModal({ isOpen, onClose, agentId, servers }: GrantModalProps): Rea
         )}
 
         <div className="flex justify-end gap-3 pt-2">
-          <button type="button" onClick={onClose}
-            className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-border hover:border-border-strong">
+          <button type="button" onClick={onClose} className="text-secondary hover:text-primary hover:bg-elevated px-3 py-1.5 rounded-lg text-sm transition-all border border-border hover:border-border-strong">
             Cancel
           </button>
-          <button type="submit"
-            disabled={mutation.isPending || selected.size === 0}
+          <button type="submit" disabled={mutation.isPending || selected.size === 0}
             className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover-glow-standard">
             {mutation.isPending ? 'Granting…' : `Grant ${selected.size > 0 ? selected.size : ''} Permission${selected.size !== 1 ? 's' : ''}`}
           </button>
@@ -379,7 +376,7 @@ function EditModal({ isOpen, onClose, agentId, permission }: EditModalProps): Re
 function SkeletonRow(): React.ReactElement {
   return (
     <tr className="border-b border-border">
-      {[5, 4, 4, 4, 3, 3, 2].map((w, i) => (
+      {[5, 4, 4, 3, 3, 2].map((w, i) => (
         <td key={i} className="py-3 px-4">
           <div className="skeleton-shimmer h-4 rounded" style={{ width: `${w * 14}px` }} />
         </td>
@@ -537,14 +534,22 @@ function PermissionsTable({
   const queryClient = useQueryClient()
 
   const [grantOpen, setGrantOpen] = useState(false)
+  const [grantInitialServerId, setGrantInitialServerId] = useState<string | undefined>(undefined)
   const [editTarget, setEditTarget] = useState<ToolPermission | null>(null)
   const [revokeTarget, setRevokeTarget] = useState<ToolPermission | null>(null)
+  const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set())
 
   const { data: permissions, isLoading } = useQuery<ToolPermission[]>({
     queryKey: ['permissions', agentId],
     queryFn: () => fetchPermissions(agentId),
     enabled: !!agentId,
   })
+
+  React.useEffect(() => {
+    if (permissions) {
+      setExpandedServers(new Set(permissions.map((p) => p.mcp_server_id)))
+    }
+  }, [permissions])
 
   const invalidateAll = () => {
     void queryClient.invalidateQueries({ queryKey: ['permissions', agentId] })
@@ -567,121 +572,188 @@ function PermissionsTable({
     }
   }
 
-  const serverName = (id: string): string =>
-    servers.find((s) => s.id === id)?.name ?? id
+  const groupedPerms = React.useMemo(() => {
+    if (!permissions) return []
+    const map = new Map<string, ToolPermission[]>()
+    for (const perm of permissions) {
+      const arr = map.get(perm.mcp_server_id) ?? []
+      arr.push(perm)
+      map.set(perm.mcp_server_id, arr)
+    }
+    return Array.from(map.entries()).map(([serverId, perms]) => ({
+      serverId,
+      name: servers.find((s) => s.id === serverId)?.name ?? serverId,
+      perms,
+    }))
+  }, [permissions, servers])
+
+  const toggleServer = (serverId: string) =>
+    setExpandedServers((prev) => {
+      const next = new Set(prev)
+      next.has(serverId) ? next.delete(serverId) : next.add(serverId)
+      return next
+    })
+
+  const openGrantForServer = (serverId: string) => {
+    setGrantInitialServerId(serverId)
+    setGrantOpen(true)
+  }
+
+  const thClass = "py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider"
 
   return (
     <div className="flex-1">
       {/* Header row */}
       <div className="flex items-center justify-between mb-5">
-        <div>
-          <p className="text-primary text-sm font-semibold">
-            Permissions for <span className="text-accent-light">{agentName}</span>
-          </p>
-        </div>
+        <p className="text-primary text-sm font-semibold">
+          Permissions for <span className="text-accent-light">{agentName}</span>
+        </p>
         <button
           type="button"
-          onClick={() => setGrantOpen(true)}
+          onClick={() => { setGrantInitialServerId(undefined); setGrantOpen(true) }}
           className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all hover-glow-standard"
         >
           Grant Permission
         </button>
       </div>
 
-      {/* Table */}
+      {/* Grouped permissions */}
       <div className="bg-surface border border-border rounded-xl overflow-hidden">
-        <table className="min-w-full">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">MCP Server</th>
-              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Tool</th>
-              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Granted At</th>
-              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Granted By</th>
-              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Rate Limit</th>
-              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Cache TTL</th>
-              <th className="py-3 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <>
-                <SkeletonRow />
-                <SkeletonRow />
-                <SkeletonRow />
-              </>
-            ) : !permissions || permissions.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="py-20 px-4 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
-                    <svg className="text-accent-light" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <rect x="3" y="11" width="18" height="11" rx="1"/>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
+        {isLoading ? (
+          <div className="divide-y divide-border">
+            {[3, 2].map((toolCount, gi) => (
+              <div key={gi}>
+                <div className="flex items-center justify-between px-4 py-3 bg-white/[0.02]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 skeleton-shimmer rounded" />
+                    <div className="h-4 skeleton-shimmer rounded w-32" />
+                    <div className="h-4 skeleton-shimmer rounded w-14" />
                   </div>
-                  <p className="text-primary text-sm font-medium mb-1">No permissions granted</p>
-                  <p className="text-secondary text-xs max-w-xs mx-auto">Grant a permission to allow this agent to call specific tools.</p>
-                </td>
-              </tr>
-            ) : (
-              permissions.map((perm) => (
-                <tr
-                  key={perm.id}
-                  className={`group border-b border-border hover:bg-white/[0.025] transition-colors ${''}`}
-                >
-                  <td className="py-3 px-4 text-sm text-primary font-medium">
-                    {serverName(perm.mcp_server_id)}
-                  </td>
-                  <td className="py-3 px-4">
-                    {perm.tool_name === '*' ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-warning bg-warning/10 border border-warning/30">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        all tools
-                      </span>
-                    ) : (
-                      <span className="font-mono text-xs text-accent-light bg-accent/8 border border-accent/15 px-2 py-0.5 rounded-md">
-                        {perm.tool_name}
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4 font-mono text-xs text-muted">
-                    {formatDate(perm.granted_at)}
-                  </td>
-                  <td className="py-3 px-4 text-xs text-secondary">
-                    {perm.granted_by ?? <span className="text-muted italic">—</span>}
-                  </td>
-                  <td className="py-3 px-4 font-mono text-xs text-muted">
-                    {perm.rate_limit_per_minute != null
-                      ? <span className="text-primary">{perm.rate_limit_per_minute}/min</span>
-                      : <span className="italic">unlimited</span>}
-                  </td>
-                  <td className="py-3 px-4 font-mono text-xs text-muted">
-                    {perm.cache_ttl_seconds != null
-                      ? <span className="text-primary">{perm.cache_ttl_seconds}s</span>
-                      : <span className="italic">default</span>}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="inline-flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setEditTarget(perm)}
-                        className="text-secondary hover:text-primary hover:bg-white/[0.06] border border-transparent hover:border-border px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                  <div className="h-5 skeleton-shimmer rounded w-20" />
+                </div>
+                <table className="min-w-full">
+                  <tbody>
+                    {Array.from({ length: toolCount }).map((_, i) => <SkeletonRow key={i} />)}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        ) : !permissions || permissions.length === 0 ? (
+          <div className="py-20 px-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
+              <svg className="text-accent-light" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="11" width="18" height="11" rx="1"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <p className="text-primary text-sm font-medium mb-1">No permissions granted</p>
+            <p className="text-secondary text-xs max-w-xs mx-auto">Grant a permission to allow this agent to call specific tools.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {groupedPerms.map(({ serverId, name, perms }) => {
+              const isExpanded = expandedServers.has(serverId)
+              return (
+                <div key={serverId}>
+                  {/* Server section header */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-white/[0.02]">
+                    <button
+                      type="button"
+                      onClick={() => toggleServer(serverId)}
+                      className="flex items-center gap-2.5 flex-1 text-left hover:opacity-80 transition-opacity"
+                    >
+                      <svg
+                        width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2"
+                        className={`text-muted transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`}
                       >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRevokeTarget(perm)}
-                        className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      >
-                        Revoke
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                        <path d="M9 18l6-6-6-6"/>
+                      </svg>
+                      <span className="text-sm font-semibold text-primary">{name}</span>
+                      <span className="text-[11px] text-muted bg-white/[0.06] border border-border px-2 py-0.5 rounded-full">
+                        {perms.length} tool{perms.length !== 1 ? 's' : ''}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openGrantForServer(serverId)}
+                      className="text-xs text-accent-light hover:text-accent border border-accent/20 hover:border-accent/40 px-2.5 py-1 rounded-md transition-all"
+                    >
+                      + Add Tools
+                    </button>
+                  </div>
+
+                  {/* Tool rows */}
+                  {isExpanded && (
+                    <table className="min-w-full">
+                      <thead>
+                        <tr className="border-y border-border bg-white/[0.01]">
+                          <th className={`${thClass} pl-11`}>Tool</th>
+                          <th className={thClass}>Granted At</th>
+                          <th className={thClass}>Granted By</th>
+                          <th className={thClass}>Rate Limit</th>
+                          <th className={thClass}>Cache TTL</th>
+                          <th className="py-2 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {perms.map((perm) => (
+                          <tr key={perm.id} className="border-b border-border last:border-0 hover:bg-white/[0.025] transition-colors">
+                            <td className="py-3 px-4 pl-11">
+                              {perm.tool_name === '*' ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-warning bg-warning/10 border border-warning/30">
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                  all tools
+                                </span>
+                              ) : (
+                                <span className="font-mono text-xs text-accent-light bg-accent/8 border border-accent/15 px-2 py-0.5 rounded-md">
+                                  {perm.tool_name}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 font-mono text-xs text-muted">{formatDate(perm.granted_at)}</td>
+                            <td className="py-3 px-4 text-xs text-secondary">
+                              {perm.granted_by ?? <span className="text-muted italic">—</span>}
+                            </td>
+                            <td className="py-3 px-4 font-mono text-xs text-muted">
+                              {perm.rate_limit_per_minute != null
+                                ? <span className="text-primary">{perm.rate_limit_per_minute}/min</span>
+                                : <span className="italic">unlimited</span>}
+                            </td>
+                            <td className="py-3 px-4 font-mono text-xs text-muted">
+                              {perm.cache_ttl_seconds != null
+                                ? <span className="text-primary">{perm.cache_ttl_seconds}s</span>
+                                : <span className="italic">default</span>}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="inline-flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditTarget(perm)}
+                                  className="text-secondary hover:text-primary hover:bg-white/[0.06] border border-transparent hover:border-border px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setRevokeTarget(perm)}
+                                  className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                                >
+                                  Revoke
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <GrantModal
@@ -689,6 +761,7 @@ function PermissionsTable({
         onClose={() => setGrantOpen(false)}
         agentId={agentId}
         servers={servers}
+        initialServerId={grantInitialServerId}
       />
 
       <EditModal
