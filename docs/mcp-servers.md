@@ -46,15 +46,19 @@ The `name` field is the slug agents reference via the `X-MCP-Server` request hea
 
 ## URL format
 
-The `url` is the base URL of the upstream MCP server. Arbiter appends the MCP path when forwarding. Examples:
+The `base_url` must be the full MCP endpoint URL — Arbiter POSTs JSON-RPC directly to it. For servers using the Streamable HTTP transport (the modern default), this is typically the `/mcp` path:
 
 ```
-http://mcp-filesystem:3001          # Docker Compose service
-http://127.0.0.1:3001               # Localhost (if running outside Docker)
-https://my-mcp-server.example.com   # Remote server
+http://mcp-filesystem:3001/mcp      # Docker Compose service (Streamable HTTP)
+http://127.0.0.1:3001/mcp           # Localhost (Streamable HTTP)
+https://my-mcp-server.example.com/mcp  # Remote server (Streamable HTTP)
 ```
 
-Do not include a trailing path. Arbiter constructs the full request URL.
+If you are wrapping a stdio-only server with `supergateway`, start it with `--outputTransport streamablehttp` and set `base_url` to `{host}/mcp`.
+
+## Testing connectivity
+
+Use the **Test** button in the dashboard (or `POST /mcp-servers/{id}/test`) to verify an MCP server is reachable. Arbiter sends a `tools/list` JSON-RPC call directly to `base_url` and returns the tool count and latency. If the test fails, confirm `base_url` points to the server's MCP endpoint (e.g. `/mcp`), not just the host root.
 
 ## The `cache_enabled` flag
 
