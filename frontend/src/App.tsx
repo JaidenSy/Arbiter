@@ -133,7 +133,6 @@ function App(): React.ReactElement {
   return (
     <PaletteProvider>
     <ErrorBoundary>
-    <div className="app-ambient-bg" aria-hidden />
     <UpgradeModal />
     <CommandPalette />
     <Suspense fallback={<PageLoader />}>

@@ -14,7 +14,6 @@ import { authClient } from "../api/client";
 import type { Agent, DashboardStats, HistoryBucket, Page, Session, StatsHistoryResponse } from "../api/types";
 import UsageStrip from "../components/UsageStrip";
 import { Tile } from "../components/ui/Tile";
-import { useAuth } from "../context/AuthContext";
 import { CHART_COLORS, CHART_TOOLTIP_STYLE } from "../chartColors";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
@@ -57,21 +56,6 @@ function errorRateColorClass(rate: number): string {
   return "text-error";
 }
 
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
-
-function formatDate(): string {
-  return new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-}
-
 function last12(buckets: HistoryBucket[]): HistoryBucket[] {
   return buckets.slice(-12);
 }
@@ -94,7 +78,6 @@ function ShimmerRow(): React.ReactElement {
 
 function Dashboard(): React.ReactElement {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [period, setPeriod] = useState<"7d" | "24h">("7d");
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
@@ -152,7 +135,6 @@ function Dashboard(): React.ReactElement {
     ? `${(stats.error_rate_today * 100).toFixed(1)}%`
     : "—%";
 
-  const userName = user?.email?.split('@')[0] ?? 'there';
   const isNewUser = !statsLoading && stats?.agents_count === 0;
 
   return (
@@ -160,12 +142,9 @@ function Dashboard(): React.ReactElement {
       <UsageStrip />
       <div className="p-6 md:p-8 max-w-[1400px] mx-auto">
 
-        {/* Greeting header */}
-        <div className="mb-8 animate-fade-in">
-          <h1 className="font-display text-primary text-xl font-semibold tracking-tight">
-            {getGreeting()}, <span className="text-accent-light">{userName}</span>
-          </h1>
-          <p className="text-secondary text-sm mt-1">{formatDate()}</p>
+        {/* Page title */}
+        <div className="mb-8">
+          <h1 className="font-display text-primary text-xl font-semibold tracking-tight">Overview</h1>
         </div>
 
         {/* Zero-state CTA for new users */}
