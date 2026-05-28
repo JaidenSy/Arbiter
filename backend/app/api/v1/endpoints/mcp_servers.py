@@ -405,7 +405,7 @@ async def test_mcp_server(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {server_id} not found")
 
     import time
-    url = server.base_url.rstrip("/") + "/tools/list"
+    url = server.base_url.rstrip("/")
     try:
         t0 = time.monotonic()
         async with httpx.AsyncClient(timeout=10.0) as client:
