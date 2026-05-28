@@ -311,10 +311,19 @@ async def list_tool_permissions(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
 
     total = await db.scalar(
-        select(func.count(ToolPermission.id)).where(ToolPermission.agent_id == agent_id)
+        select(func.count(ToolPermission.id)).where(
+            ToolPermission.agent_id == agent_id,
+            ToolPermission.org_id == current_user.org_id,  # defense-in-depth: enforce org isolation
+        )
     ) or 0
     result = await db.execute(
-        select(ToolPermission).where(ToolPermission.agent_id == agent_id).offset(skip).limit(limit)
+        select(ToolPermission)
+        .where(
+            ToolPermission.agent_id == agent_id,
+            ToolPermission.org_id == current_user.org_id,  # defense-in-depth: enforce org isolation
+        )
+        .offset(skip)
+        .limit(limit)
     )
     return Page(items=[ToolPermissionResponse.model_validate(p) for p in result.scalars().all()], total=total, skip=skip, limit=limit)
 
@@ -335,6 +344,7 @@ async def update_tool_permission(
         select(ToolPermission).where(
             ToolPermission.id == permission_id,
             ToolPermission.agent_id == agent_id,
+            ToolPermission.org_id == current_user.org_id,  # defense-in-depth: enforce org isolation
         )
     )
     permission = result.scalar_one_or_none()
@@ -376,6 +386,7 @@ async def delete_tool_permission(
         select(ToolPermission).where(
             ToolPermission.id == permission_id,
             ToolPermission.agent_id == agent_id,
+            ToolPermission.org_id == current_user.org_id,  # defense-in-depth: enforce org isolation
         )
     )
     permission = result.scalar_one_or_none()

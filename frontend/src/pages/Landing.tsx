@@ -150,13 +150,13 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
           <pre className="font-mono text-xs text-secondary leading-relaxed">
             <span className="text-muted">$</span>{' '}
             <span className="text-teal-light">curl</span>{' '}
-            <span className="text-primary">-X POST https://your-arbiter.railway.app/mcp \</span>
+            <span className="text-primary">-X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \</span>
             {'\n'}
             {'  '}<span className="text-accent-light">-H</span>{' '}
             <span className="text-success">"Authorization: Bearer nxai_abc123..."</span>
             {'\n'}
             {'  '}<span className="text-accent-light">-d</span>{' '}
-            <span className="text-success">'{`{"tool":"read_file","path":"/app/config.json"}`}'</span>
+            <span className="text-success">'{`{"server_name":"filesystem","tool_name":"read_file","params":{"path":"/app/config.json"}}`}'</span>
             {'\n\n'}
             <span className="text-muted"># Response</span>
             {'\n'}
@@ -408,13 +408,13 @@ const steps: Step[] = [
     number: '02',
     title: 'Configure permissions',
     description: 'Grant the exact tools your agent needs. Nothing more.',
-    code: 'POST /api/v1/tool-permissions\n→ { tool: "read_file" }',
+    code: 'POST /api/v1/agents/{id}/permissions\n→ { tool_name: "read_file" }',
   },
   {
     number: '03',
     title: 'Make tool calls',
     description: 'Point your MCP client at Arbiter. All calls proxied, cached, and logged.',
-    code: 'mcp_client.connect(\n  "https://your-arbiter.railway.app"\n)',
+    code: 'POST /api/v1/proxy/tool-call\n→ { server_name, tool_name, params }',
   },
 ]
 
@@ -726,6 +726,12 @@ function Footer(): React.ReactElement {
           >
             API Docs
           </a>
+          <Link to="/privacy" className="text-secondary hover:text-primary text-xs transition-colors">
+            Privacy
+          </Link>
+          <Link to="/terms" className="text-secondary hover:text-primary text-xs transition-colors">
+            Terms
+          </Link>
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
             className="text-secondary hover:text-primary text-xs transition-colors"
