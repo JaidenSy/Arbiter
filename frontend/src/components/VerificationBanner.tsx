@@ -52,7 +52,7 @@ function VerificationBanner(): React.ReactElement | null {
     <div
       role="alert"
       aria-live="polite"
-      className="sticky top-0 z-50 flex items-center gap-3 px-4 py-2.5 bg-warning/10 border-b border-warning/30 text-warning-text text-sm"
+      className="sticky top-0 z-50 flex items-center gap-3 px-4 py-2.5 bg-warning/10 border-b border-warning/30 text-warning text-sm"
     >
       {/* Warning icon */}
       <svg
@@ -83,7 +83,7 @@ function VerificationBanner(): React.ReactElement | null {
             type="button"
             onClick={handleResend}
             disabled={resendState === 'loading'}
-            className="underline underline-offset-2 font-semibold text-warning hover:text-warning-text transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="underline underline-offset-2 font-semibold text-warning hover:text-warning/80 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {resendState === 'loading' ? 'Sending…' : 'Resend email'}
           </button>
