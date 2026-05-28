@@ -406,10 +406,20 @@ async def test_mcp_server(
 
     import time
     url = server.base_url.rstrip("/")
+    _MCP_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
     try:
         t0 = time.monotonic()
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(url, json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
+            # MCP Streamable HTTP requires an initialize handshake before tools/list.
+            init_resp = await client.post(url, json={
+                "jsonrpc": "2.0", "id": "init", "method": "initialize",
+                "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "arbiter-test", "version": "1.0"}},
+            }, headers=_MCP_HEADERS)
+            session_headers = dict(_MCP_HEADERS)
+            if session_id := init_resp.headers.get("Mcp-Session-Id"):
+                session_headers["Mcp-Session-Id"] = session_id
+
+            resp = await client.post(url, json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}, headers=session_headers)
         latency_ms = int((time.monotonic() - t0) * 1000)
         if resp.status_code >= 400:
             return MCPServerTestResponse(reachable=False, error=f"HTTP {resp.status_code}", latency_ms=latency_ms)
