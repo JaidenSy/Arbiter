@@ -59,13 +59,6 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
       {/* Background — static dark with subtle amber glow */}
       <HeroBackground />
 
-      {/* Aurora overlay — warm amber focal glow from top center */}
-      <div
-        aria-hidden
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: 'var(--gradient-aurora-hero)' }}
-      />
-
       {/* Bottom fade — blends hero into sections below */}
       <div
         className="absolute bottom-0 left-0 right-0 h-52 pointer-events-none"
