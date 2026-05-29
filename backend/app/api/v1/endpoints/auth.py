@@ -340,6 +340,33 @@ async def delete_me(
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ) -> Response:
+    import asyncio
+    import logging
+
+    import stripe
+    import stripe.error
+
+    _log = logging.getLogger(__name__)
+
+    # Cancel active Stripe subscription before deactivating so the owner
+    # is not charged after account deletion.
+    org = await db.get(Organization, current_user.org_id)
+    if org is not None and org.stripe_subscription_id and settings.stripe_secret_key:
+        stripe.api_key = settings.stripe_secret_key
+        try:
+            await asyncio.to_thread(
+                stripe.Subscription.cancel,
+                org.stripe_subscription_id,
+            )
+            org.stripe_subscription_id = None
+            org.plan_tier = "free"
+        except stripe.error.InvalidRequestError:
+            # Already cancelled or not found — clear the stale ID and continue.
+            org.stripe_subscription_id = None
+            org.plan_tier = "free"
+        except stripe.error.StripeError as exc:
+            _log.warning("delete_me: Stripe cancellation failed (continuing): %s", exc)
+
     # Soft-delete the user
     current_user.is_active = False
 
@@ -380,10 +407,29 @@ async def delete_me(
 
 @router.post("/send-verification", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Resend verification email")
 async def resend_verification(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     redis=Depends(get_redis),
 ) -> Response:
+    # Rate limit: max 3 resend attempts per IP per 10 minutes — prevents
+    # authenticated-but-unverified users from spamming the resend button.
+    if redis is not None:
+        client_ip = (
+            request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+            .split(",")[0]
+            .strip()
+        )
+        rl_key = f"rate_limit:send_verify:{client_ip}"
+        count = await redis.incr(rl_key)
+        if count == 1:
+            await redis.expire(rl_key, 600)  # 10-minute window
+        if count > 3:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many requests. Try again in 10 minutes.",
+            )
+
     if current_user.is_verified:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already verified")
 
