@@ -24,10 +24,12 @@ class ToolCallRequest(BaseModel):
 
     server_name: str = Field(
         ...,
+        max_length=255,
         description="Logical name of the MCP server (matches mcp_servers.name)",
     )
     tool_name: str = Field(
         ...,
+        max_length=255,
         description="Name of the tool to invoke on the MCP server",
     )
     params: dict[str, Any] = Field(

@@ -167,6 +167,13 @@ async def update_member(
     if member is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
 
+    # Prevent privilege escalation
+    if member.id == current_user.id and body.role == "owner":
+        raise HTTPException(status_code=403, detail="Cannot self-promote to owner")
+    # Admins cannot assign owner role
+    if current_user.role == "admin" and body.role == "owner":
+        raise HTTPException(status_code=403, detail="Only owners can assign owner role")
+
     # Prevent stripping the last owner
     if member.role == "owner" and body.role != "owner":
         owners = await db.execute(
