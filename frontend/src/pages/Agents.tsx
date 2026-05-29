@@ -9,6 +9,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Zap, ArrowUpRight } from "lucide-react";
 import { authClient } from "../api/client";
 import type { Agent, AgentCreateResponse, AgentScope, MCPServer, Page } from "../api/types";
 import CopyButton from "../components/CopyButton";
@@ -219,7 +220,7 @@ function ApiKeyModal({
     <Modal isOpen={isOpen} onClose={onDismiss} title={title}>
       <div className="space-y-4">
         <div className="bg-warning/8 border border-warning/25 rounded-lg p-3 flex items-start gap-2">
-          <span className="text-warning mt-0.5">⚠</span>
+          <AlertTriangle size={14} className="text-warning mt-0.5 flex-shrink-0" />
           <p className="text-sm font-semibold text-warning">
             This key will not be shown again. Copy it now.
           </p>
@@ -368,8 +369,8 @@ function TestCallModal({ agent, onClose }: TestCallModalProps): React.ReactEleme
         {result && (
           <div className="bg-base border border-border rounded-lg p-3 space-y-2">
             <div className="flex items-center gap-3 text-xs text-muted">
-              <span className={`font-semibold ${result.cache_hit ? "text-teal-light" : "text-secondary"}`}>
-                {result.cache_hit ? "⚡ Cache hit" : "↗ Live call"}
+              <span className={`inline-flex items-center gap-1 font-semibold ${result.cache_hit ? "text-teal-light" : "text-secondary"}`}>
+                {result.cache_hit ? <><Zap size={11} /> Cache hit</> : <><ArrowUpRight size={11} /> Live call</>}
               </span>
               {result.duration_ms != null && <span>{result.duration_ms}ms</span>}
               <span className="ml-auto font-mono text-[10px]">session {result.session_id.slice(0, 8)}</span>

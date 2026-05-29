@@ -13,6 +13,7 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { KeyRound } from "lucide-react";
 import { authClient } from "../api/client";
 import type { Agent, Session, SessionEvent, Page } from "../api/types";
 import JsonViewer from "../components/JsonViewer";
@@ -158,8 +159,8 @@ function TraceRow({
 
             {/* Secret placeholder indicator */}
             {hasSecretPlaceholder(event.request_payload) && (
-              <span title="Secret injected" className="text-amber-400 text-xs select-none">
-                🔑
+              <span title="Secret injected" className="text-amber-400 select-none">
+                <KeyRound size={12} />
               </span>
             )}
 

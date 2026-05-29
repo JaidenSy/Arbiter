@@ -15,6 +15,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Check, X } from 'lucide-react'
 import { authClient } from '../api/client'
 import type { MCPServer, MCPServerCreate, MCPServerUpdate, MCPServerTestResult, Page } from '../api/types'
 import Modal from '../components/Modal'
@@ -645,14 +646,16 @@ function MCPServers(): React.ReactElement {
                     </td>
                     <td className="py-3 px-4 text-right">
                       {testResult?.id === server.id && (
-                        <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border mr-2 ${
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border mr-2 ${
                           testResult.result.reachable
                             ? 'text-success bg-success/10 border-success/20'
                             : 'text-error bg-error/10 border-error/20'
                         }`}>
-                          {testResult.result.reachable
-                            ? `✓ ${testResult.result.tool_count ?? 0} tools · ${testResult.result.latency_ms}ms`
-                            : `✗ ${testResult.result.error ?? 'unreachable'}`}
+                          {testResult.result.reachable ? (
+                            <><Check size={10} strokeWidth={2.5} />{testResult.result.tool_count ?? 0} tools · {testResult.result.latency_ms}ms</>
+                          ) : (
+                            <><X size={10} strokeWidth={2.5} />{testResult.result.error ?? 'unreachable'}</>
+                          )}
                         </span>
                       )}
                       <div className="inline-flex items-center gap-1">

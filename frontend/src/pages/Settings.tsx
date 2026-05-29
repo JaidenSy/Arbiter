@@ -10,6 +10,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check } from 'lucide-react'
 import { authClient } from '../api/client'
 import type { BillingStatus, CacheStats } from '../api/types'
 import { useAuth } from '../context/AuthContext'
@@ -601,7 +602,7 @@ function CacheSection(): React.ReactElement {
               onClick={() => flushMutation.mutate()}
               className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {flushMutation.isPending ? 'Flushing…' : flushed ? 'Flushed ✓' : 'Flush Cache'}
+              {flushMutation.isPending ? 'Flushing…' : flushed ? <span className="inline-flex items-center gap-1">Flushed <Check size={12} strokeWidth={2.5} /></span> : 'Flush Cache'}
             </button>
             <p className="text-muted text-xs mt-1.5">Removes all active cache entries for your org. Cannot be undone.</p>
           </div>
