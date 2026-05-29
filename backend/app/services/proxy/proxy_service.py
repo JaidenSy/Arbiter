@@ -537,12 +537,14 @@ class ProxyService:
         cache_hit: bool,
         duration_ms: int,
         error: str | None,
+        user_id: uuid.UUID | None = None,
     ) -> SessionEvent:
         """Append an immutable audit record and increment daily usage counters."""
         event = SessionEvent(
             session_id=session.id,
             org_id=session.org_id,
             mcp_server_id=mcp_server.id,
+            user_id=user_id,
             tool_name=tool_name,
             request_payload=request_payload,
             response_payload=response_payload,

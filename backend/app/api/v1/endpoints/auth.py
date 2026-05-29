@@ -380,14 +380,14 @@ async def delete_me(
 
     import stripe
     import stripe.error
-    from sqlalchemy import delete, func as sqlfunc
+    from sqlalchemy import delete, func as sqlfunc, update
 
     from app.db.models.agent import Agent
     from app.db.models.cache import CacheEntry
     from app.db.models.gdpr_deletion_log import GdprDeletionLog
     from app.db.models.mcp_server import MCPServer
     from app.db.models.org_invite import OrgInvite
-    from app.db.models.session import Session
+    from app.db.models.session import Session, SessionEvent
     from app.db.models.social_account import SocialAccount
     from app.db.models.vault import VaultSecret
 
@@ -460,9 +460,15 @@ async def delete_me(
             org.stripe_customer_id = None
             org.name = f"deleted-org-{org_id}"
 
-            # P2-FIX-6: SessionEvent has no user_id — cannot isolate per-user events.
-            # For sole-owner deletions the entire org (and all its sessions/events)
-            # is hard-deleted via DB cascade when the org row is removed below.
+            # P2-FIX-6: Anonymize session events for this user before org cascade.
+            await db.execute(
+                update(SessionEvent)
+                .where(
+                    SessionEvent.org_id == org_id,
+                    SessionEvent.user_id == user_id,
+                )
+                .values(user_id=None, request_payload=None, response_payload=None)
+            )
 
             # ── P2-FIX-7: GDPR deletion audit log (sole owner) ───────────────
             db.add(GdprDeletionLog(
@@ -480,9 +486,15 @@ async def delete_me(
             # is_active=False. Stripe PII is cleared on the org (FIX-5).
             org.stripe_customer_id = None
 
-            # P2-FIX-6: SessionEvent has no user_id — cannot isolate per-user events.
-            # Events are org/session-scoped; scrubbing individual user events is
-            # not possible without a user_id FK on session_events.
+            # P2-FIX-6: Anonymize this user's session events within the org.
+            await db.execute(
+                update(SessionEvent)
+                .where(
+                    SessionEvent.org_id == org_id,
+                    SessionEvent.user_id == user_id,
+                )
+                .values(user_id=None, request_payload=None, response_payload=None)
+            )
 
             # ── P2-FIX-7: GDPR deletion audit log (non-sole owner) ───────────
             db.add(GdprDeletionLog(
