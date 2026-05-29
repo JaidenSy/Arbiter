@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { authClient } from "../api/client";
-import type { Agent, DashboardStats, HistoryBucket, Page, Session, StatsHistoryResponse } from "../api/types";
+import type { Agent, DashboardStats, HistoryBucket, Page, Session, StatsHistoryResponse, UsageSummary } from "../api/types";
 import UsageStrip from "../components/UsageStrip";
 import { Tile } from "../components/ui/Tile";
 import { CHART_COLORS, CHART_TOOLTIP_STYLE } from "../chartColors";
@@ -31,6 +31,9 @@ const fetchAgents = (): Promise<Page<Agent>> =>
 
 const fetchHistory = (period: string): Promise<StatsHistoryResponse> =>
   authClient.get<StatsHistoryResponse>(`/stats/history?period=${period}`).then((r) => r.data);
+
+const fetchUsageSummary = (): Promise<UsageSummary> =>
+  authClient.get<UsageSummary>("/stats/usage/summary").then((r) => r.data);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -58,6 +61,12 @@ function errorRateColorClass(rate: number): string {
 
 function last12(buckets: HistoryBucket[]): HistoryBucket[] {
   return buckets.slice(-12);
+}
+
+function firstDayOfNextMonth(): string {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return next.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 // ── Skeleton shimmer row ──────────────────────────────────────────────────────
@@ -114,6 +123,13 @@ function Dashboard(): React.ReactElement {
     staleTime: 30_000,
   });
 
+  const { data: usageSummary } = useQuery<UsageSummary>({
+    queryKey: ["usage-summary"],
+    queryFn: fetchUsageSummary,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
   const chartData = history?.buckets ?? [];
   const allEmpty = chartData.length > 0 && chartData.every((b) => b.tool_calls === 0);
 
@@ -136,6 +152,15 @@ function Dashboard(): React.ReactElement {
     : "—%";
 
   const isNewUser = !statsLoading && stats?.agents_count === 0;
+
+  // ── Monthly quota derived values ──────────────────────────────────────────
+  const quotaUsed = usageSummary?.tool_calls_month ?? 0;
+  const quotaLimit = usageSummary?.tool_calls_month_limit ?? null;
+  const quotaPct = quotaLimit !== null ? Math.min(quotaUsed / quotaLimit, 1) : 0;
+  const isNearLimit = quotaLimit !== null && quotaPct >= 0.8;
+  const isOverLimit = quotaLimit !== null && quotaUsed >= quotaLimit;
+  const quotaBarColor = isOverLimit ? "bg-error" : isNearLimit ? "bg-warning" : "bg-accent";
+  const resetDate = firstDayOfNextMonth();
 
   return (
     <div>
@@ -311,7 +336,7 @@ function Dashboard(): React.ReactElement {
         </div>
 
         {/* ── Bento Row 2: Agent, Server, Tool Call tiles ── */}
-        <div className="grid grid-cols-[1fr_1fr_2fr] gap-3 mb-6">
+        <div className="grid grid-cols-[1fr_1fr_2fr] gap-3 mb-3">
           <Tile
             variant="amber"
             label="Active Agents"
@@ -337,6 +362,48 @@ function Dashboard(): React.ReactElement {
             sparklineColor="var(--color-teal)"
             mountDelay={5}
           />
+        </div>
+
+        {/* ── Monthly Quota Card ── */}
+        <div className="border border-border rounded-xl p-5 bg-surface tile-mount stagger-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <span className="text-primary text-sm font-semibold">Monthly Usage</span>
+              <p className="text-secondary text-xs mt-0.5">
+                Resets {resetDate}
+              </p>
+            </div>
+            <span className={`text-sm font-mono tabular-nums ${isOverLimit ? "text-error" : isNearLimit ? "text-warning" : "text-primary"}`}>
+              {quotaUsed.toLocaleString()}
+              {" / "}
+              {quotaLimit !== null ? quotaLimit.toLocaleString() : "∞"}
+              {" calls"}
+            </span>
+          </div>
+          <div className="h-1.5 rounded-full bg-elevated overflow-hidden">
+            {quotaLimit !== null ? (
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${quotaBarColor}`}
+                style={{ width: `${quotaPct * 100}%` }}
+              />
+            ) : (
+              <div className="h-full rounded-full bg-accent/30 w-full" />
+            )}
+          </div>
+          {isNearLimit && !isOverLimit && (
+            <p className="text-warning text-xs mt-2 font-mono">
+              Approaching monthly limit — consider{" "}
+              <Link to="/settings?tab=billing" className="underline hover:text-primary transition-colors">
+                upgrading to Pro
+              </Link>
+              .
+            </p>
+          )}
+          {isOverLimit && (
+            <p className="text-error text-xs mt-2 font-mono">
+              Monthly quota exceeded — tool calls are paused until {resetDate}.
+            </p>
+          )}
         </div>
 
         {/* Recent sessions */}
