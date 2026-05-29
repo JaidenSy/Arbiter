@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { ArbiterMark } from './ArbiterLogo'
@@ -323,6 +323,21 @@ function Sidebar(): React.ReactElement {
         <HelpButton onStart={startTour} />
         <ThemeToggleButton />
         <UserAvatar />
+        {/* Legal links */}
+        <div className="flex flex-col items-center gap-0.5 mt-1 mb-1">
+          <Link
+            to="/privacy"
+            className="text-[10px] text-muted hover:text-secondary transition-colors leading-tight"
+          >
+            Privacy
+          </Link>
+          <Link
+            to="/terms"
+            className="text-[10px] text-muted hover:text-secondary transition-colors leading-tight"
+          >
+            Terms
+          </Link>
+        </div>
       </div>
     </aside>
   )

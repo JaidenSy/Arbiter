@@ -447,6 +447,74 @@ function AboutSection(): React.ReactElement {
   )
 }
 
+// ── Legal Section ─────────────────────────────────────────────────────────────
+
+function LegalSection(): React.ReactElement {
+  const rows: Array<{ label: string; content: React.ReactNode }> = [
+    {
+      label: 'Privacy Policy',
+      content: (
+        <Link
+          to="/privacy"
+          className="text-accent-light hover:text-white text-sm transition-colors underline underline-offset-2"
+        >
+          View Privacy Policy →
+        </Link>
+      ),
+    },
+    {
+      label: 'Terms of Service',
+      content: (
+        <Link
+          to="/terms"
+          className="text-accent-light hover:text-white text-sm transition-colors underline underline-offset-2"
+        >
+          View Terms of Service →
+        </Link>
+      ),
+    },
+    {
+      label: 'DMCA',
+      content: (
+        <a
+          href="mailto:dmca@arbiterai.dev"
+          className="text-secondary hover:text-primary text-sm transition-colors font-mono"
+        >
+          dmca@arbiterai.dev
+        </a>
+      ),
+    },
+    {
+      label: 'Support',
+      content: (
+        <a
+          href={`mailto:${SUPPORT_EMAIL}`}
+          className="text-secondary hover:text-primary text-sm transition-colors font-mono"
+        >
+          {SUPPORT_EMAIL}
+        </a>
+      ),
+    },
+  ]
+
+  return (
+    <div>
+      <SectionHeader title="Legal" subtitle="Policies, terms, and contact information" />
+      <div className="max-w-2xl bg-surface border border-border rounded-xl overflow-hidden">
+        {rows.map(({ label, content }, idx) => (
+          <div
+            key={label}
+            className={`flex items-center gap-8 px-5 py-3 ${idx < rows.length - 1 ? 'border-b border-border' : ''}`}
+          >
+            <span className="text-muted text-xs font-mono w-28 shrink-0">{label}</span>
+            <span>{content}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Appearance Section ────────────────────────────────────────────────────────
 
 function AppearanceSection(): React.ReactElement {
@@ -629,8 +697,13 @@ function Settings(): React.ReactElement {
         )}
 
         {activeTab === 'about' && (
-          <div className="bg-surface border border-border rounded-xl p-6">
-            <AboutSection />
+          <div className="space-y-4">
+            <div className="bg-surface border border-border rounded-xl p-6">
+              <AboutSection />
+            </div>
+            <div className="bg-surface border border-border rounded-xl p-6">
+              <LegalSection />
+            </div>
           </div>
         )}
       </div>
