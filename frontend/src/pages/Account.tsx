@@ -102,7 +102,7 @@ export default function Account(): React.ReactElement {
     setResendMsg(null)
     try {
       await authClient.post('/auth/send-verification')
-      setResendMsg({ type: 'success', text: 'Verification email sent — check your inbox.' })
+      setResendMsg({ type: 'success', text: 'Verification email sent. Check your inbox.' })
     } catch {
       setResendMsg({ type: 'error', text: 'Failed to send verification email.' })
     } finally {
