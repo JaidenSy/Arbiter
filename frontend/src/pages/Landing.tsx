@@ -323,11 +323,11 @@ function Comparison(): React.ReactElement {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto border border-border rounded-xl">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-border-strong">
-                <th className="text-left py-3 pr-6 text-secondary font-normal w-[45%]" />
+                <th className="text-left py-3 pl-5 pr-6 text-secondary font-normal w-[45%]" />
                 <th className="py-3 px-4 text-center">
                   <span className="text-accent-light font-semibold">Arbiter</span>
                 </th>
@@ -339,7 +339,7 @@ function Comparison(): React.ReactElement {
             <tbody>
               {rows.map((row, i) => (
                 <tr key={row.feature} className={`border-b border-border ${i % 2 === 0 ? 'bg-white/[0.015]' : ''}`}>
-                  <td className="py-3.5 pr-6 text-secondary">
+                  <td className="py-3.5 pl-5 pr-6 text-secondary">
                     <span className="inline-flex items-center gap-2 flex-wrap">
                       {row.feature}
                       {row.enterpriseOnly && (
@@ -356,7 +356,7 @@ function Comparison(): React.ReactElement {
                 </tr>
               ))}
               <tr className="border-t border-border-accent bg-accent/[0.05]">
-                <td className="py-3.5 pr-6 text-primary font-semibold">Cost</td>
+                <td className="py-3.5 pl-5 pr-6 text-primary font-semibold">Cost</td>
                 <td className="py-3.5 px-4 text-center text-accent-light font-semibold text-xs">$0–$29/mo</td>
                 <td className="py-3.5 px-4 text-center text-secondary text-xs">Free/OSS</td>
                 <td className="py-3.5 px-4 text-center text-secondary text-xs">$49+/mo</td>

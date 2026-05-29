@@ -138,7 +138,7 @@ function Endpoint({ method, path, description }: EndpointProps): React.ReactElem
   const color = methodColors[method] ?? 'text-secondary bg-elevated border-border'
 
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-border last:border-0">
+    <div className="flex items-start gap-3 py-3 px-4 border-b border-border last:border-0">
       <span
         className={`inline-block px-2 py-0.5 rounded text-xs font-mono font-semibold border flex-shrink-0 mt-0.5 ${color}`}
       >
