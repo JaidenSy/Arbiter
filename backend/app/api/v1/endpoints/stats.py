@@ -119,7 +119,11 @@ async def get_stats(
             func.count(SessionEvent.id).label("total"),
             func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
             func.sum(case((SessionEvent.error.isnot(None), 1), else_=0)).label("errors"),
-        ).where(SessionEvent.occurred_at >= today_midnight, SessionEvent.session_id.in_(org_session_ids_today))
+        ).where(
+            SessionEvent.occurred_at >= today_midnight,
+            SessionEvent.org_id == current_user.org_id,
+            SessionEvent.session_id.in_(org_session_ids_today),
+        )
     )
     row = calls_result.one()
     tool_calls_today: int = row.total or 0
@@ -221,7 +225,11 @@ async def get_stats_history(
                 func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
                 func.sum(case((SessionEvent.error.isnot(None), 1), else_=0)).label("errors"),
             )
-            .where(SessionEvent.occurred_at >= cutoff, SessionEvent.session_id.in_(org_session_ids))
+            .where(
+                SessionEvent.occurred_at >= cutoff,
+                SessionEvent.org_id == current_user.org_id,
+                SessionEvent.session_id.in_(org_session_ids),
+            )
             .group_by(day_bucket)
             .order_by(day_bucket)
         )
@@ -264,7 +272,11 @@ async def get_stats_history(
                 func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
                 func.sum(case((SessionEvent.error.isnot(None), 1), else_=0)).label("errors"),
             )
-            .where(SessionEvent.occurred_at >= cutoff, SessionEvent.session_id.in_(org_session_ids))
+            .where(
+                SessionEvent.occurred_at >= cutoff,
+                SessionEvent.org_id == current_user.org_id,
+                SessionEvent.session_id.in_(org_session_ids),
+            )
             .group_by(hour_bucket)
             .order_by(hour_bucket)
         )

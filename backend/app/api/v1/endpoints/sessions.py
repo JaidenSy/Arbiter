@@ -126,7 +126,12 @@ async def export_sessions(
     all_server_ids = {e.mcp_server_id for s in sessions for e in s.events if e.mcp_server_id}
     server_map: dict[uuid.UUID, str] = {}
     if all_server_ids:
-        sr = await db.execute(select(MCPServer.id, MCPServer.name).where(MCPServer.id.in_(all_server_ids)))
+        sr = await db.execute(
+            select(MCPServer.id, MCPServer.name).where(
+                MCPServer.id.in_(all_server_ids),
+                MCPServer.org_id == current_user.org_id,
+            )
+        )
         server_map = {row.id: row.name for row in sr}
 
     rows = []
@@ -208,7 +213,10 @@ async def get_session(
     server_map: dict[uuid.UUID, str] = {}
     if server_ids:
         servers_result = await db.execute(
-            select(MCPServer.id, MCPServer.name).where(MCPServer.id.in_(server_ids))
+            select(MCPServer.id, MCPServer.name).where(
+                MCPServer.id.in_(server_ids),
+                MCPServer.org_id == current_user.org_id,
+            )
         )
         server_map = {row.id: row.name for row in servers_result}
 
@@ -283,7 +291,10 @@ async def list_session_events(
     server_map: dict[uuid.UUID, str] = {}
     if server_ids:
         servers_result = await db.execute(
-            select(MCPServer.id, MCPServer.name).where(MCPServer.id.in_(server_ids))
+            select(MCPServer.id, MCPServer.name).where(
+                MCPServer.id.in_(server_ids),
+                MCPServer.org_id == current_user.org_id,
+            )
         )
         server_map = {row.id: row.name for row in servers_result}
 
