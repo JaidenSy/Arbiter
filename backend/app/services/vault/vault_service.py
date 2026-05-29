@@ -21,6 +21,7 @@ import hashlib
 import logging
 import os
 import uuid
+from typing import Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from sqlalchemy import select
@@ -185,24 +186,26 @@ class VaultService:
         logger.info("vault: stored secret name=%r agent_id=%s org_id=%s", name, agent_id, org_id)
         return secret
 
-    async def get_secret(self, name: str, agent_id: uuid.UUID | None = None) -> str:
+    async def get_secret(self, name: str, org_id: uuid.UUID, agent_id: Optional[uuid.UUID] = None) -> str:
         """
-        Retrieve and decrypt a secret by logical name.
+        Retrieve and decrypt a secret by logical name, scoped to the org.
 
-        Scoped to agent_id when provided — agents cannot read each other's secrets.
+        Scoped to org_id (required) to prevent cross-org secret leakage.
+        Further scoped to agent_id when provided — agents cannot read each other's secrets.
         SECURITY: The decrypted value is NEVER logged.
 
         Args:
             name:     Logical key used when storing the secret.
+            org_id:   Organization UUID — required to enforce org isolation.
             agent_id: Owner agent UUID. If provided, restricts lookup to that agent.
 
         Returns:
             str: Decrypted plaintext secret.
 
         Raises:
-            KeyError: If no secret with the given name exists for this agent.
+            KeyError: If no secret with the given name exists for this org/agent.
         """
-        query = select(VaultSecret).where(VaultSecret.name == name)
+        query = select(VaultSecret).where(VaultSecret.name == name, VaultSecret.org_id == org_id)
         if agent_id is not None:
             query = query.where(VaultSecret.agent_id == agent_id)
         result = await self.db.execute(query)

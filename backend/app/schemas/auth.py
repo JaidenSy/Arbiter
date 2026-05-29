@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import uuid
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class RegisterRequest(BaseModel):
     """Body for POST /auth/register."""
 
-    org_name: str
+    org_name: str = Field(..., max_length=255)
     email: EmailStr
     password: str
     invite_code: str = ""
