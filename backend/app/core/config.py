@@ -123,11 +123,34 @@ class Settings(BaseSettings):
             )
         return value
 
+    @field_validator("jwt_algorithm")
+    @classmethod
+    def validate_jwt_algorithm(cls, value: str) -> str:
+        """Reject algorithms outside the explicit allowlist at startup."""
+        allowed = {"HS256", "RS256"}
+        if value not in allowed:
+            raise ValueError(
+                f"JWT_ALGORITHM must be one of {sorted(allowed)}, got {value!r}"
+            )
+        return value
+
     @field_validator("jwt_secret_key")
     @classmethod
-    def warn_default_jwt_secret(cls, value: str) -> str:
-        """Warn loudly if the insecure default JWT secret is used in any env."""
-        if value == "arbiter_dev_jwt_secret_change_in_production":
+    def validate_jwt_secret(cls, value: str, info) -> str:
+        """
+        In production: raise ValueError (kills startup) if the key is the
+        insecure default or shorter than 32 characters.
+        Outside production: log a warning only.
+        """
+        _default = "arbiter_dev_jwt_secret_change_in_production"
+        app_env = (info.data.get("app_env") or "development").lower()
+        is_weak = value == _default or len(value) < 32
+        if is_weak:
+            if app_env == "production":
+                raise ValueError(
+                    "SECURITY: JWT_SECRET_KEY is missing or too weak for production. "
+                    "Set JWT_SECRET_KEY to a random string of at least 32 characters."
+                )
             _logger.warning(
                 "SECURITY: JWT_SECRET_KEY is using the insecure default value. "
                 "Set JWT_SECRET_KEY to a long random string before deploying."
