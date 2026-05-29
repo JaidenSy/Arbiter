@@ -1,7 +1,7 @@
 """Add gdpr_deletion_logs table
 
-Revision ID: 020
-Revises: 019
+Revision ID: 021
+Revises: 020
 Create Date: 2026-05-29
 """
 
@@ -11,8 +11,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision: str = "020"
-down_revision: str | None = "019"
+revision: str = "021"
+down_revision: str | None = "020"
 branch_labels: str | None = None
 depends_on: str | None = None
 
