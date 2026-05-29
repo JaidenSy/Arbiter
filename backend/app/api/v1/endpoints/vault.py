@@ -47,7 +47,7 @@ class SecretCreate(BaseModel):
     """Request body for storing a secret."""
 
     name: str = Field(..., min_length=1, max_length=128, description="Logical key, e.g. GITHUB_TOKEN")
-    value: str = Field(..., min_length=1, description="Raw secret value — will be encrypted at rest")
+    value: str = Field(..., min_length=1, max_length=10000, description="Raw secret value — will be encrypted at rest")
     agent_id: uuid.UUID | None = Field(None, description="Scope the secret to a specific agent")
 
     @field_validator("name")

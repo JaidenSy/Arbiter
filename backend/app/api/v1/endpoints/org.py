@@ -340,14 +340,26 @@ async def accept_invite(
     if len(body.password) < 8:
         raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
 
-    result = await db.execute(select(OrgInvite).where(OrgInvite.token == body.token))
-    invite = result.scalar_one_or_none()
+    # Atomically mark the invite as accepted — prevents TOCTOU race where two
+    # simultaneous requests both pass an accepted_at IS NULL check and both
+    # create accounts.  Only the first UPDATE to win will find a matching row.
+    accept_result = await db.execute(
+        update(OrgInvite)
+        .where(
+            OrgInvite.token == body.token,
+            OrgInvite.accepted_at.is_(None),
+            OrgInvite.expires_at > datetime.now(tz=timezone.utc),
+        )
+        .values(accepted_at=datetime.now(tz=timezone.utc))
+        .returning(OrgInvite)
+    )
+    invite = accept_result.scalar_one_or_none()
     if invite is None:
-        raise HTTPException(status_code=400, detail="Invalid invite token")
-    if invite.accepted_at is not None:
-        raise HTTPException(status_code=400, detail="Invite has already been used")
-    if invite.expires_at < datetime.now(tz=timezone.utc):
-        raise HTTPException(status_code=400, detail="Invite has expired")
+        # Check if the token itself is invalid vs already used/expired
+        token_exists = await db.scalar(select(OrgInvite).where(OrgInvite.token == body.token))
+        if token_exists is None:
+            raise HTTPException(status_code=400, detail="Invalid invite token")
+        raise HTTPException(status_code=400, detail="Invite already used or expired")
 
     # Check email not already registered
     existing = await db.execute(select(User).where(User.email == invite.email))
@@ -365,8 +377,6 @@ async def accept_invite(
         is_verified=True,  # invited users are pre-verified via email
     )
     db.add(user)
-
-    invite.accepted_at = datetime.now(tz=timezone.utc)
 
     await db.commit()
     await db.refresh(user)
