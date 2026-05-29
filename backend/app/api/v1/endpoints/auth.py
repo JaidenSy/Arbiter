@@ -153,11 +153,13 @@ async def register(
     summary="Authenticate and receive a token pair",
 )
 async def login(
+    request: Request,
     body: LoginRequest,
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ) -> TokenResponse:
     if redis is not None:
+        # Per-email rate limit — 10 attempts per 15 minutes
         rate_key = f"login_attempts:{body.email}"
         attempts = await redis.incr(rate_key)
         if attempts == 1:
@@ -166,6 +168,20 @@ async def login(
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many login attempts. Try again in 15 minutes.",
+            )
+
+        # Per-IP rate limit — 20 attempts per 10 minutes (credential stuffing defence)
+        client_ip = request.headers.get(
+            "X-Forwarded-For", request.client.host if request.client else "unknown"
+        ).split(",")[0].strip()
+        ip_key = f"login_ip:{client_ip}"
+        ip_attempts = await redis.incr(ip_key)
+        if ip_attempts == 1:
+            await redis.expire(ip_key, 600)  # 10-minute window
+        if ip_attempts > 20:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many login attempts from this IP. Try again in 10 minutes.",
             )
 
     _user, access_token, refresh_token = await auth_service.login(
