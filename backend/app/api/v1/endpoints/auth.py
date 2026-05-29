@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import hmac
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -306,26 +306,44 @@ async def update_me(
 )
 async def change_password(
     body: ChangePasswordRequest,
+    authorization: str | None = Header(default=None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> Response:
-    from passlib.context import CryptContext
-    _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
     if not current_user.hashed_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This account uses SSO — password change is not available",
         )
 
-    if not _pwd.verify(body.current_password, current_user.hashed_password):
+    if not _sec.verify_password(body.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Current password is incorrect",
         )
 
-    current_user.hashed_password = _pwd.hash(body.new_password)
+    current_user.hashed_password = _sec.hash_password(body.new_password)
+
+    # Revoke all refresh tokens so existing sessions cannot be re-used.
+    await db.execute(delete(RefreshToken).where(RefreshToken.user_id == current_user.id))
+
     await db.commit()
+
+    # Blocklist the current access token so it is rejected immediately.
+    if authorization and redis is not None:
+        try:
+            raw_token = authorization.removeprefix("Bearer ").strip()
+            payload = _sec.decode_access_token(raw_token)
+            jti: str = payload.get("jti", "")
+            exp: int = payload.get("exp", 0)
+            if jti:
+                now = int(datetime.now(tz=timezone.utc).timestamp())
+                ttl = max(exp - now, 1)
+                await redis.setex(f"jti_blocklist:{jti}", ttl, "")
+        except Exception:
+            pass  # best-effort; password is already changed
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -609,6 +627,7 @@ async def forgot_password(
 async def reset_password(
     body: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> Response:
     try:
         user_id = _token_serializer.loads(body.token, salt="pwd-reset", max_age=3600)
@@ -622,5 +641,10 @@ async def reset_password(
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.hashed_password = _sec.hash_password(body.new_password)
+
+    # Revoke all refresh tokens — the old password is no longer valid so all
+    # existing sessions must be terminated.
+    await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
+
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
