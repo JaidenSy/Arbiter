@@ -197,7 +197,7 @@ function BillingSection(): React.ReactElement {
               {/* Pro comparison card */}
               <div className="bg-surface border border-accent/20 rounded-xl p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-primary">Pro — $29 / month</p>
+                  <p className="text-sm font-semibold text-primary">Pro · $29 / month</p>
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/15 text-accent-light border border-accent/25 uppercase tracking-wider">Most popular</span>
                 </div>
                 <ul className="space-y-1.5">

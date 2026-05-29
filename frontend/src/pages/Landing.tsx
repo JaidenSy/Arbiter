@@ -91,7 +91,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
           style={{ animationDelay: '120ms', animationFillMode: 'both' }}
         >
           Shared credentials, no audit trail, agents that can call any tool they want.
-          Arbiter fixes all of it — cryptographic agent identity, tool-level permissions,
+          Arbiter fixes all of it: cryptographic agent identity, tool-level permissions,
           an encrypted secrets vault, and full observability through a single MCP gateway.
         </p>
 
@@ -123,7 +123,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
 
         {/* Terminal demo */}
         <div
-          className="mt-14 bg-surface/85 backdrop-blur-sm border border-border-strong rounded-lg p-5 text-left max-w-xl mx-auto shadow-2xl animate-fade-in"
+          className="mt-14 bg-surface/85 backdrop-blur-sm border border-border-strong rounded-lg p-5 text-left max-w-xl mx-auto shadow-2xl animate-fade-in overflow-hidden"
           style={{ animationDelay: '280ms', animationFillMode: 'both' }}
         >
           <div className="flex items-center gap-1.5 mb-4">
@@ -131,7 +131,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
             <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
             <span className="w-2.5 h-2.5 rounded-full bg-success/70" />
           </div>
-          <pre className="font-mono text-xs text-secondary leading-relaxed">
+          <pre className="font-mono text-xs text-secondary leading-relaxed overflow-x-auto">
             <span className="text-muted">$</span>{' '}
             <span className="text-teal-light">curl</span>{' '}
             <span className="text-primary">-X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \</span>
@@ -599,12 +599,12 @@ const faqItems: FAQItem[] = [
   {
     question: 'Can I self-host?',
     answer:
-      'Yes — the Enterprise plan includes a self-hosted option. You get full source access and deployment support. Contact sales to discuss your infrastructure requirements.',
+      'Yes. The Enterprise plan includes a self-hosted option. You get full source access and deployment support. Contact sales to discuss your infrastructure requirements.',
   },
   {
     question: 'What MCP clients are supported?',
     answer:
-      'Any client that supports the MCP spec, including Claude Desktop, Continue, Cursor, and custom clients built with the official MCP SDK. Arbiter is a drop-in gateway — just change your base URL.',
+      'Any client that supports the MCP spec, including Claude Desktop, Continue, Cursor, and custom clients built with the official MCP SDK. Arbiter is a drop-in gateway. Just change your base URL.',
   },
 ]
 
@@ -697,14 +697,9 @@ function Footer(): React.ReactElement {
           <Link to="/" className="text-secondary hover:text-primary text-xs transition-colors">
             Dashboard
           </Link>
-          <a
-            href="/api/v1/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-secondary hover:text-primary text-xs transition-colors"
-          >
+          <Link to="/docs" className="text-secondary hover:text-primary text-xs transition-colors">
             API Docs
-          </a>
+          </Link>
           <Link to="/privacy" className="text-secondary hover:text-primary text-xs transition-colors">
             Privacy
           </Link>
