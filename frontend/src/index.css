@@ -247,15 +247,6 @@ h1, h2, h3, h4, h5, h6 {
 .tile-warning { background: var(--gradient-tile-warning), var(--color-surface); }
 .tile-error   { background: var(--gradient-tile-error),   var(--color-surface); }
 
-/* ── Ambient aurora background — fixed behind all pages ─────────────────── */
-.app-ambient-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: var(--gradient-ambient);
-}
-
 /* Gradient text — amber → teal (kept narrow, used sparingly) */
 .gradient-text {
   background: linear-gradient(135deg, var(--color-accent-light), var(--color-teal-light));
