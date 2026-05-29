@@ -23,6 +23,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import UpgradeModal from './components/UpgradeModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import CommandPalette from './components/CommandPalette'
+import VerificationBanner from './components/VerificationBanner'
 import { PaletteProvider } from './context/PaletteContext'
 import { useAuth } from './context/AuthContext'
 
@@ -46,6 +47,10 @@ const VerifyEmail         = lazy(() => import('./pages/VerifyEmail'))
 const ConfirmEmailChange  = lazy(() => import('./pages/ConfirmEmailChange'))
 const AcceptInvite        = lazy(() => import('./pages/AcceptInvite'))
 const Members        = lazy(() => import('./pages/Members'))
+const PrivacyPolicy  = lazy(() => import('./pages/PrivacyPolicy'))
+const TermsOfService = lazy(() => import('./pages/TermsOfService'))
+const Security       = lazy(() => import('./pages/Security'))
+const Changelog      = lazy(() => import('./pages/Changelog'))
 
 // ── 404 page ──────────────────────────────────────────────────────────────────
 
@@ -94,11 +99,12 @@ function AppLayout({ children }: { children: React.ReactNode }): React.ReactElem
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 ml-[52px] min-h-screen">
+      <main className="flex-1 ml-[52px] min-h-screen flex flex-col">
+        <VerificationBanner />
         {/* Per-page boundary — keeps the sidebar alive if one page crashes */}
         <ErrorBoundary>
           {/* Key on pathname re-triggers page-enter animation on every route change */}
-          <div key={pathname} className="page-enter">
+          <div key={pathname} className="page-enter flex-1">
             {children}
           </div>
         </ErrorBoundary>
@@ -129,7 +135,6 @@ function App(): React.ReactElement {
   return (
     <PaletteProvider>
     <ErrorBoundary>
-    <div className="app-ambient-bg" aria-hidden />
     <UpgradeModal />
     <CommandPalette />
     <Suspense fallback={<PageLoader />}>
@@ -144,6 +149,10 @@ function App(): React.ReactElement {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/confirm-email-change" element={<ConfirmEmailChange />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
+        <Route path="/privacy"   element={<PrivacyPolicy />} />
+        <Route path="/terms"     element={<TermsOfService />} />
+        <Route path="/security"  element={<Security />} />
+        <Route path="/changelog" element={<Changelog />} />
 
         {/* ── Root — smart redirect ────────────────────────────────────────── */}
         <Route path="/" element={<RootRedirect />} />

@@ -16,7 +16,7 @@ from typing import AsyncGenerator, Union
 
 from fastapi import Depends, Header, HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
@@ -234,6 +234,71 @@ async def get_current_principal(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+
+# ── Email verification gate ───────────────────────────────────────────────────
+
+_ORG_VERIFIED_TTL = 300  # 5 minutes
+
+
+async def require_org_verified(
+    agent: Agent = Depends(get_current_agent),
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+) -> None:
+    """
+    Ensure that at least one user in the agent's org has a verified email.
+
+    Caches the result in Redis for 5 minutes to avoid repeated DB queries on
+    every proxied request.  Cache is invalidated when the user verifies their
+    email (see the verify_email endpoint).
+
+    Raises:
+        HTTPException 403: When no verified user exists in the org.
+    """
+    cache_key = f"org_verified:{agent.org_id}"
+
+    if redis is not None:
+        cached = await redis.get(cache_key)
+        if cached is not None:
+            if cached == b"1" or cached == "1":
+                return
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "email_not_verified",
+                    "message": (
+                        "Verify your email to use the proxy. "
+                        "Check your inbox or resend from your account settings."
+                    ),
+                },
+            )
+
+    result = await db.execute(
+        text(
+            "SELECT EXISTS("
+            "  SELECT 1 FROM users"
+            "  WHERE org_id = :org_id AND is_verified = true"
+            ")"
+        ),
+        {"org_id": str(agent.org_id)},
+    )
+    is_verified: bool = result.scalar_one()
+
+    if redis is not None:
+        await redis.setex(cache_key, _ORG_VERIFIED_TTL, "1" if is_verified else "0")
+
+    if not is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "email_not_verified",
+                "message": (
+                    "Verify your email to use the proxy. "
+                    "Check your inbox or resend from your account settings."
+                ),
+            },
+        )
 
 
 def require_role(*roles: str) -> Callable[..., User]:

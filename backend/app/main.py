@@ -233,8 +233,11 @@ def create_app() -> FastAPI:
             "semantic caching, RBAC, and audit logging."
         ),
         version="0.1.0",
-        docs_url="/docs",
-        redoc_url="/redoc",
+        # Disable Swagger/ReDoc/OpenAPI schema in production — a security
+        # gateway with its full API surface publicly browsable is a trust killer.
+        docs_url=None if settings.is_production else "/docs",
+        redoc_url=None if settings.is_production else "/redoc",
+        openapi_url=None if settings.is_production else "/openapi.json",
         lifespan=lifespan,
     )
 
@@ -358,8 +361,34 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     @app.get("/health/db", tags=["meta"])
-    async def health_db() -> dict[str, str]:
-        """Readiness probe — verifies database connectivity."""
+    async def health_db(request: Request) -> dict[str, str]:
+        """Readiness probe — verifies database connectivity.
+
+        Rate-limited to 10 requests/minute per IP to prevent DB connection
+        pool exhaustion from unauthenticated external hammering.
+        """
+        try:
+            redis = request.app.state.redis
+            if redis is not None:
+                client_ip = (
+                    request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+                    .split(",")[0]
+                    .strip()
+                )
+                rl_key = f"rate_limit:health_db:{client_ip}"
+                count = await redis.incr(rl_key)
+                if count == 1:
+                    await redis.expire(rl_key, 60)  # 1-minute window
+                if count > 10:
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail="Too many requests. Try again in 1 minute.",
+                    )
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # Redis unavailable — don't block the health check itself
+
         try:
             async with async_session_factory() as session:
                 await session.execute(text("SELECT 1"))
@@ -372,9 +401,34 @@ def create_app() -> FastAPI:
 
     @app.get("/health/cache", tags=["meta"])
     async def health_cache(request: Request) -> dict[str, str]:
-        """Readiness probe — verifies Redis connectivity."""
+        """Readiness probe — verifies Redis connectivity.
+
+        Rate-limited to 10 requests/minute per IP to prevent Redis connection
+        exhaustion from unauthenticated external hammering.
+        """
+        redis = request.app.state.redis
         try:
-            redis = request.app.state.redis
+            if redis is not None:
+                client_ip = (
+                    request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+                    .split(",")[0]
+                    .strip()
+                )
+                rl_key = f"rate_limit:health_cache:{client_ip}"
+                count = await redis.incr(rl_key)
+                if count == 1:
+                    await redis.expire(rl_key, 60)  # 1-minute window
+                if count > 10:
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail="Too many requests. Try again in 1 minute.",
+                    )
+        except HTTPException:
+            raise
+        except Exception:
+            pass  # rate-limit check failure should not block the probe
+
+        try:
             await redis.ping()
             return {"status": "ok"}
         except Exception as exc:

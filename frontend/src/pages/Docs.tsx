@@ -164,7 +164,7 @@ function DocsContent(): React.ReactElement {
         </p>
         <ol className="space-y-3">
           {[
-            'Register at arbiter.app. Free plan, no credit card required.',
+            'Register at arbiterai.dev. Free plan, no credit card required.',
             'Create your first agent in the dashboard and copy the API key.',
             'Set your MCP client base URL to your Arbiter gateway URL.',
             'Make your first tool call. Traffic is proxied, cached, and logged automatically.',
@@ -181,7 +181,7 @@ function DocsContent(): React.ReactElement {
 {
   "mcpServers": {
     "arbiter": {
-      "url": "https://your-arbiter.railway.app/mcp",
+      "url": "https://api.arbiterai.dev/api/v1/proxy/tool-call",
       "headers": {
         "Authorization": "Bearer nxai_your_agent_key_here"
       }
@@ -253,14 +253,13 @@ POST /api/v1/agents
         </p>
 
         <div className="bg-surface border border-border rounded-xl overflow-hidden">
-          <Endpoint method="POST" path="/api/v1/tool-permissions" description="Grant a specific tool (or *) to an agent." />
-          <Endpoint method="DELETE" path="/api/v1/tool-permissions/:id" description="Revoke a tool permission immediately." />
+          <Endpoint method="POST" path="/api/v1/agents/{agent_id}/permissions" description="Grant a specific tool (or *) to an agent." />
+          <Endpoint method="DELETE" path="/api/v1/agents/{agent_id}/permissions/{permission_id}" description="Revoke a tool permission immediately." />
         </div>
 
         <Code>{`# Grant read_file to an agent
-POST /api/v1/tool-permissions
+POST /api/v1/agents/{agent_id}/permissions
 {
-  "agent_id": "agt_abc123",
   "mcp_server_id": "srv_xyz",
   "tool_name": "read_file"
 }
@@ -277,13 +276,13 @@ POST /api/v1/tool-permissions
         </p>
 
         <div className="bg-surface border border-border rounded-xl overflow-hidden">
-          <Endpoint method="POST" path="/api/v1/vault" description="Store a secret. The value is encrypted immediately on write." />
-          <Endpoint method="GET" path="/api/v1/vault" description="List secrets. Names only; values are never returned." />
-          <Endpoint method="GET" path="/api/v1/vault/:name" description="Retrieve and decrypt a specific secret value." />
+          <Endpoint method="POST" path="/api/v1/vault/secrets" description="Store a secret. The value is encrypted immediately on write." />
+          <Endpoint method="GET" path="/api/v1/vault/secrets" description="List secrets. Names only; values are never returned." />
+          <Endpoint method="GET" path="/api/v1/vault/secrets/{id}" description="Retrieve and decrypt a specific secret by UUID." />
         </div>
 
         <Code>{`# Store a secret
-POST /api/v1/vault
+POST /api/v1/vault/secrets
 {
   "agent_id": "agt_abc123",
   "name": "GITHUB_TOKEN",

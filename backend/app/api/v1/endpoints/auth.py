@@ -332,7 +332,7 @@ async def change_password(
 @router.delete(
     "/me",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Deactivate account and revoke all sessions",
+    summary="GDPR-compliant account deletion — anonymize PII and hard-delete related data",
 )
 async def delete_me(
     authorization: str | None = Header(default=None),
@@ -340,24 +340,105 @@ async def delete_me(
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ) -> Response:
-    # Soft-delete the user
-    current_user.is_active = False
+    import asyncio
+    import logging
+    from datetime import datetime, timezone
 
-    # Revoke all refresh tokens
-    tokens = (
-        await db.scalars(
-            select(RefreshToken).where(
-                RefreshToken.user_id == current_user.id,
-                RefreshToken.revoked.is_(False),
+    import stripe
+    import stripe.error
+    from sqlalchemy import delete, func as sqlfunc
+
+    from app.db.models.agent import Agent
+    from app.db.models.cache import CacheEntry
+    from app.db.models.mcp_server import MCPServer
+    from app.db.models.org_invite import OrgInvite
+    from app.db.models.session import Session
+    from app.db.models.social_account import SocialAccount
+    from app.db.models.vault import VaultSecret
+
+    _log = logging.getLogger(__name__)
+
+    # Capture identifiers and original email BEFORE any mutation.
+    user_id = current_user.id
+    org_id = current_user.org_id
+    original_email = current_user.email
+
+    # ── Step 1: Cancel Stripe subscription (best-effort, before DB changes) ──
+    org = await db.get(Organization, org_id)
+    if org is not None and org.stripe_subscription_id and settings.stripe_secret_key:
+        stripe.api_key = settings.stripe_secret_key
+        try:
+            await asyncio.to_thread(
+                stripe.Subscription.cancel,
+                org.stripe_subscription_id,
+            )
+            org.stripe_subscription_id = None
+            org.plan_tier = "free"
+        except stripe.error.InvalidRequestError:
+            # Already cancelled or not found — clear the stale ID and continue.
+            org.stripe_subscription_id = None
+            org.plan_tier = "free"
+        except stripe.error.StripeError as exc:
+            _log.warning("delete_me: Stripe cancellation failed (continuing): %s", exc)
+
+    # ── Step 2: Anonymize user PII (FIX-1) ───────────────────────────────────
+    current_user.email = f"deleted-{user_id}@gdpr.invalid"
+    current_user.display_name = None
+    current_user.hashed_password = ""
+    current_user.is_active = False
+    current_user.is_verified = False
+
+    # ── Step 3: Hard delete social_accounts (FIX-2) ──────────────────────────
+    await db.execute(delete(SocialAccount).where(SocialAccount.user_id == user_id))
+
+    # ── Step 4: Delete org_invites for this user's email (FIX-6) ─────────────
+    # Done before org ownership check so invites are cleaned up regardless.
+    await db.execute(delete(OrgInvite).where(OrgInvite.email == original_email))
+
+    # ── Step 5: Hard delete refresh tokens (FIX-4) ───────────────────────────
+    await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
+
+    # ── Step 6: Org ownership check and cleanup (FIX-3) ──────────────────────
+    if org is not None:
+        # Count remaining owners in the org (excluding the deleting user).
+        other_owner_count = await db.scalar(
+            select(sqlfunc.count(User.id)).where(
+                User.org_id == org_id,
+                User.role == "owner",
+                User.id != user_id,
+                User.is_active.is_(True),
             )
         )
-    ).all()
-    for token in tokens:
-        token.revoked = True
 
+        if other_owner_count == 0:
+            # This user is the sole owner — delete all org resources, then the org.
+            # Explicit deletes for tables that do NOT cascade directly from org
+            # or that need to be cleared before the org row is removed.
+            await db.execute(delete(VaultSecret).where(VaultSecret.org_id == org_id))
+            await db.execute(delete(CacheEntry).where(CacheEntry.org_id == org_id))
+
+            # Sessions and SessionEvents cascade from org via ON DELETE CASCADE;
+            # Agents and ToolPermissions also cascade. Deleting the org row
+            # triggers the DB-level cascade for all remaining child tables.
+            # Anonymize org before deletion to scrub billing PII.
+            org.stripe_customer_id = None
+            org.name = f"deleted-org-{org_id}"
+
+            # Flush pending mutations so the DELETE doesn't hit FK conflicts.
+            await db.flush()
+            await db.delete(org)
+        else:
+            # Other owners exist — just remove this user from the org.
+            # The user row itself is anonymized (FIX-1) and will remain with
+            # is_active=False. Stripe PII is cleared on the org (FIX-5).
+            org.stripe_customer_id = None
+
+    # ── Step 7: Commit entire transaction atomically ──────────────────────────
     await db.commit()
 
-    # Blocklist the current access token
+    _log.info("GDPR deletion completed for user_id=%s org_id=%s", user_id, org_id)
+
+    # ── Step 8: Blocklist the current access token (keep existing behaviour) ──
     if authorization:
         try:
             raw_token = authorization.removeprefix("Bearer ").strip()
@@ -365,12 +446,11 @@ async def delete_me(
             jti: str = payload.get("jti", "")
             exp: int = payload.get("exp", 0)
             if jti:
-                from datetime import datetime, timezone
                 now = int(datetime.now(tz=timezone.utc).timestamp())
                 ttl = max(exp - now, 1)
                 await redis.setex(f"jti_blocklist:{jti}", ttl, "")
         except Exception:
-            pass  # best-effort; user is already deactivated
+            pass  # best-effort; user is already anonymized and deactivated
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -380,11 +460,43 @@ async def delete_me(
 
 @router.post("/send-verification", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Resend verification email")
 async def resend_verification(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    redis=Depends(get_redis),
 ) -> Response:
+    # Rate limit: max 3 resend attempts per IP per 10 minutes — prevents
+    # authenticated-but-unverified users from spamming the resend button.
+    if redis is not None:
+        client_ip = (
+            request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+            .split(",")[0]
+            .strip()
+        )
+        rl_key = f"rate_limit:send_verify:{client_ip}"
+        count = await redis.incr(rl_key)
+        if count == 1:
+            await redis.expire(rl_key, 600)  # 10-minute window
+        if count > 3:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many requests. Try again in 10 minutes.",
+            )
+
     if current_user.is_verified:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already verified")
+
+    if redis is not None:
+        rate_key = f"resend_verify:{current_user.id}"
+        count = await redis.incr(rate_key)
+        if count == 1:
+            await redis.expire(rate_key, 300)  # 5-minute window
+        if count > 3:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many verification email requests. Wait 5 minutes.",
+            )
+
     token = _token_serializer.dumps(str(current_user.id), salt="email-verify")
     verify_url = f"{settings.frontend_url}/verify-email?token={token}"
     await send_email_verification(current_user.email, verify_url)
@@ -395,6 +507,7 @@ async def resend_verification(
 async def verify_email(
     token: str = Query(...),
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> dict:
     try:
         user_id = _token_serializer.loads(token, salt="email-verify", max_age=86400)
@@ -408,6 +521,8 @@ async def verify_email(
     if not user.is_verified:
         user.is_verified = True
         await db.commit()
+        if redis is not None:
+            await redis.delete(f"org_verified:{user.org_id}")
     return {"message": "Email verified successfully"}
 
 
@@ -457,9 +572,29 @@ class ResetPasswordRequest(BaseModel):
 
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Request password reset email")
 async def forgot_password(
+    request: Request,
     body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> Response:
+    # Rate limit: max 3 requests per IP per 10 minutes — prevents email spam
+    # abuse that costs money and risks getting the sending domain blacklisted.
+    if redis is not None:
+        client_ip = (
+            request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+            .split(",")[0]
+            .strip()
+        )
+        rl_key = f"rate_limit:forgot_pwd:{client_ip}"
+        count = await redis.incr(rl_key)
+        if count == 1:
+            await redis.expire(rl_key, 600)  # 10-minute window
+        if count > 3:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many requests. Try again in 10 minutes.",
+            )
+
     result = await db.execute(select(User).where(User.email == body.email, User.is_active.is_(True)))
     user = result.scalar_one_or_none()
     # Always return 204 — never reveal whether the email exists
