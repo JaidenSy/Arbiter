@@ -69,6 +69,7 @@ class BillingService:
             "cancel_url": cancel_url,
             "metadata": {"org_id": str(org.id)},
             "subscription_data": {"metadata": {"org_id": str(org.id)}},
+            "automatic_tax": {"enabled": True},
         }
         if org.stripe_customer_id:
             kwargs["customer"] = org.stripe_customer_id
