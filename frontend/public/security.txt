@@ -1,0 +1,5 @@
+Contact: mailto:security@arbiterai.dev
+Preferred-Languages: en
+Canonical: https://arbiterai.dev/security
+Policy: https://arbiterai.dev/security
+Expires: 2027-05-29T00:00:00.000Z

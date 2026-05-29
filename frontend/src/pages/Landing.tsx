@@ -711,6 +711,12 @@ function Footer(): React.ReactElement {
           <Link to="/terms" className="text-secondary hover:text-primary text-xs transition-colors">
             Terms
           </Link>
+          <Link to="/security" className="text-secondary hover:text-primary text-xs transition-colors">
+            Security
+          </Link>
+          <Link to="/changelog" className="text-secondary hover:text-primary text-xs transition-colors">
+            Changelog
+          </Link>
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
             className="text-secondary hover:text-primary text-xs transition-colors"
