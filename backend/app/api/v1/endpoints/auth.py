@@ -384,6 +384,7 @@ async def delete_me(
 
     from app.db.models.agent import Agent
     from app.db.models.cache import CacheEntry
+    from app.db.models.gdpr_deletion_log import GdprDeletionLog
     from app.db.models.mcp_server import MCPServer
     from app.db.models.org_invite import OrgInvite
     from app.db.models.session import Session
@@ -399,6 +400,7 @@ async def delete_me(
 
     # ── Step 1: Cancel Stripe subscription (best-effort, before DB changes) ──
     org = await db.get(Organization, org_id)
+    had_stripe_subscription = bool(org is not None and org.stripe_subscription_id)
     if org is not None and org.stripe_subscription_id and settings.stripe_secret_key:
         stripe.api_key = settings.stripe_secret_key
         try:
@@ -458,6 +460,17 @@ async def delete_me(
             org.stripe_customer_id = None
             org.name = f"deleted-org-{org_id}"
 
+            # P2-FIX-6: SessionEvent has no user_id — cannot isolate per-user events.
+            # For sole-owner deletions the entire org (and all its sessions/events)
+            # is hard-deleted via DB cascade when the org row is removed below.
+
+            # ── P2-FIX-7: GDPR deletion audit log (sole owner) ───────────────
+            db.add(GdprDeletionLog(
+                org_id=org_id,
+                was_sole_owner=True,
+                had_stripe_subscription=had_stripe_subscription,
+            ))
+
             # Flush pending mutations so the DELETE doesn't hit FK conflicts.
             await db.flush()
             await db.delete(org)
@@ -466,6 +479,17 @@ async def delete_me(
             # The user row itself is anonymized (FIX-1) and will remain with
             # is_active=False. Stripe PII is cleared on the org (FIX-5).
             org.stripe_customer_id = None
+
+            # P2-FIX-6: SessionEvent has no user_id — cannot isolate per-user events.
+            # Events are org/session-scoped; scrubbing individual user events is
+            # not possible without a user_id FK on session_events.
+
+            # ── P2-FIX-7: GDPR deletion audit log (non-sole owner) ───────────
+            db.add(GdprDeletionLog(
+                org_id=org_id,
+                was_sole_owner=False,
+                had_stripe_subscription=had_stripe_subscription,
+            ))
 
     # ── Step 7: Commit entire transaction atomically ──────────────────────────
     await db.commit()

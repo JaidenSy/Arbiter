@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import secrets
+from urllib.parse import quote
 
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -189,7 +190,7 @@ async def google_callback(
             )
         except HTTPException as exc:
             return RedirectResponse(
-                url=f"{settings.frontend_url}/account?link_error={exc.detail}",
+                url=f"{settings.frontend_url}/account?link_error={quote(str(exc.detail))}",
                 status_code=status.HTTP_302_FOUND,
             )
         return RedirectResponse(
@@ -318,7 +319,7 @@ async def github_callback(
             )
         except HTTPException as exc:
             return RedirectResponse(
-                url=f"{settings.frontend_url}/account?link_error={exc.detail}",
+                url=f"{settings.frontend_url}/account?link_error={quote(str(exc.detail))}",
                 status_code=status.HTTP_302_FOUND,
             )
         return RedirectResponse(
