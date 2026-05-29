@@ -82,7 +82,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
           style={{ animationDelay: '120ms', animationFillMode: 'both' }}
         >
           Shared credentials, no audit trail, agents that can call any tool they want.
-          Arbiter sits between your agents and your MCP servers. Every call goes through it —
+          Arbiter sits between your agents and your MCP servers. Every call goes through it:
           logged, cached, and gated by the permissions you set.
         </p>
 
@@ -175,7 +175,7 @@ function ProductProof(): React.ReactElement {
         <div className="mb-14">
           <p className="text-muted text-xs font-semibold uppercase tracking-widest mb-3">What you actually get</p>
           <h2 className="font-display text-3xl font-semibold tracking-tight text-primary max-w-xl">
-            Full visibility into every tool call your agents make.
+            Full visibility into every tool call your agents make
           </h2>
         </div>
 
@@ -184,7 +184,7 @@ function ProductProof(): React.ReactElement {
           <div className="border-b border-border px-5 py-3.5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-primary text-sm font-medium">Session trace</span>
-              <span className="bg-success/10 text-success text-[10px] font-semibold px-2 py-0.5 rounded-full border border-success/20 tracking-wide">LIVE</span>
+              <span className="bg-elevated text-muted text-[10px] font-semibold px-2 py-0.5 rounded-full border border-border tracking-wide">SAMPLE</span>
             </div>
             <span className="text-muted text-xs font-mono">org / 4 events</span>
           </div>
@@ -571,7 +571,7 @@ const faqItems: FAQItem[] = [
   {
     question: 'What MCP clients are supported?',
     answer:
-      'Any client that supports the MCP spec, including Claude Desktop, Continue, Cursor, and custom clients built with the official MCP SDK. Arbiter is a drop-in gateway — just change your base URL.',
+      'Any client that supports the MCP spec, including Claude Desktop, Continue, Cursor, and custom clients built with the official MCP SDK. Arbiter is a drop-in gateway. Just change your base URL.',
   },
 ]
 
