@@ -1,7 +1,7 @@
 """Add user_id FK to session_events table
 
-Revision ID: 020
-Revises: 019
+Revision ID: 022
+Revises: 021
 Create Date: 2026-05-29
 """
 
@@ -11,8 +11,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision: str = "020"
-down_revision: str | None = "019"
+revision: str = "022"
+down_revision: str | None = "021"
 branch_labels: str | None = None
 depends_on: str | None = None
 
