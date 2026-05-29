@@ -24,7 +24,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.dependencies import get_current_user, get_db, get_redis
+from app.core.dependencies import get_current_user, get_db, get_redis, require_role
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
@@ -162,7 +162,7 @@ async def get_billing_status(
 async def create_checkout(
     body: CheckoutRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner")),
 ) -> dict[str, str]:
     """
     Create a Stripe Checkout Session for upgrading to the Pro plan.
@@ -239,7 +239,7 @@ async def create_checkout(
 async def create_portal(
     body: PortalRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("owner")),
 ) -> dict[str, str]:
     """
     Create a Stripe Customer Portal session so the user can manage or cancel

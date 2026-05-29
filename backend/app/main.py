@@ -47,6 +47,7 @@ from app.db.models.cache import CacheEntry
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.session import Session, SessionEvent
 from app.services.plan.plan_limits import PlanLimitError, QuotaExceededError
+from app.tasks.purge_gdpr import gdpr_purge_loop
 
 logger = logging.getLogger(__name__)
 
@@ -206,12 +207,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     eviction_task = asyncio.create_task(_eviction_loop())
     logger.info("arbiter: eviction task started (interval=%ds)", _EVICTION_INTERVAL)
 
+    # Start GDPR 30-day hard-purge task (P2-FIX-8).
+    gdpr_purge_task = asyncio.create_task(gdpr_purge_loop())
+    logger.info("arbiter: GDPR purge task started (interval=86400s)")
+
     yield
 
-    # Shutdown: cancel the eviction task cleanly.
+    # Shutdown: cancel background tasks cleanly.
     eviction_task.cancel()
+    gdpr_purge_task.cancel()
     try:
         await eviction_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await gdpr_purge_task
     except asyncio.CancelledError:
         pass
 

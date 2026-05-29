@@ -25,8 +25,12 @@ from typing import Any
 
 import jwt
 from fastapi import HTTPException, status
+from passlib.context import CryptContext
 
 from app.core.config import settings
+
+# Shared bcrypt context used for user password hashing/verification.
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def generate_api_key(prefix: str = "nxai") -> str:
@@ -75,6 +79,36 @@ def verify_api_key(raw_key: str, stored_hash: str) -> bool:
     """
     computed = hash_api_key(raw_key)
     return hmac.compare_digest(computed, stored_hash)
+
+
+# ── Password helpers ─────────────────────────────────────────────────────────
+
+
+def hash_password(plain: str) -> str:
+    """
+    Bcrypt-hash a plaintext password for storage.
+
+    Args:
+        plain: The user's plaintext password.
+
+    Returns:
+        str: A bcrypt hash string safe to store in the database.
+    """
+    return pwd_context.hash(plain)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    """
+    Constant-time bcrypt verification of a plaintext password.
+
+    Args:
+        plain:  The plaintext password provided by the user.
+        hashed: The bcrypt hash stored in the database.
+
+    Returns:
+        bool: True if the password matches, False otherwise.
+    """
+    return pwd_context.verify(plain, hashed)
 
 
 # ── JWT helpers ───────────────────────────────────────────────────────────────

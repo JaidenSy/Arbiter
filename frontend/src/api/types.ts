@@ -182,6 +182,11 @@ export interface StatsHistoryResponse {
   buckets: HistoryBucket[];
 }
 
+export interface UsageSummary {
+  tool_calls_month: number;
+  tool_calls_month_limit: number | null; // null = unlimited (enterprise)
+}
+
 export interface BillingStatus {
   plan: string;
   tool_calls_month: number;

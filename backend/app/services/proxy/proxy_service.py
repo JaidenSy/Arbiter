@@ -395,7 +395,7 @@ class ProxyService:
         Args:
             tool_name: Name of the tool being invoked (for logging).
             params:    Raw parameters from the agent request.
-            agent:     The calling agent (used for scoped secret lookup).
+            agent:     The calling agent (used for org-scoped and agent-scoped secret lookup).
 
         Returns:
             dict: Modified params with placeholders resolved.
@@ -403,19 +403,19 @@ class ProxyService:
         result: dict[str, Any] = {}
         for key, value in params.items():
             if isinstance(value, str):
-                result[key] = await self._inject_secrets(value, agent.id)
+                result[key] = await self._inject_secrets(value, agent_id=agent.id, org_id=agent.org_id)
             else:
                 result[key] = value
         return result
 
-    async def _inject_secrets(self, value: str, agent_id: uuid.UUID) -> str:
+    async def _inject_secrets(self, value: str, agent_id: uuid.UUID, org_id: uuid.UUID) -> str:
         """Replace all {{SECRET_NAME}} placeholders in a string value."""
         matches = _SECRET_PLACEHOLDER.findall(value)
         if not matches:
             return value
         for secret_name in set(matches):
             try:
-                secret_value = await self._vault.get_secret(secret_name, agent_id=agent_id)
+                secret_value = await self._vault.get_secret(secret_name, org_id=org_id, agent_id=agent_id)
                 value = value.replace(f"{{{{{secret_name}}}}}", secret_value)
             except KeyError:
                 logger.warning(
@@ -537,12 +537,14 @@ class ProxyService:
         cache_hit: bool,
         duration_ms: int,
         error: str | None,
+        user_id: uuid.UUID | None = None,
     ) -> SessionEvent:
         """Append an immutable audit record and increment daily usage counters."""
         event = SessionEvent(
             session_id=session.id,
             org_id=session.org_id,
             mcp_server_id=mcp_server.id,
+            user_id=user_id,
             tool_name=tool_name,
             request_payload=request_payload,
             response_payload=response_payload,

@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import hmac
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -153,11 +153,13 @@ async def register(
     summary="Authenticate and receive a token pair",
 )
 async def login(
+    request: Request,
     body: LoginRequest,
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ) -> TokenResponse:
     if redis is not None:
+        # Per-email rate limit — 10 attempts per 15 minutes
         rate_key = f"login_attempts:{body.email}"
         attempts = await redis.incr(rate_key)
         if attempts == 1:
@@ -166,6 +168,20 @@ async def login(
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many login attempts. Try again in 15 minutes.",
+            )
+
+        # Per-IP rate limit — 20 attempts per 10 minutes (credential stuffing defence)
+        client_ip = request.headers.get(
+            "X-Forwarded-For", request.client.host if request.client else "unknown"
+        ).split(",")[0].strip()
+        ip_key = f"login_ip:{client_ip}"
+        ip_attempts = await redis.incr(ip_key)
+        if ip_attempts == 1:
+            await redis.expire(ip_key, 600)  # 10-minute window
+        if ip_attempts > 20:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many login attempts from this IP. Try again in 10 minutes.",
             )
 
     _user, access_token, refresh_token = await auth_service.login(
@@ -306,26 +322,44 @@ async def update_me(
 )
 async def change_password(
     body: ChangePasswordRequest,
+    authorization: str | None = Header(default=None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> Response:
-    from passlib.context import CryptContext
-    _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
     if not current_user.hashed_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This account uses SSO — password change is not available",
         )
 
-    if not _pwd.verify(body.current_password, current_user.hashed_password):
+    if not _sec.verify_password(body.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Current password is incorrect",
         )
 
-    current_user.hashed_password = _pwd.hash(body.new_password)
+    current_user.hashed_password = _sec.hash_password(body.new_password)
+
+    # Revoke all refresh tokens so existing sessions cannot be re-used.
+    await db.execute(delete(RefreshToken).where(RefreshToken.user_id == current_user.id))
+
     await db.commit()
+
+    # Blocklist the current access token so it is rejected immediately.
+    if authorization and redis is not None:
+        try:
+            raw_token = authorization.removeprefix("Bearer ").strip()
+            payload = _sec.decode_access_token(raw_token)
+            jti: str = payload.get("jti", "")
+            exp: int = payload.get("exp", 0)
+            if jti:
+                now = int(datetime.now(tz=timezone.utc).timestamp())
+                ttl = max(exp - now, 1)
+                await redis.setex(f"jti_blocklist:{jti}", ttl, "")
+        except Exception:
+            pass  # best-effort; password is already changed
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -346,13 +380,14 @@ async def delete_me(
 
     import stripe
     import stripe.error
-    from sqlalchemy import delete, func as sqlfunc
+    from sqlalchemy import delete, func as sqlfunc, update
 
     from app.db.models.agent import Agent
     from app.db.models.cache import CacheEntry
+    from app.db.models.gdpr_deletion_log import GdprDeletionLog
     from app.db.models.mcp_server import MCPServer
     from app.db.models.org_invite import OrgInvite
-    from app.db.models.session import Session
+    from app.db.models.session import Session, SessionEvent
     from app.db.models.social_account import SocialAccount
     from app.db.models.vault import VaultSecret
 
@@ -365,6 +400,7 @@ async def delete_me(
 
     # ── Step 1: Cancel Stripe subscription (best-effort, before DB changes) ──
     org = await db.get(Organization, org_id)
+    had_stripe_subscription = bool(org is not None and org.stripe_subscription_id)
     if org is not None and org.stripe_subscription_id and settings.stripe_secret_key:
         stripe.api_key = settings.stripe_secret_key
         try:
@@ -424,6 +460,23 @@ async def delete_me(
             org.stripe_customer_id = None
             org.name = f"deleted-org-{org_id}"
 
+            # P2-FIX-6: Anonymize session events for this user before org cascade.
+            await db.execute(
+                update(SessionEvent)
+                .where(
+                    SessionEvent.org_id == org_id,
+                    SessionEvent.user_id == user_id,
+                )
+                .values(user_id=None, request_payload=None, response_payload=None)
+            )
+
+            # ── P2-FIX-7: GDPR deletion audit log (sole owner) ───────────────
+            db.add(GdprDeletionLog(
+                org_id=org_id,
+                was_sole_owner=True,
+                had_stripe_subscription=had_stripe_subscription,
+            ))
+
             # Flush pending mutations so the DELETE doesn't hit FK conflicts.
             await db.flush()
             await db.delete(org)
@@ -432,6 +485,23 @@ async def delete_me(
             # The user row itself is anonymized (FIX-1) and will remain with
             # is_active=False. Stripe PII is cleared on the org (FIX-5).
             org.stripe_customer_id = None
+
+            # P2-FIX-6: Anonymize this user's session events within the org.
+            await db.execute(
+                update(SessionEvent)
+                .where(
+                    SessionEvent.org_id == org_id,
+                    SessionEvent.user_id == user_id,
+                )
+                .values(user_id=None, request_payload=None, response_payload=None)
+            )
+
+            # ── P2-FIX-7: GDPR deletion audit log (non-sole owner) ───────────
+            db.add(GdprDeletionLog(
+                org_id=org_id,
+                was_sole_owner=False,
+                had_stripe_subscription=had_stripe_subscription,
+            ))
 
     # ── Step 7: Commit entire transaction atomically ──────────────────────────
     await db.commit()
@@ -609,6 +679,7 @@ async def forgot_password(
 async def reset_password(
     body: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> Response:
     try:
         user_id = _token_serializer.loads(body.token, salt="pwd-reset", max_age=3600)
@@ -622,5 +693,10 @@ async def reset_password(
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.hashed_password = _sec.hash_password(body.new_password)
+
+    # Revoke all refresh tokens — the old password is no longer valid so all
+    # existing sessions must be terminated.
+    await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
+
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

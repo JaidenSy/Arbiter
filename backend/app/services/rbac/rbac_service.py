@@ -65,10 +65,12 @@ class RBACService:
         Return True if the agent has permission to call the tool.
 
         Checks both exact tool_name match and wildcard ``"*"`` in one query.
+        The org_id filter prevents orphaned permission rows from deleted or
+        migrated agents in other orgs from granting unintended access.
         Result is cached in Redis for 30 seconds to reduce DB load on hot paths.
 
         Args:
-            agent:         The authenticated agent.
+            agent:         The authenticated agent (provides id and org_id).
             mcp_server_id: UUID of the target MCP server.
             tool_name:     Name of the tool being called.
 
@@ -87,6 +89,7 @@ class RBACService:
         stmt = select(
             exists(
                 select(ToolPermission.id).where(
+                    ToolPermission.org_id == agent.org_id,
                     ToolPermission.agent_id == agent.id,
                     ToolPermission.mcp_server_id == mcp_server_id,
                     or_(

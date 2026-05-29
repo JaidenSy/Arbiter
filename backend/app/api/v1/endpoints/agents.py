@@ -89,6 +89,7 @@ async def create_agent(
         is_active=True,
         scope=body.scope,
         rate_limit_per_minute=body.rate_limit_per_minute,
+        created_by_user_id=current_user.id,
     )
     db.add(agent)
     await db.commit()

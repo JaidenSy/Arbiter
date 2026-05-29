@@ -10,11 +10,14 @@ endpoint functions via:
 
 from __future__ import annotations
 
+import logging
 import uuid
 from collections.abc import Callable
 from typing import AsyncGenerator, Union
 
 from fastapi import Depends, Header, HTTPException, Request, Security, status
+
+_logger = logging.getLogger(__name__)
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -149,12 +152,18 @@ async def get_current_user(
     payload = security.decode_access_token(credentials.credentials)
 
     jti: str = payload.get("jti", "")
-    if jti and await redis.exists(f"jti_blocklist:{jti}"):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    if jti:
+        try:
+            is_blocked = await redis.exists(f"jti_blocklist:{jti}")
+        except Exception:
+            _logger.warning("Redis unavailable for JWT blocklist check — failing open")
+            is_blocked = False
+        if is_blocked:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     user_id = uuid.UUID(payload["sub"])
     user = await db.get(User, user_id)

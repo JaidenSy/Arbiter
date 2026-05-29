@@ -4,9 +4,10 @@ Arbiter — API endpoints: Stats.
 Dashboard statistics endpoint returning aggregated counts and metrics.
 
 Routes:
-    GET    /stats         — return agents_count, servers_count, tool_calls_today,
-                            cache_hit_rate_today
-    GET    /stats/history — historical time-series bucketed by hour (24h) or day (7d)
+    GET    /stats              — return agents_count, servers_count, tool_calls_today,
+                                 cache_hit_rate_today
+    GET    /stats/usage/summary — monthly tool call usage + plan limit
+    GET    /stats/history      — historical time-series bucketed by hour (24h) or day (7d)
 """
 
 from __future__ import annotations
@@ -21,9 +22,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user, get_db
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
+from app.db.models.organization import Organization
 from app.db.models.session import Session, SessionEvent
 from app.db.models.usage_event import UsageEvent
 from app.db.models.user import User
+from app.services.plan.plan_limits import PLAN_LIMITS
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -60,9 +63,10 @@ class StatsHistoryResponse(BaseModel):
 
 
 class UsageSummaryResponse(BaseModel):
-    """Monthly usage summary for the usage strip."""
+    """Monthly usage summary for the usage strip and dashboard quota card."""
 
     tool_calls_month: int
+    tool_calls_month_limit: int | None  # None = unlimited (enterprise)
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
@@ -119,7 +123,11 @@ async def get_stats(
             func.count(SessionEvent.id).label("total"),
             func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
             func.sum(case((SessionEvent.error.isnot(None), 1), else_=0)).label("errors"),
-        ).where(SessionEvent.occurred_at >= today_midnight, SessionEvent.session_id.in_(org_session_ids_today))
+        ).where(
+            SessionEvent.occurred_at >= today_midnight,
+            SessionEvent.org_id == current_user.org_id,
+            SessionEvent.session_id.in_(org_session_ids_today),
+        )
     )
     row = calls_result.one()
     tool_calls_today: int = row.total or 0
@@ -152,10 +160,12 @@ async def get_usage_summary(
     current_user: User = Depends(get_current_user),
 ) -> UsageSummaryResponse:
     """
-    Return the total tool calls for the current calendar month.
+    Return the total tool calls for the current calendar month plus the plan limit.
 
     Reads from the usage_events table which is updated via upsert on each
     proxied tool call.  Returns 0 when no events exist for the month yet.
+    The limit is derived from the org's current plan_tier via PLAN_LIMITS;
+    None means unlimited (enterprise).
     """
     month_start = func.date_trunc("month", func.now())
     result = await db.execute(
@@ -165,7 +175,13 @@ async def get_usage_summary(
         )
     )
     total: int = result.scalar_one() or 0
-    return UsageSummaryResponse(tool_calls_month=total)
+
+    # Load org to resolve plan-tier limit.
+    org = await db.get(Organization, current_user.org_id)
+    plan_tier = org.plan_tier if org else "free"
+    limit: int | None = PLAN_LIMITS.get(plan_tier, {}).get("max_tool_calls_mo")
+
+    return UsageSummaryResponse(tool_calls_month=total, tool_calls_month_limit=limit)
 
 
 # ── History endpoint ──────────────────────────────────────────────────────────
@@ -221,7 +237,11 @@ async def get_stats_history(
                 func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
                 func.sum(case((SessionEvent.error.isnot(None), 1), else_=0)).label("errors"),
             )
-            .where(SessionEvent.occurred_at >= cutoff, SessionEvent.session_id.in_(org_session_ids))
+            .where(
+                SessionEvent.occurred_at >= cutoff,
+                SessionEvent.org_id == current_user.org_id,
+                SessionEvent.session_id.in_(org_session_ids),
+            )
             .group_by(day_bucket)
             .order_by(day_bucket)
         )
@@ -264,7 +284,11 @@ async def get_stats_history(
                 func.sum(case((SessionEvent.cache_hit.is_(True), 1), else_=0)).label("hits"),
                 func.sum(case((SessionEvent.error.isnot(None), 1), else_=0)).label("errors"),
             )
-            .where(SessionEvent.occurred_at >= cutoff, SessionEvent.session_id.in_(org_session_ids))
+            .where(
+                SessionEvent.occurred_at >= cutoff,
+                SessionEvent.org_id == current_user.org_id,
+                SessionEvent.session_id.in_(org_session_ids),
+            )
             .group_by(hour_bucket)
             .order_by(hour_bucket)
         )
