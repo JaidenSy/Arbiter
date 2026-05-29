@@ -15,6 +15,9 @@ jobs:
         with:
           node-version: 20
 
+      - name: Install pnpm
+        run: npm install -g pnpm
+
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
@@ -26,11 +29,11 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
         working-directory: frontend
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
         working-directory: frontend
         env:
           VITE_API_BASE_URL: https://nexusai-api-staging.up.railway.app/api/v1
