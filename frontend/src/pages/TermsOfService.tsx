@@ -253,7 +253,7 @@ export default function TermsOfService(): React.ReactElement {
           <P>
             Your notice must include: (1) identification of the copyrighted work; (2) identification of the infringing material; (3) your contact information; (4) a statement of good faith belief; (5) a statement of accuracy under penalty of perjury; and (6) your signature.
           </P>
-          <P>We have adopted a policy of terminating accounts of repeat copyright infringers.</P>
+          <P>Our designated agent is registered with the U.S. Copyright Office (Registration No. DMCA-1073513). We have adopted a policy of terminating accounts of repeat copyright infringers.</P>
 
           {/* 15 */}
           <H2>15. Termination</H2>
