@@ -26,7 +26,7 @@ from app.db.models.organization import Organization
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.user import User
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
