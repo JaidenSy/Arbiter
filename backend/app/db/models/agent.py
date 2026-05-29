@@ -28,14 +28,16 @@ class Agent(Base):
     Persistent record of an agent registered with the gateway.
 
     Columns:
-        id:            Auto-generated UUID primary key.
-        org_id:        FK → organizations.id.  Agent belongs to exactly one org.
-        name:          Human-readable label (e.g. "Claude-prod").
-        description:   Optional notes about this agent's purpose.
-        api_key_hash:  SHA-256 hash of the raw API key — never the raw key.
-        is_active:     Soft-delete flag; inactive agents are rejected at auth.
-        created_at:    Timestamp set on INSERT, never modified.
-        updated_at:    Timestamp updated on every UPDATE via DB trigger.
+        id:                 Auto-generated UUID primary key.
+        org_id:             FK → organizations.id.  Agent belongs to exactly one org.
+        name:               Human-readable label (e.g. "Claude-prod").
+        description:        Optional notes about this agent's purpose.
+        api_key_hash:       SHA-256 hash of the raw API key — never the raw key.
+        is_active:          Soft-delete flag; inactive agents are rejected at auth.
+        created_by_user_id: FK → users.id — the org member who registered this agent.
+                            SET NULL on user delete so the agent outlives its creator.
+        created_at:         Timestamp set on INSERT, never modified.
+        updated_at:         Timestamp updated on every UPDATE via DB trigger.
     """
 
     __tablename__ = "agents"
@@ -60,6 +62,14 @@ class Agent(Base):
     #   "vault_read_only"— only allowed to read vault secrets, no tool calls
     scope: Mapped[str] = mapped_column(String(32), nullable=False, default="full")
     rate_limit_per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Tracks which org member registered this agent so we can deactivate their
+    # agents automatically when they are removed from the org.
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

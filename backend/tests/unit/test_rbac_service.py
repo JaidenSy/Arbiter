@@ -20,10 +20,11 @@ import pytest_asyncio
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _make_agent(agent_id: uuid.UUID | None = None) -> MagicMock:
+def _make_agent(agent_id: uuid.UUID | None = None, org_id: uuid.UUID | None = None) -> MagicMock:
     """Return a mock Agent ORM object."""
     agent = MagicMock()
     agent.id = agent_id or uuid.uuid4()
+    agent.org_id = org_id or uuid.uuid4()
     agent.name = "test-agent"
     agent.is_active = True
     return agent
@@ -133,6 +134,47 @@ class TestCheckPermission:
             tool_name="read_file",
         )
         assert isinstance(result, bool)
+
+    @pytest.mark.asyncio
+    async def test_org_id_is_included_in_query(self):
+        """check_permission must include org_id in the WHERE clause.
+
+        We capture the compiled SQL text and assert ToolPermission.org_id is
+        referenced, preventing cross-org permission leakage from orphaned rows.
+        """
+        from sqlalchemy import exists, or_, select
+        from app.db.models.tool_permission import ToolPermission
+        from app.services.rbac.rbac_service import RBACService
+
+        captured_stmts: list = []
+
+        db = AsyncMock()
+
+        async def execute(stmt):
+            captured_stmts.append(stmt)
+            result = MagicMock()
+            result.scalar.return_value = False
+            return result
+
+        db.execute = execute
+
+        org_id = uuid.uuid4()
+        agent = _make_agent(org_id=org_id)
+        svc = RBACService(db=db)
+        await svc.check_permission(
+            agent=agent,
+            mcp_server_id=uuid.uuid4(),
+            tool_name="some_tool",
+        )
+
+        assert len(captured_stmts) == 1, "Expected exactly one DB query"
+        # Walk the compiled WHERE clauses and verify org_id column is referenced.
+        stmt = captured_stmts[0]
+        stmt_str = str(stmt.compile(compile_kwargs={"literal_binds": False}))
+        assert "org_id" in stmt_str, (
+            "org_id filter missing from check_permission query — "
+            "orphaned permission rows could grant unintended access"
+        )
 
 
 class TestGetAllowedTools:

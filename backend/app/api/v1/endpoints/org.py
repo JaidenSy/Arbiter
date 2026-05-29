@@ -22,13 +22,14 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from itsdangerous import URLSafeTimedSerializer
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security as _sec
 from app.core.config import settings
 from app.core.dependencies import get_current_user, get_db, require_role
 from app.schemas.pagination import Page
+from app.db.models.agent import Agent
 from app.db.models.org_invite import OrgInvite
 from app.db.models.organization import Organization
 from app.db.models.user import User
@@ -205,6 +206,19 @@ async def remove_member(
             raise HTTPException(status_code=400, detail="Cannot remove the last owner")
 
     member.is_active = False
+
+    # Deactivate all agents created by the removed member within this org so
+    # their API keys can no longer be used to make proxy calls.
+    await db.execute(
+        update(Agent)
+        .where(
+            Agent.org_id == current_user.org_id,
+            Agent.created_by_user_id == member.id,
+            Agent.is_active.is_(True),
+        )
+        .values(is_active=False)
+    )
+
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
