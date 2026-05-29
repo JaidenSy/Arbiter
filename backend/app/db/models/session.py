@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -21,6 +21,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.db.models.agent import Agent
     from app.db.models.mcp_server import MCPServer
+    from app.db.models.user import User
 
 
 class Session(Base):
@@ -122,6 +123,12 @@ class SessionEvent(Base):
         ForeignKey("mcp_servers.id", ondelete="SET NULL"),
         nullable=True,
     )
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     tool_name: Mapped[str] = mapped_column(String(255), nullable=False)
     request_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     response_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
@@ -137,6 +144,7 @@ class SessionEvent(Base):
     # ── Relationships ─────────────────────────────────────────────────────────
     session: Mapped["Session"] = relationship("Session", back_populates="events")
     mcp_server: Mapped["MCPServer | None"] = relationship("MCPServer")
+    user: Mapped["User | None"] = relationship("User")
 
     def __repr__(self) -> str:
         return (
