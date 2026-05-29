@@ -19,7 +19,7 @@ const API_BASE: string =
 const inputClass =
   'w-full bg-base border border-border-strong text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-[border-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] placeholder:text-muted'
 const labelClass =
-  'block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest'
+  'block text-sm font-medium text-primary mb-1.5'
 
 interface Props {
   initialMode: AuthMode

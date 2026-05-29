@@ -56,26 +56,10 @@ interface HeroProps { onGetStarted: () => void; onSignIn: () => void }
 function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 overflow-hidden">
-      {/* Background — shader gradient + particle mesh */}
+      {/* Background — static dark with subtle amber glow */}
       <HeroBackground />
 
-      {/* Aurora overlay — warm amber focal glow from top center */}
-      <div
-        aria-hidden
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: 'var(--gradient-aurora-hero)' }}
-      />
-
-      {/* Dot grid — kept at very low opacity for texture depth */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.025]"
-        style={{
-          backgroundImage: 'radial-gradient(circle, #F59E0B 1px, transparent 1px)',
-          backgroundSize: '28px 28px',
-        }}
-      />
-
-      {/* Bottom fade — blends WebGL hero into ambient-lit sections below */}
+      {/* Bottom fade — blends hero into sections below */}
       <div
         className="absolute bottom-0 left-0 right-0 h-52 pointer-events-none"
         style={{ background: 'linear-gradient(to bottom, transparent, var(--color-base))' }}
@@ -111,14 +95,14 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
           an encrypted secrets vault, and full observability through a single MCP gateway.
         </p>
 
-        {/* CTAs — hero-glow only on primary CTA */}
+        {/* CTAs */}
         <div
           className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6 animate-fade-in"
           style={{ animationDelay: '200ms', animationFillMode: 'both' }}
         >
           <button
             onClick={onGetStarted}
-            className="press bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-hero text-sm"
+            className="press bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard text-sm"
           >
             Start for Free
           </button>
@@ -139,7 +123,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
 
         {/* Terminal demo */}
         <div
-          className="mt-14 bg-surface/85 backdrop-blur-sm border border-border-strong rounded-2xl p-5 text-left max-w-xl mx-auto shadow-2xl animate-fade-in"
+          className="mt-14 bg-surface/85 backdrop-blur-sm border border-border-strong rounded-lg p-5 text-left max-w-xl mx-auto shadow-2xl animate-fade-in"
           style={{ animationDelay: '280ms', animationFillMode: 'both' }}
         >
           <div className="flex items-center gap-1.5 mb-4">
@@ -266,7 +250,6 @@ function Features(): React.ReactElement {
           <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">
             Everything your agents need
           </h2>
-          <div className="w-10 h-px bg-accent/60 mx-auto" />
         </div>
 
         {/* Grid — 4-col desktop bento: wide(2)+narrow(1)+narrow(1) / narrow(1)+wide(2)+narrow(1) */}
@@ -283,10 +266,10 @@ function Features(): React.ReactElement {
                   isWide ? 'lg:col-span-2 sm:col-span-2' : '',
                 ].filter(Boolean).join(' ')}
               >
-                <div className="w-9 h-9 rounded-lg bg-accent/[0.08] border border-border-accent flex items-center justify-center text-accent-light mb-4 group-hover:bg-accent/[0.12] transition-colors duration-200">
-                  {f.icon}
+                <div className="flex items-center gap-2.5 mb-3">
+                  <span className="text-accent-light flex-shrink-0">{f.icon}</span>
+                  <h3 className="font-display text-primary font-semibold text-sm tracking-tight">{f.title}</h3>
                 </div>
-                <h3 className="font-display text-primary font-semibold text-sm tracking-tight mb-2">{f.title}</h3>
                 <p className="text-secondary text-sm leading-relaxed">{f.description}</p>
               </div>
             )
@@ -334,8 +317,7 @@ function Comparison(): React.ReactElement {
     <section className="py-24 px-6 bg-surface/30">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">How Arbiter compares</h2>
-          <div className="w-10 h-px bg-accent/60 mx-auto mb-6" />
+          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-6">How Arbiter compares</h2>
           <p className="text-secondary text-base max-w-xl mx-auto">
             LiteLLM and Portkey solve LLM routing. Arbiter solves MCP security.
           </p>
@@ -424,7 +406,6 @@ function HowItWorks(): React.ReactElement {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Up and running in minutes</h2>
-          <div className="w-10 h-px bg-accent/60 mx-auto" />
         </div>
 
         <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -433,7 +414,7 @@ function HowItWorks(): React.ReactElement {
 
           {steps.map((step) => (
             <div key={step.number} className="relative flex flex-col gap-4">
-              {/* Number badge — solid amber, no purple glow */}
+              {/* Number badge — solid amber */}
               <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
                 <span className="font-mono font-semibold text-base tracking-tight" style={{ color: 'rgba(255,255,255,0.95)' }}>{step.number}</span>
               </div>
@@ -527,7 +508,6 @@ function Pricing(): React.ReactElement {
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Simple, transparent pricing</h2>
-          <div className="w-10 h-px bg-accent/60 mx-auto" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
@@ -636,7 +616,6 @@ function FAQ(): React.ReactElement {
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Common questions</h2>
-          <div className="w-10 h-px bg-accent/60 mx-auto" />
         </div>
 
         <div className="space-y-3">
