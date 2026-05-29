@@ -440,6 +440,9 @@ export default function Account(): React.ReactElement {
             <p className="text-sm text-secondary mb-4">
               This will immediately deactivate your account and sign you out everywhere. This action cannot be undone.
             </p>
+            <p className="text-xs text-warning/80 bg-warning/5 border border-warning/20 rounded-lg px-3 py-2 mb-4">
+              Your Stripe subscription will be cancelled immediately upon deletion.
+            </p>
             {deleteError && (
               <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2 mb-4">
                 <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
