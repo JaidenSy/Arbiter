@@ -7,6 +7,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const API_BASE: string =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
@@ -19,6 +20,7 @@ function VerifyEmail(): React.ReactElement {
   const token = searchParams.get('token') ?? ''
   const [status, setStatus] = useState<Status>('loading')
   const [message, setMessage] = useState('')
+  const { refreshUser } = useAuth()
 
   useEffect(() => {
     if (!token) {
@@ -30,6 +32,8 @@ function VerifyEmail(): React.ReactElement {
       .then(async (res) => {
         if (res.ok) {
           setStatus('success')
+          // Sync the AuthContext so the VerificationBanner disappears immediately
+          await refreshUser()
         } else {
           const data = await res.json().catch(() => ({}))
           setMessage((data as { detail?: string }).detail ?? 'Verification failed.')

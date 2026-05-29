@@ -382,9 +382,22 @@ async def delete_me(
 async def resend_verification(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    redis=Depends(get_redis),
 ) -> Response:
     if current_user.is_verified:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already verified")
+
+    if redis is not None:
+        rate_key = f"resend_verify:{current_user.id}"
+        count = await redis.incr(rate_key)
+        if count == 1:
+            await redis.expire(rate_key, 300)  # 5-minute window
+        if count > 3:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many verification email requests. Wait 5 minutes.",
+            )
+
     token = _token_serializer.dumps(str(current_user.id), salt="email-verify")
     verify_url = f"{settings.frontend_url}/verify-email?token={token}"
     await send_email_verification(current_user.email, verify_url)
@@ -395,6 +408,7 @@ async def resend_verification(
 async def verify_email(
     token: str = Query(...),
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> dict:
     try:
         user_id = _token_serializer.loads(token, salt="email-verify", max_age=86400)
@@ -408,6 +422,8 @@ async def verify_email(
     if not user.is_verified:
         user.is_verified = True
         await db.commit()
+        if redis is not None:
+            await redis.delete(f"org_verified:{user.org_id}")
     return {"message": "Email verified successfully"}
 
 
@@ -457,9 +473,29 @@ class ResetPasswordRequest(BaseModel):
 
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Request password reset email")
 async def forgot_password(
+    request: Request,
     body: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> Response:
+    # Rate limit: max 3 requests per IP per 10 minutes — prevents email spam
+    # abuse that costs money and risks getting the sending domain blacklisted.
+    if redis is not None:
+        client_ip = (
+            request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+            .split(",")[0]
+            .strip()
+        )
+        rl_key = f"rate_limit:forgot_pwd:{client_ip}"
+        count = await redis.incr(rl_key)
+        if count == 1:
+            await redis.expire(rl_key, 600)  # 10-minute window
+        if count > 3:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many requests. Try again in 10 minutes.",
+            )
+
     result = await db.execute(select(User).where(User.email == body.email, User.is_active.is_(True)))
     user = result.scalar_one_or_none()
     # Always return 204 — never reveal whether the email exists
