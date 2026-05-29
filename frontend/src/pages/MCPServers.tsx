@@ -279,7 +279,7 @@ function SwapModal({
     <Modal isOpen={isOpen} onClose={onClose} title="Disable a Server to Continue">
       <div className="space-y-4">
         <p className="text-sm text-secondary">
-          You're using all {activeLimit} active server slots. Choose one to disable — you can re-enable it anytime.
+          You're using all {activeLimit} active server slots. Choose one to disable. You can re-enable it anytime.
         </p>
 
         <div className="space-y-2">

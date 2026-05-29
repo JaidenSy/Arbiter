@@ -163,7 +163,7 @@ function RegisterModal({
 
         <div>
           <label htmlFor="agent-rate-limit" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
-            Rate Limit <span className="text-muted normal-case font-normal">(total calls/min — leave blank for unlimited)</span>
+            Rate Limit <span className="text-muted normal-case font-normal">(total calls/min, leave blank for unlimited)</span>
           </label>
           <Input
             id="agent-rate-limit"
@@ -544,7 +544,7 @@ function RenameModal({ agent, onClose, onSuccess }: RenameModalProps): React.Rea
         </div>
         <div>
           <label className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
-            Rate Limit <span className="text-muted normal-case font-normal">(total calls/min — leave blank for unlimited)</span>
+            Rate Limit <span className="text-muted normal-case font-normal">(total calls/min, leave blank for unlimited)</span>
           </label>
           <Input
             type="number"

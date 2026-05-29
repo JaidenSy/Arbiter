@@ -315,7 +315,7 @@ function EditModal({ isOpen, onClose, agentId, permission }: EditModalProps): Re
 
         <div>
           <label htmlFor="edit-rate-limit" className={labelClass}>
-            Rate Limit <span className="text-muted normal-case font-normal">(calls/min — leave blank for unlimited)</span>
+            Rate Limit <span className="text-muted normal-case font-normal">(calls/min, leave blank for unlimited)</span>
           </label>
           <input
             id="edit-rate-limit"
@@ -330,7 +330,7 @@ function EditModal({ isOpen, onClose, agentId, permission }: EditModalProps): Re
 
         <div>
           <label htmlFor="edit-cache-ttl" className={labelClass}>
-            Cache TTL <span className="text-muted normal-case font-normal">(seconds — leave blank for global default)</span>
+            Cache TTL <span className="text-muted normal-case font-normal">(seconds, leave blank for global default)</span>
           </label>
           <input
             id="edit-cache-ttl"
