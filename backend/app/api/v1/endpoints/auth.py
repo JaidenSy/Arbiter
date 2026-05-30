@@ -15,8 +15,7 @@ Routes:
 from __future__ import annotations
 
 import hmac
-
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -54,13 +53,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 async def _build_me_response(user: User, db: AsyncSession) -> MeResponse:
     """Load org + social accounts and assemble MeResponse."""
     # Reload user with social_accounts eagerly to avoid lazy-load issues in async
     user_with_socials = await db.scalar(
-        select(User)
-        .where(User.id == user.id)
-        .options(selectinload(User.social_accounts))
+        select(User).where(User.id == user.id).options(selectinload(User.social_accounts))
     )
     if user_with_socials is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -95,6 +93,7 @@ async def _build_me_response(user: User, db: AsyncSession) -> MeResponse:
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
+
 @router.post(
     "/register",
     response_model=TokenResponse,
@@ -108,7 +107,9 @@ async def register(
     redis=Depends(get_redis),
 ) -> TokenResponse:
     if not settings.allow_public_registration:
-        if not settings.invite_code or not hmac.compare_digest(body.invite_code, settings.invite_code):
+        if not settings.invite_code or not hmac.compare_digest(
+            body.invite_code, settings.invite_code
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Registration requires a valid invite code",
@@ -117,7 +118,13 @@ async def register(
     # Org creation rate limit — max 3 new orgs per IP per day to prevent
     # free-tier reset abuse (register new email → new org → reset quota).
     if redis is not None:
-        client_ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown").split(",")[0].strip()
+        client_ip = (
+            request.headers.get(
+                "X-Forwarded-For", request.client.host if request.client else "unknown"
+            )
+            .split(",")[0]
+            .strip()
+        )
         reg_key = f"org_reg:{client_ip}:{date.today().isoformat()}"
         reg_count = await redis.incr(reg_key)
         if reg_count == 1:
@@ -171,9 +178,13 @@ async def login(
             )
 
         # Per-IP rate limit — 20 attempts per 10 minutes (credential stuffing defence)
-        client_ip = request.headers.get(
-            "X-Forwarded-For", request.client.host if request.client else "unknown"
-        ).split(",")[0].strip()
+        client_ip = (
+            request.headers.get(
+                "X-Forwarded-For", request.client.host if request.client else "unknown"
+            )
+            .split(",")[0]
+            .strip()
+        )
         ip_key = f"login_ip:{client_ip}"
         ip_attempts = await redis.incr(ip_key)
         if ip_attempts == 1:
@@ -273,6 +284,7 @@ async def me(
 
 class UpdateMeResponse(MeResponse):
     """Extended response for PATCH /auth/me when an email change is pending."""
+
     pending_email_confirmation: str | None = None
 
 
@@ -333,7 +345,13 @@ async def change_password(
             detail="This account uses SSO — password change is not available",
         )
 
-    if not _sec.verify_password(body.current_password, current_user.hashed_password):
+    current_ok = _sec.verify_password(body.current_password, current_user.hashed_password)
+    if not current_ok:
+        # Legacy hash (no SHA-256 pre-hash) — accept and let the re-hash below migrate it.
+        current_ok = _sec.verify_password_legacy(
+            body.current_password, current_user.hashed_password
+        )
+    if not current_ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Current password is incorrect",
@@ -354,7 +372,7 @@ async def change_password(
             jti: str = payload.get("jti", "")
             exp: int = payload.get("exp", 0)
             if jti:
-                now = int(datetime.now(tz=timezone.utc).timestamp())
+                now = int(datetime.now(tz=UTC).timestamp())
                 ttl = max(exp - now, 1)
                 await redis.setex(f"jti_blocklist:{jti}", ttl, "")
         except Exception:
@@ -376,18 +394,17 @@ async def delete_me(
 ) -> Response:
     import asyncio
     import logging
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     import stripe
     import stripe.error
-    from sqlalchemy import delete, func as sqlfunc, update
+    from sqlalchemy import delete, update
+    from sqlalchemy import func as sqlfunc
 
-    from app.db.models.agent import Agent
     from app.db.models.cache import CacheEntry
     from app.db.models.gdpr_deletion_log import GdprDeletionLog
-    from app.db.models.mcp_server import MCPServer
     from app.db.models.org_invite import OrgInvite
-    from app.db.models.session import Session, SessionEvent
+    from app.db.models.session import SessionEvent
     from app.db.models.social_account import SocialAccount
     from app.db.models.vault import VaultSecret
 
@@ -471,11 +488,13 @@ async def delete_me(
             )
 
             # ── P2-FIX-7: GDPR deletion audit log (sole owner) ───────────────
-            db.add(GdprDeletionLog(
-                org_id=org_id,
-                was_sole_owner=True,
-                had_stripe_subscription=had_stripe_subscription,
-            ))
+            db.add(
+                GdprDeletionLog(
+                    org_id=org_id,
+                    was_sole_owner=True,
+                    had_stripe_subscription=had_stripe_subscription,
+                )
+            )
 
             # Flush pending mutations so the DELETE doesn't hit FK conflicts.
             await db.flush()
@@ -497,11 +516,13 @@ async def delete_me(
             )
 
             # ── P2-FIX-7: GDPR deletion audit log (non-sole owner) ───────────
-            db.add(GdprDeletionLog(
-                org_id=org_id,
-                was_sole_owner=False,
-                had_stripe_subscription=had_stripe_subscription,
-            ))
+            db.add(
+                GdprDeletionLog(
+                    org_id=org_id,
+                    was_sole_owner=False,
+                    had_stripe_subscription=had_stripe_subscription,
+                )
+            )
 
     # ── Step 7: Commit entire transaction atomically ──────────────────────────
     await db.commit()
@@ -516,7 +537,7 @@ async def delete_me(
             jti: str = payload.get("jti", "")
             exp: int = payload.get("exp", 0)
             if jti:
-                now = int(datetime.now(tz=timezone.utc).timestamp())
+                now = int(datetime.now(tz=UTC).timestamp())
                 ttl = max(exp - now, 1)
                 await redis.setex(f"jti_blocklist:{jti}", ttl, "")
         except Exception:
@@ -528,18 +549,31 @@ async def delete_me(
 # ── Email verification ────────────────────────────────────────────────────────
 
 
-@router.post("/send-verification", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Resend verification email")
+@router.post(
+    "/send-verification",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    summary="Resend verification email",
+)
 async def resend_verification(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     redis=Depends(get_redis),
 ) -> Response:
+    if not settings.email_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Email service is not configured. Contact support.",
+        )
+
     # Rate limit: max 3 resend attempts per IP per 10 minutes — prevents
     # authenticated-but-unverified users from spamming the resend button.
     if redis is not None:
         client_ip = (
-            request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+            request.headers.get(
+                "X-Forwarded-For", request.client.host if request.client else "unknown"
+            )
             .split(",")[0]
             .strip()
         )
@@ -554,7 +588,9 @@ async def resend_verification(
             )
 
     if current_user.is_verified:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already verified")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already verified"
+        )
 
     if redis is not None:
         rate_key = f"resend_verify:{current_user.id}"
@@ -580,11 +616,16 @@ async def verify_email(
     redis=Depends(get_redis),
 ) -> dict:
     try:
-        user_id = _token_serializer.loads(token, salt="email-verify", max_age=86400)
+        user_id_str = _token_serializer.loads(token, salt="email-verify", max_age=86400)
+        user_id = _uuid.UUID(user_id_str)
     except SignatureExpired:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification link has expired")
-    except BadSignature:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification token")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Verification link has expired"
+        )
+    except (BadSignature, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification token"
+        )
     user = await db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -596,7 +637,11 @@ async def verify_email(
     return {"message": "Email verified successfully"}
 
 
-@router.get("/confirm-email-change", status_code=status.HTTP_200_OK, summary="Activate a pending email change")
+@router.get(
+    "/confirm-email-change",
+    status_code=status.HTTP_200_OK,
+    summary="Activate a pending email change",
+)
 async def confirm_email_change(
     token: str = Query(...),
     db: AsyncSession = Depends(get_db),
@@ -604,14 +649,20 @@ async def confirm_email_change(
     try:
         payload = _token_serializer.loads(token, salt="email-change", max_age=86400)
     except SignatureExpired:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation link has expired")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation link has expired"
+        )
     except BadSignature:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid confirmation token")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid confirmation token"
+        )
 
     user_id: str = payload.get("uid", "")
     new_email: str = payload.get("email", "")
     if not user_id or not new_email:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid confirmation token")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid confirmation token"
+        )
 
     user = await db.get(User, user_id)
     if user is None or not user.is_active:
@@ -620,7 +671,9 @@ async def confirm_email_change(
     # Guard against the new address being taken by someone else in the meantime
     conflict = await db.scalar(select(User).where(User.email == new_email, User.id != user.id))
     if conflict is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That email is already in use")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="That email is already in use"
+        )
 
     user.email = new_email
     user.is_verified = True
@@ -640,7 +693,12 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
-@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Request password reset email")
+@router.post(
+    "/forgot-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    summary="Request password reset email",
+)
 async def forgot_password(
     request: Request,
     body: ForgotPasswordRequest,
@@ -651,7 +709,9 @@ async def forgot_password(
     # abuse that costs money and risks getting the sending domain blacklisted.
     if redis is not None:
         client_ip = (
-            request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+            request.headers.get(
+                "X-Forwarded-For", request.client.host if request.client else "unknown"
+            )
             .split(",")[0]
             .strip()
         )
@@ -665,7 +725,9 @@ async def forgot_password(
                 detail="Too many requests. Try again in 10 minutes.",
             )
 
-    result = await db.execute(select(User).where(User.email == body.email, User.is_active.is_(True)))
+    result = await db.execute(
+        select(User).where(User.email == body.email, User.is_active.is_(True))
+    )
     user = result.scalar_one_or_none()
     # Always return 204 — never reveal whether the email exists
     if user is not None:
@@ -675,7 +737,12 @@ async def forgot_password(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT, response_model=None, summary="Reset password using token")
+@router.post(
+    "/reset-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    summary="Reset password using token",
+)
 async def reset_password(
     body: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
@@ -684,11 +751,16 @@ async def reset_password(
     try:
         user_id = _token_serializer.loads(body.token, salt="pwd-reset", max_age=3600)
     except SignatureExpired:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reset link has expired")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Reset link has expired"
+        )
     except BadSignature:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token")
     if len(body.new_password) < 8:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Password must be at least 8 characters")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Password must be at least 8 characters",
+        )
     user = await db.get(User, user_id)
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
