@@ -2,9 +2,9 @@
 
 <img src="frontend/src/assets/logo-transparent.png" alt="Arbiter" width="72" />
 
-# Arbiter
+# Arbiter — MCP Gateway for AI Agents
 
-**The MCP gateway your AI agents actually need.**
+> Control what your agents touch. Observe everything they do.
 
 ![License](https://img.shields.io/badge/license-private-red)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)
@@ -18,22 +18,21 @@
 
 ---
 
-## The problem
+## Why Arbiter?
 
-Most teams give every AI agent the same credentials and let it call any tool it wants. There's no audit trail, no access control, and secrets are copy-pasted into environment variables or hardcoded in prompts.
+When you connect an AI agent directly to MCP servers, you get no access control, no audit trail, no secret management, and no cost optimization. Every agent has the same permissions. Leaked keys are invisible. Runaway agents have nothing stopping them.
 
-When something goes wrong — a runaway agent, a leaked key, a compliance audit — you have nothing.
+Arbiter is a developer-first [Model Context Protocol (MCP)](https://modelcontextprotocol.io) gateway that sits between your AI agents and their tools — one central place to enforce tool-level permissions, store secrets, cache responses, and watch every session in real time.
 
-## What Arbiter does
+## Features
 
-Arbiter is a self-hosted MCP gateway that sits between your AI agents and your MCP servers. Every tool call flows through it, giving you:
-
-- **Agent identity** — every agent gets its own cryptographic API key. No shared credentials.
-- **Tool-level RBAC** — grant only the tools each agent needs. `read_file` ≠ `delete_file`.
-- **Encrypted vault** — secrets stored with AES-256-GCM, injected at proxy time. Agents never see raw keys.
-- **Semantic cache** — identical (and similar) tool calls return cached responses via pgvector ANN search.
-- **Full audit log** — every request and response captured with duration, cache status, and agent identity.
-- **Rate limiting** — per-agent, per-tool rate limits enforced at the gateway.
+- **Agent Identity** — Each agent gets a scoped cryptographic API key. No shared credentials. Know exactly which agent called what.
+- **Tool-Level RBAC** — Grant only the tools each agent needs. `read_file` ≠ `delete_file`. Your dev agent shouldn't have prod database access.
+- **Encrypted Vault** — API keys and credentials stored with AES-256-GCM, injected at proxy time. Agents never see raw keys in plaintext.
+- **Semantic Cache** — Identical (and semantically similar) tool calls return cached results via pgvector ANN search. Fewer API calls, lower cost.
+- **Full Observability** — Every session, every tool call, every response. Logged with duration, cache status, and agent identity. Searchable and visualized.
+- **Rate Limiting** — Per-agent, per-tool rate limits enforced at the gateway.
+- **SSO Support** — Google and GitHub OAuth out of the box.
 
 ```
 Your AI Agent
@@ -63,10 +62,32 @@ Your AI Agent
 
 ## Quick start
 
+### Cloud (recommended)
+
+```bash
+# 1. Register at https://arbiterai.dev
+# 2. Create an agent and copy its API key
+# 3. Point your MCP client at the Arbiter proxy
+
+# In your Claude Desktop / MCP config:
+{
+  "mcpServers": {
+    "your-server": {
+      "url": "https://nexusai-api-production.up.railway.app/api/v1/proxy/tool-call",
+      "headers": {
+        "Authorization": "Bearer nxai_your_agent_key"
+      }
+    }
+  }
+}
+```
+
+### Self-hosted
+
 ```bash
 # 1. Clone and configure
-git clone https://github.com/JaidenSy/nexvault.git
-cd nexvault
+git clone https://github.com/JaidenSy/Arbiter.git
+cd Arbiter
 cp .env.example .env   # fill in DATABASE_URL, REDIS_URL, VAULT_ENCRYPTION_KEY, APP_SECRET_KEY
 
 # 2. Start everything
@@ -150,7 +171,7 @@ Every call is logged. If the agent tries a tool it wasn't granted, it gets a 403
 ## Project structure
 
 ```
-nexvault/
+Arbiter/
 ├── backend/
 │   ├── app/
 │   │   ├── api/v1/endpoints/   # agents, proxy, vault, sessions, billing, sso…
@@ -202,3 +223,7 @@ pnpm dev
 ## License
 
 Private — all rights reserved.
+
+---
+
+Built by [@JaidenSy](https://github.com/JaidenSy)

@@ -91,8 +91,9 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
           style={{ animationDelay: '120ms', animationFillMode: 'both' }}
         >
           Shared credentials, no audit trail, agents that can call any tool they want.
-          Arbiter fixes all of it — cryptographic agent identity, tool-level permissions,
-          an encrypted secrets vault, and full observability through a single MCP gateway.
+          Arbiter fixes all of it — cryptographic agent identity, AI agent access control
+          and tool permissions, an encrypted secrets vault, and full agent observability
+          through a single Model Context Protocol (MCP) gateway.
         </p>
 
         {/* CTAs */}
@@ -196,7 +197,7 @@ const features: Feature[] = [
       </svg>
     ),
     title: 'Tool-Level Permissions',
-    description: 'Grant and revoke individual tool access per agent. Principle of least privilege, enforced.',
+    description: 'Granular AI agent access control: grant and revoke tool permissions per agent. Principle of least privilege, enforced.',
   },
   {
     icon: (
