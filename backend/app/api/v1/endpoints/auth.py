@@ -616,7 +616,7 @@ async def verify_email(
     redis=Depends(get_redis),
 ) -> dict:
     try:
-        user_id_str = _token_serializer.loads(token, salt="email-verify", max_age=86400)
+        user_id_str = _token_serializer.loads(token, salt="email-verify", max_age=settings.email_verification_expire_hours * 3600)
         user_id = _uuid.UUID(user_id_str)
     except SignatureExpired:
         raise HTTPException(
@@ -647,7 +647,7 @@ async def confirm_email_change(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     try:
-        payload = _token_serializer.loads(token, salt="email-change", max_age=86400)
+        payload = _token_serializer.loads(token, salt="email-change", max_age=settings.email_change_expire_hours * 3600)
     except SignatureExpired:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation link has expired"
@@ -749,7 +749,7 @@ async def reset_password(
     redis=Depends(get_redis),
 ) -> Response:
     try:
-        user_id = _token_serializer.loads(body.token, salt="pwd-reset", max_age=3600)
+        user_id = _token_serializer.loads(body.token, salt="pwd-reset", max_age=settings.password_reset_expire_hours * 3600)
     except SignatureExpired:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Reset link has expired"

@@ -96,6 +96,9 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     email_from: str = "support@arbiterai.dev"
     email_from_name: str = "Arbiter"
+    email_verification_expire_hours: int = 24
+    email_change_expire_hours: int = 24
+    password_reset_expire_hours: int = 1
 
     @property
     def email_enabled(self) -> bool:
