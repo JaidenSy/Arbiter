@@ -60,7 +60,9 @@ class Settings(BaseSettings):
     # ── JWT ───────────────────────────────────────────────────────────────────
     jwt_secret_key: str = "arbiter_dev_jwt_secret_change_in_production"
     jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 60  # 1 hour — keep short; refresh token handles persistence
+    jwt_access_token_expire_minutes: int = (
+        60  # 1 hour — keep short; refresh token handles persistence
+    )
     jwt_refresh_token_expire_days: int = 30
 
     # ── Registration ──────────────────────────────────────────────────────────
@@ -86,21 +88,18 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
 
     # ── Stripe ────────────────────────────────────────────────────────────────
-    stripe_secret_key: str = ""       # required in production — sk_live_... or sk_test_...
-    stripe_webhook_secret: str = ""   # required — whsec_... from Stripe dashboard or CLI
-    stripe_pro_price_id: str = ""     # required — price_... from Stripe product catalog
+    stripe_secret_key: str = ""  # required in production — sk_live_... or sk_test_...
+    stripe_webhook_secret: str = ""  # required — whsec_... from Stripe dashboard or CLI
+    stripe_pro_price_id: str = ""  # required — price_... from Stripe product catalog
 
-    # ── Email / SMTP ──────────────────────────────────────────────────────────
-    smtp_host: str = ""
-    smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""
-    smtp_from_email: str = "support@arbiterai.dev"
-    smtp_from_name: str = "Arbiter"
+    # ── Email (Resend HTTP API) ────────────────────────────────────────────────
+    resend_api_key: str = ""
+    email_from: str = "support@arbiterai.dev"
+    email_from_name: str = "Arbiter"
 
     @property
     def email_enabled(self) -> bool:
-        return bool(self.smtp_host and self.smtp_user)
+        return bool(self.resend_api_key)
 
     # ── CORS ──────────────────────────────────────────────────────────────────
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
@@ -118,9 +117,7 @@ class Settings(BaseSettings):
     def validate_encryption_key(cls, value: str) -> str:
         """Ensure key is exactly 64 hex characters (256-bit AES key)."""
         if len(value) != 64:
-            raise ValueError(
-                "VAULT_ENCRYPTION_KEY must be 64 hex characters (256-bit / 32 bytes)"
-            )
+            raise ValueError("VAULT_ENCRYPTION_KEY must be 64 hex characters (256-bit / 32 bytes)")
         return value
 
     @field_validator("jwt_algorithm")
@@ -129,9 +126,7 @@ class Settings(BaseSettings):
         """Reject algorithms outside the explicit allowlist at startup."""
         allowed = {"HS256", "RS256"}
         if value not in allowed:
-            raise ValueError(
-                f"JWT_ALGORITHM must be one of {sorted(allowed)}, got {value!r}"
-            )
+            raise ValueError(f"JWT_ALGORITHM must be one of {sorted(allowed)}, got {value!r}")
         return value
 
     @field_validator("jwt_secret_key")

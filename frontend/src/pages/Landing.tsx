@@ -196,7 +196,7 @@ const features: Feature[] = [
       </svg>
     ),
     title: 'Tool-Level Permissions',
-    description: 'Grant and revoke individual tool access per agent. Principle of least privilege, enforced.',
+    description: 'Granular AI agent access control: grant and revoke tool permissions per agent. Principle of least privilege, enforced.',
   },
   {
     icon: (

@@ -1,47 +1,53 @@
 """
 Arbiter — Email service.
 
-Sends transactional emails via SMTP (TLS/STARTTLS).  When SMTP is not
-configured (smtp_host is empty) all send calls are no-ops that log a
-warning — the application continues to work without email in development.
+Sends transactional emails via the Resend HTTP API (https://resend.com).
+Using HTTP instead of SMTP avoids port-blocking issues on cloud platforms
+(Railway, Render, etc.) that restrict outbound SMTP connections.
 
-Uses run_in_executor to avoid blocking the async event loop.
+When RESEND_API_KEY is not set all send calls are no-ops that log a warning —
+the application continues to work without email in development.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+
+import httpx
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-
-def _send_sync(to: str, subject: str, html: str, text: str) -> None:
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
-    msg["To"] = to
-    msg.attach(MIMEText(text, "plain"))
-    msg.attach(MIMEText(html, "html"))
-
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(settings.smtp_user, settings.smtp_password)
-        server.sendmail(settings.smtp_from_email, to, msg.as_string())
+_RESEND_URL = "https://api.resend.com/emails"
 
 
 async def send_email(to: str, subject: str, html: str, text: str = "") -> None:
     if not settings.email_enabled:
-        logger.warning("email: SMTP not configured — skipping send to %s (subject: %s)", to, subject)
+        logger.warning(
+            "email: RESEND_API_KEY not set — skipping send to %s (subject: %s)", to, subject
+        )
         return
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, _send_sync, to, subject, html, text or subject)
+
+    payload: dict = {
+        "from": f"{settings.email_from_name} <{settings.email_from}>",
+        "to": [to],
+        "subject": subject,
+        "html": html,
+    }
+    if text:
+        payload["text"] = text
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.post(
+            _RESEND_URL,
+            headers={"Authorization": f"Bearer {settings.resend_api_key}"},
+            json=payload,
+        )
+
+    if response.status_code not in (200, 201):
+        logger.error("email: Resend API error %s — %s", response.status_code, response.text)
+        response.raise_for_status()
 
 
 async def send_password_reset(to: str, reset_url: str) -> None:
