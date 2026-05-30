@@ -91,9 +91,8 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
           style={{ animationDelay: '120ms', animationFillMode: 'both' }}
         >
           Shared credentials, no audit trail, agents that can call any tool they want.
-          Arbiter fixes all of it — cryptographic agent identity, AI agent access control
-          and tool permissions, an encrypted secrets vault, and full agent observability
-          through a single Model Context Protocol (MCP) gateway.
+          Arbiter fixes all of it: cryptographic agent identity, tool-level permissions,
+          an encrypted secrets vault, and full observability through a single MCP gateway.
         </p>
 
         {/* CTAs */}
@@ -124,7 +123,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
 
         {/* Terminal demo */}
         <div
-          className="mt-14 bg-surface/85 backdrop-blur-sm border border-border-strong rounded-lg p-5 text-left max-w-xl mx-auto shadow-2xl animate-fade-in"
+          className="mt-14 bg-surface/85 backdrop-blur-sm border border-border-strong rounded-lg p-5 text-left max-w-xl mx-auto shadow-2xl animate-fade-in overflow-hidden"
           style={{ animationDelay: '280ms', animationFillMode: 'both' }}
         >
           <div className="flex items-center gap-1.5 mb-4">
@@ -132,7 +131,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
             <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
             <span className="w-2.5 h-2.5 rounded-full bg-success/70" />
           </div>
-          <pre className="font-mono text-xs text-secondary leading-relaxed">
+          <pre className="font-mono text-xs text-secondary leading-relaxed overflow-x-auto">
             <span className="text-muted">$</span>{' '}
             <span className="text-teal-light">curl</span>{' '}
             <span className="text-primary">-X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \</span>
@@ -324,11 +323,11 @@ function Comparison(): React.ReactElement {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto border border-border rounded-xl">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-border-strong">
-                <th className="text-left py-3 pr-6 text-secondary font-normal w-[45%]" />
+                <th className="text-left py-3 pl-5 pr-6 text-secondary font-normal w-[45%]" />
                 <th className="py-3 px-4 text-center">
                   <span className="text-accent-light font-semibold">Arbiter</span>
                 </th>
@@ -340,7 +339,7 @@ function Comparison(): React.ReactElement {
             <tbody>
               {rows.map((row, i) => (
                 <tr key={row.feature} className={`border-b border-border ${i % 2 === 0 ? 'bg-white/[0.015]' : ''}`}>
-                  <td className="py-3.5 pr-6 text-secondary">
+                  <td className="py-3.5 pl-5 pr-6 text-secondary">
                     <span className="inline-flex items-center gap-2 flex-wrap">
                       {row.feature}
                       {row.enterpriseOnly && (
@@ -357,7 +356,7 @@ function Comparison(): React.ReactElement {
                 </tr>
               ))}
               <tr className="border-t border-border-accent bg-accent/[0.05]">
-                <td className="py-3.5 pr-6 text-primary font-semibold">Cost</td>
+                <td className="py-3.5 pl-5 pr-6 text-primary font-semibold">Cost</td>
                 <td className="py-3.5 px-4 text-center text-accent-light font-semibold text-xs">$0–$29/mo</td>
                 <td className="py-3.5 px-4 text-center text-secondary text-xs">Free/OSS</td>
                 <td className="py-3.5 px-4 text-center text-secondary text-xs">$49+/mo</td>
@@ -600,12 +599,12 @@ const faqItems: FAQItem[] = [
   {
     question: 'Can I self-host?',
     answer:
-      'Yes — the Enterprise plan includes a self-hosted option. You get full source access and deployment support. Contact sales to discuss your infrastructure requirements.',
+      'Yes. The Enterprise plan includes a self-hosted option. You get full source access and deployment support. Contact sales to discuss your infrastructure requirements.',
   },
   {
     question: 'What MCP clients are supported?',
     answer:
-      'Any client that supports the MCP spec, including Claude Desktop, Continue, Cursor, and custom clients built with the official MCP SDK. Arbiter is a drop-in gateway — just change your base URL.',
+      'Any client that supports the MCP spec, including Claude Desktop, Continue, Cursor, and custom clients built with the official MCP SDK. Arbiter is a drop-in gateway. Just change your base URL.',
   },
 ]
 
@@ -698,14 +697,9 @@ function Footer(): React.ReactElement {
           <Link to="/" className="text-secondary hover:text-primary text-xs transition-colors">
             Dashboard
           </Link>
-          <a
-            href="/api/v1/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-secondary hover:text-primary text-xs transition-colors"
-          >
+          <Link to="/docs" className="text-secondary hover:text-primary text-xs transition-colors">
             API Docs
-          </a>
+          </Link>
           <Link to="/privacy" className="text-secondary hover:text-primary text-xs transition-colors">
             Privacy
           </Link>

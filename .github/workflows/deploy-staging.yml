@@ -16,10 +16,10 @@ jobs:
           node-version: 20
 
       - name: Install pnpm
-        run: npm install -g pnpm
+        run: corepack enable && corepack prepare pnpm@latest --activate
 
       - name: Install Vercel CLI
-        run: npm install -g vercel@latest
+        run: pnpm add -g vercel@latest
 
       - name: Pull staging environment variables
         run: vercel env pull .env.local --environment staging --token ${{ secrets.VERCEL_TOKEN }} --yes
