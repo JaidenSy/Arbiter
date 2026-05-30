@@ -71,7 +71,7 @@ function VerifyEmail(): React.ReactElement {
               <h1 className="text-lg font-bold text-primary mb-2">Email verified!</h1>
               <p className="text-secondary text-sm mb-5">Your account is now fully active.</p>
               <Link
-                to="/dashboard"
+                to="/"
                 className="inline-block bg-accent hover:bg-accent-light text-white font-semibold text-sm py-2.5 px-6 rounded-lg transition-all duration-150"
               >
                 Go to Dashboard
