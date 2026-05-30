@@ -15,6 +15,8 @@ Routes:
 from __future__ import annotations
 
 import hmac
+import logging
+import uuid as _uuid
 from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
@@ -45,6 +47,8 @@ from app.services.email.email_service import (
     send_email_verification,
     send_password_reset,
 )
+
+_log = logging.getLogger(__name__)
 
 _token_serializer = URLSafeTimedSerializer(settings.app_secret_key)
 
@@ -626,15 +630,24 @@ async def verify_email(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification token"
         )
-    user = await db.get(User, user_id)
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    if not user.is_verified:
-        user.is_verified = True
-        await db.commit()
-        if redis is not None:
-            await redis.delete(f"org_verified:{user.org_id}")
-    return {"message": "Email verified successfully"}
+    try:
+        user = await db.get(User, user_id)
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        if not user.is_verified:
+            user.is_verified = True
+            await db.commit()
+            if redis is not None:
+                await redis.delete(f"org_verified:{user.org_id}")
+        return {"message": "Email verified successfully"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        _log.exception("verify_email: unexpected error for user_id=%s", user_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Verification error: {type(exc).__name__}",
+        ) from exc
 
 
 @router.get(
