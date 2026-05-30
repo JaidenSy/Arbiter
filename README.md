@@ -2,37 +2,38 @@
 
 <img src="frontend/src/assets/logo-transparent.png" alt="Arbiter" width="72" />
 
-# Arbiter — MCP Gateway for AI Agents
+# Arbiter
 
-> Control what your agents touch. Observe everything they do.
+**The MCP security gateway for AI agents.**
 
-![License](https://img.shields.io/badge/license-private-red)
+![License](https://img.shields.io/badge/license-proprietary-red)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
 ![Deployed on Railway](https://img.shields.io/badge/deployed%20on-Railway-7C3AED?logo=railway)
 
-[**Live Demo →**](https://arbiterai.dev) · [**API Docs →**](https://arbiterai.dev/api/v1/docs) · [**Contact**](mailto:jaidensy07@gmail.com)
+[**arbiterai.dev →**](https://arbiterai.dev) · [**API Docs →**](https://arbiterai.dev/docs) · [**support@arbiterai.dev**](mailto:support@arbiterai.dev)
 
 </div>
 
 ---
 
-## Why Arbiter?
+## The problem
 
-When you connect an AI agent directly to MCP servers, you get no access control, no audit trail, no secret management, and no cost optimization. Every agent has the same permissions. Leaked keys are invisible. Runaway agents have nothing stopping them.
+Most teams give every AI agent the same credentials and let it call any tool it wants. There's no audit trail, no access control, and secrets are copy-pasted into environment variables or hardcoded in prompts.
 
-Arbiter is a developer-first [Model Context Protocol (MCP)](https://modelcontextprotocol.io) gateway that sits between your AI agents and their tools — one central place to enforce tool-level permissions, store secrets, cache responses, and watch every session in real time.
+When something goes wrong — a runaway agent, a leaked key, a compliance audit — you have nothing.
 
-## Features
+## What Arbiter does
 
-- **Agent Identity** — Each agent gets a scoped cryptographic API key. No shared credentials. Know exactly which agent called what.
-- **Tool-Level RBAC** — Grant only the tools each agent needs. `read_file` ≠ `delete_file`. Your dev agent shouldn't have prod database access.
-- **Encrypted Vault** — API keys and credentials stored with AES-256-GCM, injected at proxy time. Agents never see raw keys in plaintext.
-- **Semantic Cache** — Identical (and semantically similar) tool calls return cached results via pgvector ANN search. Fewer API calls, lower cost.
-- **Full Observability** — Every session, every tool call, every response. Logged with duration, cache status, and agent identity. Searchable and visualized.
-- **Rate Limiting** — Per-agent, per-tool rate limits enforced at the gateway.
-- **SSO Support** — Google and GitHub OAuth out of the box.
+Arbiter is a hosted MCP gateway that sits between your AI agents and your MCP servers. Every tool call flows through it, giving you:
+
+- **Agent identity** — every agent gets its own cryptographic API key (`nxai_...`). No shared credentials.
+- **Tool-level RBAC** — grant only the tools each agent needs. `read_file` ≠ `delete_file`.
+- **Encrypted vault** — secrets stored with AES-256-GCM, injected at proxy time. Agents never see raw keys.
+- **Semantic cache** — identical (and similar) tool calls return cached responses via pgvector ANN search (Pro+).
+- **Full audit log** — every request and response captured with duration, cache status, and agent identity.
+- **Rate limiting** — per-agent, per-tool rate limits enforced at the gateway.
 
 ```
 Your AI Agent
@@ -60,56 +61,14 @@ Your AI Agent
 
 ---
 
-## Quick start
-
-### Cloud (recommended)
-
-```bash
-# 1. Register at https://arbiterai.dev
-# 2. Create an agent and copy its API key
-# 3. Point your MCP client at the Arbiter proxy
-
-# In your Claude Desktop / MCP config:
-{
-  "mcpServers": {
-    "your-server": {
-      "url": "https://nexusai-api-production.up.railway.app/api/v1/proxy/tool-call",
-      "headers": {
-        "Authorization": "Bearer nxai_your_agent_key"
-      }
-    }
-  }
-}
-```
-
-### Self-hosted
-
-```bash
-# 1. Clone and configure
-git clone https://github.com/JaidenSy/Arbiter.git
-cd Arbiter
-cp .env.example .env   # fill in DATABASE_URL, REDIS_URL, VAULT_ENCRYPTION_KEY, APP_SECRET_KEY
-
-# 2. Start everything
-docker compose up -d
-
-# 3. Confirm it's live
-curl http://localhost:8000/health
-# → {"status":"ok"}
-```
-
-Then open [http://localhost:3000](http://localhost:3000) to access the dashboard.
-
----
-
 ## How it works
 
 ### 1 — Register an agent
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/agents \
+curl -X POST https://api.arbiterai.dev/api/v1/agents \
   -H "Authorization: Bearer <your-jwt>" \
-  -d '{"name": "my-claude-agent", "scope": "full"}'
+  -d '{"name": "my-claude-agent"}'
 
 # → { "api_key": "nxai_abc123..." }   ← shown once, store it
 ```
@@ -117,7 +76,7 @@ curl -X POST http://localhost:8000/api/v1/agents \
 ### 2 — Grant tool permissions
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/agents/<agent-id>/permissions \
+curl -X POST https://api.arbiterai.dev/api/v1/agents/<agent-id>/permissions \
   -H "Authorization: Bearer <your-jwt>" \
   -d '{"mcp_server_id": "<server-id>", "tool_name": "read_file"}'
 ```
@@ -125,7 +84,7 @@ curl -X POST http://localhost:8000/api/v1/agents/<agent-id>/permissions \
 ### 3 — Proxy tool calls through Arbiter
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/proxy/tool-call \
+curl -X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \
   -H "Authorization: Bearer nxai_abc123..." \
   -d '{
     "server_name": "filesystem",
@@ -133,7 +92,7 @@ curl -X POST http://localhost:8000/api/v1/proxy/tool-call \
     "params": { "path": "/app/config.json" }
   }'
 
-# → { "result": {...}, "cache_hit": false, "duration_ms": 42 }
+# → { "result": {...}, "cached": false, "agent_id": "agt_xyz789" }
 ```
 
 Every call is logged. If the agent tries a tool it wasn't granted, it gets a 403 — not a silent pass-through.
@@ -150,8 +109,21 @@ Every call is logged. If the agent tries a tool it wasn't granted, it gets a 403
 | Semantic cache (pgvector) | ✅ | Partial | Partial | ~3 months |
 | Full request/response audit log | ✅ | Partial | ✅ | ~1 month |
 | MCP protocol native | ✅ | ❌ | ❌ | depends |
-| Self-hosted | ✅ | ✅ | ❌ | ✅ |
+| Self-hosted | Enterprise | ✅ | ❌ | ✅ |
 | **Cost** | **$0–$29/mo** | Free/OSS | $49+/mo | **$50k–90k eng** |
+
+---
+
+## Plans
+
+| | Free | Pro ($29/mo) | Enterprise |
+|--|------|-------------|------------|
+| Agents | 2 | 25 | Unlimited |
+| MCP Servers | 3 | 50 | Unlimited |
+| Tool calls/mo | 5,000 | 100,000 | Unlimited |
+| Secrets | 10 | 100 | Unlimited |
+| Semantic cache | ✗ | ✓ | ✓ |
+| Self-hosted | ✗ | ✗ | ✓ |
 
 ---
 
@@ -162,68 +134,84 @@ Every call is logged. If the agent tries a tool it wasn't granted, it gets a 403
 | API | FastAPI 0.115, Python 3.12 |
 | Database | PostgreSQL 16 + pgvector |
 | Cache | Redis 7 |
-| Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
-| Frontend | React 18, TypeScript, Vite, Tailwind |
-| Auth | JWT + bcrypt + Google/GitHub OAuth2 |
-| Billing | Stripe |
-| Deploy | Railway (API) + Vercel (frontend) |
+| Embeddings | sentence-transformers (all-MiniLM-L6-v2, Pro+) |
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
+| Auth | JWT HS256 (60min) + refresh tokens, bcrypt, Google/GitHub OAuth2 |
+| Billing | Stripe (checkout, portal, webhooks) |
+| Deploy | Railway (API + DB + Redis) · Vercel (frontend) |
+| Package manager | pnpm |
+
+---
 
 ## Project structure
 
 ```
-Arbiter/
+arbiter/
 ├── backend/
 │   ├── app/
-│   │   ├── api/v1/endpoints/   # agents, proxy, vault, sessions, billing, sso…
+│   │   ├── api/v1/endpoints/   # agents, proxy, vault, sessions, billing, sso, org…
 │   │   ├── core/               # config, security, dependencies
-│   │   ├── db/                 # SQLAlchemy models + Alembic migrations
+│   │   ├── db/models/          # SQLAlchemy models (migrations 001–022)
 │   │   ├── schemas/            # Pydantic request/response models
-│   │   └── services/           # vault, cache, rbac, proxy, billing, email
+│   │   ├── services/           # proxy, vault, cache, rbac, billing, auth, email
+│   │   └── tasks/              # background jobs (GDPR 30-day purge)
+│   ├── tests/
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/              # Dashboard, Agents, Sessions, Settings, Landing…
-│   │   ├── components/         # Shared UI components
-│   │   ├── api/                # Axios client + TypeScript types
-│   │   └── context/            # Auth context
+│   │   ├── pages/              # Dashboard, Agents, Sessions, Vault, Permissions…
+│   │   ├── components/         # Sidebar, AuthModal, CommandPalette, UpgradeModal…
+│   │   ├── api/                # typed API client + types
+│   │   └── context/            # AuthContext, PaletteContext
+│   ├── pnpm-lock.yaml
 │   └── Dockerfile
-└── docker-compose.yml
+└── .github/workflows/          # deploy-staging CI
 ```
 
-## Environment variables
+---
 
-See [`.env.example`](.env.example) for all required variables. Required at minimum:
+## Local development
+
+**Backend:**
+```bash
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env          # fill in values
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+```
+
+**Frontend:**
+```bash
+cd frontend
+pnpm install
+cp .env.example .env.local    # fill in VITE_API_BASE_URL etc.
+pnpm dev
+```
+
+**Required env vars** — see `backend/.env.example` and `frontend/.env.example`:
 
 | Variable | Description |
 |---|---|
-| `DATABASE_URL` | PostgreSQL asyncpg DSN |
+| `DATABASE_URL` | `postgresql+asyncpg://...` |
 | `REDIS_URL` | Redis DSN |
-| `VAULT_ENCRYPTION_KEY` | 64-char hex (AES-256 key) |
-| `APP_SECRET_KEY` | Session signing key |
-| `JWT_SECRET_KEY` | JWT signing secret |
+| `JWT_SECRET_KEY` | Min 32 chars in production |
+| `VAULT_ENCRYPTION_KEY` | AES-256 Fernet key |
+| `STRIPE_SECRET_KEY` | Stripe live/test secret |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 
-## Development
+---
 
-```bash
-# Backend
-cd backend
-pip install -r requirements.txt
-cp ../.env.example ../.env
-uvicorn app.main:app --reload
+## Security
 
-# Frontend (separate terminal)
-cd frontend
-pnpm install
-pnpm dev
-```
+Responsible disclosure: **security@arbiterai.dev**
+DMCA agent: DMCA-1073513 · dmca@arbiterai.dev
 
 ---
 
 ## License
 
-Private — all rights reserved.
-
----
-
-Built by [@JaidenSy](https://github.com/JaidenSy)
+Proprietary. All rights reserved © 2026 Arbiter.
+This codebase is not licensed for redistribution, modification, or commercial use by third parties.
