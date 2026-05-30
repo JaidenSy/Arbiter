@@ -5,13 +5,11 @@
  * Hits GET /auth/verify-email?token=<token> on mount.
  */
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { authClient } from '../api/client'
+import { ArbiterMark } from '../components/ArbiterLogo'
 import { useAuth } from '../context/AuthContext'
-
-const API_BASE: string =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
-  'http://localhost:8000/api/v1'
 
 type Status = 'loading' | 'success' | 'error'
 
@@ -21,38 +19,37 @@ function VerifyEmail(): React.ReactElement {
   const [status, setStatus] = useState<Status>('loading')
   const [message, setMessage] = useState('')
   const { refreshUser } = useAuth()
+  const didRun = useRef(false)
 
   useEffect(() => {
+    if (didRun.current) return
+    didRun.current = true
+
     if (!token) {
       setStatus('error')
       setMessage('Missing verification token.')
       return
     }
-    fetch(`${API_BASE}/auth/verify-email?token=${encodeURIComponent(token)}`)
-      .then(async (res) => {
-        if (res.ok) {
-          setStatus('success')
-          // Sync the AuthContext so the VerificationBanner disappears immediately
-          await refreshUser()
-        } else {
-          const data = await res.json().catch(() => ({}))
-          setMessage((data as { detail?: string }).detail ?? 'Verification failed.')
-          setStatus('error')
-        }
+
+    authClient
+      .get<{ message: string }>(`/auth/verify-email?token=${encodeURIComponent(token)}`)
+      .then(async () => {
+        setStatus('success')
+        await refreshUser().catch(() => null)
       })
-      .catch(() => {
-        setMessage('Network error. Please try again.')
+      .catch((err: unknown) => {
+        const detail =
+          (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        setMessage(detail ?? 'Network error. Please try again.')
         setStatus('error')
       })
-  }, [token])
+  }, [token, refreshUser])
 
   return (
     <div className="min-h-screen bg-base flex items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">
         <div className="inline-flex items-center gap-2 mb-8">
-          <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
-            <span className="text-white font-bold text-sm">N</span>
-          </div>
+          <ArbiterMark size={32} />
           <span className="text-primary font-semibold text-lg tracking-tight">Arbiter</span>
         </div>
 
