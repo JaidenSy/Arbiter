@@ -1,0 +1,22 @@
+# Arbiter
+
+> Arbiter is a developer-first MCP (Model Context Protocol) gateway for AI agents.
+
+## What it does
+- Routes AI agent tool calls through a central proxy with access control
+- Manages agent identities via scoped API keys
+- Enforces tool-level permissions per agent — control exactly which MCP tools each agent can call
+- Stores secrets in an encrypted vault accessible to agents at runtime
+- Caches semantically similar tool calls to reduce cost and latency
+- Provides full session observability — every tool call, every agent, every session, logged
+
+## Who it's for
+Developers building AI agents with Claude, GPT, or any MCP-compatible client who need production-grade access control, secrets management, and observability without building all of that themselves.
+
+## Pricing
+Free tier available. No credit card required to start.
+
+## Links
+- Dashboard: https://arbiterai.dev
+- API: https://nexusai-api-production.up.railway.app
+- GitHub: https://github.com/JaidenSy/Arbiter
