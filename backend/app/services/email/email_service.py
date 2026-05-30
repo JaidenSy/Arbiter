@@ -51,20 +51,22 @@ async def send_email(to: str, subject: str, html: str, text: str = "") -> None:
 
 
 async def send_password_reset(to: str, reset_url: str) -> None:
+    expires = f"{settings.password_reset_expire_hours}h"
     html = f"""
 <p>You requested a password reset for your Arbiter account.</p>
 <p><a href="{reset_url}">Reset your password</a></p>
-<p>This link expires in 1 hour. If you didn't request this, ignore this email.</p>
+<p>This link expires in {expires}. If you didn't request this, ignore this email.</p>
 """
-    text = f"Reset your Arbiter password: {reset_url}\n\nExpires in 1 hour."
+    text = f"Reset your Arbiter password: {reset_url}\n\nExpires in {expires}."
     await send_email(to, "Reset your Arbiter password", html, text)
 
 
 async def send_email_verification(to: str, verify_url: str) -> None:
+    expires = f"{settings.email_verification_expire_hours}h"
     html = f"""
 <p>Welcome to Arbiter! Please verify your email address.</p>
 <p><a href="{verify_url}">Verify email</a></p>
-<p>This link expires in 24 hours.</p>
+<p>This link expires in {expires}.</p>
 """
     text = f"Verify your Arbiter email: {verify_url}"
     await send_email(to, "Verify your Arbiter email", html, text)
@@ -81,12 +83,13 @@ async def send_org_invite(to: str, invited_by: str, org_name: str, accept_url: s
 
 
 async def send_email_change_confirmation(to: str, confirm_url: str) -> None:
+    expires = f"{settings.email_change_expire_hours}h"
     html = f"""
 <p>You requested to change your Arbiter email address.</p>
 <p><a href="{confirm_url}">Confirm your new email address</a></p>
-<p>This link expires in 24 hours. If you didn't request this, ignore this email — your current address remains active.</p>
+<p>This link expires in {expires}. If you didn't request this, ignore this email — your current address remains active.</p>
 """
-    text = f"Confirm your new Arbiter email: {confirm_url}\n\nExpires in 24 hours."
+    text = f"Confirm your new Arbiter email: {confirm_url}\n\nExpires in {expires}."
     await send_email(to, "Confirm your new email address — Arbiter", html, text)
 
 
