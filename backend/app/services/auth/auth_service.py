@@ -5,16 +5,17 @@ Handles user registration, login, token refresh, and logout.  Business
 logic lives here; HTTP concerns stay in the endpoint layer.
 
 Token strategy:
-    - Access token: HS256 JWT, 24-hour lifetime, jti claim for revocation.
+    - Access token: HS256 JWT, 1-hour lifetime, jti claim for revocation.
     - Refresh token: opaque ``rt_<64-hex>``, 30-day lifetime, SHA-256 hash
       stored in refresh_tokens table, rotated on every use.
 """
 
 from __future__ import annotations
 
+import hashlib
 import re
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
@@ -27,6 +28,10 @@ from app.db.models.refresh_token import RefreshToken
 from app.db.models.user import User
 
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
+
+# Always run bcrypt even for unknown emails so response time is constant,
+# preventing timing-based email enumeration.
+_DUMMY_HASH: str = _pwd_context.hash(_pre_hash("arbiter-timing-guard-dummy-value"))
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -44,12 +49,18 @@ def _slugify(text: str) -> str:
     return slug or "org"
 
 
+def _pre_hash(plain: str) -> str:
+    # SHA-256 pre-hash collapses any-length password to 64 hex chars,
+    # preventing bcrypt's silent 72-byte truncation.
+    return hashlib.sha256(plain.encode()).hexdigest()
+
+
 def _hash_password(plain: str) -> str:
-    return _pwd_context.hash(plain)
+    return _pwd_context.hash(_pre_hash(plain))
 
 
 def _verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_context.verify(plain, hashed)
+    return _pwd_context.verify(_pre_hash(plain), hashed)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -98,13 +109,16 @@ async def register(
     db.add(org)
     await db.flush()  # populate org.id before referencing it
 
-    # Create owner user.
+    # Create owner user. tos_accepted_at is set immediately since the registration
+    # form requires explicit checkbox acceptance before the form can be submitted.
     user = User(
         org_id=org.id,
         email=email,
         hashed_password=_hash_password(password),
         role="owner",
         is_active=True,
+        tos_accepted_at=datetime.now(UTC),
+        tos_version="2026-05-31",
     )
     db.add(user)
     await db.flush()
@@ -144,9 +158,19 @@ async def login(
     """
     user = await db.scalar(select(User).where(User.email == email))
 
-    # Use constant-time check regardless of whether user exists to
-    # prevent email-enumeration via timing differences.
-    if user is None or not _verify_password(password, user.hashed_password):
+    # Always run bcrypt regardless of whether the user exists — prevents
+    # timing-based email enumeration (short-circuit would skip the ~100ms hash).
+    candidate_hash = user.hashed_password if user is not None else _DUMMY_HASH
+    password_ok = _verify_password(password, candidate_hash)
+
+    if not password_ok and user is not None:
+        # Legacy hash (no SHA-256 pre-hash) — verify and silently re-hash on success.
+        if _pwd_context.verify(password, candidate_hash):
+            password_ok = True
+            user.hashed_password = _hash_password(password)
+            await db.flush()
+
+    if not password_ok or user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -201,13 +225,11 @@ async def refresh_tokens(
     """
     token_hash = security.hash_refresh_token(raw_token)
 
-    rt = await db.scalar(
-        select(RefreshToken).where(RefreshToken.token_hash == token_hash)
-    )
+    rt = await db.scalar(select(RefreshToken).where(RefreshToken.token_hash == token_hash))
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
-    if rt is None or rt.revoked or rt.expires_at.replace(tzinfo=timezone.utc) <= now:
+    if rt is None or rt.revoked or rt.expires_at.replace(tzinfo=UTC) <= now:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token is invalid or expired",
@@ -263,7 +285,7 @@ async def logout(
         user_id:    UUID of the user logging out.
         all_devices: If True, revoke all refresh tokens for the user.
     """
-    now = int(datetime.now(tz=timezone.utc).timestamp())
+    now = int(datetime.now(tz=UTC).timestamp())
     ttl = max(exp - now, 1)
     await redis.setex(f"jti_blocklist:{jti}", ttl, "")
 
@@ -331,9 +353,7 @@ async def _store_refresh_token(
     """
     from app.core.config import settings
 
-    expires_at = datetime.now(tz=timezone.utc) + timedelta(
-        days=settings.jwt_refresh_token_expire_days
-    )
+    expires_at = datetime.now(tz=UTC) + timedelta(days=settings.jwt_refresh_token_expire_days)
     rt = RefreshToken(
         user_id=user_id,
         token_hash=security.hash_refresh_token(raw_token),
