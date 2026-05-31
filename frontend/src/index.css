@@ -6,22 +6,22 @@
 @tailwind utilities;
 
 [data-theme="dark"] {
-  /* Base surfaces — near-black with subtle Hexis purple tint */
-  --color-base: #09060B;
-  --color-surface: #0F0A12;
-  --color-elevated: #17101C;
-  --color-highlight: #241528;
-  --color-overlay: #120A15;
+  /* Base surfaces — neutral near-black, no tint */
+  --color-base: #09090B;
+  --color-surface: #0F0F12;
+  --color-elevated: #17171D;
+  --color-highlight: #232330;
+  --color-overlay: #0C0C12;
 
-  /* Accent — Hexis magenta-purple */
-  --color-accent: #8B1A6B;
-  --color-accent-light: #B02080;
-  --color-accent-dim: #520044;
-  --color-accent-wash: #18091A;    /* dark purple tint surface */
+  /* Accent — electric blue */
+  --color-accent: #2563EB;
+  --color-accent-light: #3B82F6;
+  --color-accent-dim: #1D4ED8;
+  --color-accent-wash: #0A1020;    /* dark blue tint surface */
 
-  /* Steel-silver — armor/sigil signal color */
-  --color-teal: #7B8FA8;
-  --color-teal-light: #A8BCE0;
+  /* Cyan — data/signal secondary */
+  --color-teal: #06B6D4;
+  --color-teal-light: #22D3EE;
 
   /* Typography — zinc scale */
   --color-primary: #FAFAFA;
@@ -36,33 +36,33 @@
   /* Borders */
   --color-border: rgba(255,255,255,0.07);
   --color-border-strong: rgba(255,255,255,0.12);
-  --color-border-accent: rgba(139,26,107,0.35);
-  --color-border-accent-hover: rgba(176,32,128,0.55);
+  --color-border-accent: rgba(37,99,235,0.35);
+  --color-border-accent-hover: rgba(59,130,246,0.55);
 
   /* Surface RGB vals for rgba() composition with backdrop-filter glass */
-  --color-elevated-rgb: 23, 16, 28;
-  --color-surface-rgb:  15, 10, 18;
-  --color-base-rgb:     9, 6, 11;
+  --color-elevated-rgb: 23, 23, 29;
+  --color-surface-rgb:  15, 15, 18;
+  --color-base-rgb:     9, 9, 11;
 
   /* Aurora hero gradient */
   --gradient-aurora-hero:
     radial-gradient(
       ellipse 80% 40% at 50% -5%,
-      rgba(139,26,107,0.16) 0%,
+      rgba(37,99,235,0.14) 0%,
       transparent 70%
     );
 
-  /* Ambient background — extends aurora palette across all pages */
+  /* Ambient background */
   --gradient-ambient:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(82,0,68,0.18) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(139,26,107,0.08) 0%, transparent 55%),
-    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(24,9,26,0.50) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(29,78,216,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(37,99,235,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(10,16,32,0.45) 0%, transparent 50%);
 
   /* Tile ambient gradients */
   --gradient-tile-amber:
-    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(139,26,107,0.08) 0%, transparent 60%);
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(37,99,235,0.07) 0%, transparent 60%);
   --gradient-tile-teal:
-    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(123,143,168,0.07) 0%, transparent 60%);
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(6,182,212,0.06) 0%, transparent 60%);
   --gradient-tile-warning:
     radial-gradient(ellipse 120% 80% at 10% 0%, rgba(251,191,36,0.05) 0%, transparent 60%);
   --gradient-tile-error:
@@ -70,8 +70,8 @@
 
   /* Mesh gradient for premium surfaces */
   --gradient-mesh-subtle:
-    radial-gradient(at 25% 15%, rgba(139,26,107,0.06) 0px, transparent 50%),
-    radial-gradient(at 75% 85%, rgba(123,143,168,0.04) 0px, transparent 50%);
+    radial-gradient(at 25% 15%, rgba(37,99,235,0.06) 0px, transparent 50%),
+    radial-gradient(at 75% 85%, rgba(6,182,212,0.04) 0px, transparent 50%);
 }
 
 [data-theme="light"] {
@@ -81,14 +81,13 @@
   --color-highlight: #E4E4E7;
   --color-overlay: #FFFFFF;
 
-  /* Accent ramp matches dark-mode direction (light = lighter, dim = recessive) */
-  --color-accent: #7B1060;        /* deep magenta — primary CTA in light */
-  --color-accent-light: #9D1575;  /* brighter magenta — hover/lift */
-  --color-accent-dim: #6B0052;    /* recessive foreground */
-  --color-accent-wash: #F5E6F3;   /* pale purple wash */
+  --color-accent: #1D4ED8;        /* blue-700 — primary CTA in light */
+  --color-accent-light: #2563EB;  /* blue-600 — hover/lift */
+  --color-accent-dim: #1E40AF;    /* blue-800 — recessive foreground */
+  --color-accent-wash: #EFF6FF;   /* blue-50 — pale background tint */
 
-  --color-teal: #5A7A9A;
-  --color-teal-light: #4A6A8A;
+  --color-teal: #0891B2;
+  --color-teal-light: #0E7490;
 
   --color-primary: #18181B;
   --color-secondary: #52525B;
@@ -100,8 +99,8 @@
 
   --color-border: rgba(0,0,0,0.08);
   --color-border-strong: rgba(0,0,0,0.14);
-  --color-border-accent: rgba(123,16,96,0.35);
-  --color-border-accent-hover: rgba(107,0,82,0.50);
+  --color-border-accent: rgba(29,78,216,0.30);
+  --color-border-accent-hover: rgba(37,99,235,0.50);
 
   --color-elevated-rgb: 244, 244, 245;
   --color-surface-rgb:  255, 255, 255;
@@ -110,26 +109,26 @@
   --gradient-aurora-hero:
     radial-gradient(
       ellipse 80% 40% at 50% -5%,
-      rgba(123,16,96,0.08) 0%,
+      rgba(29,78,216,0.07) 0%,
       transparent 70%
     );
 
   --gradient-ambient:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(123,16,96,0.07) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(123,16,96,0.04) 0%, transparent 55%);
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(29,78,216,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(29,78,216,0.04) 0%, transparent 55%);
 
   --gradient-tile-amber:
-    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(123,16,96,0.05) 0%, transparent 60%);
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(29,78,216,0.05) 0%, transparent 60%);
   --gradient-tile-teal:
-    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(90,122,154,0.04) 0%, transparent 60%);
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(8,145,178,0.04) 0%, transparent 60%);
   --gradient-tile-warning:
     radial-gradient(ellipse 120% 80% at 10% 0%, rgba(202,138,4,0.04) 0%, transparent 60%);
   --gradient-tile-error:
     radial-gradient(ellipse 120% 80% at 10% 0%, rgba(220,38,38,0.04) 0%, transparent 60%);
 
   --gradient-mesh-subtle:
-    radial-gradient(at 25% 15%, rgba(123,16,96,0.04) 0px, transparent 50%),
-    radial-gradient(at 75% 85%, rgba(90,122,154,0.02) 0px, transparent 50%);
+    radial-gradient(at 25% 15%, rgba(29,78,216,0.04) 0px, transparent 50%),
+    radial-gradient(at 75% 85%, rgba(8,145,178,0.02) 0px, transparent 50%);
 }
 
 /* Motion easing tokens + gradient system + glow ladder + motion durations */
@@ -137,14 +136,14 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 
-  /* Glow ladder — three rungs of Hexis magenta luminance */
+  /* Glow ladder — electric blue luminance */
   --glow-none:     none;
-  --glow-subtle:   0 0 12px rgba(139,26,107,0.15);
-  --glow-standard: 0 0 20px rgba(139,26,107,0.30);
-  --glow-hero:     0 0 32px rgba(139,26,107,0.50), 0 0 64px rgba(139,26,107,0.20);
+  --glow-subtle:   0 0 12px rgba(37,99,235,0.18);
+  --glow-standard: 0 0 20px rgba(37,99,235,0.32);
+  --glow-hero:     0 0 32px rgba(37,99,235,0.50), 0 0 64px rgba(37,99,235,0.18);
 
-  /* Steel-silver glow for data/status tiles */
-  --glow-teal-subtle: 0 0 12px rgba(123,143,168,0.12);
+  /* Cyan glow for data/status tiles */
+  --glow-teal-subtle: 0 0 12px rgba(6,182,212,0.14);
 
   /* Motion durations */
   --duration-instant: 100ms;
@@ -195,15 +194,15 @@ h1, h2, h3, h4, h5, h6 {
 [data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.30); }
 
 /* Selection */
-::selection { background: rgba(139,26,107,0.30); color: var(--color-primary); }
-[data-theme="light"] ::selection { background: rgba(123,16,96,0.22); color: var(--color-primary); }
+::selection { background: rgba(37,99,235,0.30); color: var(--color-primary); }
+[data-theme="light"] ::selection { background: rgba(29,78,216,0.20); color: var(--color-primary); }
 
 /* Glow ladder utilities */
 .glow-none     { box-shadow: var(--glow-none); }
 .glow-subtle   { box-shadow: var(--glow-subtle); }
 .glow-standard { box-shadow: var(--glow-standard); }
 .glow-hero     { box-shadow: var(--glow-hero); }
-.glow-teal     { box-shadow: 0 0 20px rgba(123,143,168,0.18); }
+.glow-teal     { box-shadow: 0 0 20px rgba(6,182,212,0.18); }
 
 /* Aliases for backwards compatibility — will be removed after migration */
 .glow-accent        { box-shadow: var(--glow-standard); }
@@ -247,7 +246,7 @@ h1, h2, h3, h4, h5, h6 {
 .tile-warning { background: var(--gradient-tile-warning), var(--color-surface); }
 .tile-error   { background: var(--gradient-tile-error),   var(--color-surface); }
 
-/* Gradient text — accent → silver */
+/* Gradient text — blue → cyan */
 .gradient-text {
   background: linear-gradient(135deg, var(--color-accent-light), var(--color-teal-light));
   -webkit-background-clip: text;
@@ -304,10 +303,10 @@ h1, h2, h3, h4, h5, h6 {
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
-/* Gradient border cards — magenta + silver */
+/* Gradient border cards — blue + cyan */
 .card-gradient-border {
   position: relative;
-  border: 1px solid rgba(139,26,107,0.22);
+  border: 1px solid rgba(37,99,235,0.20);
 }
 
 .card-gradient-border::before {
@@ -316,7 +315,7 @@ h1, h2, h3, h4, h5, h6 {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(139,26,107,0.35), rgba(123,143,168,0.15));
+  background: linear-gradient(135deg, rgba(37,99,235,0.32), rgba(6,182,212,0.15));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -329,7 +328,7 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-elevated);
   border: 1px solid var(--color-border-strong);
   border-radius: 0.75rem;
-  box-shadow: 0 0 24px rgba(139,26,107,0.20), 0 8px 32px rgba(0,0,0,0.35);
+  box-shadow: 0 0 24px rgba(37,99,235,0.20), 0 8px 32px rgba(0,0,0,0.35);
   color: var(--color-primary);
   font-family: inherit;
 }
@@ -365,7 +364,7 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-primary);
 }
 
-/* Next — solid magenta, white text */
+/* Next — solid blue, white text */
 .arbiter-tour-popover .driver-popover-navigation-btns .driver-popover-next-btn {
   background: var(--color-accent);
   border: 1px solid var(--color-accent);

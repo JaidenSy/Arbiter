@@ -72,7 +72,7 @@ function Register(): React.ReactElement {
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.035]"
         style={{
-          backgroundImage: 'radial-gradient(circle, #8B1A6B 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(circle, #2563EB 1px, transparent 1px)',
           backgroundSize: '28px 28px',
         }}
       />
