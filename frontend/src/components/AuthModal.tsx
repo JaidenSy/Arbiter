@@ -48,6 +48,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
   const [confirmPassword, setConfirmPassword] = useState('')
   const [inviteCode, setInviteCode]       = useState('')
   const [ageConfirmed, setAgeConfirmed]   = useState(false)
+  const [tosAccepted, setTosAccepted]     = useState(false)
   const [regError, setRegError]           = useState<string | null>(null)
   const [regSubmitting, setRegSubmitting] = useState(false)
 
@@ -100,6 +101,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
     if (regPassword !== confirmPassword) return 'Passwords do not match.'
     if (inviteRequired && !inviteCode.trim()) return 'An invite code is required.'
     if (!ageConfirmed)               return 'You must confirm you are at least 13 years old.'
+    if (!tosAccepted)                return 'You must accept the Terms of Service and Privacy Policy.'
     return null
   }
 
@@ -365,18 +367,26 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
               >
                 {regSubmitting ? 'Creating account…' : 'Create account'}
               </button>
-              {/* Legal consent — ToS + Privacy links */}
-              <p className="text-center text-[11px] text-muted leading-relaxed">
-                By creating an account you agree to our{' '}
-                <Link to="/terms" className="text-secondary hover:text-primary transition-colors underline-offset-2 underline" onClick={onClose}>
-                  Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link to="/privacy" className="text-secondary hover:text-primary transition-colors underline-offset-2 underline" onClick={onClose}>
-                  Privacy Policy
-                </Link>
-                .
-              </p>
+              {/* ToS + Privacy Policy consent checkbox */}
+              <div className="flex items-start gap-2.5">
+                <input
+                  id="reg-tos-accept"
+                  type="checkbox"
+                  checked={tosAccepted}
+                  onChange={(e) => setTosAccepted(e.target.checked)}
+                  className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded border border-border-strong bg-base accent-accent cursor-pointer"
+                />
+                <label htmlFor="reg-tos-accept" className="text-xs text-secondary leading-relaxed cursor-pointer">
+                  I agree to the{' '}
+                  <Link to="/terms" className="text-accent-light hover:text-primary transition-colors underline-offset-2 underline" onClick={onClose}>
+                    Terms of Service
+                  </Link>{' '}
+                  and{' '}
+                  <Link to="/privacy" className="text-accent-light hover:text-primary transition-colors underline-offset-2 underline" onClick={onClose}>
+                    Privacy Policy
+                  </Link>
+                </label>
+              </div>
             </form>
           )}
         </div>

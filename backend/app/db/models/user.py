@@ -73,7 +73,11 @@ class User(Base):
         server_default="member",
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    is_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    tos_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    tos_version: Mapped[str | None] = mapped_column(String(16), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -87,13 +91,13 @@ class User(Base):
     )
 
     # ── Relationships ─────────────────────────────────────────────────────────
-    org: Mapped["Organization"] = relationship("Organization", back_populates="users")
-    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+    org: Mapped[Organization] = relationship("Organization", back_populates="users")
+    refresh_tokens: Mapped[list[RefreshToken]] = relationship(
         "RefreshToken",
         back_populates="user",
         cascade="all, delete-orphan",
     )
-    social_accounts: Mapped[list["SocialAccount"]] = relationship(
+    social_accounts: Mapped[list[SocialAccount]] = relationship(
         "SocialAccount",
         back_populates="user",
         cascade="all, delete-orphan",
