@@ -29,10 +29,6 @@ from app.db.models.user import User
 
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
-# Always run bcrypt even for unknown emails so response time is constant,
-# preventing timing-based email enumeration.
-_DUMMY_HASH: str = _pwd_context.hash(_pre_hash("arbiter-timing-guard-dummy-value"))
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -53,6 +49,11 @@ def _pre_hash(plain: str) -> str:
     # SHA-256 pre-hash collapses any-length password to 64 hex chars,
     # preventing bcrypt's silent 72-byte truncation.
     return hashlib.sha256(plain.encode()).hexdigest()
+
+
+# Always run bcrypt even for unknown emails so response time is constant,
+# preventing timing-based email enumeration.
+_DUMMY_HASH: str = _pwd_context.hash(_pre_hash("arbiter-timing-guard-dummy-value"))
 
 
 def _hash_password(plain: str) -> str:
