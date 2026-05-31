@@ -6,22 +6,22 @@
 @tailwind utilities;
 
 [data-theme="dark"] {
-  /* Base surfaces — cool zinc/slate, no blue tint */
-  --color-base: #0A0A0B;
-  --color-surface: #111113;
-  --color-elevated: #18181B;
-  --color-highlight: #27272A;
-  --color-overlay: #141416;
+  /* Base surfaces — near-black with subtle Hexis purple tint */
+  --color-base: #09060B;
+  --color-surface: #0F0A12;
+  --color-elevated: #17101C;
+  --color-highlight: #241528;
+  --color-overlay: #120A15;
 
-  /* Accent — amber/copper */
-  --color-accent: #D97706;
-  --color-accent-light: #F59E0B;
-  --color-accent-dim: #78350F;
-  --color-accent-wash: #1C1410;    /* dark amber tint surface */
+  /* Accent — Hexis magenta-purple */
+  --color-accent: #8B1A6B;
+  --color-accent-light: #B02080;
+  --color-accent-dim: #520044;
+  --color-accent-wash: #18091A;    /* dark purple tint surface */
 
-  /* Teal — data/success signal */
-  --color-teal: #14B8A6;
-  --color-teal-light: #5EEAD4;
+  /* Steel-silver — armor/sigil signal color */
+  --color-teal: #7B8FA8;
+  --color-teal-light: #A8BCE0;
 
   /* Typography — zinc scale */
   --color-primary: #FAFAFA;
@@ -36,33 +36,33 @@
   /* Borders */
   --color-border: rgba(255,255,255,0.07);
   --color-border-strong: rgba(255,255,255,0.12);
-  --color-border-accent: rgba(217,119,6,0.35);
-  --color-border-accent-hover: rgba(245,158,11,0.55);
+  --color-border-accent: rgba(139,26,107,0.35);
+  --color-border-accent-hover: rgba(176,32,128,0.55);
 
   /* Surface RGB vals for rgba() composition with backdrop-filter glass */
-  --color-elevated-rgb: 24, 24, 27;
-  --color-surface-rgb:  17, 17, 19;
-  --color-base-rgb:     10, 10, 11;
+  --color-elevated-rgb: 23, 16, 28;
+  --color-surface-rgb:  15, 10, 18;
+  --color-base-rgb:     9, 6, 11;
 
   /* Aurora hero gradient */
   --gradient-aurora-hero:
     radial-gradient(
       ellipse 80% 40% at 50% -5%,
-      rgba(217,119,6,0.13) 0%,
+      rgba(139,26,107,0.16) 0%,
       transparent 70%
     );
 
   /* Ambient background — extends aurora palette across all pages */
   --gradient-ambient:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(120,53,15,0.14) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(217,119,6,0.07) 0%, transparent 55%),
-    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(28,10,0,0.45) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(82,0,68,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(139,26,107,0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(24,9,26,0.50) 0%, transparent 50%);
 
   /* Tile ambient gradients */
   --gradient-tile-amber:
-    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(217,119,6,0.07) 0%, transparent 60%);
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(139,26,107,0.08) 0%, transparent 60%);
   --gradient-tile-teal:
-    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(20,184,166,0.06) 0%, transparent 60%);
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(123,143,168,0.07) 0%, transparent 60%);
   --gradient-tile-warning:
     radial-gradient(ellipse 120% 80% at 10% 0%, rgba(251,191,36,0.05) 0%, transparent 60%);
   --gradient-tile-error:
@@ -70,8 +70,8 @@
 
   /* Mesh gradient for premium surfaces */
   --gradient-mesh-subtle:
-    radial-gradient(at 25% 15%, rgba(217,119,6,0.05) 0px, transparent 50%),
-    radial-gradient(at 75% 85%, rgba(20,184,166,0.03) 0px, transparent 50%);
+    radial-gradient(at 25% 15%, rgba(139,26,107,0.06) 0px, transparent 50%),
+    radial-gradient(at 75% 85%, rgba(123,143,168,0.04) 0px, transparent 50%);
 }
 
 [data-theme="light"] {
@@ -82,13 +82,13 @@
   --color-overlay: #FFFFFF;
 
   /* Accent ramp matches dark-mode direction (light = lighter, dim = recessive) */
-  --color-accent: #B45309;        /* amber-700 — primary CTA in light */
-  --color-accent-light: #D97706;  /* amber-600 — hover/lift */
-  --color-accent-dim: #92400E;    /* amber-800 — recessive foreground */
-  --color-accent-wash: #FEF3C7;   /* amber-100 — pale background tint, opt-in */
+  --color-accent: #7B1060;        /* deep magenta — primary CTA in light */
+  --color-accent-light: #9D1575;  /* brighter magenta — hover/lift */
+  --color-accent-dim: #6B0052;    /* recessive foreground */
+  --color-accent-wash: #F5E6F3;   /* pale purple wash */
 
-  --color-teal: #0D9488;
-  --color-teal-light: #0F766E;
+  --color-teal: #5A7A9A;
+  --color-teal-light: #4A6A8A;
 
   --color-primary: #18181B;
   --color-secondary: #52525B;
@@ -96,12 +96,12 @@
 
   --color-error: #DC2626;
   --color-success: #059669;
-  --color-warning: #CA8A04;       /* yellow-600 — separates from accent */
+  --color-warning: #CA8A04;
 
   --color-border: rgba(0,0,0,0.08);
   --color-border-strong: rgba(0,0,0,0.14);
-  --color-border-accent: rgba(180,83,9,0.35);
-  --color-border-accent-hover: rgba(146,64,14,0.50);
+  --color-border-accent: rgba(123,16,96,0.35);
+  --color-border-accent-hover: rgba(107,0,82,0.50);
 
   --color-elevated-rgb: 244, 244, 245;
   --color-surface-rgb:  255, 255, 255;
@@ -110,26 +110,26 @@
   --gradient-aurora-hero:
     radial-gradient(
       ellipse 80% 40% at 50% -5%,
-      rgba(180,83,9,0.08) 0%,
+      rgba(123,16,96,0.08) 0%,
       transparent 70%
     );
 
   --gradient-ambient:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(180,83,9,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(180,83,9,0.05) 0%, transparent 55%);
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(123,16,96,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(123,16,96,0.04) 0%, transparent 55%);
 
   --gradient-tile-amber:
-    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(180,83,9,0.05) 0%, transparent 60%);
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(123,16,96,0.05) 0%, transparent 60%);
   --gradient-tile-teal:
-    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(13,148,136,0.04) 0%, transparent 60%);
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(90,122,154,0.04) 0%, transparent 60%);
   --gradient-tile-warning:
     radial-gradient(ellipse 120% 80% at 10% 0%, rgba(202,138,4,0.04) 0%, transparent 60%);
   --gradient-tile-error:
     radial-gradient(ellipse 120% 80% at 10% 0%, rgba(220,38,38,0.04) 0%, transparent 60%);
 
   --gradient-mesh-subtle:
-    radial-gradient(at 25% 15%, rgba(180,83,9,0.04) 0px, transparent 50%),
-    radial-gradient(at 75% 85%, rgba(13,148,136,0.02) 0px, transparent 50%);
+    radial-gradient(at 25% 15%, rgba(123,16,96,0.04) 0px, transparent 50%),
+    radial-gradient(at 75% 85%, rgba(90,122,154,0.02) 0px, transparent 50%);
 }
 
 /* Motion easing tokens + gradient system + glow ladder + motion durations */
@@ -137,14 +137,14 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 
-  /* Glow ladder — three rungs of amber luminance */
+  /* Glow ladder — three rungs of Hexis magenta luminance */
   --glow-none:     none;
-  --glow-subtle:   0 0 12px rgba(217,119,6,0.10);
-  --glow-standard: 0 0 20px rgba(217,119,6,0.22);
-  --glow-hero:     0 0 32px rgba(217,119,6,0.40), 0 0 64px rgba(217,119,6,0.15);
+  --glow-subtle:   0 0 12px rgba(139,26,107,0.15);
+  --glow-standard: 0 0 20px rgba(139,26,107,0.30);
+  --glow-hero:     0 0 32px rgba(139,26,107,0.50), 0 0 64px rgba(139,26,107,0.20);
 
-  /* Teal glow for cache/success tiles */
-  --glow-teal-subtle: 0 0 12px rgba(20,184,166,0.10);
+  /* Steel-silver glow for data/status tiles */
+  --glow-teal-subtle: 0 0 12px rgba(123,143,168,0.12);
 
   /* Motion durations */
   --duration-instant: 100ms;
@@ -195,15 +195,15 @@ h1, h2, h3, h4, h5, h6 {
 [data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.30); }
 
 /* Selection */
-::selection { background: rgba(217,119,6,0.25); color: var(--color-primary); }
-[data-theme="light"] ::selection { background: rgba(180,83,9,0.22); color: var(--color-primary); }
+::selection { background: rgba(139,26,107,0.30); color: var(--color-primary); }
+[data-theme="light"] ::selection { background: rgba(123,16,96,0.22); color: var(--color-primary); }
 
 /* Glow ladder utilities */
 .glow-none     { box-shadow: var(--glow-none); }
 .glow-subtle   { box-shadow: var(--glow-subtle); }
 .glow-standard { box-shadow: var(--glow-standard); }
 .glow-hero     { box-shadow: var(--glow-hero); }
-.glow-teal     { box-shadow: 0 0 20px rgba(20,184,166,0.15); }
+.glow-teal     { box-shadow: 0 0 20px rgba(123,143,168,0.18); }
 
 /* Aliases for backwards compatibility — will be removed after migration */
 .glow-accent        { box-shadow: var(--glow-standard); }
@@ -247,7 +247,7 @@ h1, h2, h3, h4, h5, h6 {
 .tile-warning { background: var(--gradient-tile-warning), var(--color-surface); }
 .tile-error   { background: var(--gradient-tile-error),   var(--color-surface); }
 
-/* Gradient text — amber → teal (kept narrow, used sparingly) */
+/* Gradient text — accent → silver */
 .gradient-text {
   background: linear-gradient(135deg, var(--color-accent-light), var(--color-teal-light));
   -webkit-background-clip: text;
@@ -304,10 +304,10 @@ h1, h2, h3, h4, h5, h6 {
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
-/* Gradient border cards — amber + teal */
+/* Gradient border cards — magenta + silver */
 .card-gradient-border {
   position: relative;
-  border: 1px solid rgba(217,119,6,0.18);
+  border: 1px solid rgba(139,26,107,0.22);
 }
 
 .card-gradient-border::before {
@@ -316,7 +316,7 @@ h1, h2, h3, h4, h5, h6 {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(217,119,6,0.3), rgba(20,184,166,0.15));
+  background: linear-gradient(135deg, rgba(139,26,107,0.35), rgba(123,143,168,0.15));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -329,7 +329,7 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-elevated);
   border: 1px solid var(--color-border-strong);
   border-radius: 0.75rem;
-  box-shadow: 0 0 24px rgba(217,119,6,0.18), 0 8px 32px rgba(0,0,0,0.35);
+  box-shadow: 0 0 24px rgba(139,26,107,0.20), 0 8px 32px rgba(0,0,0,0.35);
   color: var(--color-primary);
   font-family: inherit;
 }
@@ -365,7 +365,7 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-primary);
 }
 
-/* Next — solid amber, white text */
+/* Next — solid magenta, white text */
 .arbiter-tour-popover .driver-popover-navigation-btns .driver-popover-next-btn {
   background: var(--color-accent);
   border: 1px solid var(--color-accent);
