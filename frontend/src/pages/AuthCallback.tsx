@@ -26,6 +26,7 @@ interface TokenResponse {
   refresh_token: string
   token_type: string
   expires_in: number
+  requires_consent?: boolean
 }
 
 function AuthCallback(): React.ReactElement {
@@ -56,7 +57,11 @@ function AuthCallback(): React.ReactElement {
         // Hydrate auth context so ProtectedRoute / RootRedirect see the user immediately
         await refreshUser()
 
-        void navigate('/', { replace: true })
+        if (res.data.requires_consent) {
+          void navigate('/consent', { replace: true })
+        } else {
+          void navigate('/', { replace: true })
+        }
       } catch {
         void navigate('/login?error=sso_failed', { replace: true })
       }

@@ -34,7 +34,7 @@ from app.core.config import settings
 from app.core.dependencies import get_current_user, get_db, get_redis
 from app.db.models.social_account import SocialAccount
 from app.db.models.user import User
-from app.schemas.auth import TokenResponse
+from app.schemas.auth import SSOTokenResponse, TokenResponse
 from app.services.auth import sso_service
 
 logger = logging.getLogger(__name__)
@@ -183,10 +183,14 @@ async def google_callback(
         request.session.pop("link_provider", None)
         try:
             await sso_service.link_provider(
-                redis=redis, db=db,
-                nonce=link_nonce, provider="google",
+                redis=redis,
+                db=db,
+                nonce=link_nonce,
+                provider="google",
                 provider_user_id=provider_user_id,
-                email=email, name=name, avatar_url=avatar_url,
+                email=email,
+                name=name,
+                avatar_url=avatar_url,
             )
         except HTTPException as exc:
             return RedirectResponse(
@@ -312,10 +316,14 @@ async def github_callback(
         request.session.pop("link_provider", None)
         try:
             await sso_service.link_provider(
-                redis=redis, db=db,
-                nonce=link_nonce, provider="github",
+                redis=redis,
+                db=db,
+                nonce=link_nonce,
+                provider="github",
                 provider_user_id=provider_user_id,
-                email=email, name=name, avatar_url=avatar_url,
+                email=email,
+                name=name,
+                avatar_url=avatar_url,
             )
         except HTTPException as exc:
             return RedirectResponse(
@@ -357,7 +365,7 @@ class OTTExchangeRequest(BaseModel):
 
 @router.post(
     "/sso/exchange",
-    response_model=TokenResponse,
+    response_model=SSOTokenResponse,
     status_code=status.HTTP_200_OK,
     summary="Exchange one-time token for JWT + refresh token",
 )
@@ -365,38 +373,53 @@ async def exchange_ott(
     body: OTTExchangeRequest,
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
-) -> TokenResponse:
+) -> SSOTokenResponse:
     """
     Consume a one-time token issued after a successful OAuth2 callback.
 
-    The OTT is single-use and expires after 60 seconds.  On success, returns
-    a standard JWT access token + opaque refresh token pair — identical shape
-    to the email/password login response so the frontend can handle both flows
-    with the same code path.
-
-    Args:
-        body:  { token: "ott_<hex>" }
-        db:    Injected database session.
-        redis: Injected Redis client.
-
-    Returns:
-        TokenResponse: access_token, refresh_token, token_type, expires_in.
+    The OTT is single-use and expires after 60 seconds. On success, returns
+    a JWT access token + refresh token pair. If the user has never accepted the
+    ToS, requires_consent=True is set — the frontend redirects to /consent.
 
     Raises:
         HTTPException 400: If the token is invalid or expired.
         HTTPException 401: If the linked user is inactive.
     """
-    _user, access_token, refresh_token = await sso_service.exchange_one_time_token(
+    user, access_token, refresh_token = await sso_service.exchange_one_time_token(
         redis=redis,
         db=db,
         raw_token=body.token,
     )
 
-    return TokenResponse(
+    return SSOTokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         expires_in=settings.jwt_access_token_expire_minutes * 60,
+        requires_consent=user.tos_accepted_at is None,
     )
+
+
+# ── ToS consent (SSO users) ───────────────────────────────────────────────────
+
+_CURRENT_TOS_VERSION = "2026-05-31"
+
+
+@router.post(
+    "/sso/accept-tos",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    summary="Record ToS acceptance for an SSO user",
+)
+async def accept_tos(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Record that the authenticated user has accepted the current Terms of Service."""
+    from datetime import UTC, datetime
+
+    current_user.tos_accepted_at = datetime.now(UTC)
+    current_user.tos_version = _CURRENT_TOS_VERSION
+    await db.commit()
 
 
 # ── Account linking ────────────────────────────────────────────────────────────
@@ -430,15 +453,21 @@ async def link_initiate(
             detail="provider must be 'google' or 'github'",
         )
     if body.provider == "google" and not _google_configured():
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Google not configured")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Google not configured"
+        )
     if body.provider == "github" and not _github_configured():
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="GitHub not configured")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="GitHub not configured"
+        )
 
     nonce = secrets.token_hex(16)
     await redis.setex(f"{_LINK_NONCE_PREFIX}{nonce}", _LINK_NONCE_TTL, str(current_user.id))
 
     # The frontend navigates the top-level window to this URL to start the OAuth dance
-    redirect_url = f"{settings.oauth_redirect_base_url}/api/v1/auth/{body.provider}?link_nonce={nonce}"
+    redirect_url = (
+        f"{settings.oauth_redirect_base_url}/api/v1/auth/{body.provider}?link_nonce={nonce}"
+    )
     return {"redirect_url": redirect_url}
 
 
@@ -470,13 +499,14 @@ async def link_delete(
         )
     )
     if sa is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"{provider} is not linked")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"{provider} is not linked"
+        )
 
     # Safety: user must still have a way to log in
     has_password = bool(current_user.hashed_password)
     other_socials_count = await db.scalar(
-        select(SocialAccount)
-        .where(
+        select(SocialAccount).where(
             SocialAccount.user_id == current_user.id,
             SocialAccount.provider != provider,
         )

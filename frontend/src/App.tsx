@@ -49,6 +49,7 @@ const AcceptInvite        = lazy(() => import('./pages/AcceptInvite'))
 const Members        = lazy(() => import('./pages/Members'))
 const PrivacyPolicy  = lazy(() => import('./pages/PrivacyPolicy'))
 const TermsOfService = lazy(() => import('./pages/TermsOfService'))
+const Consent        = lazy(() => import('./pages/Consent'))
 const Security       = lazy(() => import('./pages/Security'))
 const Changelog      = lazy(() => import('./pages/Changelog'))
 
@@ -157,6 +158,7 @@ function App(): React.ReactElement {
         <Route path="/accept-invite" element={<AcceptInvite />} />
         <Route path="/privacy"   element={<PrivacyPolicy />} />
         <Route path="/terms"     element={<TermsOfService />} />
+        <Route path="/consent"   element={<Consent />} />
         <Route path="/security"  element={<Security />} />
         <Route path="/changelog" element={<Changelog />} />
 

@@ -29,8 +29,8 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def password_min_length(cls, value: str) -> str:
-        if len(value) < 8:
-            raise ValueError("Password must be at least 8 characters")
+        if len(value) < 12:
+            raise ValueError("Password must be at least 12 characters")
         return value
 
 
@@ -54,6 +54,12 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int  # seconds until access token expires
+
+
+class SSOTokenResponse(TokenResponse):
+    """Extended response for SSO exchange — signals when consent is still needed."""
+
+    requires_consent: bool = False
 
 
 class MeResponse(BaseModel):
@@ -99,6 +105,6 @@ class ChangePasswordRequest(BaseModel):
     @field_validator("new_password")
     @classmethod
     def new_password_min_length(cls, value: str) -> str:
-        if len(value) < 8:
-            raise ValueError("Password must be at least 8 characters")
+        if len(value) < 12:
+            raise ValueError("Password must be at least 12 characters")
         return value
