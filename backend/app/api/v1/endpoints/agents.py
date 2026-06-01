@@ -25,7 +25,13 @@ from app.core.dependencies import get_current_user, get_db, get_redis, require_r
 from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.db.models.user import User
-from app.schemas.agent import AgentCreate, AgentCreateResponse, AgentResponse, AgentUpdate, _VALID_SCOPES
+from app.schemas.agent import (
+    _VALID_SCOPES,
+    AgentCreate,
+    AgentCreateResponse,
+    AgentResponse,
+    AgentUpdate,
+)
 from app.schemas.pagination import Page
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.services.plan.plan_service import check_resource_limit, check_tool_call_quota
@@ -125,7 +131,12 @@ async def list_agents(
     result = await db.execute(
         select(Agent).where(*where).order_by(Agent.created_at.desc()).offset(skip).limit(limit)
     )
-    return Page(items=[AgentResponse.model_validate(a) for a in result.scalars().all()], total=total, skip=skip, limit=limit)
+    return Page(
+        items=[AgentResponse.model_validate(a) for a in result.scalars().all()],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get(
@@ -174,7 +185,9 @@ async def update_agent(
     )
     agent = result.scalar_one_or_none()
     if agent is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found"
+        )
 
     if body.name is not None:
         existing = await db.execute(
@@ -185,7 +198,10 @@ async def update_agent(
             )
         )
         if existing.scalar_one_or_none() is not None:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"An agent named {body.name!r} already exists")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"An agent named {body.name!r} already exists",
+            )
         agent.name = body.name
     if body.description is not None:
         agent.description = body.description
@@ -260,6 +276,7 @@ async def rotate_api_key(
         description=agent.description,
         is_active=agent.is_active,
         scope=agent.scope,
+        rate_limit_per_minute=agent.rate_limit_per_minute,
         created_at=agent.created_at,
         updated_at=agent.updated_at,
         api_key=raw_key,
@@ -288,11 +305,15 @@ async def test_tool_call(
     )
     agent = result.scalar_one_or_none()
     if agent is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found"
+        )
 
     org = await db.get(Organization, agent.org_id)
     if org is None:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found"
+        )
 
     await check_tool_call_quota(redis=redis, db=db, org=org)
     service = ProxyService(db=db, redis=redis)
