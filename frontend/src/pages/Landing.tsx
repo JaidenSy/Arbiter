@@ -453,7 +453,7 @@ const pricingTiers: PricingTier[] = [
     period: '/mo',
     features: [
       '2 agents',
-      '5 MCP servers',
+      '3 MCP servers',
       '5,000 tool calls/mo',
       '10 vault secrets',
       'Community support',
