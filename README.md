@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/src/assets/logo-transparent.png" alt="Arbiter" width="72" />
+<img src="frontend/public/favicon.svg" alt="Arbiter" width="72" />
 
 # Arbiter
 
@@ -10,7 +10,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
-![Deployed on Railway](https://img.shields.io/badge/deployed%20on-Railway-7C3AED?logo=railway)
+![Deployed on Railway](https://img.shields.io/badge/deployed%20on-Railway-2563EB?logo=railway)
 
 [**arbiterai.dev →**](https://arbiterai.dev) · [**API Docs →**](https://arbiterai.dev/docs) · [**support@arbiterai.dev**](mailto:support@arbiterai.dev)
 
@@ -151,7 +151,7 @@ arbiter/
 │   ├── app/
 │   │   ├── api/v1/endpoints/   # agents, proxy, vault, sessions, billing, sso, org…
 │   │   ├── core/               # config, security, dependencies
-│   │   ├── db/models/          # SQLAlchemy models (migrations 001–022)
+│   │   ├── db/models/          # SQLAlchemy models (migrations 001–023)
 │   │   ├── schemas/            # Pydantic request/response models
 │   │   ├── services/           # proxy, vault, cache, rbac, billing, auth, email
 │   │   └── tasks/              # background jobs (GDPR 30-day purge)
