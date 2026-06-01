@@ -244,8 +244,10 @@ class ProxyService:
         resolved_server_headers: dict[str, str] = {}
         if mcp_server.headers:
             for hdr_name, hdr_value in mcp_server.headers.items():
+                # Use agent_id=None — server headers reference org-level vault secrets
+                # (stored with agent_id=NULL via the dashboard), not agent-scoped ones.
                 resolved_server_headers[hdr_name] = await self._inject_secrets(
-                    hdr_value, agent_id=agent.id, org_id=agent.org_id
+                    hdr_value, agent_id=None, org_id=agent.org_id
                 )
 
         # ── Build outbound headers (initialize upstream session if needed) ────
