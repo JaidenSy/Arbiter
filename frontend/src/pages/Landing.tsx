@@ -296,13 +296,13 @@ function Comparison(): React.ReactElement {
 
   type CellVal = boolean | 'partial' | string
 
-  const rows: { feature: string; arbiter: CellVal; litellm: CellVal; portkey: CellVal; diy: CellVal; enterpriseOnly?: boolean }[] = [
+  const rows: { feature: string; arbiter: CellVal; litellm: CellVal; portkey: CellVal; diy: CellVal; enterpriseOnly?: boolean; proOnly?: boolean }[] = [
     { feature: 'Per-agent identity',         arbiter: true,      litellm: false,     portkey: false,     diy: '~3 months' },
     { feature: 'Tool-level RBAC',            arbiter: true,      litellm: false,     portkey: false,     diy: '~2 months' },
     { feature: 'Encrypted secrets vault',    arbiter: true,      litellm: false,     portkey: false,     diy: '~2 months' },
-    { feature: 'Semantic cache (pgvector)',  arbiter: true,      litellm: 'partial', portkey: 'partial', diy: '~3 months' },
     { feature: 'Full request/response audit', arbiter: true,     litellm: 'partial', portkey: true,      diy: '~1 month'  },
     { feature: 'MCP protocol native',        arbiter: true,      litellm: false,     portkey: false,     diy: 'depends'   },
+    { feature: 'Semantic cache (pgvector)',  arbiter: true,      litellm: 'partial', portkey: 'partial', diy: '~3 months', proOnly: true },
     { feature: 'Self-hosted',                arbiter: true,      litellm: true,      portkey: false,     diy: true,        enterpriseOnly: true },
   ]
 
@@ -342,6 +342,11 @@ function Comparison(): React.ReactElement {
                   <td className="py-3.5 pl-5 pr-6 text-secondary">
                     <span className="inline-flex items-center gap-2 flex-wrap">
                       {row.feature}
+                      {row.proOnly && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-teal/30 text-teal-light bg-teal/10 leading-none whitespace-nowrap">
+                          Pro+
+                        </span>
+                      )}
                       {row.enterpriseOnly && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border border-border-accent text-accent-light bg-accent/10 leading-none whitespace-nowrap">
                           Enterprise
@@ -453,7 +458,7 @@ const pricingTiers: PricingTier[] = [
     period: '/mo',
     features: [
       '2 agents',
-      '5 MCP servers',
+      '3 MCP servers',
       '5,000 tool calls/mo',
       '10 vault secrets',
       'Community support',
