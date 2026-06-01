@@ -426,15 +426,20 @@ class ProxyService:
                 result[key] = value
         return result
 
-    async def _inject_secrets(self, value: str, agent_id: uuid.UUID, org_id: uuid.UUID) -> str:
-        """Replace all {{SECRET_NAME}} placeholders in a string value."""
+    async def _inject_secrets(self, value: str, agent_id: uuid.UUID | None, org_id: uuid.UUID) -> str:
+        """Replace all {{SECRET_NAME}} and {{vault:SECRET_NAME}} placeholders in a string value."""
         matches = _SECRET_PLACEHOLDER.findall(value)
         if not matches:
             return value
         for secret_name in set(matches):
             try:
                 secret_value = await self._vault.get_secret(secret_name, org_id=org_id, agent_id=agent_id)
-                value = value.replace(f"{{{{{secret_name}}}}}", secret_value)
+                # Replace both {{secret_name}} and {{vault:secret_name}} forms
+                value = re.sub(
+                    r"\{\{(?:vault:)?" + re.escape(secret_name) + r"\}\}",
+                    secret_value,
+                    value,
+                )
             except KeyError:
                 logger.warning(
                     "proxy: secret placeholder {{%s}} not found in vault for agent %s",
