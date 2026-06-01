@@ -120,6 +120,31 @@ Multiple `{{vault:NAME}}` placeholders in one header value are supported.
 
 ---
 
+
+## Organizations & multi-tenancy
+
+Every registration creates one **organization**. All resources — agents, MCP servers, vault secrets, quota — belong to the org.
+
+### One org vs separate accounts
+
+| Scenario | Recommendation |
+|----------|---------------|
+| Team building one product | **One org** — shared vault, MCP configs, audit log, single bill |
+| Multiple distinct products | **Separate accounts** — isolated quota and billing per product |
+| Personal vs work projects | **Separate accounts** — full resource isolation |
+| Agency / client work | **Separate accounts per client** — each client gets their own environment |
+
+**Key benefit of shared orgs:** Vault secrets are org-scoped. One GitHub PAT stored once means every agent on the team can use it — nobody copies credentials into environment variables.
+
+### Roles
+
+| Role | Capabilities |
+|------|-------------|
+| `owner` | Full control: billing, members, all resources |
+| `admin` | Create/delete agents, MCP servers, vault secrets |
+| `member` | Read-only dashboard; cannot create resources |
+
+---
 ## Comparison
 
 | | **Arbiter** | LiteLLM | Portkey | Build it yourself |

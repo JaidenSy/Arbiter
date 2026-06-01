@@ -60,3 +60,39 @@ X-Api-Key: {{vault:my_api_key}}
 ```
 
 Multiple placeholders in one value are supported.
+
+## Organizations
+
+Every Arbiter account creates one organization. All resources — agents, MCP servers, vault secrets, tool call quota — belong to the org, not individual users.
+
+### Plan limits (per org)
+
+| Resource | Free | Pro ($29/mo) |
+|----------|------|--------------|
+| Tool calls/month | 5,000 | 100,000 |
+| Agents | 2 | 25 |
+| MCP servers | 3 | 50 |
+| Vault secrets | 10 | 100 |
+| Members | 3 | Unlimited |
+
+### One org vs separate accounts
+
+**Use one org when:**
+- A team is building one product together
+- You want shared vault secrets (one GitHub PAT that all agents use — nobody copies keys into env vars)
+- You want shared MCP server configs — configure once, all agents route through the same gateway
+- You need a unified audit log — every tool call from every agent in one dashboard
+- You want single billing — upgrade once, not per member
+
+**Use separate accounts (separate orgs) when:**
+- Building multiple distinct products — each gets its own isolated quota, billing, and resources
+- Separating personal experiments from work/production
+- Building for different clients — separate orgs give each client full isolation
+
+### Quota sharing
+When teammates join your org, they share the org's monthly quota — not each getting their own. A team of 3 on the free tier shares 5,000 calls/month. When the team outgrows this, upgrading to Pro ($29/mo) gives the entire org 100,000 calls/month.
+
+### Roles
+- **owner** — full control: billing, member management, all resources
+- **admin** — create/delete agents, MCP servers, vault secrets, manage members
+- **member** — read-only dashboard access; cannot create or mutate resources
