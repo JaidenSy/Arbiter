@@ -97,6 +97,27 @@ curl -X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \
 
 Every call is logged. If the agent tries a tool it wasn't granted, it gets a 403 — not a silent pass-through.
 
+### 4 — Authenticating upstream MCP servers (vault references)
+
+MCP servers that require authentication (e.g. a GitHub PAT) use the Vault so secrets are never stored in plaintext.
+
+**Store the secret in Vault:**
+```bash
+# Via the Arbiter dashboard → Vault → Add Secret
+# Name: github_pat   Value: Bearer ghp_xxxx...
+```
+
+**Reference it in the MCP server headers:**
+
+In the dashboard → MCP Servers → Edit → Auth Headers, add:
+| Header | Value |
+|--------|-------|
+| `Authorization` | `{{vault:github_pat}}` |
+
+At proxy time Arbiter resolves `{{vault:github_pat}}` to the decrypted value. The raw token never touches the `mcp_servers` table.
+
+Multiple `{{vault:NAME}}` placeholders in one header value are supported.
+
 ---
 
 ## Comparison

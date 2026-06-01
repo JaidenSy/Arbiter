@@ -244,6 +244,12 @@ class ProxyService:
             mcp_server=mcp_server,
             cache_key=upstream_session_key,
         )
+        # Merge server-level headers, resolving any {{vault:SECRET}} placeholders.
+        if mcp_server.headers:
+            for hdr_name, hdr_value in mcp_server.headers.items():
+                outbound_headers[hdr_name] = await self._inject_secrets(
+                    hdr_value, agent_id=agent.id, org_id=agent.org_id
+                )
 
         try:
             async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
