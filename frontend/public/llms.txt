@@ -20,3 +20,43 @@ Free tier available. No credit card required to start.
 - Dashboard: https://arbiterai.dev
 - API: https://nexusai-api-production.up.railway.app
 - GitHub: https://github.com/JaidenSy/Arbiter
+
+## MCP Server Authentication
+
+MCP servers registered in Arbiter can require authentication headers (e.g. a GitHub Personal Access Token). Arbiter supports vault-referenced header values so secrets are never stored in plaintext.
+
+### How to authenticate an MCP server
+
+**Step 1 — Store the secret in the Vault**
+In the Arbiter dashboard, go to Vault → Add Secret.
+- Name: `github_pat` (or any slug you choose)
+- Value: your raw secret (e.g. `Bearer ghp_xxxx...`)
+
+The secret is encrypted at rest with AES-256-GCM.
+
+**Step 2 — Reference it in the MCP server headers**
+When adding or editing an MCP server, add an Auth Header:
+- Header name: `Authorization`
+- Value: `{{vault:github_pat}}`
+
+At proxy time, Arbiter resolves `{{vault:github_pat}}` to the decrypted secret before forwarding the request. The raw token never appears in the database or logs.
+
+**Step 3 — Grant agent permissions and call tools normally**
+
+```bash
+curl -X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \
+  -H "Authorization: Bearer nxai_..." \
+  -H "Content-Type: application/json" \
+  -d '{"server_name": "github", "tool_name": "search_repositories", "params": {"query": "mcp"}}'
+```
+
+### Placeholder syntax
+
+`{{vault:SECRET_NAME}}` can appear anywhere in a header value string, including mid-string:
+
+```
+Authorization: Bearer {{vault:github_pat}}
+X-Api-Key: {{vault:my_api_key}}
+```
+
+Multiple placeholders in one value are supported.
