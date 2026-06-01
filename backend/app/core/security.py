@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Jaiden Sy. All rights reserved.
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """
 Arbiter — Security utilities.
 
@@ -20,7 +22,7 @@ import hashlib
 import hmac
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
@@ -84,6 +86,12 @@ def verify_api_key(raw_key: str, stored_hash: str) -> bool:
 # ── Password helpers ─────────────────────────────────────────────────────────
 
 
+def _pre_hash(plain: str) -> str:
+    # SHA-256 pre-hash collapses any-length password to 64 hex chars,
+    # preventing bcrypt's silent 72-byte truncation.
+    return hashlib.sha256(plain.encode()).hexdigest()
+
+
 def hash_password(plain: str) -> str:
     """
     Bcrypt-hash a plaintext password for storage.
@@ -94,7 +102,7 @@ def hash_password(plain: str) -> str:
     Returns:
         str: A bcrypt hash string safe to store in the database.
     """
-    return pwd_context.hash(plain)
+    return pwd_context.hash(_pre_hash(plain))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -108,6 +116,11 @@ def verify_password(plain: str, hashed: str) -> bool:
     Returns:
         bool: True if the password matches, False otherwise.
     """
+    return pwd_context.verify(_pre_hash(plain), hashed)
+
+
+def verify_password_legacy(plain: str, hashed: str) -> bool:
+    """Verify against a pre-migration hash (no SHA-256 pre-hash). Migration use only."""
     return pwd_context.verify(plain, hashed)
 
 
@@ -139,7 +152,7 @@ def create_access_token(
     Returns:
         str: Signed JWT string.
     """
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     expire = now + timedelta(minutes=settings.jwt_access_token_expire_minutes)
     payload: dict[str, Any] = {
         "sub": str(user_id),
