@@ -6,7 +6,7 @@
 
 **The MCP security gateway for AI agents.**
 
-![License](https://img.shields.io/badge/license-proprietary-red)
+![License](https://img.shields.io/badge/license-AGPL%20v3%20%2F%20Commercial-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
@@ -259,5 +259,9 @@ DMCA agent: DMCA-1073513 · dmca@arbiterai.dev
 
 ## License
 
-Proprietary. All rights reserved © 2026 Arbiter.
-This codebase is not licensed for redistribution, modification, or commercial use by third parties.
+Arbiter is dual-licensed:
+
+- **[AGPL v3](./LICENSE)** — free for open-source use. If you build on Arbiter, your code must also be AGPL v3.
+- **[Commercial License](./COMMERCIAL_LICENSE.md)** — for closed-source products and SaaS deployments. Contact [jaidensy07@gmail.com](mailto:jaidensy07@gmail.com).
+
+© 2026 Jaiden Sy.
