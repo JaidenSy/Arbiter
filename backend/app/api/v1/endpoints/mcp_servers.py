@@ -100,6 +100,10 @@ class MCPServerCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     base_url: str = Field(..., description="Full HTTP(S) URL of the MCP server")
     description: str | None = None
+    headers: dict[str, str] = Field(
+        default_factory=dict,
+        description="Custom HTTP headers forwarded to the upstream server. Values may contain {{vault:SECRET_NAME}} placeholders.",
+    )
     cache_enabled: bool = Field(
         True,
         description="Set False for side-effectful servers that must never serve cached responses",
@@ -123,6 +127,7 @@ class MCPServerUpdate(BaseModel):
     name: str | None = None
     base_url: str | None = None
     description: str | None = None
+    headers: dict[str, str] | None = None
     cache_enabled: bool | None = None
     is_active: bool | None = None
 
@@ -154,6 +159,7 @@ class MCPServerResponse(BaseModel):
     name: str
     base_url: str
     description: str | None
+    headers: dict[str, str]
     is_active: bool
     cache_enabled: bool = Field(
         ...,
@@ -224,6 +230,7 @@ async def create_mcp_server(
         name=body.name,
         base_url=body.base_url,
         description=body.description,
+        headers=body.headers,
         cache_enabled=body.cache_enabled,
         is_active=True,
     )
@@ -367,6 +374,8 @@ async def update_mcp_server(
         server.base_url = body.base_url
     if body.description is not None:
         server.description = body.description
+    if body.headers is not None:
+        server.headers = body.headers
     if body.cache_enabled is not None:
         server.cache_enabled = body.cache_enabled
     if body.is_active is not None:

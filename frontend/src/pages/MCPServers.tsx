@@ -86,6 +86,9 @@ function ServerFormModal({
   const [name, setName] = useState(editTarget?.name ?? '')
   const [baseUrl, setBaseUrl] = useState(editTarget?.base_url ?? '')
   const [description, setDescription] = useState(editTarget?.description ?? '')
+  const [headers, setHeaders] = useState<{key: string; value: string}[]>(
+    Object.entries(editTarget?.headers ?? {}).map(([key, value]) => ({ key, value }))
+  )
   const [cacheEnabled, setCacheEnabled] = useState(editTarget?.cache_enabled ?? false)
   const [error, setError] = useState<string | null>(null)
 
@@ -94,6 +97,7 @@ function ServerFormModal({
       setName(editTarget?.name ?? '')
       setBaseUrl(editTarget?.base_url ?? '')
       setDescription(editTarget?.description ?? '')
+      setHeaders(Object.entries(editTarget?.headers ?? {}).map(([key, value]) => ({ key, value })))
       setCacheEnabled(editTarget?.cache_enabled ?? false)
       setError(null)
     }
@@ -125,10 +129,15 @@ function ServerFormModal({
     if (!name.trim() || !baseUrl.trim()) return
     setError(null)
 
+    const headersObj: Record<string, string> = {}
+    for (const { key, value } of headers) {
+      if (key.trim()) headersObj[key.trim()] = value
+    }
     const payload = {
       name: name.trim(),
       base_url: baseUrl.trim(),
       description: description.trim() || null,
+      headers: headersObj,
       cache_enabled: isPro ? cacheEnabled : false,
     }
 

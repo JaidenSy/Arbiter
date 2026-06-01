@@ -34,6 +34,7 @@ export interface MCPServer {
   name: string;
   base_url: string;
   description: string | null;
+  headers: Record<string, string>;
   cache_enabled: boolean;
   is_active: boolean;
   created_at: string;
@@ -43,6 +44,7 @@ export interface MCPServerCreate {
   name: string;
   base_url: string;
   description?: string | null;
+  headers?: Record<string, string>;
   cache_enabled?: boolean;
 }
 
@@ -50,6 +52,7 @@ export interface MCPServerUpdate {
   name?: string;
   base_url?: string;
   description?: string | null;
+  headers?: Record<string, string>;
   cache_enabled?: boolean;
   is_active?: boolean;
 }
