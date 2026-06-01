@@ -66,6 +66,54 @@ const deleteMCPServer = (id: string): Promise<void> =>
 const testMCPServer = (id: string): Promise<MCPServerTestResult> =>
   authClient.post<MCPServerTestResult>(`/mcp-servers/${id}/test`).then((r) => r.data)
 
+// ── Auth header helpers ───────────────────────────────────────────────────────
+
+type AuthScheme = 'bearer' | 'token' | 'basic' | 'none' | 'custom'
+
+interface AuthHeaderRow {
+  headerName: string
+  scheme: AuthScheme
+  customPrefix: string
+  secret: string
+}
+
+function schemePrefix(row: AuthHeaderRow): string {
+  if (row.scheme === 'none') return ''
+  if (row.scheme === 'custom') return row.customPrefix ? `${row.customPrefix} ` : ''
+  const map: Record<string, string> = { bearer: 'Bearer ', token: 'Token ', basic: 'Basic ' }
+  return map[row.scheme] ?? ''
+}
+
+function buildHeadersFromRows(rows: AuthHeaderRow[]): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const row of rows) {
+    if (!row.headerName.trim() || !row.secret.trim()) continue
+    out[row.headerName.trim()] = `${schemePrefix(row)}{{vault:${row.secret.trim()}}}`
+  }
+  return out
+}
+
+const SCHEME_PATTERN = /^(Bearer|Token|Basic|[A-Za-z0-9_-]+) \{\{vault:([^}]+)\}\}$/
+const RAW_VAULT_PATTERN = /^\{\{vault:([^}]+)\}\}$/
+
+function parseHeadersToRows(headers: Record<string, string>): AuthHeaderRow[] {
+  return Object.entries(headers).map(([headerName, value]) => {
+    const schemeMatch = value.match(SCHEME_PATTERN)
+    if (schemeMatch) {
+      const prefix = schemeMatch[1].toLowerCase()
+      const secret = schemeMatch[2]
+      if (prefix === 'bearer') return { headerName, scheme: 'bearer' as AuthScheme, customPrefix: '', secret }
+      if (prefix === 'token')  return { headerName, scheme: 'token'  as AuthScheme, customPrefix: '', secret }
+      if (prefix === 'basic')  return { headerName, scheme: 'basic'  as AuthScheme, customPrefix: '', secret }
+      return { headerName, scheme: 'custom' as AuthScheme, customPrefix: schemeMatch[1], secret }
+    }
+    const rawMatch = value.match(RAW_VAULT_PATTERN)
+    if (rawMatch) return { headerName, scheme: 'none' as AuthScheme, customPrefix: '', secret: rawMatch[1] }
+    // Unrecognised format — surface as custom with secret left blank so user can fix
+    return { headerName, scheme: 'custom' as AuthScheme, customPrefix: value, secret: '' }
+  })
+}
+
 // ── Server Form Modal ─────────────────────────────────────────────────────────
 
 interface ServerFormModalProps {
@@ -86,8 +134,8 @@ function ServerFormModal({
   const [name, setName] = useState(editTarget?.name ?? '')
   const [baseUrl, setBaseUrl] = useState(editTarget?.base_url ?? '')
   const [description, setDescription] = useState(editTarget?.description ?? '')
-  const [headers, setHeaders] = useState<{key: string; value: string}[]>(
-    Object.entries(editTarget?.headers ?? {}).map(([key, value]) => ({ key, value }))
+  const [authHeaders, setAuthHeaders] = useState<AuthHeaderRow[]>(
+    parseHeadersToRows(editTarget?.headers ?? {})
   )
   const [cacheEnabled, setCacheEnabled] = useState(editTarget?.cache_enabled ?? false)
   const [error, setError] = useState<string | null>(null)
@@ -97,7 +145,7 @@ function ServerFormModal({
       setName(editTarget?.name ?? '')
       setBaseUrl(editTarget?.base_url ?? '')
       setDescription(editTarget?.description ?? '')
-      setHeaders(Object.entries(editTarget?.headers ?? {}).map(([key, value]) => ({ key, value })))
+      setAuthHeaders(parseHeadersToRows(editTarget?.headers ?? {}))
       setCacheEnabled(editTarget?.cache_enabled ?? false)
       setError(null)
     }
@@ -129,15 +177,11 @@ function ServerFormModal({
     if (!name.trim() || !baseUrl.trim()) return
     setError(null)
 
-    const headersObj: Record<string, string> = {}
-    for (const { key, value } of headers) {
-      if (key.trim()) headersObj[key.trim()] = value
-    }
     const payload = {
       name: name.trim(),
       base_url: baseUrl.trim(),
       description: description.trim() || null,
-      headers: headersObj,
+      headers: buildHeadersFromRows(authHeaders),
       cache_enabled: isPro ? cacheEnabled : false,
     }
 
@@ -209,46 +253,88 @@ function ServerFormModal({
             <label className={labelClass}>Auth Headers</label>
             <button
               type="button"
-              onClick={() => setHeaders((h) => [...h, { key: '', value: '' }])}
+              onClick={() => setAuthHeaders((h) => [...h, { headerName: 'Authorization', scheme: 'bearer', customPrefix: '', secret: '' }])}
               className="text-xs text-accent-light hover:text-primary transition-colors"
             >
               + Add header
             </button>
           </div>
-          {headers.length === 0 && (
-            <p className="text-xs text-muted italic">No headers — click &quot;+ Add header&quot; to add one.</p>
+          {authHeaders.length === 0 && (
+            <p className="text-xs text-muted italic">No auth headers — click &quot;+ Add header&quot; to configure one.</p>
           )}
-          <div className="space-y-2">
-            {headers.map((h, i) => (
-              <div key={i} className="flex gap-2 items-center">
-                <input
-                  type="text"
-                  placeholder="e.g. Authorization"
-                  value={h.key}
-                  onChange={(e) => setHeaders((prev) => prev.map((x, j) => j === i ? { ...x, key: e.target.value } : x))}
-                  className={`${inputClass} flex-1 font-mono text-xs`}
-                />
-                <input
-                  type="password"
-                  placeholder={'Bearer … or {{vault:secret_name}}'}
-                  value={h.value}
-                  onChange={(e) => setHeaders((prev) => prev.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
-                  className={`${inputClass} flex-[2] font-mono text-xs`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setHeaders((prev) => prev.filter((_, j) => j !== i))}
-                  className="text-muted hover:text-error transition-colors text-xl leading-none flex-shrink-0 pb-0.5"
-                  aria-label="Remove header"
-                >
-                  ×
-                </button>
+          <div className="space-y-3">
+            {authHeaders.map((h, i) => (
+              <div key={i} className="bg-base border border-border rounded-lg p-3 space-y-2">
+                <div className="flex gap-2 items-center">
+                  {/* Header name */}
+                  <input
+                    type="text"
+                    placeholder="Header name"
+                    value={h.headerName}
+                    onChange={(e) => setAuthHeaders((prev) => prev.map((x, j) => j === i ? { ...x, headerName: e.target.value } : x))}
+                    className={`${inputClass} flex-1 font-mono text-xs`}
+                  />
+                  {/* Scheme selector */}
+                  <select
+                    value={h.scheme}
+                    onChange={(e) => {
+                      const scheme = e.target.value as AuthHeaderRow['scheme']
+                      setAuthHeaders((prev) => prev.map((x, j) => j === i ? {
+                        ...x,
+                        scheme,
+                        headerName: scheme === 'none' ? (x.headerName === 'Authorization' ? 'X-Api-Key' : x.headerName) : 'Authorization',
+                      } : x))
+                    }}
+                    className={`${inputClass} flex-1 text-xs`}
+                  >
+                    <option value="bearer">Bearer</option>
+                    <option value="token">Token</option>
+                    <option value="basic">Basic</option>
+                    <option value="none">No prefix (API key)</option>
+                    <option value="custom">Custom prefix…</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setAuthHeaders((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-muted hover:text-error transition-colors text-xl leading-none flex-shrink-0"
+                    aria-label="Remove header"
+                  >
+                    ×
+                  </button>
+                </div>
+                {/* Custom prefix input */}
+                {h.scheme === 'custom' && (
+                  <input
+                    type="text"
+                    placeholder="Custom prefix (e.g. ApiKey)"
+                    value={h.customPrefix}
+                    onChange={(e) => setAuthHeaders((prev) => prev.map((x, j) => j === i ? { ...x, customPrefix: e.target.value } : x))}
+                    className={`${inputClass} font-mono text-xs`}
+                  />
+                )}
+                {/* Vault secret name */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted font-mono flex-shrink-0">{'{{vault:'}</span>
+                  <input
+                    type="text"
+                    placeholder="secret_name"
+                    value={h.secret}
+                    onChange={(e) => setAuthHeaders((prev) => prev.map((x, j) => j === i ? { ...x, secret: e.target.value } : x))}
+                    className={`${inputClass} font-mono text-xs flex-1`}
+                  />
+                  <span className="text-xs text-muted font-mono flex-shrink-0">{'}}'}</span>
+                </div>
+                {/* Preview */}
+                {h.secret && (
+                  <p className="text-[11px] text-muted font-mono bg-elevated rounded px-2 py-1 break-all">
+                    {h.headerName || '(header)'}: {schemePrefix(h)}{`{{vault:${h.secret}}}`}
+                  </p>
+                )}
               </div>
             ))}
           </div>
           <p className="text-[11px] text-muted mt-2 leading-relaxed">
-            Use <code className="font-mono bg-elevated px-1 rounded text-accent-light">{'{{vault:secret_name}}'}</code> to
-            reference a Vault secret — the raw value is never stored here.
+            Secrets are resolved from your <span className="text-secondary">Vault</span> at proxy time — never stored in plaintext here.
           </p>
         </div>
 
