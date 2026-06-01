@@ -303,7 +303,7 @@ function Comparison(): React.ReactElement {
     { feature: 'Semantic cache (pgvector)',  arbiter: true,      litellm: 'partial', portkey: 'partial', diy: '~3 months' },
     { feature: 'Full request/response audit', arbiter: true,     litellm: 'partial', portkey: true,      diy: '~1 month'  },
     { feature: 'MCP protocol native',        arbiter: true,      litellm: false,     portkey: false,     diy: 'depends'   },
-    { feature: 'Self-hosted',                arbiter: true,      litellm: true,      portkey: false,     diy: true,        enterpriseOnly: true },
+    { feature: 'Self-hosted',                arbiter: true,      litellm: true,      portkey: false,     diy: true,        },
   ]
 
   function renderCell(val: CellVal): React.ReactNode {
@@ -484,7 +484,7 @@ const pricingTiers: PricingTier[] = [
       'Custom SLA',
       'Dedicated support',
       'SSO',
-      'Self-hosted option',
+      'Self-hosted deployment support',
     ],
     cta: 'Contact Sales',
     ctaHref: `mailto:${SUPPORT_EMAIL}`,
@@ -599,7 +599,7 @@ const faqItems: FAQItem[] = [
   {
     question: 'Can I self-host?',
     answer:
-      'Yes. The Enterprise plan includes a self-hosted option. You get full source access and deployment support. Contact sales to discuss your infrastructure requirements.',
+      'Yes. Arbiter is open source (AGPL v3) — clone the repo and run docker compose up. Enterprise adds dedicated deployment support and a custom SLA on top of that.',
   },
   {
     question: 'What MCP clients are supported?',
