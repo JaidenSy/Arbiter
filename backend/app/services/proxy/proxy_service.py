@@ -54,7 +54,7 @@ from app.services.vault.vault_service import VaultService
 
 logger = logging.getLogger(__name__)
 
-_SECRET_PLACEHOLDER = re.compile(r"\{\{([A-Za-z0-9_]+)\}\}")
+_SECRET_PLACEHOLDER = re.compile(r"\{\{(?:vault:)?([A-Za-z0-9_]+)\}\}")
 _HTTP_TIMEOUT = httpx.Timeout(30.0)
 
 
