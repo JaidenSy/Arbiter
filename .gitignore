@@ -107,3 +107,13 @@ Thumbs.db
 *.log
 logs/
 graphify-out/
+
+# ── AI agent artifacts ────────────────────────────────────────────────────────
+.playwright-mcp/
+.agents/
+.claude/
+
+# ── Dev screenshots (root-level) ──────────────────────────────────────────────
+landing-*.png
+login-*.png
+register-*.png

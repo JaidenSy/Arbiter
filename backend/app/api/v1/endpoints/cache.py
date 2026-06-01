@@ -1,5 +1,5 @@
 """
-NexVault — API endpoints: Cache Management.
+Arbiter — API endpoints: Cache Management.
 
 Provides visibility into and control over the semantic cache for an org.
 
@@ -10,7 +10,7 @@ Routes:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel
@@ -45,7 +45,7 @@ async def get_cache_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CacheStatsResponse:
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
 
     total_result = await db.execute(
         select(func.count(CacheEntry.id)).where(CacheEntry.org_id == current_user.org_id)
