@@ -238,18 +238,28 @@ class ProxyService:
         error: str | None = None
         response_payload: dict[str, Any] = {}
 
+        # ── Resolve server-level auth headers from vault first ──────────────
+        # Must happen before _ensure_mcp_session so the initialize handshake
+        # also carries auth (e.g. GitHub MCP requires auth even for initialize).
+        resolved_server_headers: dict[str, str] = {}
+        if mcp_server.headers:
+            for hdr_name, hdr_value in mcp_server.headers.items():
+                resolved_server_headers[hdr_name] = await self._inject_secrets(
+                    hdr_value, agent_id=agent.id, org_id=agent.org_id
+                )
+
         # ── Build outbound headers (initialize upstream session if needed) ────
-        upstream_session_key = f"mcp_sessions:{session.id}:{request.server_name}"
+        # Include a fingerprint of server headers in the cache key so that
+        # changing auth config (e.g. rotating a vault secret) invalidates
+        # any previously cached unauthorized session IDs.
+        import hashlib as _hl
+        _headers_fp = _hl.md5(str(sorted(mcp_server.headers.items())).encode()).hexdigest()[:8]
+        upstream_session_key = f"mcp_sessions:{session.id}:{request.server_name}:{_headers_fp}"
         outbound_headers = await self._ensure_mcp_session(
             mcp_server=mcp_server,
             cache_key=upstream_session_key,
+            extra_headers=resolved_server_headers,
         )
-        # Merge server-level headers, resolving any {{vault:SECRET}} placeholders.
-        if mcp_server.headers:
-            for hdr_name, hdr_value in mcp_server.headers.items():
-                outbound_headers[hdr_name] = await self._inject_secrets(
-                    hdr_value, agent_id=agent.id, org_id=agent.org_id
-                )
 
         try:
             async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
@@ -453,6 +463,7 @@ class ProxyService:
         self,
         mcp_server: MCPServer,
         cache_key: str,
+        extra_headers: dict[str, str] | None = None,
     ) -> dict[str, str]:
         """
         Return outbound headers for an upstream MCP server request.
@@ -461,11 +472,17 @@ class ProxyService:
         Otherwise, perform the MCP initialize handshake to obtain one,
         cache it, and attach it.  This handles the Streamable HTTP transport
         which requires an initialize before any tool calls.
+
+        extra_headers are merged in before any request — including the
+        initialize handshake — so auth headers reach the upstream server
+        on every call, not just tool calls.
         """
         headers: dict[str, str] = {
             "Content-Type": "application/json",
             "Accept": "application/json, text/event-stream",
         }
+        if extra_headers:
+            headers.update(extra_headers)
 
         # Check cache first.
         try:
@@ -478,7 +495,7 @@ class ProxyService:
         except Exception as exc:
             logger.warning("proxy: Redis session lookup failed: %s", exc)
 
-        # No cached session — do MCP initialize handshake.
+        # No cached session — do MCP initialize handshake (with auth headers).
         init_body = {
             "jsonrpc": "2.0",
             "id": "arbiter-init",
