@@ -203,6 +203,55 @@ function ServerFormModal({
           />
         </div>
 
+        {/* Auth Headers */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className={labelClass}>Auth Headers</label>
+            <button
+              type="button"
+              onClick={() => setHeaders((h) => [...h, { key: '', value: '' }])}
+              className="text-xs text-accent-light hover:text-primary transition-colors"
+            >
+              + Add header
+            </button>
+          </div>
+          {headers.length === 0 && (
+            <p className="text-xs text-muted italic">No headers — click &quot;+ Add header&quot; to add one.</p>
+          )}
+          <div className="space-y-2">
+            {headers.map((h, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  placeholder="e.g. Authorization"
+                  value={h.key}
+                  onChange={(e) => setHeaders((prev) => prev.map((x, j) => j === i ? { ...x, key: e.target.value } : x))}
+                  className={`${inputClass} flex-1 font-mono text-xs`}
+                />
+                <input
+                  type="password"
+                  placeholder={'Bearer … or {{vault:secret_name}}'}
+                  value={h.value}
+                  onChange={(e) => setHeaders((prev) => prev.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
+                  className={`${inputClass} flex-[2] font-mono text-xs`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setHeaders((prev) => prev.filter((_, j) => j !== i))}
+                  className="text-muted hover:text-error transition-colors text-xl leading-none flex-shrink-0 pb-0.5"
+                  aria-label="Remove header"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted mt-2 leading-relaxed">
+            Use <code className="font-mono bg-elevated px-1 rounded text-accent-light">{'{{vault:secret_name}}'}</code> to
+            reference a Vault secret — the raw value is never stored here.
+          </p>
+        </div>
+
         <div className={`flex items-center justify-between py-1 ${!isPro ? 'opacity-50' : ''}`}>
           <div>
             <div className="flex items-center gap-2">
