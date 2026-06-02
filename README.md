@@ -35,7 +35,7 @@ Arbiter is an MCP gateway that sits between your AI agents and your MCP servers.
 - **Full audit log** — every request and response captured with duration, cache status, and agent identity.
 - **Rate limiting** — per-agent, per-tool limits enforced at the gateway.
 
-![Arbiter dashboard](landing-after-aurora.png)
+![Arbiter dashboard](dashboard.png)
 
 ---
 
