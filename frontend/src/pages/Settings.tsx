@@ -372,7 +372,9 @@ function ApiKeySection(): React.ReactElement {
 
 function GatewayUrlSection(): React.ReactElement {
   const [url, setUrl] = useState<string>(
-    localStorage.getItem('arbiter_gateway_url') ?? 'http://localhost:8000/api/v1',
+    localStorage.getItem('arbiter_gateway_url') ??
+      import.meta.env.VITE_API_BASE_URL ??
+      'http://localhost:8000/api/v1',
   )
   const [saved, setSaved] = useState(false)
 
@@ -394,16 +396,15 @@ function GatewayUrlSection(): React.ReactElement {
             Gateway URL
           </label>
           <p className="text-secondary text-xs mb-2.5">
-            Defaults to{' '}
-            <code className="font-mono text-accent-light bg-accent/8 px-1 rounded">http://localhost:8000/api/v1</code>.
-            Saving will reload the page.
+            The base URL your agents (e.g. Claude Code) use to route tool calls through Arbiter.
+            Paste this into your MCP client config. Also controls where this dashboard sends API requests — saving will reload the page.
           </p>
           <input
             id="gateway-url-input"
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="http://localhost:8000/api/v1"
+            placeholder={import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1'}
             className="w-full bg-base border border-border-strong text-primary text-sm font-mono px-3 py-2 rounded-lg focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30 transition-all"
           />
         </div>
