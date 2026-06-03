@@ -15,7 +15,9 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 
 const BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
+  localStorage.getItem("arbiter_gateway_url") ??
+  import.meta.env.VITE_API_BASE_URL ??
+  "http://localhost:8000/api/v1";
 
 // ── Plan-limit event bus ──────────────────────────────────────────────────────
 // When any request returns 402, dispatch this event so the upgrade modal can
