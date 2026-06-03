@@ -10,7 +10,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
 import { useAuth } from '../context/AuthContext'
 import AuthModal, { type AuthMode } from '../components/AuthModal'
-import HeroBackground from '../components/HeroBackground'
 
 const SUPPORT_EMAIL: string =
   (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'support@arbiterai.dev'
@@ -55,115 +54,88 @@ interface HeroProps { onGetStarted: () => void; onSignIn: () => void }
 
 function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 overflow-hidden">
-      {/* Background — static dark with subtle amber glow */}
-      <HeroBackground />
+    <section className="pt-24 pb-20 px-6 lg:pt-28 lg:pb-24">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-14 lg:gap-20 items-start">
 
-      {/* Bottom fade — blends hero into sections below */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-52 pointer-events-none"
-        style={{ background: 'linear-gradient(to bottom, transparent, var(--color-base))' }}
-        aria-hidden
-      />
+        {/* Left — text */}
+        <div className="pt-2">
+          <h1 className="hero-display text-primary mb-5">
+            Your AI agents are running without guardrails.
+          </h1>
+          <p className="text-secondary text-base sm:text-lg leading-relaxed mb-8 max-w-xl">
+            Shared credentials, no audit trail, agents that can call any tool they want.
+            Arbiter fixes all of it: cryptographic agent identity, tool-level permissions,
+            an encrypted secrets vault, and full observability through a single MCP gateway.
+          </p>
 
-      <div className="relative max-w-3xl mx-auto pt-28 sm:pt-24 lg:pt-20">
-        {/* Kicker label */}
-        <p
-          className="kicker mb-5"
-          style={{ animationDelay: '0ms' }}
-        >
-          MCP Security Gateway
-        </p>
+          {/* Drop-in proof — the one concrete thing that earns trust before the CTA */}
+          <div className="mb-8 font-mono text-xs border border-border rounded-lg px-4 py-3 bg-elevated inline-block leading-relaxed">
+            <p className="text-muted mb-1.5 font-sans text-[11px] font-medium">One URL change. That's it.</p>
+            <p><span className="line-through text-error/60">https://filesystem.server.io</span></p>
+            <p><span className="text-success">https://api.arbiterai.dev/proxy/filesystem</span></p>
+          </div>
 
-        {/* Hero headline — staggered entrance */}
-        <h1
-          className="hero-display text-primary mb-6 animate-fade-in"
-          style={{ animationDelay: '60ms', animationFillMode: 'both' }}
-        >
-          Your AI agents are running
-          <br />
-          <span className="text-secondary">without guardrails.</span>
-        </h1>
-
-        {/* Subheadline */}
-        <p
-          className="text-secondary text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-10 animate-fade-in"
-          style={{ animationDelay: '120ms', animationFillMode: 'both' }}
-        >
-          Shared credentials, no audit trail, agents that can call any tool they want.
-          Arbiter fixes all of it: cryptographic agent identity, tool-level permissions,
-          an encrypted secrets vault, and full observability through a single MCP gateway.
-        </p>
-
-        {/* CTAs */}
-        <div
-          className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6 animate-fade-in"
-          style={{ animationDelay: '200ms', animationFillMode: 'both' }}
-        >
-          <button
-            onClick={onGetStarted}
-            className="press bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard text-sm"
-          >
-            Start for Free
-          </button>
-          <button
-            onClick={onSignIn}
-            className="press text-secondary hover:text-primary border border-border-strong hover:border-border-strong px-6 py-3 rounded-xl text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
-          >
-            Sign In
-          </button>
+          <div className="flex flex-col sm:flex-row items-start gap-3 mb-4">
+            <button
+              onClick={onGetStarted}
+              className="press bg-accent hover:bg-accent-light text-white font-semibold px-5 py-2.5 rounded-lg transition-colors duration-150 ease-[var(--ease-out-expo)] text-sm"
+            >
+              Start for Free
+            </button>
+            <button
+              onClick={onSignIn}
+              className="press text-secondary hover:text-primary border border-border-strong hover:border-border-accent px-5 py-2.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
+            >
+              Sign In
+            </button>
+          </div>
+          <p className="text-muted text-xs">Free plan: 2 agents, 5,000 tool calls/mo, no credit card required.</p>
         </div>
 
-        <p
-          className="text-muted text-xs animate-fade-in"
-          style={{ animationDelay: '200ms', animationFillMode: 'both' }}
-        >
-          Free plan includes 2 agents · 5,000 tool calls/mo · No credit card required
-        </p>
-
-        {/* Terminal demo */}
+        {/* Right — terminal (always dark — self-contained dark surface on light page) */}
         <div
-          className="mt-14 bg-surface/85 backdrop-blur-sm border border-border-strong rounded-lg p-5 text-left max-w-xl mx-auto shadow-2xl animate-fade-in overflow-hidden"
-          style={{ animationDelay: '280ms', animationFillMode: 'both' }}
+          className="rounded-xl p-5 text-left shadow-2xl overflow-hidden"
+          style={{ background: '#0F0F12', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           <div className="flex items-center gap-1.5 mb-4">
-            <span className="w-2.5 h-2.5 rounded-full bg-error/70" />
-            <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
-            <span className="w-2.5 h-2.5 rounded-full bg-success/70" />
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'rgba(248,113,113,0.7)' }} />
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'rgba(251,191,36,0.7)' }} />
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'rgba(52,211,153,0.7)' }} />
           </div>
-          <pre className="font-mono text-xs text-secondary leading-relaxed overflow-x-auto">
-            <span className="text-muted">$</span>{' '}
-            <span className="text-teal-light">curl</span>{' '}
-            <span className="text-primary">-X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \</span>
+          <pre className="font-mono text-xs leading-relaxed overflow-x-auto" style={{ color: '#A1A1AA' }}>
+            <span style={{ color: '#52525B' }}>$</span>{' '}
+            <span style={{ color: '#5EEAD4' }}>curl</span>{' '}
+            <span style={{ color: '#FAFAFA' }}>-X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \</span>
             {'\n'}
-            {'  '}<span className="text-accent-light">-H</span>{' '}
-            <span className="text-success">"Authorization: Bearer nxai_abc123..."</span>
+            {'  '}<span style={{ color: '#93C5FD' }}>-H</span>{' '}
+            <span style={{ color: '#34D399' }}>"Authorization: Bearer nxai_abc123..."</span>
             {'\n'}
-            {'  '}<span className="text-accent-light">-d</span>{' '}
-            <span className="text-success">'{`{"server_name":"filesystem","tool_name":"read_file","params":{"path":"/app/config.json"}}`}'</span>
+            {'  '}<span style={{ color: '#93C5FD' }}>-d</span>{' '}
+            <span style={{ color: '#34D399' }}>'{`{"server_name":"filesystem","tool_name":"read_file","params":{"path":"/app/config.json"}}`}'</span>
             {'\n\n'}
-            <span className="text-muted"># Response</span>
+            <span style={{ color: '#52525B' }}># Response</span>
             {'\n'}
-            <span className="text-teal-light">{'{'}</span>
+            <span style={{ color: '#5EEAD4' }}>{'{'}</span>
             {'\n'}
-            {'  '}<span className="text-accent-light">"cached"</span>
-            <span className="text-primary">: </span>
-            <span className="text-warning">false</span>
-            <span className="text-primary">,</span>
+            {'  '}<span style={{ color: '#93C5FD' }}>"cached"</span>
+            <span style={{ color: '#FAFAFA' }}>: </span>
+            <span style={{ color: '#FBBF24' }}>false</span>
+            <span style={{ color: '#FAFAFA' }}>,</span>
             {'\n'}
-            {'  '}<span className="text-accent-light">"agent_id"</span>
-            <span className="text-primary">: </span>
-            <span className="text-success">"agt_xyz789"</span>
-            <span className="text-primary">,</span>
+            {'  '}<span style={{ color: '#93C5FD' }}>"agent_id"</span>
+            <span style={{ color: '#FAFAFA' }}>: </span>
+            <span style={{ color: '#34D399' }}>"agt_xyz789"</span>
+            <span style={{ color: '#FAFAFA' }}>,</span>
             {'\n'}
-            {'  '}<span className="text-accent-light">"result"</span>
-            <span className="text-primary">: {'{'}</span>
-            <span className="text-muted">...</span>
-            <span className="text-primary">{'}'}</span>
+            {'  '}<span style={{ color: '#93C5FD' }}>"result"</span>
+            <span style={{ color: '#FAFAFA' }}>: {'{'}</span>
+            <span style={{ color: '#52525B' }}>...</span>
+            <span style={{ color: '#FAFAFA' }}>{'}'}</span>
             {'\n'}
-            <span className="text-teal-light">{'}'}</span>
+            <span style={{ color: '#5EEAD4' }}>{'}'}</span>
           </pre>
         </div>
+
       </div>
     </section>
   )
@@ -243,38 +215,24 @@ const features: Feature[] = [
 
 function Features(): React.ReactElement {
   return (
-    <section className="py-24 px-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">
-            Everything your agents need
-          </h2>
-        </div>
+    <section className="py-20 px-6 border-t border-border">
+      <div className="max-w-4xl mx-auto">
+        <h2 className="font-display text-2xl font-semibold tracking-tight text-primary mb-2">
+          What Arbiter does
+        </h2>
+        <p className="text-secondary text-sm mb-10">Six things, each one specific.</p>
 
-        {/* Grid — 4-col desktop bento: wide(2)+narrow(1)+narrow(1) / narrow(1)+wide(2)+narrow(1) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {features.map((f, i) => {
-            // Agent Identity (0) and Full Observability (4) span 2 cols
-            const isWide = i === 0 || i === 4
-            return (
-              <div
-                key={f.title}
-                className={[
-                  'bg-surface border border-border rounded-2xl p-6',
-                  'hover:border-border-strong transition-colors duration-200 ease-[var(--ease-out-expo)] group',
-                  isWide ? 'lg:col-span-2 sm:col-span-2' : '',
-                ].filter(Boolean).join(' ')}
-              >
-                <div className="flex items-center gap-2.5 mb-3">
-                  <span className="text-accent-light flex-shrink-0">{f.icon}</span>
-                  <h3 className="font-display text-primary font-semibold text-sm tracking-tight">{f.title}</h3>
-                </div>
-                <p className="text-secondary text-sm leading-relaxed">{f.description}</p>
-              </div>
-            )
-          })}
-        </div>
+        <dl className="divide-y divide-border">
+          {features.map((f) => (
+            <div
+              key={f.title}
+              className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-2 sm:gap-10 py-5 group"
+            >
+              <dt className="font-semibold text-primary text-sm pt-0.5">{f.title}</dt>
+              <dd className="text-secondary text-sm leading-relaxed">{f.description}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </section>
   )
@@ -314,13 +272,11 @@ function Comparison(): React.ReactElement {
   }
 
   return (
-    <section className="py-24 px-6 bg-surface/30">
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-6">How Arbiter compares</h2>
-          <p className="text-secondary text-base max-w-xl mx-auto">
-            LiteLLM and Portkey solve LLM routing. Arbiter solves MCP security.
-          </p>
+    <section className="py-20 px-6 border-t border-border">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-10">
+          <h2 className="font-display text-2xl font-semibold tracking-tight text-primary mb-2">How Arbiter compares</h2>
+          <p className="text-secondary text-sm">LiteLLM and Portkey solve LLM routing. Arbiter solves MCP security.</p>
         </div>
 
         <div className="overflow-x-auto border border-border rounded-xl">
@@ -338,7 +294,7 @@ function Comparison(): React.ReactElement {
             </thead>
             <tbody>
               {rows.map((row, i) => (
-                <tr key={row.feature} className={`border-b border-border ${i % 2 === 0 ? 'bg-white/[0.015]' : ''}`}>
+                <tr key={row.feature} className={`border-b border-border ${i % 2 === 0 ? 'bg-black/[0.02]' : ''}`}>
                   <td className="py-3.5 pl-5 pr-6 text-secondary">
                     <span className="inline-flex items-center gap-2 flex-wrap">
                       {row.feature}
@@ -402,30 +358,20 @@ const steps: Step[] = [
 
 function HowItWorks(): React.ReactElement {
   return (
-    <section className="py-24 px-6 bg-surface/30">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Up and running in minutes</h2>
-        </div>
+    <section className="py-20 px-6 border-t border-border">
+      <div className="max-w-4xl mx-auto">
+        <h2 className="font-display text-2xl font-semibold tracking-tight text-primary mb-2">Up and running in minutes</h2>
+        <p className="text-secondary text-sm mb-10">Three steps, each taking less than 60 seconds.</p>
 
-        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Connecting line (desktop) */}
-          <div className="hidden md:block absolute top-6 left-1/6 right-1/6 h-px bg-border-strong" />
-
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           {steps.map((step) => (
-            <div key={step.number} className="relative flex flex-col gap-4">
-              {/* Number badge — solid amber */}
-              <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
-                <span className="font-mono font-semibold text-base tracking-tight" style={{ color: 'rgba(255,255,255,0.95)' }}>{step.number}</span>
-              </div>
-
-              <div>
-                <h3 className="font-display text-primary font-semibold text-sm tracking-tight mb-1.5">{step.title}</h3>
-                <p className="text-secondary text-sm leading-relaxed mb-3">{step.description}</p>
-                <pre className="bg-elevated border border-border rounded-lg px-4 py-3 font-mono text-xs text-teal-light leading-relaxed whitespace-pre-wrap">
-                  {step.code}
-                </pre>
-              </div>
+            <div key={step.number} className="flex flex-col gap-3">
+              <span className="font-mono text-xs text-muted font-medium">{step.number}</span>
+              <h3 className="font-display text-primary font-semibold text-sm tracking-tight">{step.title}</h3>
+              <p className="text-secondary text-sm leading-relaxed">{step.description}</p>
+              <pre className="bg-elevated border border-border rounded-lg px-4 py-3 font-mono text-xs text-accent leading-relaxed whitespace-pre-wrap mt-auto">
+                {step.code}
+              </pre>
             </div>
           ))}
         </div>
@@ -504,10 +450,10 @@ function Pricing(): React.ReactElement {
   }
 
   return (
-    <section className="py-24 px-6" id="pricing">
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Simple, transparent pricing</h2>
+    <section className="py-16 px-6 border-t border-border" id="pricing">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-10">
+          <h2 className="font-display text-2xl font-semibold tracking-tight text-primary mb-2">Simple, transparent pricing</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
@@ -612,10 +558,10 @@ function FAQ(): React.ReactElement {
   const [openIdx, setOpenIdx] = useState<number | null>(null)
 
   return (
-    <section className="py-24 px-6 bg-surface/30">
+    <section className="py-20 px-6 border-t border-border">
       <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Common questions</h2>
+        <div className="mb-10">
+          <h2 className="font-display text-2xl font-semibold tracking-tight text-primary mb-2">Common questions</h2>
         </div>
 
         <div className="space-y-3">
@@ -629,7 +575,7 @@ function FAQ(): React.ReactElement {
                 <button
                   type="button"
                   onClick={() => setOpenIdx(isOpen ? null : idx)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left gap-4 hover:bg-white/[0.02] transition-colors duration-150"
+                  className="w-full flex items-center justify-between px-5 py-4 text-left gap-4 hover:bg-black/[0.03] transition-colors duration-150"
                 >
                   <span className="text-primary text-sm font-medium">{item.question}</span>
                   <svg
@@ -739,7 +685,7 @@ function Landing({ initialModal }: LandingProps): React.ReactElement {
   }
 
   return (
-    <div data-theme="dark" className="min-h-screen text-primary">
+    <div data-theme="light" className="min-h-screen bg-base text-primary">
       <Navbar onSignIn={() => openModal('login')} onGetStarted={() => openModal('register')} />
       <div>
         <Hero onGetStarted={() => openModal('register')} onSignIn={() => openModal('login')} />
