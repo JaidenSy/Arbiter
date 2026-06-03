@@ -62,6 +62,8 @@ class Organization(Base):
         server_default="free",
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    quota_alert_80_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    quota_alert_100_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     stripe_customer_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     stripe_subscription_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
