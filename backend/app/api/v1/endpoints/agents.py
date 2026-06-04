@@ -8,7 +8,7 @@ Routes:
     POST   /agents               — register a new agent, returns raw API key once
     GET    /agents               — list all active agents (paginated)
     GET    /agents/{id}          — get a single agent by UUID
-    DELETE /agents/{id}          — soft-delete (sets is_active=False)
+    DELETE /agents/{id}          — soft-delete (sets is_active=False); does not count against plan cap
     POST   /agents/{id}/rotate-key — invalidate old key, issue new one (returned once)
 """
 
@@ -61,6 +61,7 @@ async def create_agent(
         select(Agent).where(
             Agent.name == body.name,
             Agent.org_id == current_user.org_id,
+            Agent.is_active.is_(True),
         )
     )
     if existing.scalar_one_or_none() is not None:
@@ -81,7 +82,7 @@ async def create_agent(
         resource="agents",
         model=Agent,
         filter_col=Agent.org_id,
-        count_active_only=False,  # count soft-deleted too — prevents slot-cycling exploit
+        count_active_only=True,
     )
 
     raw_key = security.generate_api_key()
