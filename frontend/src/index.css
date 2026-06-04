@@ -438,6 +438,32 @@ h1, h2, h3, h4, h5, h6 {
   animation: paletteOpen 180ms var(--ease-out-expo) both;
 }
 
+/* ── Scroll reveal ──────────────────────────────────────────────────────────── */
+
+.reveal-target {
+  transition:
+    opacity 420ms var(--ease-out-expo),
+    transform 420ms var(--ease-out-expo);
+}
+.reveal-target.will-animate {
+  opacity: 0;
+  transform: translateY(18px);
+}
+.reveal-target.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Dashboard row entrance ─────────────────────────────────────────────────── */
+
+@keyframes rowSlideIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.row-entering {
+  animation: rowSlideIn 280ms var(--ease-out-expo) both;
+}
+
 /* ── Hero page animations ──────────────────────────────────────────────────── */
 
 @keyframes float-y {
@@ -464,5 +490,15 @@ h1, h2, h3, h4, h5, h6 {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Scroll reveal: skip transform entirely, no positional flash */
+  .reveal-target.will-animate {
+    transform: none !important;
+  }
+
+  /* Dashboard rows: instant appear, no sliding */
+  .row-entering {
+    animation: none !important;
   }
 }

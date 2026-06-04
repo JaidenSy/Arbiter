@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 const ROWS = [
   { agent: 'claude-local',  tool: 'read_file',   server: 'filesystem', status: 'ALLOWED', latency: '12ms'  },
@@ -14,6 +14,9 @@ const STATUS_STYLES: Record<string, string> = {
   BLOCKED: 'bg-[rgba(248,113,113,0.10)] text-[#F87171] border-[rgba(248,113,113,0.20)]',
 }
 
+const ROW_INTERVAL  = 900   // ms between each row appearance
+const RESET_PAUSE   = 2500  // ms to pause after all rows visible before reset
+
 function StatusBadge({ status }: { status: string }): React.ReactElement {
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] font-mono font-medium leading-none ${STATUS_STYLES[status] ?? ''}`}>
@@ -23,6 +26,52 @@ function StatusBadge({ status }: { status: string }): React.ReactElement {
 }
 
 export default function DashboardPreview(): React.ReactElement {
+  const prefersReduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const [started,      setStarted]      = useState(prefersReduced)
+  const [visibleCount, setVisibleCount] = useState(prefersReduced ? ROWS.length : 0)
+  const [loopKey,      setLoopKey]      = useState(0)
+
+  // Start the loop when section enters the viewport (fires once)
+  useEffect(() => {
+    if (prefersReduced) return
+    const el = sectionRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setStarted(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.2 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [prefersReduced])
+
+  // Animation loop
+  useEffect(() => {
+    if (!started || prefersReduced) return
+
+    const delay = visibleCount < ROWS.length ? ROW_INTERVAL : RESET_PAUSE
+    const timer = setTimeout(() => {
+      if (visibleCount < ROWS.length) {
+        setVisibleCount(n => n + 1)
+      } else {
+        // Instant reset — new loopKey forces fresh mounts with fresh animations
+        setVisibleCount(0)
+        setLoopKey(k => k + 1)
+      }
+    }, delay)
+
+    return () => clearTimeout(timer)
+  }, [started, visibleCount, prefersReduced])
+
   return (
     <section className="py-24 px-6">
       <div className="max-w-5xl mx-auto">
@@ -38,6 +87,7 @@ export default function DashboardPreview(): React.ReactElement {
 
         {/* Floating dashboard mock */}
         <div
+          ref={sectionRef}
           className="relative mx-auto animate-float"
           style={{
             borderRadius: '14px',
@@ -58,7 +108,6 @@ export default function DashboardPreview(): React.ReactElement {
               <span className="w-3 h-3 rounded-full" style={{ background: 'rgba(52,211,153,0.50)' }} />
             </div>
             <span className="font-mono text-xs text-muted">Mission Control — Arbiter</span>
-            {/* Live indicator */}
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-success" style={{ animation: 'blink-cursor 1.8s step-end infinite' }} />
               <span className="font-mono text-xs text-muted">live</span>
@@ -66,7 +115,10 @@ export default function DashboardPreview(): React.ReactElement {
           </div>
 
           {/* Metrics strip */}
-          <div className="grid grid-cols-3 divide-x border-b" style={{ borderColor: 'var(--color-border)', '--tw-divide-opacity': '1' } as React.CSSProperties}>
+          <div
+            className="grid grid-cols-3 divide-x border-b"
+            style={{ borderColor: 'var(--color-border)', '--tw-divide-opacity': '1' } as React.CSSProperties}
+          >
             <div className="px-5 py-4">
               <p className="font-mono text-xs text-muted mb-1">tool_calls_today</p>
               <p className="font-display font-semibold text-2xl text-primary">1,247</p>
@@ -82,7 +134,7 @@ export default function DashboardPreview(): React.ReactElement {
           </div>
 
           {/* Tool call table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" style={{ minHeight: '210px' }}>
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="border-b border-border">
@@ -94,10 +146,10 @@ export default function DashboardPreview(): React.ReactElement {
                 </tr>
               </thead>
               <tbody>
-                {ROWS.map((row, i) => (
+                {ROWS.slice(0, visibleCount).map((row, i) => (
                   <tr
-                    key={i}
-                    className="border-b border-border last:border-0 transition-colors duration-150"
+                    key={`${loopKey}-${i}`}
+                    className="row-entering border-b border-border last:border-0"
                     style={{ background: i % 2 === 0 ? 'rgba(255,255,255,0.012)' : 'transparent' }}
                   >
                     <td className="px-5 py-2.5 font-mono text-secondary">{row.agent}</td>
