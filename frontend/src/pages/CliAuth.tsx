@@ -15,6 +15,7 @@
  *   error     — code not found (404), expired (410), already used (409), or invalid URL
  */
 
+import axios from 'axios'
 import React, { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { authClient } from '../api/client'
@@ -71,7 +72,7 @@ function CliAuth(): React.ReactElement {
       )
       setState('success')
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined
 
       if (status === 410) {
         setErrorMessage('This code has expired. Please run `arbiter login` again.')
@@ -101,9 +102,8 @@ function CliAuth(): React.ReactElement {
       // Best-effort — the code will expire naturally; show cancelled state regardless
     } finally {
       setIsSubmitting(false)
+      setState('cancelled')
     }
-
-    setState('cancelled')
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
