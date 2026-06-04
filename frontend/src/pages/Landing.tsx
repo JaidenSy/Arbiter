@@ -33,13 +33,13 @@ function Navbar({ onSignIn, onGetStarted }: NavbarProps): React.ReactElement {
         <div className="flex items-center gap-3">
           <button
             onClick={onSignIn}
-            className="press text-secondary hover:text-primary border border-border-strong hover:border-border-strong px-4 py-1.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
+            className="press text-secondary hover:text-primary border border-border-strong hover:border-border-strong px-4 py-2.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
           >
             Sign In
           </button>
           <button
             onClick={onGetStarted}
-            className="press bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors duration-150 ease-[var(--ease-out-expo)]"
+            className="press bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 ease-[var(--ease-out-expo)]"
           >
             Get Started Free
           </button>
@@ -67,18 +67,10 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
       />
 
       <div className="relative max-w-3xl mx-auto pt-28 sm:pt-24 lg:pt-20">
-        {/* Kicker label */}
-        <p
-          className="kicker mb-5"
-          style={{ animationDelay: '0ms' }}
-        >
-          MCP Security Gateway
-        </p>
-
-        {/* Hero headline — staggered entrance */}
+        {/* Hero headline */}
         <h1
           className="hero-display text-primary mb-6 animate-fade-in"
-          style={{ animationDelay: '60ms', animationFillMode: 'both' }}
+          style={{ animationDelay: '60ms' }}
         >
           Your AI agents are running
           <br />
@@ -88,7 +80,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         {/* Subheadline */}
         <p
           className="text-secondary text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-10 animate-fade-in"
-          style={{ animationDelay: '120ms', animationFillMode: 'both' }}
+          style={{ animationDelay: '120ms' }}
         >
           Shared credentials, no audit trail, agents that can call any tool they want.
           Arbiter fixes all of it: cryptographic agent identity, tool-level permissions,
@@ -98,7 +90,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         {/* CTAs */}
         <div
           className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6 animate-fade-in"
-          style={{ animationDelay: '200ms', animationFillMode: 'both' }}
+          style={{ animationDelay: '180ms' }}
         >
           <button
             onClick={onGetStarted}
@@ -116,15 +108,15 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
 
         <p
           className="text-muted text-xs animate-fade-in"
-          style={{ animationDelay: '200ms', animationFillMode: 'both' }}
+          style={{ animationDelay: '180ms' }}
         >
           Free plan includes 2 agents · 5,000 tool calls/mo · No credit card required
         </p>
 
         {/* Terminal demo */}
         <div
-          className="mt-14 bg-surface/85 backdrop-blur-sm border border-border-strong rounded-lg p-5 text-left max-w-xl mx-auto shadow-2xl animate-fade-in overflow-hidden"
-          style={{ animationDelay: '280ms', animationFillMode: 'both' }}
+          className="mt-14 bg-elevated border border-border-strong rounded-lg p-5 text-left max-w-xl mx-auto animate-fade-in overflow-hidden"
+          style={{ animationDelay: '260ms' }}
         >
           <div className="flex items-center gap-1.5 mb-4">
             <span className="w-2.5 h-2.5 rounded-full bg-error/70" />
@@ -132,7 +124,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
             <span className="w-2.5 h-2.5 rounded-full bg-success/70" />
           </div>
           <pre className="font-mono text-xs text-secondary leading-relaxed overflow-x-auto">
-            <span className="text-muted">$</span>{' '}
+            <span className="text-secondary">$</span>{' '}
             <span className="text-teal-light">curl</span>{' '}
             <span className="text-primary">-X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \</span>
             {'\n'}
@@ -142,7 +134,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
             {'  '}<span className="text-accent-light">-d</span>{' '}
             <span className="text-success">'{`{"server_name":"filesystem","tool_name":"read_file","params":{"path":"/app/config.json"}}`}'</span>
             {'\n\n'}
-            <span className="text-muted"># Response</span>
+            <span className="text-secondary"># Response</span>
             {'\n'}
             <span className="text-teal-light">{'{'}</span>
             {'\n'}
@@ -248,7 +240,7 @@ function Features(): React.ReactElement {
         {/* Header */}
         <div className="text-center mb-16">
           <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">
-            Everything your agents need
+            Identity. Permissions. Secrets. Observability.
           </h2>
         </div>
 
@@ -507,7 +499,7 @@ function Pricing(): React.ReactElement {
     <section className="py-24 px-6" id="pricing">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Simple, transparent pricing</h2>
+          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Start free. Scale when you need to.</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
@@ -516,7 +508,7 @@ function Pricing(): React.ReactElement {
               key={tier.name}
               className={`flex flex-col rounded-2xl p-7 transition-colors duration-200 ${
                 tier.highlighted
-                  ? 'bg-surface border border-border-accent shadow-[0_0_32px_rgba(217,119,6,0.10)]'
+                  ? 'bg-surface border border-border-accent shadow-[0_0_28px_rgba(61,53,206,0.16)]'
                   : 'bg-surface border border-border'
               }`}
             >
@@ -664,9 +656,9 @@ function Contact(): React.ReactElement {
   return (
     <section className="py-24 px-6">
       <div className="max-w-2xl mx-auto text-center">
-        <h2 className="text-3xl font-bold text-primary mb-4">Questions? We're here.</h2>
+        <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Talk to us.</h2>
         <p className="text-secondary text-base leading-relaxed mb-10">
-          Whether you're evaluating Arbiter for your team or need help getting started, reach out.
+          Evaluating Arbiter for your team, self-hosting, or hitting a specific edge case — reach out directly.
         </p>
         <a
           href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Inquiry`}

@@ -11,12 +11,12 @@ export default function HeroBackground() {
       {/* Base — flat dark surface matching bg-base */}
       <div className="absolute inset-0 bg-[#0A0A0B]" />
 
-      {/* Subtle top-center ambient glow — amber brand color, very low opacity */}
+      {/* Subtle top-center ambient glow — indigo brand color */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(217,119,6,0.15) 0%, transparent 70%)',
+            'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(61,53,206,0.18) 0%, transparent 70%)',
         }}
       />
     </div>

@@ -13,11 +13,11 @@
   --color-highlight: #232330;
   --color-overlay: #0C0C12;
 
-  /* Accent — electric blue */
-  --color-accent: #2563EB;
-  --color-accent-light: #3B82F6;
-  --color-accent-dim: #1D4ED8;
-  --color-accent-wash: #0A1020;    /* dark blue tint surface */
+  /* Accent — deep indigo (not blue-600) */
+  --color-accent: #3D35CE;
+  --color-accent-light: #5249D9;
+  --color-accent-dim: #2A2499;
+  --color-accent-wash: #0A0916;
 
   /* Cyan — data/signal secondary */
   --color-teal: #06B6D4;
@@ -36,8 +36,8 @@
   /* Borders */
   --color-border: rgba(255,255,255,0.07);
   --color-border-strong: rgba(255,255,255,0.12);
-  --color-border-accent: rgba(37,99,235,0.35);
-  --color-border-accent-hover: rgba(59,130,246,0.55);
+  --color-border-accent: rgba(61,53,206,0.35);
+  --color-border-accent-hover: rgba(82,73,217,0.55);
 
   /* Surface RGB vals for rgba() composition with backdrop-filter glass */
   --color-elevated-rgb: 23, 23, 29;
@@ -48,19 +48,19 @@
   --gradient-aurora-hero:
     radial-gradient(
       ellipse 80% 40% at 50% -5%,
-      rgba(37,99,235,0.14) 0%,
+      rgba(61,53,206,0.14) 0%,
       transparent 70%
     );
 
   /* Ambient background */
   --gradient-ambient:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(29,78,216,0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(37,99,235,0.07) 0%, transparent 55%),
-    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(10,16,32,0.45) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(61,53,206,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(61,53,206,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(10,9,22,0.45) 0%, transparent 50%);
 
   /* Tile ambient gradients */
   --gradient-tile-amber:
-    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(37,99,235,0.07) 0%, transparent 60%);
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(61,53,206,0.07) 0%, transparent 60%);
   --gradient-tile-teal:
     radial-gradient(ellipse 120% 80% at 10% 0%, rgba(6,182,212,0.06) 0%, transparent 60%);
   --gradient-tile-warning:
@@ -70,7 +70,7 @@
 
   /* Mesh gradient for premium surfaces */
   --gradient-mesh-subtle:
-    radial-gradient(at 25% 15%, rgba(37,99,235,0.06) 0px, transparent 50%),
+    radial-gradient(at 25% 15%, rgba(61,53,206,0.06) 0px, transparent 50%),
     radial-gradient(at 75% 85%, rgba(6,182,212,0.04) 0px, transparent 50%);
 }
 
@@ -81,10 +81,10 @@
   --color-highlight: #E4E4E7;
   --color-overlay: #FFFFFF;
 
-  --color-accent: #1D4ED8;        /* blue-700 — primary CTA in light */
-  --color-accent-light: #2563EB;  /* blue-600 — hover/lift */
-  --color-accent-dim: #1E40AF;    /* blue-800 — recessive foreground */
-  --color-accent-wash: #EFF6FF;   /* blue-50 — pale background tint */
+  --color-accent: #3D35CE;        /* deep indigo — primary CTA in light */
+  --color-accent-light: #5249D9;  /* indigo hover/lift */
+  --color-accent-dim: #2A2499;    /* deeper indigo foreground */
+  --color-accent-wash: #EEEEFF;   /* pale indigo tint */
 
   --color-teal: #0891B2;
   --color-teal-light: #0E7490;
@@ -99,8 +99,8 @@
 
   --color-border: rgba(0,0,0,0.08);
   --color-border-strong: rgba(0,0,0,0.14);
-  --color-border-accent: rgba(29,78,216,0.30);
-  --color-border-accent-hover: rgba(37,99,235,0.50);
+  --color-border-accent: rgba(61,53,206,0.30);
+  --color-border-accent-hover: rgba(82,73,217,0.50);
 
   --color-elevated-rgb: 244, 244, 245;
   --color-surface-rgb:  255, 255, 255;
@@ -109,16 +109,16 @@
   --gradient-aurora-hero:
     radial-gradient(
       ellipse 80% 40% at 50% -5%,
-      rgba(29,78,216,0.07) 0%,
+      rgba(61,53,206,0.07) 0%,
       transparent 70%
     );
 
   --gradient-ambient:
-    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(29,78,216,0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(29,78,216,0.04) 0%, transparent 55%);
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(61,53,206,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(61,53,206,0.04) 0%, transparent 55%);
 
   --gradient-tile-amber:
-    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(29,78,216,0.05) 0%, transparent 60%);
+    radial-gradient(ellipse 120% 80% at 10% 0%, rgba(61,53,206,0.05) 0%, transparent 60%);
   --gradient-tile-teal:
     radial-gradient(ellipse 120% 80% at 10% 0%, rgba(8,145,178,0.04) 0%, transparent 60%);
   --gradient-tile-warning:
@@ -138,9 +138,9 @@
 
   /* Glow ladder — electric blue luminance */
   --glow-none:     none;
-  --glow-subtle:   0 0 12px rgba(37,99,235,0.18);
-  --glow-standard: 0 0 20px rgba(37,99,235,0.32);
-  --glow-hero:     0 0 32px rgba(37,99,235,0.50), 0 0 64px rgba(37,99,235,0.18);
+  --glow-subtle:   0 0 12px rgba(61,53,206,0.18);
+  --glow-standard: 0 0 20px rgba(61,53,206,0.32);
+  --glow-hero:     0 0 32px rgba(61,53,206,0.50), 0 0 64px rgba(61,53,206,0.18);
 
   /* Cyan glow for data/status tiles */
   --glow-teal-subtle: 0 0 12px rgba(6,182,212,0.14);
@@ -246,13 +246,6 @@ h1, h2, h3, h4, h5, h6 {
 .tile-warning { background: var(--gradient-tile-warning), var(--color-surface); }
 .tile-error   { background: var(--gradient-tile-error),   var(--color-surface); }
 
-/* Gradient text — blue → cyan */
-.gradient-text {
-  background: linear-gradient(135deg, var(--color-accent-light), var(--color-teal-light));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
 
 /* ── Motion utilities ───────────────────────────────────────────────────────── */
 
@@ -280,6 +273,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Animations */
+/* fadeIn starts from visible state — no fill-mode:both to avoid content gating */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
