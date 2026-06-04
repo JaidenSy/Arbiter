@@ -704,6 +704,8 @@ function Agents(): React.ReactElement {
     mutationFn: deleteAgent,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["agents"] });
+      void queryClient.invalidateQueries({ queryKey: ["stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["billing-status"] });
       showBanner('Agent deactivated');
     },
     onError: (err) => {
@@ -734,6 +736,8 @@ function Agents(): React.ReactElement {
   const handleApiKeyDismiss = (): void => {
     setNewApiKey(null);
     void queryClient.invalidateQueries({ queryKey: ["agents"] });
+    void queryClient.invalidateQueries({ queryKey: ["stats"] });
+    void queryClient.invalidateQueries({ queryKey: ["billing-status"] });
   };
 
   const handleDeactivateConfirm = (): void => {
