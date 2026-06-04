@@ -25,6 +25,7 @@ def upgrade() -> None:
             UUID(as_uuid=True),
             primary_key=True,
             nullable=False,
+            server_default=sa.text("gen_random_uuid()"),
         ),
         sa.Column("device_code", sa.String(36), nullable=False),
         sa.Column("user_code", sa.String(20), nullable=False),
