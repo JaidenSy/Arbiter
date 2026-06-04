@@ -13,6 +13,7 @@
  * Auth routes (no sidebar, no ProtectedRoute):
  *   /login       → Landing + login modal pre-opened
  *   /register    → Landing + register modal pre-opened
+ *   /cli-auth    → CLI device authorization approval page
  *
  */
 
@@ -52,6 +53,7 @@ const TermsOfService = lazy(() => import('./pages/TermsOfService'))
 const Consent        = lazy(() => import('./pages/Consent'))
 const Security       = lazy(() => import('./pages/Security'))
 const Changelog      = lazy(() => import('./pages/Changelog'))
+const CliAuth        = lazy(() => import('./pages/CliAuth'))
 
 // ── 404 page ──────────────────────────────────────────────────────────────────
 
@@ -161,6 +163,7 @@ function App(): React.ReactElement {
         <Route path="/consent"   element={<Consent />} />
         <Route path="/security"  element={<Security />} />
         <Route path="/changelog" element={<Changelog />} />
+        <Route path="/cli-auth"  element={<CliAuth />} />
 
         {/* ── Root — smart redirect ────────────────────────────────────────── */}
         <Route path="/" element={<RootRedirect />} />

@@ -14,17 +14,18 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-# ── Import application Base and all models so autogenerate sees every table ───
-from app.db.base import Base  # noqa: F401 — registers Base.metadata
-
 # Import all models so their table definitions are attached to Base.metadata.
 import app.db.models.agent  # noqa: F401
 import app.db.models.cache  # noqa: F401
+import app.db.models.cli_device_code  # noqa: F401
 import app.db.models.mcp_server  # noqa: F401
 import app.db.models.session  # noqa: F401
 import app.db.models.tool_permission  # noqa: F401
 import app.db.models.tool_permission_event  # noqa: F401
 import app.db.models.vault  # noqa: F401
+
+# ── Import application Base and all models so autogenerate sees every table ───
+from app.db.base import Base  # noqa: F401 — registers Base.metadata
 
 # ── Alembic Config object ─────────────────────────────────────────────────────
 config = context.config
@@ -45,10 +46,12 @@ def get_url() -> str:
     offline mode (sync) runner.  Online mode re-adds asyncpg explicitly.
     """
     from app.core.config import settings
+
     return settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
 
 
 # ── Run migrations ─────────────────────────────────────────────────────────────
+
 
 def run_migrations_offline() -> None:
     """

@@ -166,6 +166,42 @@ def create_access_token(
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
+def create_cli_access_token(
+    user_id: uuid.UUID,
+    org_id: uuid.UUID,
+    role: str,
+    expire_minutes: int,
+) -> str:
+    """
+    Issue a signed HS256 access token for CLI device-flow sessions.
+
+    Identical payload structure to create_access_token but accepts an explicit
+    TTL so the caller (cli_auth endpoint) can use cli_token_expire_minutes from
+    settings without modifying the shared helper.
+
+    Args:
+        user_id:        UUID of the authenticated user.
+        org_id:         UUID of the user's organization.
+        role:           RBAC role string (owner | admin | member).
+        expire_minutes: Token lifetime in minutes.
+
+    Returns:
+        str: Signed JWT string.
+    """
+    now = datetime.now(tz=UTC)
+    expire = now + timedelta(minutes=expire_minutes)
+    payload: dict[str, Any] = {
+        "sub": str(user_id),
+        "org_id": str(org_id),
+        "role": role,
+        "type": "access",
+        "jti": str(uuid.uuid4()),
+        "iat": now,
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
+
 def decode_access_token(token: str) -> dict[str, Any]:
     """
     Decode and validate a JWT access token.
