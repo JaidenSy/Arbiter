@@ -17,25 +17,31 @@ const C = {
 }
 
 const LINES: CodeLine[] = [
+  [{ text: '# Add to your MCP client config', color: C.muted }],
+  [{ text: '{', color: C.teal }],
   [
-    { text: '$ ',      color: C.secondary },
-    { text: 'arbiter', color: C.teal },
-    { text: ' agent create --name "claude-local"', color: C.primary },
+    { text: '  ', color: C.primary },
+    { text: '"mcpServers"', color: C.accent },
+    { text: ': {', color: C.primary },
   ],
   [
-    { text: '→ Generating cryptographic key pair...', color: C.muted },
+    { text: '    ', color: C.primary },
+    { text: '"arbiter"', color: C.accent },
+    { text: ': {', color: C.primary },
   ],
   [
-    { text: '✓ ', color: C.success },
-    { text: 'API key: ', color: C.accent },
-    { text: 'nxai_k7x2m9p3r1...', color: C.success },
+    { text: '      ', color: C.primary },
+    { text: '"url"', color: C.accent },
+    { text: ': ', color: C.primary },
+    { text: '"https://api.arbiterai.dev/mcp/nxai_k7x2m..."', color: C.success },
   ],
-  [
-    { text: '→ Registering with gateway...', color: C.muted },
-  ],
+  [{ text: '    }', color: C.primary }],
+  [{ text: '  }', color: C.primary }],
+  [{ text: '}', color: C.teal }],
+  [],
   [
     { text: '✓ Connected   ', color: C.success },
-    { text: 'https://api.arbiterai.dev/mcp/nxai_k7x2m', color: C.teal },
+    { text: '2 agents · 3 MCP servers · logging on', color: C.teal },
   ],
 ]
 
