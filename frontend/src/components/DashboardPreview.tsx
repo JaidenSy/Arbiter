@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useScrollReveal } from '../hooks/useScrollReveal'
 
 const ROWS = [
   { agent: 'claude-local',  tool: 'read_file',   server: 'filesystem', status: 'ALLOWED', latency: '12ms'  },
@@ -26,6 +27,8 @@ function StatusBadge({ status }: { status: string }): React.ReactElement {
 }
 
 export default function DashboardPreview(): React.ReactElement {
+  const headingRef = useScrollReveal<HTMLHeadingElement>()
+  const subheadRef = useScrollReveal<HTMLParagraphElement>({ delay: 80 })
   const prefersReduced =
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -76,10 +79,10 @@ export default function DashboardPreview(): React.ReactElement {
     <section className="py-24 px-6">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-14">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-3">
+          <h2 ref={headingRef} className="font-display text-3xl font-semibold tracking-tight text-primary mb-3">
             Full observability, from day one
           </h2>
-          <p className="text-secondary text-base max-w-lg mx-auto leading-relaxed">
+          <p ref={subheadRef} className="text-secondary text-base max-w-lg mx-auto leading-relaxed">
             Every tool call surfaces in Mission Control: the agent, the tool, the server, the result,
             and whether it was served from cache or blocked by a permission rule.
           </p>

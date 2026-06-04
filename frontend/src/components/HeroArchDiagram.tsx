@@ -1,4 +1,5 @@
 import React from 'react'
+import { useScrollReveal } from '../hooks/useScrollReveal'
 
 const SERVERS = [
   { y: 20,  label: 'filesystem', sub: 'read_file · write_file' },
@@ -7,14 +8,16 @@ const SERVERS = [
 ]
 
 export default function HeroArchDiagram(): React.ReactElement {
+  const headingRef = useScrollReveal<HTMLHeadingElement>()
+  const subheadRef = useScrollReveal<HTMLParagraphElement>({ delay: 80 })
   return (
     <section className="py-20 px-6">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-primary mb-3">
+          <h2 ref={headingRef} className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-primary mb-3">
             Every tool call flows through Arbiter
           </h2>
-          <p className="text-secondary text-sm max-w-md mx-auto leading-relaxed">
+          <p ref={subheadRef} className="text-secondary text-sm max-w-md mx-auto leading-relaxed">
             Agents connect to one gateway. Arbiter handles routing, access control, caching,
             and logging to every MCP server behind it.
           </p>

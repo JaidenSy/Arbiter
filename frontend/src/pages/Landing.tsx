@@ -15,6 +15,9 @@ import HeroArchDiagram from '../components/HeroArchDiagram'
 import DashboardPreview from '../components/DashboardPreview'
 import WorksWith from '../components/WorksWith'
 import FeatureShowcase from '../components/FeatureShowcase'
+import GatewayConnectedCTA from '../components/GatewayConnectedCTA'
+import { useScrollReveal } from '../hooks/useScrollReveal'
+import { RevealGroup } from '../components/RevealGroup'
 
 const SUPPORT_EMAIL: string =
   (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'support@arbiterai.dev'
@@ -313,20 +316,19 @@ const features: Feature[] = [
 ]
 
 function Features(): React.ReactElement {
+  const headingRef = useScrollReveal<HTMLHeadingElement>()
   return (
     <section className="py-24 px-6">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">
+          <h2 ref={headingRef} className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">
             Identity. Permissions. Secrets. Observability.
           </h2>
         </div>
 
-        {/* Grid — 4-col desktop bento: wide(2)+narrow(1)+narrow(1) / narrow(1)+wide(2)+narrow(1) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Grid — RevealGroup staggers cards on scroll entry */}
+        <RevealGroup className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" stagger={60}>
           {features.map((f, i) => {
-            // Agent Identity (0) and Full Observability (4) span 2 cols
             const isWide = i === 0 || i === 4
             return (
               <div
@@ -345,7 +347,7 @@ function Features(): React.ReactElement {
               </div>
             )
           })}
-        </div>
+        </RevealGroup>
       </div>
     </section>
   )
@@ -354,6 +356,8 @@ function Features(): React.ReactElement {
 // ── Comparison ─────────────────────────────────────────────────────────────────
 
 function Comparison(): React.ReactElement {
+  const headingRef = useScrollReveal<HTMLHeadingElement>()
+  const subheadRef = useScrollReveal<HTMLParagraphElement>({ delay: 80 })
   const check = (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-success mx-auto">
       <polyline points="20 6 9 17 4 12"/>
@@ -388,8 +392,8 @@ function Comparison(): React.ReactElement {
     <section className="py-24 px-6 bg-surface/30">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-6">How Arbiter compares</h2>
-          <p className="text-secondary text-base max-w-xl mx-auto">
+          <h2 ref={headingRef} className="font-display text-3xl font-semibold tracking-tight text-primary mb-6">How Arbiter compares</h2>
+          <p ref={subheadRef} className="text-secondary text-base max-w-xl mx-auto">
             LiteLLM and Portkey solve LLM routing. Arbiter solves MCP security.
           </p>
         </div>
@@ -501,6 +505,7 @@ const pricingTiers: PricingTier[] = [
 function Pricing(): React.ReactElement {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const headingRef = useScrollReveal<HTMLHeadingElement>()
 
   function handleProCta(): void {
     if (user) {
@@ -514,10 +519,10 @@ function Pricing(): React.ReactElement {
     <section className="py-24 px-6" id="pricing">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Start free. Scale when you need to.</h2>
+          <h2 ref={headingRef} className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Start free. Scale when you need to.</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+        <RevealGroup className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch" stagger={80}>
           {pricingTiers.map((tier) => (
             <div
               key={tier.name}
@@ -574,7 +579,7 @@ function Pricing(): React.ReactElement {
               )}
             </div>
           ))}
-        </div>
+        </RevealGroup>
       </div>
     </section>
   )
@@ -617,12 +622,13 @@ const faqItems: FAQItem[] = [
 
 function FAQ(): React.ReactElement {
   const [openIdx, setOpenIdx] = useState<number | null>(null)
+  const headingRef = useScrollReveal<HTMLHeadingElement>()
 
   return (
     <section className="py-24 px-6 bg-surface/30">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Common questions</h2>
+          <h2 ref={headingRef} className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Common questions</h2>
         </div>
 
         <div className="space-y-3">
@@ -660,27 +666,6 @@ function FAQ(): React.ReactElement {
             )
           })}
         </div>
-      </div>
-    </section>
-  )
-}
-
-// ── Contact ────────────────────────────────────────────────────────────────────
-
-function Contact(): React.ReactElement {
-  return (
-    <section className="py-24 px-6">
-      <div className="max-w-2xl mx-auto text-center">
-        <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Talk to us.</h2>
-        <p className="text-secondary text-base leading-relaxed mb-10">
-          Evaluating Arbiter for your team, self-hosting, or hitting a specific edge case — reach out directly.
-        </p>
-        <a
-          href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Inquiry`}
-          className="press inline-flex items-center gap-2 bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard text-sm"
-        >
-          Send us a message
-        </a>
       </div>
     </section>
   )
@@ -758,7 +743,7 @@ function Landing({ initialModal }: LandingProps): React.ReactElement {
         <FeatureShowcase />
         <Pricing />
         <FAQ />
-        <Contact />
+        <GatewayConnectedCTA onGetStarted={() => openModal('register')} />
         <Footer />
       </div>
 
