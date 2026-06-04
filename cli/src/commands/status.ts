@@ -17,7 +17,7 @@ export function registerStatus(program: Command): void {
         if (opts.json) {
           console.log(JSON.stringify({ logged_in: false, api_url: apiUrl }))
         } else {
-          console.log("Not logged in. Run 'arbiter login'.")
+          console.log('Not logged in. Run `arbiter login`.')
         }
         return
       }

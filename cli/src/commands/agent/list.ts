@@ -1,7 +1,7 @@
 import { Command } from 'commander'
-import { get } from '../../lib/api.js'
+import { get, ApiError } from '../../lib/api.js'
 import { requireAuth } from '../../lib/config.js'
-import { printTable } from '../../lib/output.js'
+import { printTable, printError } from '../../lib/output.js'
 import type { AgentPage } from '../../types/index.js'
 
 export function registerAgentList(agentCmd: Command): void {
@@ -12,7 +12,15 @@ export function registerAgentList(agentCmd: Command): void {
     .action(async (opts: { json?: boolean }) => {
       requireAuth()
 
-      const page = await get<AgentPage>('/api/v1/agents', { skip: 0, limit: 200 })
+      let page: AgentPage
+      try {
+        page = await get<AgentPage>('/api/v1/agents', { skip: 0, limit: 200 })
+      } catch (err) {
+        if (err instanceof ApiError) {
+          printError(err.message)
+        }
+        throw err
+      }
 
       if (opts.json) {
         console.log(JSON.stringify(page, null, 2))
