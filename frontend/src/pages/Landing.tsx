@@ -5,15 +5,145 @@
  * No sidebar. Standalone dark layout.
  */
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
 import { useAuth } from '../context/AuthContext'
 import AuthModal, { type AuthMode } from '../components/AuthModal'
 import HeroBackground from '../components/HeroBackground'
+import HeroArchDiagram from '../components/HeroArchDiagram'
+import DashboardPreview from '../components/DashboardPreview'
+import WorksWith from '../components/WorksWith'
+import FeatureShowcase from '../components/FeatureShowcase'
+import GatewayConnectedCTA from '../components/GatewayConnectedCTA'
+import { useScrollReveal } from '../hooks/useScrollReveal'
+import { RevealGroup } from '../components/RevealGroup'
 
 const SUPPORT_EMAIL: string =
   (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'support@arbiterai.dev'
+
+// ── Typewriter Terminal ───────────────────────────────────────────────────────
+
+interface CodeToken { text: string; color: string }
+type CodeLine = CodeToken[]
+
+const C = {
+  primary:   'var(--color-primary)',
+  secondary: 'var(--color-secondary)',
+  muted:     'var(--color-muted)',
+  accent:    'var(--color-accent-light)',
+  teal:      'var(--color-teal-light)',
+  success:   'var(--color-success)',
+  warning:   'var(--color-warning)',
+}
+
+const CODE: CodeLine[] = [
+  [
+    { text: '$ ',   color: C.secondary },
+    { text: 'curl', color: C.teal },
+    { text: ' -X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \\', color: C.primary },
+  ],
+  [
+    { text: '  -H ',                                      color: C.accent  },
+    { text: '"Authorization: Bearer nxai_abc123..."',    color: C.success },
+  ],
+  [
+    { text: "  -d '", color: C.accent  },
+    { text: '{"server_name":"filesystem","tool_name":"read_file"}', color: C.success },
+    { text: "'",       color: C.success },
+  ],
+  [],
+  [{ text: '# Response',  color: C.secondary }],
+  [{ text: '{',           color: C.teal      }],
+  [
+    { text: '  "cached": ', color: C.accent  },
+    { text: 'false',        color: C.warning },
+    { text: ',',            color: C.primary },
+  ],
+  [
+    { text: '  "agent_id": ', color: C.accent  },
+    { text: '"agt_xyz789"',   color: C.success },
+    { text: ',',              color: C.primary },
+  ],
+  [
+    { text: '  "result": {', color: C.accent  },
+    { text: '...',           color: C.muted   },
+    { text: '}',             color: C.primary },
+  ],
+  [{ text: '}', color: C.teal }],
+]
+
+function lineLen(line: CodeLine): number {
+  return line.reduce((s, t) => s + t.text.length, 0)
+}
+
+const TOTAL_CHARS = CODE.reduce((s, l) => s + lineLen(l), 0)
+const CHAR_DELAY  = 26
+
+function TypewriterTerminal(): React.ReactElement {
+  const prefersReduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const [chars, setChars] = useState(prefersReduced ? TOTAL_CHARS : 0)
+  const done = chars >= TOTAL_CHARS
+
+  useEffect(() => {
+    if (done) return
+    const delay = chars === 0 ? 700 : CHAR_DELAY
+    const t = setTimeout(() => setChars(n => n + 1), delay)
+    return () => clearTimeout(t)
+  }, [chars, done])
+
+  let consumed = 0
+  const lines = CODE.map((line, li) => {
+    const len     = lineLen(line)
+    const show    = Math.max(0, Math.min(len, chars - consumed))
+    const isActive = done
+      ? li === CODE.length - 1
+      : chars > consumed && chars <= consumed + len && len > 0
+    consumed += len
+
+    let rem = show
+    const spans = line.map((tok, ti) => {
+      if (rem <= 0) return null
+      const visible = tok.text.slice(0, rem)
+      rem -= tok.text.length
+      return <span key={ti} style={{ color: tok.color }}>{visible}</span>
+    })
+
+    return (
+      <div key={li} className="whitespace-pre" style={{ minHeight: '1.25em' }}>
+        {spans}
+        {isActive && (
+          <span className="blink-cursor" style={{ color: 'var(--color-accent-light)' }}>▋</span>
+        )}
+      </div>
+    )
+  })
+
+  return (
+    <div
+      className="mt-14 rounded-lg p-5 text-left max-w-xl mx-auto animate-fade-in overflow-hidden"
+      style={{
+        animationDelay: '260ms',
+        background: 'rgba(9,9,11,0.55)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255,255,255,0.09)',
+        boxShadow: '0 0 0 1px rgba(61,53,206,0.12) inset',
+      }}
+    >
+      <div className="flex items-center gap-1.5 mb-4">
+        <span className="w-2.5 h-2.5 rounded-full bg-error/70" />
+        <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
+        <span className="w-2.5 h-2.5 rounded-full bg-success/70" />
+      </div>
+      <div className="font-mono text-xs leading-relaxed overflow-x-auto">
+        {lines}
+      </div>
+    </div>
+  )
+}
 
 // ── Navbar ─────────────────────────────────────────────────────────────────────
 
@@ -33,13 +163,13 @@ function Navbar({ onSignIn, onGetStarted }: NavbarProps): React.ReactElement {
         <div className="flex items-center gap-3">
           <button
             onClick={onSignIn}
-            className="press text-secondary hover:text-primary border border-border-strong hover:border-border-strong px-4 py-1.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
+            className="press text-secondary hover:text-primary border border-border-strong hover:border-border-strong px-4 py-2.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
           >
             Sign In
           </button>
           <button
             onClick={onGetStarted}
-            className="press bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors duration-150 ease-[var(--ease-out-expo)]"
+            className="press bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors duration-150 ease-[var(--ease-out-expo)]"
           >
             Get Started Free
           </button>
@@ -54,10 +184,38 @@ function Navbar({ onSignIn, onGetStarted }: NavbarProps): React.ReactElement {
 interface HeroProps { onGetStarted: () => void; onSignIn: () => void }
 
 function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
+  const [spot, setSpot]           = useState({ x: 50, y: 35 })
+  const [isHovering, setIsHovering] = useState(false)
+
+  function handleMouseMove(e: React.MouseEvent<HTMLElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setSpot({
+      x: ((e.clientX - rect.left) / rect.width) * 100,
+      y: ((e.clientY - rect.top)  / rect.height) * 100,
+    })
+  }
+
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 overflow-hidden">
-      {/* Background — static dark with subtle amber glow */}
+    <section
+      className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 overflow-hidden"
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      {/* Background — dot grid + ambient glow */}
       <HeroBackground />
+
+      {/* Mouse spotlight — illuminates dot grid on hover */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden
+        style={{
+          background: `radial-gradient(circle 380px at ${spot.x}% ${spot.y}%, rgba(99,88,230,0.22) 0%, rgba(61,53,206,0.08) 45%, transparent 70%)`,
+          opacity: isHovering ? 1 : 0,
+          transition: 'opacity 400ms ease-out',
+          mixBlendMode: 'screen',
+        }}
+      />
 
       {/* Bottom fade — blends hero into sections below */}
       <div
@@ -67,18 +225,10 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
       />
 
       <div className="relative max-w-3xl mx-auto pt-28 sm:pt-24 lg:pt-20">
-        {/* Kicker label */}
-        <p
-          className="kicker mb-5"
-          style={{ animationDelay: '0ms' }}
-        >
-          MCP Security Gateway
-        </p>
-
-        {/* Hero headline — staggered entrance */}
+        {/* Hero headline */}
         <h1
           className="hero-display text-primary mb-6 animate-fade-in"
-          style={{ animationDelay: '60ms', animationFillMode: 'both' }}
+          style={{ animationDelay: '60ms' }}
         >
           Your AI agents are running
           <br />
@@ -88,7 +238,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         {/* Subheadline */}
         <p
           className="text-secondary text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-10 animate-fade-in"
-          style={{ animationDelay: '120ms', animationFillMode: 'both' }}
+          style={{ animationDelay: '120ms' }}
         >
           Shared credentials, no audit trail, agents that can call any tool they want.
           Arbiter fixes all of it: cryptographic agent identity, tool-level permissions,
@@ -98,7 +248,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         {/* CTAs */}
         <div
           className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6 animate-fade-in"
-          style={{ animationDelay: '200ms', animationFillMode: 'both' }}
+          style={{ animationDelay: '180ms' }}
         >
           <button
             onClick={onGetStarted}
@@ -116,54 +266,13 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
 
         <p
           className="text-muted text-xs animate-fade-in"
-          style={{ animationDelay: '200ms', animationFillMode: 'both' }}
+          style={{ animationDelay: '180ms' }}
         >
           Free plan includes 2 agents · 5,000 tool calls/mo · No credit card required
         </p>
 
-        {/* Terminal demo */}
-        <div
-          className="mt-14 bg-surface/85 backdrop-blur-sm border border-border-strong rounded-lg p-5 text-left max-w-xl mx-auto shadow-2xl animate-fade-in overflow-hidden"
-          style={{ animationDelay: '280ms', animationFillMode: 'both' }}
-        >
-          <div className="flex items-center gap-1.5 mb-4">
-            <span className="w-2.5 h-2.5 rounded-full bg-error/70" />
-            <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
-            <span className="w-2.5 h-2.5 rounded-full bg-success/70" />
-          </div>
-          <pre className="font-mono text-xs text-secondary leading-relaxed overflow-x-auto">
-            <span className="text-muted">$</span>{' '}
-            <span className="text-teal-light">curl</span>{' '}
-            <span className="text-primary">-X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \</span>
-            {'\n'}
-            {'  '}<span className="text-accent-light">-H</span>{' '}
-            <span className="text-success">"Authorization: Bearer nxai_abc123..."</span>
-            {'\n'}
-            {'  '}<span className="text-accent-light">-d</span>{' '}
-            <span className="text-success">'{`{"server_name":"filesystem","tool_name":"read_file","params":{"path":"/app/config.json"}}`}'</span>
-            {'\n\n'}
-            <span className="text-muted"># Response</span>
-            {'\n'}
-            <span className="text-teal-light">{'{'}</span>
-            {'\n'}
-            {'  '}<span className="text-accent-light">"cached"</span>
-            <span className="text-primary">: </span>
-            <span className="text-warning">false</span>
-            <span className="text-primary">,</span>
-            {'\n'}
-            {'  '}<span className="text-accent-light">"agent_id"</span>
-            <span className="text-primary">: </span>
-            <span className="text-success">"agt_xyz789"</span>
-            <span className="text-primary">,</span>
-            {'\n'}
-            {'  '}<span className="text-accent-light">"result"</span>
-            <span className="text-primary">: {'{'}</span>
-            <span className="text-muted">...</span>
-            <span className="text-primary">{'}'}</span>
-            {'\n'}
-            <span className="text-teal-light">{'}'}</span>
-          </pre>
-        </div>
+        {/* Terminal demo — typewriter */}
+        <TypewriterTerminal />
       </div>
     </section>
   )
@@ -242,20 +351,19 @@ const features: Feature[] = [
 ]
 
 function Features(): React.ReactElement {
+  const headingRef = useScrollReveal<HTMLHeadingElement>()
   return (
     <section className="py-24 px-6">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">
-            Everything your agents need
+          <h2 ref={headingRef} className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">
+            Identity. Permissions. Secrets. Observability.
           </h2>
         </div>
 
-        {/* Grid — 4-col desktop bento: wide(2)+narrow(1)+narrow(1) / narrow(1)+wide(2)+narrow(1) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Grid — RevealGroup staggers cards on scroll entry */}
+        <RevealGroup className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" stagger={60}>
           {features.map((f, i) => {
-            // Agent Identity (0) and Full Observability (4) span 2 cols
             const isWide = i === 0 || i === 4
             return (
               <div
@@ -274,7 +382,7 @@ function Features(): React.ReactElement {
               </div>
             )
           })}
-        </div>
+        </RevealGroup>
       </div>
     </section>
   )
@@ -283,6 +391,8 @@ function Features(): React.ReactElement {
 // ── Comparison ─────────────────────────────────────────────────────────────────
 
 function Comparison(): React.ReactElement {
+  const headingRef = useScrollReveal<HTMLHeadingElement>()
+  const subheadRef = useScrollReveal<HTMLParagraphElement>({ delay: 80 })
   const check = (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-success mx-auto">
       <polyline points="20 6 9 17 4 12"/>
@@ -317,8 +427,8 @@ function Comparison(): React.ReactElement {
     <section className="py-24 px-6 bg-surface/30">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-6">How Arbiter compares</h2>
-          <p className="text-secondary text-base max-w-xl mx-auto">
+          <h2 ref={headingRef} className="font-display text-3xl font-semibold tracking-tight text-primary mb-6">How Arbiter compares</h2>
+          <p ref={subheadRef} className="text-secondary text-base max-w-xl mx-auto">
             LiteLLM and Portkey solve LLM routing. Arbiter solves MCP security.
           </p>
         </div>
@@ -370,70 +480,6 @@ function Comparison(): React.ReactElement {
   )
 }
 
-// ── How It Works ───────────────────────────────────────────────────────────────
-
-interface Step {
-  number: string
-  title: string
-  description: string
-  code: string
-}
-
-const steps: Step[] = [
-  {
-    number: '01',
-    title: 'Register your agent',
-    description: 'Create an agent in the dashboard. Get a unique API key instantly.',
-    code: 'POST /api/v1/agents\n→ { api_key: "nxai_..." }',
-  },
-  {
-    number: '02',
-    title: 'Configure permissions',
-    description: 'Grant the exact tools your agent needs. Nothing more.',
-    code: 'POST /api/v1/agents/{id}/permissions\n→ { tool_name: "read_file" }',
-  },
-  {
-    number: '03',
-    title: 'Make tool calls',
-    description: 'Point your MCP client at Arbiter. All calls proxied, cached, and logged.',
-    code: 'POST /api/v1/proxy/tool-call\n→ { server_name, tool_name, params }',
-  },
-]
-
-function HowItWorks(): React.ReactElement {
-  return (
-    <section className="py-24 px-6 bg-surface/30">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Up and running in minutes</h2>
-        </div>
-
-        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Connecting line (desktop) */}
-          <div className="hidden md:block absolute top-6 left-1/6 right-1/6 h-px bg-border-strong" />
-
-          {steps.map((step) => (
-            <div key={step.number} className="relative flex flex-col gap-4">
-              {/* Number badge — solid amber */}
-              <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
-                <span className="font-mono font-semibold text-base tracking-tight" style={{ color: 'rgba(255,255,255,0.95)' }}>{step.number}</span>
-              </div>
-
-              <div>
-                <h3 className="font-display text-primary font-semibold text-sm tracking-tight mb-1.5">{step.title}</h3>
-                <p className="text-secondary text-sm leading-relaxed mb-3">{step.description}</p>
-                <pre className="bg-elevated border border-border rounded-lg px-4 py-3 font-mono text-xs text-teal-light leading-relaxed whitespace-pre-wrap">
-                  {step.code}
-                </pre>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
 // ── Pricing ────────────────────────────────────────────────────────────────────
 
 interface PricingTier {
@@ -453,7 +499,7 @@ const pricingTiers: PricingTier[] = [
     period: '/mo',
     features: [
       '2 agents',
-      '5 MCP servers',
+      '3 MCP servers',
       '5,000 tool calls/mo',
       '10 vault secrets',
       'Community support',
@@ -494,6 +540,7 @@ const pricingTiers: PricingTier[] = [
 function Pricing(): React.ReactElement {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const headingRef = useScrollReveal<HTMLHeadingElement>()
 
   function handleProCta(): void {
     if (user) {
@@ -507,16 +554,16 @@ function Pricing(): React.ReactElement {
     <section className="py-24 px-6" id="pricing">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Simple, transparent pricing</h2>
+          <h2 ref={headingRef} className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Start free. Scale when you need to.</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+        <RevealGroup className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch" stagger={80}>
           {pricingTiers.map((tier) => (
             <div
               key={tier.name}
               className={`flex flex-col rounded-2xl p-7 transition-colors duration-200 ${
                 tier.highlighted
-                  ? 'bg-surface border border-border-accent shadow-[0_0_32px_rgba(217,119,6,0.10)]'
+                  ? 'bg-surface border border-border-accent shadow-[0_0_28px_rgba(61,53,206,0.16)]'
                   : 'bg-surface border border-border'
               }`}
             >
@@ -567,7 +614,7 @@ function Pricing(): React.ReactElement {
               )}
             </div>
           ))}
-        </div>
+        </RevealGroup>
       </div>
     </section>
   )
@@ -610,12 +657,13 @@ const faqItems: FAQItem[] = [
 
 function FAQ(): React.ReactElement {
   const [openIdx, setOpenIdx] = useState<number | null>(null)
+  const headingRef = useScrollReveal<HTMLHeadingElement>()
 
   return (
     <section className="py-24 px-6 bg-surface/30">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Common questions</h2>
+          <h2 ref={headingRef} className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Common questions</h2>
         </div>
 
         <div className="space-y-3">
@@ -653,27 +701,6 @@ function FAQ(): React.ReactElement {
             )
           })}
         </div>
-      </div>
-    </section>
-  )
-}
-
-// ── Contact ────────────────────────────────────────────────────────────────────
-
-function Contact(): React.ReactElement {
-  return (
-    <section className="py-24 px-6">
-      <div className="max-w-2xl mx-auto text-center">
-        <h2 className="text-3xl font-bold text-primary mb-4">Questions? We're here.</h2>
-        <p className="text-secondary text-base leading-relaxed mb-10">
-          Whether you're evaluating Arbiter for your team or need help getting started, reach out.
-        </p>
-        <a
-          href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Inquiry`}
-          className="press inline-flex items-center gap-2 bg-accent hover:bg-accent-light text-white font-semibold px-6 py-3 rounded-xl transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard text-sm"
-        >
-          Send us a message
-        </a>
       </div>
     </section>
   )
@@ -743,12 +770,15 @@ function Landing({ initialModal }: LandingProps): React.ReactElement {
       <Navbar onSignIn={() => openModal('login')} onGetStarted={() => openModal('register')} />
       <div>
         <Hero onGetStarted={() => openModal('register')} onSignIn={() => openModal('login')} />
+        <WorksWith />
+        <HeroArchDiagram />
         <Features />
+        <DashboardPreview />
         <Comparison />
-        <HowItWorks />
+        <FeatureShowcase />
         <Pricing />
         <FAQ />
-        <Contact />
+        <GatewayConnectedCTA onGetStarted={() => openModal('register')} />
         <Footer />
       </div>
 

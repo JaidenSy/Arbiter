@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Jaiden Sy. All rights reserved.
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """
 Arbiter — FastAPI dependency injection.
 
