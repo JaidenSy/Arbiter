@@ -48,9 +48,9 @@ const CODE: CodeLine[] = [
     { text: '"Authorization: Bearer nxai_abc123..."',    color: C.success },
   ],
   [
-    { text: "  -d '",                                                                                               color: C.accent  },
-    { text: '{"server_name":"filesystem","tool_name":"read_file","params":{"path":"/app/config.json"}}', color: C.success },
-    { text: "'",                                                                                                    color: C.success },
+    { text: "  -d '", color: C.accent  },
+    { text: '{"server_name":"filesystem","tool_name":"read_file"}', color: C.success },
+    { text: "'",       color: C.success },
   ],
   [],
   [{ text: '# Response',  color: C.secondary }],
@@ -123,8 +123,15 @@ function TypewriterTerminal(): React.ReactElement {
 
   return (
     <div
-      className="mt-14 bg-elevated border border-border-strong rounded-lg p-5 text-left max-w-xl mx-auto animate-fade-in overflow-hidden"
-      style={{ animationDelay: '260ms' }}
+      className="mt-14 rounded-lg p-5 text-left max-w-xl mx-auto animate-fade-in overflow-hidden"
+      style={{
+        animationDelay: '260ms',
+        background: 'rgba(9,9,11,0.55)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255,255,255,0.09)',
+        boxShadow: '0 0 0 1px rgba(61,53,206,0.12) inset',
+      }}
     >
       <div className="flex items-center gap-1.5 mb-4">
         <span className="w-2.5 h-2.5 rounded-full bg-error/70" />
@@ -177,10 +184,38 @@ function Navbar({ onSignIn, onGetStarted }: NavbarProps): React.ReactElement {
 interface HeroProps { onGetStarted: () => void; onSignIn: () => void }
 
 function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
+  const [spot, setSpot]           = useState({ x: 50, y: 35 })
+  const [isHovering, setIsHovering] = useState(false)
+
+  function handleMouseMove(e: React.MouseEvent<HTMLElement>) {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setSpot({
+      x: ((e.clientX - rect.left) / rect.width) * 100,
+      y: ((e.clientY - rect.top)  / rect.height) * 100,
+    })
+  }
+
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 overflow-hidden">
-      {/* Background — static dark with subtle amber glow */}
+    <section
+      className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 overflow-hidden"
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      {/* Background — dot grid + ambient glow */}
       <HeroBackground />
+
+      {/* Mouse spotlight — illuminates dot grid on hover */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden
+        style={{
+          background: `radial-gradient(circle 380px at ${spot.x}% ${spot.y}%, rgba(99,88,230,0.22) 0%, rgba(61,53,206,0.08) 45%, transparent 70%)`,
+          opacity: isHovering ? 1 : 0,
+          transition: 'opacity 400ms ease-out',
+          mixBlendMode: 'screen',
+        }}
+      />
 
       {/* Bottom fade — blends hero into sections below */}
       <div
