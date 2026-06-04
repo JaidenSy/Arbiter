@@ -64,6 +64,7 @@ class Settings(BaseSettings):
         60  # 1 hour — keep short; refresh token handles persistence
     )
     jwt_refresh_token_expire_days: int = 30
+    cli_token_expire_minutes: int = 10080  # 7 days — CLI sessions are long-lived
 
     # ── Registration ──────────────────────────────────────────────────────────
     allow_public_registration: bool = False  # set True or provide INVITE_CODE to enable
