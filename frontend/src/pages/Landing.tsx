@@ -13,6 +13,8 @@ import AuthModal, { type AuthMode } from '../components/AuthModal'
 import HeroBackground from '../components/HeroBackground'
 import HeroArchDiagram from '../components/HeroArchDiagram'
 import DashboardPreview from '../components/DashboardPreview'
+import WorksWith from '../components/WorksWith'
+import FeatureShowcase from '../components/FeatureShowcase'
 
 const SUPPORT_EMAIL: string =
   (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'support@arbiterai.dev'
@@ -439,70 +441,6 @@ function Comparison(): React.ReactElement {
   )
 }
 
-// ── How It Works ───────────────────────────────────────────────────────────────
-
-interface Step {
-  number: string
-  title: string
-  description: string
-  code: string
-}
-
-const steps: Step[] = [
-  {
-    number: '01',
-    title: 'Register your agent',
-    description: 'Create an agent in the dashboard. Get a unique API key instantly.',
-    code: 'POST /api/v1/agents\n→ { api_key: "nxai_..." }',
-  },
-  {
-    number: '02',
-    title: 'Configure permissions',
-    description: 'Grant the exact tools your agent needs. Nothing more.',
-    code: 'POST /api/v1/agents/{id}/permissions\n→ { tool_name: "read_file" }',
-  },
-  {
-    number: '03',
-    title: 'Make tool calls',
-    description: 'Point your MCP client at Arbiter. All calls proxied, cached, and logged.',
-    code: 'POST /api/v1/proxy/tool-call\n→ { server_name, tool_name, params }',
-  },
-]
-
-function HowItWorks(): React.ReactElement {
-  return (
-    <section className="py-24 px-6 bg-surface/30">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Up and running in minutes</h2>
-        </div>
-
-        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Connecting line (desktop) */}
-          <div className="hidden md:block absolute top-6 left-1/6 right-1/6 h-px bg-border-strong" />
-
-          {steps.map((step) => (
-            <div key={step.number} className="relative flex flex-col gap-4">
-              {/* Number badge — solid amber */}
-              <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center flex-shrink-0">
-                <span className="font-mono font-semibold text-base tracking-tight" style={{ color: 'rgba(255,255,255,0.95)' }}>{step.number}</span>
-              </div>
-
-              <div>
-                <h3 className="font-display text-primary font-semibold text-sm tracking-tight mb-1.5">{step.title}</h3>
-                <p className="text-secondary text-sm leading-relaxed mb-3">{step.description}</p>
-                <pre className="bg-elevated border border-border rounded-lg px-4 py-3 font-mono text-xs text-teal-light leading-relaxed whitespace-pre-wrap">
-                  {step.code}
-                </pre>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
 // ── Pricing ────────────────────────────────────────────────────────────────────
 
 interface PricingTier {
@@ -812,11 +750,12 @@ function Landing({ initialModal }: LandingProps): React.ReactElement {
       <Navbar onSignIn={() => openModal('login')} onGetStarted={() => openModal('register')} />
       <div>
         <Hero onGetStarted={() => openModal('register')} onSignIn={() => openModal('login')} />
+        <WorksWith />
         <HeroArchDiagram />
         <Features />
         <DashboardPreview />
         <Comparison />
-        <HowItWorks />
+        <FeatureShowcase />
         <Pricing />
         <FAQ />
         <Contact />

@@ -464,6 +464,16 @@ h1, h2, h3, h4, h5, h6 {
   animation: rowSlideIn 280ms var(--ease-out-expo) both;
 }
 
+/* ── Feature showcase panel transition ──────────────────────────────────────── */
+
+@keyframes panelEnter {
+  from { opacity: 0.5; transform: translateX(6px); }
+  to   { opacity: 1;   transform: translateX(0); }
+}
+.panel-enter {
+  animation: panelEnter 220ms var(--ease-out-expo) both;
+}
+
 /* ── Hero page animations ──────────────────────────────────────────────────── */
 
 @keyframes float-y {
@@ -499,6 +509,11 @@ h1, h2, h3, h4, h5, h6 {
 
   /* Dashboard rows: instant appear, no sliding */
   .row-entering {
+    animation: none !important;
+  }
+
+  /* Feature showcase panel: instant swap, no slide */
+  .panel-enter {
     animation: none !important;
   }
 }
