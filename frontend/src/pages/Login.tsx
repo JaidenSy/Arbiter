@@ -56,7 +56,8 @@ function Login(): React.ReactElement {
     try {
       await login(email.trim(), password)
 
-      navigate('/')
+      const redirect = new URLSearchParams(window.location.search).get('redirect')
+      navigate(redirect ?? '/')
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status
       if (status === 401) {

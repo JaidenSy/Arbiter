@@ -16,23 +16,23 @@ import logging
 import uuid as _uuid_lib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import redis.asyncio as aioredis
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import delete, select, text, update
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-
-from sqlalchemy import delete, select, text, update
 
 from app.api.v1.endpoints import (
     agents,
     auth,
     billing,
     cache,
+    cli_auth,
     mcp_servers,
     onboarding,
     org,
@@ -46,6 +46,7 @@ from app.api.v1.endpoints import (
 from app.core.config import settings
 from app.db.base import async_session_factory, engine
 from app.db.models.cache import CacheEntry
+from app.db.models.cli_device_code import CliDeviceCode
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.session import Session, SessionEvent
 from app.services.plan.plan_limits import PlanLimitError, QuotaExceededError
@@ -55,9 +56,7 @@ logger = logging.getLogger(__name__)
 
 # ── Request-ID context (OPS-03) ───────────────────────────────────────────────
 
-_request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "request_id", default=""
-)
+_request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="")
 
 
 class _RequestIDFilter(logging.Filter):
@@ -81,6 +80,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 
 # ── Logging setup (OPS-02) ────────────────────────────────────────────────────
 
+
 def _configure_logging(is_production: bool) -> None:
     """
     Set up structured JSON logging in production, plain text in development.
@@ -98,6 +98,7 @@ def _configure_logging(is_production: bool) -> None:
 
     if is_production:
         from pythonjsonlogger import jsonlogger  # type: ignore[import]
+
         formatter = jsonlogger.JsonFormatter(
             "%(asctime)s %(name)s %(levelname)s %(message)s %(request_id)s",
             rename_fields={"asctime": "timestamp", "levelname": "level", "name": "logger"},
@@ -121,7 +122,7 @@ async def _eviction_loop() -> None:
         await asyncio.sleep(_EVICTION_INTERVAL)
         try:
             async with async_session_factory() as db:
-                now = datetime.now(tz=timezone.utc)
+                now = datetime.now(tz=UTC)
                 inactivity_cutoff = now - timedelta(minutes=_SESSION_INACTIVITY_MINUTES)
 
                 cache_result = await db.execute(
@@ -130,6 +131,10 @@ async def _eviction_loop() -> None:
                 token_result = await db.execute(
                     delete(RefreshToken).where(RefreshToken.expires_at <= now)
                 )
+
+                # Purge expired CLI device codes — consumed and rejected codes
+                # older than their TTL have no further utility.
+                await db.execute(delete(CliDeviceCode).where(CliDeviceCode.expires_at <= now))
 
                 # Close sessions with no events in the last 30 minutes.
                 recent_session_ids = select(SessionEvent.session_id).where(
@@ -307,9 +312,7 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(PlanLimitError)
-    async def plan_limit_error_handler(
-        request: Request, exc: PlanLimitError
-    ) -> JSONResponse:
+    async def plan_limit_error_handler(request: Request, exc: PlanLimitError) -> JSONResponse:
         """
         Return HTTP 402 when an org's count-based plan limit is reached.
 
@@ -352,6 +355,7 @@ def create_app() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(auth.router, prefix=settings.api_prefix)
+    app.include_router(cli_auth.router, prefix=settings.api_prefix)
     app.include_router(sso.router, prefix=settings.api_prefix)
     app.include_router(agents.router, prefix=settings.api_prefix)
     app.include_router(mcp_servers.router, prefix=settings.api_prefix)
@@ -383,7 +387,9 @@ def create_app() -> FastAPI:
             redis = request.app.state.redis
             if redis is not None:
                 client_ip = (
-                    request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+                    request.headers.get(
+                        "X-Forwarded-For", request.client.host if request.client else "unknown"
+                    )
                     .split(",")[0]
                     .strip()
                 )
@@ -422,7 +428,9 @@ def create_app() -> FastAPI:
         try:
             if redis is not None:
                 client_ip = (
-                    request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown")
+                    request.headers.get(
+                        "X-Forwarded-For", request.client.host if request.client else "unknown"
+                    )
                     .split(",")[0]
                     .strip()
                 )
