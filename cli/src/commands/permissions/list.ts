@@ -1,9 +1,7 @@
 import { Command } from 'commander'
-import { get } from '../../lib/api.js'
+import { get, ApiError } from '../../lib/api.js'
 import { requireAuth } from '../../lib/config.js'
-import { printTable } from '../../lib/output.js'
-import { ApiError } from '../../lib/api.js'
-import { printError } from '../../lib/output.js'
+import { printTable, printError } from '../../lib/output.js'
 import type { PermissionPage } from '../../types/index.js'
 
 export function registerPermissionsList(permissionsCmd: Command): void {

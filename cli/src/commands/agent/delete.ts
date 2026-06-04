@@ -1,9 +1,8 @@
 import { Command } from 'commander'
 import * as readline from 'readline'
-import { del } from '../../lib/api.js'
+import { del, ApiError } from '../../lib/api.js'
 import { requireAuth } from '../../lib/config.js'
 import { printSuccess, printError } from '../../lib/output.js'
-import { ApiError } from '../../lib/api.js'
 
 export function registerAgentDelete(agentCmd: Command): void {
   agentCmd

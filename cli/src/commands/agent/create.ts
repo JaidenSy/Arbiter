@@ -1,8 +1,7 @@
 import { Command } from 'commander'
-import { post } from '../../lib/api.js'
+import { post, ApiError } from '../../lib/api.js'
 import { requireAuth } from '../../lib/config.js'
 import { printSuccess, printError } from '../../lib/output.js'
-import { ApiError } from '../../lib/api.js'
 import chalk from 'chalk'
 import type { Agent } from '../../types/index.js'
 

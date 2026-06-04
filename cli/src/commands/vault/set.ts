@@ -1,8 +1,7 @@
 import { Command } from 'commander'
-import { post } from '../../lib/api.js'
+import { post, ApiError } from '../../lib/api.js'
 import { requireAuth } from '../../lib/config.js'
 import { printSuccess, printError, printWarning } from '../../lib/output.js'
-import { ApiError } from '../../lib/api.js'
 import type { VaultSecretResponse } from '../../types/index.js'
 
 const SECRET_NAME_RE = /^[A-Za-z0-9_]+$/

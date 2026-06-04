@@ -1,8 +1,7 @@
 import { Command } from 'commander'
-import { get, post } from '../../lib/api.js'
+import { get, post, ApiError } from '../../lib/api.js'
 import { requireAuth } from '../../lib/config.js'
 import { printSuccess, printError } from '../../lib/output.js'
-import { ApiError } from '../../lib/api.js'
 import type { MCPServerPage, Permission } from '../../types/index.js'
 
 export function registerPermissionsGrant(permissionsCmd: Command): void {
@@ -23,7 +22,7 @@ export function registerPermissionsGrant(permissionsCmd: Command): void {
       )
 
       if (!server) {
-        printError(`MCP server '${opts.server}' not found. Check 'arbiter status' or verify the server name.`)
+        printError(`MCP server '${opts.server}' not found. Verify the server name against your Arbiter dashboard.`)
       }
 
       let permission: Permission

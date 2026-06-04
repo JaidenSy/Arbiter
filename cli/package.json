@@ -3,6 +3,12 @@
   "version": "0.1.0",
   "description": "Official CLI for Arbiter — the developer-first MCP gateway",
   "license": "AGPL-3.0-or-later",
+  "keywords": ["mcp", "ai", "gateway", "arbiter", "cli"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JaidenSy/Arbiter.git",
+    "directory": "cli"
+  },
   "type": "commonjs",
   "bin": {
     "arbiter": "./dist/index.js"
