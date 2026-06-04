@@ -5,15 +5,133 @@
  * No sidebar. Standalone dark layout.
  */
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
 import { useAuth } from '../context/AuthContext'
 import AuthModal, { type AuthMode } from '../components/AuthModal'
 import HeroBackground from '../components/HeroBackground'
+import HeroArchDiagram from '../components/HeroArchDiagram'
+import DashboardPreview from '../components/DashboardPreview'
 
 const SUPPORT_EMAIL: string =
   (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'support@arbiterai.dev'
+
+// ── Typewriter Terminal ───────────────────────────────────────────────────────
+
+interface CodeToken { text: string; color: string }
+type CodeLine = CodeToken[]
+
+const C = {
+  primary:   'var(--color-primary)',
+  secondary: 'var(--color-secondary)',
+  muted:     'var(--color-muted)',
+  accent:    'var(--color-accent-light)',
+  teal:      'var(--color-teal-light)',
+  success:   'var(--color-success)',
+  warning:   'var(--color-warning)',
+}
+
+const CODE: CodeLine[] = [
+  [
+    { text: '$ ',   color: C.secondary },
+    { text: 'curl', color: C.teal },
+    { text: ' -X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \\', color: C.primary },
+  ],
+  [
+    { text: '  -H ',                                      color: C.accent  },
+    { text: '"Authorization: Bearer nxai_abc123..."',    color: C.success },
+  ],
+  [
+    { text: "  -d '",                                                                                               color: C.accent  },
+    { text: '{"server_name":"filesystem","tool_name":"read_file","params":{"path":"/app/config.json"}}', color: C.success },
+    { text: "'",                                                                                                    color: C.success },
+  ],
+  [],
+  [{ text: '# Response',  color: C.secondary }],
+  [{ text: '{',           color: C.teal      }],
+  [
+    { text: '  "cached": ', color: C.accent  },
+    { text: 'false',        color: C.warning },
+    { text: ',',            color: C.primary },
+  ],
+  [
+    { text: '  "agent_id": ', color: C.accent  },
+    { text: '"agt_xyz789"',   color: C.success },
+    { text: ',',              color: C.primary },
+  ],
+  [
+    { text: '  "result": {', color: C.accent  },
+    { text: '...',           color: C.muted   },
+    { text: '}',             color: C.primary },
+  ],
+  [{ text: '}', color: C.teal }],
+]
+
+function lineLen(line: CodeLine): number {
+  return line.reduce((s, t) => s + t.text.length, 0)
+}
+
+const TOTAL_CHARS = CODE.reduce((s, l) => s + lineLen(l), 0)
+const CHAR_DELAY  = 26
+
+function TypewriterTerminal(): React.ReactElement {
+  const prefersReduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const [chars, setChars] = useState(prefersReduced ? TOTAL_CHARS : 0)
+  const done = chars >= TOTAL_CHARS
+
+  useEffect(() => {
+    if (done) return
+    const delay = chars === 0 ? 700 : CHAR_DELAY
+    const t = setTimeout(() => setChars(n => n + 1), delay)
+    return () => clearTimeout(t)
+  }, [chars, done])
+
+  let consumed = 0
+  const lines = CODE.map((line, li) => {
+    const len     = lineLen(line)
+    const show    = Math.max(0, Math.min(len, chars - consumed))
+    const isActive = done
+      ? li === CODE.length - 1
+      : chars > consumed && chars <= consumed + len && len > 0
+    consumed += len
+
+    let rem = show
+    const spans = line.map((tok, ti) => {
+      if (rem <= 0) return null
+      const visible = tok.text.slice(0, rem)
+      rem -= tok.text.length
+      return <span key={ti} style={{ color: tok.color }}>{visible}</span>
+    })
+
+    return (
+      <div key={li} className="whitespace-pre" style={{ minHeight: '1.25em' }}>
+        {spans}
+        {isActive && (
+          <span className="blink-cursor" style={{ color: 'var(--color-accent-light)' }}>▋</span>
+        )}
+      </div>
+    )
+  })
+
+  return (
+    <div
+      className="mt-14 bg-elevated border border-border-strong rounded-lg p-5 text-left max-w-xl mx-auto animate-fade-in overflow-hidden"
+      style={{ animationDelay: '260ms' }}
+    >
+      <div className="flex items-center gap-1.5 mb-4">
+        <span className="w-2.5 h-2.5 rounded-full bg-error/70" />
+        <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
+        <span className="w-2.5 h-2.5 rounded-full bg-success/70" />
+      </div>
+      <div className="font-mono text-xs leading-relaxed overflow-x-auto">
+        {lines}
+      </div>
+    </div>
+  )
+}
 
 // ── Navbar ─────────────────────────────────────────────────────────────────────
 
@@ -113,49 +231,8 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
           Free plan includes 2 agents · 5,000 tool calls/mo · No credit card required
         </p>
 
-        {/* Terminal demo */}
-        <div
-          className="mt-14 bg-elevated border border-border-strong rounded-lg p-5 text-left max-w-xl mx-auto animate-fade-in overflow-hidden"
-          style={{ animationDelay: '260ms' }}
-        >
-          <div className="flex items-center gap-1.5 mb-4">
-            <span className="w-2.5 h-2.5 rounded-full bg-error/70" />
-            <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
-            <span className="w-2.5 h-2.5 rounded-full bg-success/70" />
-          </div>
-          <pre className="font-mono text-xs text-secondary leading-relaxed overflow-x-auto">
-            <span className="text-secondary">$</span>{' '}
-            <span className="text-teal-light">curl</span>{' '}
-            <span className="text-primary">-X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \</span>
-            {'\n'}
-            {'  '}<span className="text-accent-light">-H</span>{' '}
-            <span className="text-success">"Authorization: Bearer nxai_abc123..."</span>
-            {'\n'}
-            {'  '}<span className="text-accent-light">-d</span>{' '}
-            <span className="text-success">'{`{"server_name":"filesystem","tool_name":"read_file","params":{"path":"/app/config.json"}}`}'</span>
-            {'\n\n'}
-            <span className="text-secondary"># Response</span>
-            {'\n'}
-            <span className="text-teal-light">{'{'}</span>
-            {'\n'}
-            {'  '}<span className="text-accent-light">"cached"</span>
-            <span className="text-primary">: </span>
-            <span className="text-warning">false</span>
-            <span className="text-primary">,</span>
-            {'\n'}
-            {'  '}<span className="text-accent-light">"agent_id"</span>
-            <span className="text-primary">: </span>
-            <span className="text-success">"agt_xyz789"</span>
-            <span className="text-primary">,</span>
-            {'\n'}
-            {'  '}<span className="text-accent-light">"result"</span>
-            <span className="text-primary">: {'{'}</span>
-            <span className="text-muted">...</span>
-            <span className="text-primary">{'}'}</span>
-            {'\n'}
-            <span className="text-teal-light">{'}'}</span>
-          </pre>
-        </div>
+        {/* Terminal demo — typewriter */}
+        <TypewriterTerminal />
       </div>
     </section>
   )
@@ -735,7 +812,9 @@ function Landing({ initialModal }: LandingProps): React.ReactElement {
       <Navbar onSignIn={() => openModal('login')} onGetStarted={() => openModal('register')} />
       <div>
         <Hero onGetStarted={() => openModal('register')} onSignIn={() => openModal('login')} />
+        <HeroArchDiagram />
         <Features />
+        <DashboardPreview />
         <Comparison />
         <HowItWorks />
         <Pricing />
