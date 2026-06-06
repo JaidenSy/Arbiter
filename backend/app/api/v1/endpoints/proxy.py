@@ -141,6 +141,14 @@ async def tools_list(
     # Resolve server once (org-scoped) — pass to filter_tools_list to avoid second DB round-trip.
     mcp_server = await service.resolve_server(body.server_name, agent.org_id)
 
+    # Resolve vault-referenced auth headers so protected servers receive credentials.
+    resolved_headers = await service.resolve_server_headers(mcp_server)
+    request_headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+        **resolved_headers,
+    }
+
     # Build JSON-RPC tools/list request.
     jsonrpc_body = {
         "jsonrpc": "2.0",
@@ -154,20 +162,26 @@ async def tools_list(
             resp = await client.post(
                 mcp_server.base_url,
                 json=jsonrpc_body,
-                headers={
-                    "Content-Type": "application/json",
-                    "Accept": "application/json, text/event-stream",
-                },
+                headers=request_headers,
             )
         if resp.status_code >= 400:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=(
-                    f"MCP server {body.server_name!r} returned "
-                    f"HTTP {resp.status_code}"
-                ),
+                detail=(f"MCP server {body.server_name!r} returned HTTP {resp.status_code}"),
             )
-        json_body = resp.json()
+        # Handle SSE response: collect all data events, use the last valid JSON-RPC result.
+        if "text/event-stream" in resp.headers.get("content-type", ""):
+            json_body: dict = {}
+            for line in resp.text.splitlines():
+                if line.startswith("data: "):
+                    try:
+                        candidate = json.loads(line[6:])
+                        if "result" in candidate or "error" in candidate:
+                            json_body = candidate
+                    except json.JSONDecodeError:
+                        pass
+        else:
+            json_body = resp.json()
     except HTTPException:
         raise
     except Exception as exc:

@@ -33,7 +33,7 @@ import logging
 import re
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -257,6 +257,7 @@ class ProxyService:
         # changing auth config (e.g. rotating a vault secret) invalidates
         # any previously cached unauthorized session IDs.
         import hashlib as _hl
+
         _headers_fp = _hl.md5(str(sorted(mcp_server.headers.items())).encode()).hexdigest()[:8]
         upstream_session_key = f"mcp_sessions:{session.id}:{request.server_name}:{_headers_fp}"
         outbound_headers = await self._ensure_mcp_session(
@@ -291,11 +292,18 @@ class ProxyService:
 
             try:
                 if "text/event-stream" in http_resp.headers.get("content-type", ""):
+                    # Collect all SSE data events; keep the last valid JSON-RPC result.
+                    # Upstream servers may emit keepalives or partial events before the
+                    # final response — breaking on the first event silently drops data.
                     json_body = {}
                     for line in http_resp.text.splitlines():
                         if line.startswith("data: "):
-                            json_body = json.loads(line[6:])
-                            break
+                            try:
+                                candidate = json.loads(line[6:])
+                                if "result" in candidate or "error" in candidate:
+                                    json_body = candidate
+                            except json.JSONDecodeError:
+                                pass
                 else:
                     json_body = http_resp.json()
             except Exception:
@@ -316,10 +324,14 @@ class ProxyService:
             error = http_exc.detail if isinstance(http_exc.detail, str) else str(http_exc.detail)
             duration_ms = int((time.monotonic() - start_ms) * 1000)
             await self._persist_event(
-                session=session, mcp_server=mcp_server,
-                tool_name=request.tool_name, request_payload=request.params,
-                response_payload=None, cache_hit=False,
-                duration_ms=duration_ms, error=error,
+                session=session,
+                mcp_server=mcp_server,
+                tool_name=request.tool_name,
+                request_payload=request.params,
+                response_payload=None,
+                cache_hit=False,
+                duration_ms=duration_ms,
+                error=error,
             )
             raise
         except httpx.TimeoutException as exc:
@@ -423,19 +435,25 @@ class ProxyService:
         result: dict[str, Any] = {}
         for key, value in params.items():
             if isinstance(value, str):
-                result[key] = await self._inject_secrets(value, agent_id=agent.id, org_id=agent.org_id)
+                result[key] = await self._inject_secrets(
+                    value, agent_id=agent.id, org_id=agent.org_id
+                )
             else:
                 result[key] = value
         return result
 
-    async def _inject_secrets(self, value: str, agent_id: uuid.UUID | None, org_id: uuid.UUID) -> str:
+    async def _inject_secrets(
+        self, value: str, agent_id: uuid.UUID | None, org_id: uuid.UUID
+    ) -> str:
         """Replace all {{SECRET_NAME}} and {{vault:SECRET_NAME}} placeholders in a string value."""
         matches = _SECRET_PLACEHOLDER.findall(value)
         if not matches:
             return value
         for secret_name in set(matches):
             try:
-                secret_value = await self._vault.get_secret(secret_name, org_id=org_id, agent_id=agent_id)
+                secret_value = await self._vault.get_secret(
+                    secret_name, org_id=org_id, agent_id=agent_id
+                )
                 # Replace both {{secret_name}} and {{vault:secret_name}} forms
                 value = re.sub(
                     r"\{\{(?:vault:)?" + re.escape(secret_name) + r"\}\}",
@@ -445,7 +463,8 @@ class ProxyService:
             except KeyError:
                 logger.warning(
                     "proxy: secret placeholder {{%s}} not found in vault for agent %s",
-                    secret_name, agent_id,
+                    secret_name,
+                    agent_id,
                 )
         return value
 
@@ -467,6 +486,15 @@ class ProxyService:
                 detail=f"MCP server {server_name!r} not found or inactive",
             )
         return server
+
+    async def resolve_server_headers(self, server: MCPServer) -> dict[str, str]:
+        """Return server.headers with all {{vault:SECRET}} placeholders resolved."""
+        if not server.headers:
+            return {}
+        resolved: dict[str, str] = {}
+        for name, value in server.headers.items():
+            resolved[name] = await self._inject_secrets(value, agent_id=None, org_id=server.org_id)
+        return resolved
 
     async def _ensure_mcp_session(
         self,
@@ -525,9 +553,13 @@ class ProxyService:
                 except Exception as exc:
                     logger.warning("proxy: Redis session store (init) failed: %s", exc)
                 headers["Mcp-Session-Id"] = session_id
-                logger.debug("proxy: initialized upstream MCP session %r for %s", session_id, mcp_server.name)
+                logger.debug(
+                    "proxy: initialized upstream MCP session %r for %s", session_id, mcp_server.name
+                )
         except Exception as exc:
-            logger.warning("proxy: MCP initialize handshake failed for %s: %s", mcp_server.name, exc)
+            logger.warning(
+                "proxy: MCP initialize handshake failed for %s: %s", mcp_server.name, exc
+            )
 
         return headers
 
@@ -555,7 +587,9 @@ class ProxyService:
 
         session = Session(agent_id=agent.id, org_id=agent.org_id, metadata_={})
         self.db.add(session)
-        await self.db.commit()  # commit immediately so session.id is durable before events are written
+        await (
+            self.db.commit()
+        )  # commit immediately so session.id is durable before events are written
         await self.db.refresh(session)
         return session
 
@@ -587,18 +621,22 @@ class ProxyService:
         self.db.add(event)
 
         # Upsert daily usage counters — enforces quota on subsequent calls.
-        today = datetime.now(tz=timezone.utc).date()
-        stmt = pg_insert(UsageEvent).values(
-            org_id=session.org_id,
-            event_date=today,
-            tool_calls=1,
-            cache_hits=1 if cache_hit else 0,
-        ).on_conflict_do_update(
-            constraint="uq_usage_events_org_date",
-            set_={
-                "tool_calls": UsageEvent.tool_calls + 1,
-                "cache_hits": UsageEvent.cache_hits + (1 if cache_hit else 0),
-            },
+        today = datetime.now(tz=UTC).date()
+        stmt = (
+            pg_insert(UsageEvent)
+            .values(
+                org_id=session.org_id,
+                event_date=today,
+                tool_calls=1,
+                cache_hits=1 if cache_hit else 0,
+            )
+            .on_conflict_do_update(
+                constraint="uq_usage_events_org_date",
+                set_={
+                    "tool_calls": UsageEvent.tool_calls + 1,
+                    "cache_hits": UsageEvent.cache_hits + (1 if cache_hit else 0),
+                },
+            )
         )
         await self.db.execute(stmt)
 
