@@ -44,6 +44,7 @@ from app.api.v1.endpoints import (
     vault,
 )
 from app.core.config import settings
+from app.core.request_utils import get_client_ip
 from app.db.base import async_session_factory, engine
 from app.db.models.cache import CacheEntry
 from app.db.models.cli_device_code import CliDeviceCode
@@ -386,13 +387,7 @@ def create_app() -> FastAPI:
         try:
             redis = request.app.state.redis
             if redis is not None:
-                client_ip = (
-                    request.headers.get(
-                        "X-Forwarded-For", request.client.host if request.client else "unknown"
-                    )
-                    .split(",")[0]
-                    .strip()
-                )
+                client_ip = get_client_ip(request)
                 rl_key = f"rate_limit:health_db:{client_ip}"
                 count = await redis.incr(rl_key)
                 if count == 1:
@@ -427,13 +422,7 @@ def create_app() -> FastAPI:
         redis = request.app.state.redis
         try:
             if redis is not None:
-                client_ip = (
-                    request.headers.get(
-                        "X-Forwarded-For", request.client.host if request.client else "unknown"
-                    )
-                    .split(",")[0]
-                    .strip()
-                )
+                client_ip = get_client_ip(request)
                 rl_key = f"rate_limit:health_cache:{client_ip}"
                 count = await redis.incr(rl_key)
                 if count == 1:

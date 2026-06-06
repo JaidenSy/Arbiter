@@ -122,13 +122,7 @@ async def register(
     # Org creation rate limit — max 3 new orgs per IP per day to prevent
     # free-tier reset abuse (register new email → new org → reset quota).
     if redis is not None:
-        client_ip = (
-            request.headers.get(
-                "X-Forwarded-For", request.client.host if request.client else "unknown"
-            )
-            .split(",")[0]
-            .strip()
-        )
+        client_ip = get_client_ip(request)
         reg_key = f"org_reg:{client_ip}:{date.today().isoformat()}"
         reg_count = await redis.incr(reg_key)
         if reg_count == 1:
@@ -182,13 +176,7 @@ async def login(
             )
 
         # Per-IP rate limit — 20 attempts per 10 minutes (credential stuffing defence)
-        client_ip = (
-            request.headers.get(
-                "X-Forwarded-For", request.client.host if request.client else "unknown"
-            )
-            .split(",")[0]
-            .strip()
-        )
+        client_ip = get_client_ip(request)
         ip_key = f"login_ip:{client_ip}"
         ip_attempts = await redis.incr(ip_key)
         if ip_attempts == 1:
@@ -574,13 +562,7 @@ async def resend_verification(
     # Rate limit: max 3 resend attempts per IP per 10 minutes — prevents
     # authenticated-but-unverified users from spamming the resend button.
     if redis is not None:
-        client_ip = (
-            request.headers.get(
-                "X-Forwarded-For", request.client.host if request.client else "unknown"
-            )
-            .split(",")[0]
-            .strip()
-        )
+        client_ip = get_client_ip(request)
         rl_key = f"rate_limit:send_verify:{client_ip}"
         count = await redis.incr(rl_key)
         if count == 1:
@@ -620,7 +602,9 @@ async def verify_email(
     redis=Depends(get_redis),
 ) -> dict:
     try:
-        user_id_str = _token_serializer.loads(token, salt="email-verify", max_age=settings.email_verification_expire_hours * 3600)
+        user_id_str = _token_serializer.loads(
+            token, salt="email-verify", max_age=settings.email_verification_expire_hours * 3600
+        )
         user_id = _uuid.UUID(user_id_str)
     except SignatureExpired:
         raise HTTPException(
@@ -660,7 +644,9 @@ async def confirm_email_change(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     try:
-        payload = _token_serializer.loads(token, salt="email-change", max_age=settings.email_change_expire_hours * 3600)
+        payload = _token_serializer.loads(
+            token, salt="email-change", max_age=settings.email_change_expire_hours * 3600
+        )
     except SignatureExpired:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation link has expired"
@@ -721,13 +707,7 @@ async def forgot_password(
     # Rate limit: max 3 requests per IP per 10 minutes — prevents email spam
     # abuse that costs money and risks getting the sending domain blacklisted.
     if redis is not None:
-        client_ip = (
-            request.headers.get(
-                "X-Forwarded-For", request.client.host if request.client else "unknown"
-            )
-            .split(",")[0]
-            .strip()
-        )
+        client_ip = get_client_ip(request)
         rl_key = f"rate_limit:forgot_pwd:{client_ip}"
         count = await redis.incr(rl_key)
         if count == 1:
@@ -762,7 +742,9 @@ async def reset_password(
     redis=Depends(get_redis),
 ) -> Response:
     try:
-        user_id = _token_serializer.loads(body.token, salt="pwd-reset", max_age=settings.password_reset_expire_hours * 3600)
+        user_id = _token_serializer.loads(
+            body.token, salt="pwd-reset", max_age=settings.password_reset_expire_hours * 3600
+        )
     except SignatureExpired:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Reset link has expired"

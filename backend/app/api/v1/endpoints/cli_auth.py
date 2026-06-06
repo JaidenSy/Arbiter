@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import security as _sec
 from app.core.config import settings
 from app.core.dependencies import get_current_user, get_db, get_redis
+from app.core.request_utils import get_client_ip
 from app.db.models.cli_device_code import CliDeviceCode
 from app.db.models.user import User
 
@@ -185,13 +186,7 @@ async def initiate_device_flow(
     """
     # ── Rate limiting (10 req/min per IP) ─────────────────────────────────────
     if redis is not None:
-        client_ip = (
-            request.headers.get(
-                "X-Forwarded-For", request.client.host if request.client else "unknown"
-            )
-            .split(",")[0]
-            .strip()
-        )
+        client_ip = get_client_ip(request)
         rl_key = f"rate_limit:cli_device:{client_ip}"
         count = await redis.incr(rl_key)
         if count == 1:
@@ -263,13 +258,7 @@ async def poll_for_token(
     """
     # ── Rate limiting (20 req/min per IP) ─────────────────────────────────────
     if redis is not None:
-        client_ip = (
-            request.headers.get(
-                "X-Forwarded-For", request.client.host if request.client else "unknown"
-            )
-            .split(",")[0]
-            .strip()
-        )
+        client_ip = get_client_ip(request)
         rl_key = f"rate_limit:cli_token:{client_ip}"
         count = await redis.incr(rl_key)
         if count == 1:
@@ -377,13 +366,7 @@ async def approve_device(
     """
     # ── Rate limiting (10 req/min per IP) ─────────────────────────────────────
     if redis is not None:
-        client_ip = (
-            request.headers.get(
-                "X-Forwarded-For", request.client.host if request.client else "unknown"
-            )
-            .split(",")[0]
-            .strip()
-        )
+        client_ip = get_client_ip(request)
         rl_key = f"rate_limit:cli_approve:{client_ip}"
         count = await redis.incr(rl_key)
         if count == 1:
