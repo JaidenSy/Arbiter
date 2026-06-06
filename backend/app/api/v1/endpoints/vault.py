@@ -15,24 +15,34 @@ Routes:
 
 from __future__ import annotations
 
+import logging
+import re
 import uuid
 from datetime import datetime
-
-import re
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user, get_db, require_role
-from app.schemas.pagination import Page
+from app.core.dependencies import (
+    get_current_user,
+    get_db,
+    get_redis,
+    require_role,
+)
 from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.db.models.vault import VaultSecret
+from app.schemas.pagination import Page
 from app.services.plan.plan_service import check_resource_limit
 from app.services.vault.vault_service import VaultService
+
+logger = logging.getLogger(__name__)
+
+_VAULT_DECRYPT_RATE_LIMIT = 10  # max secret decryptions per user per minute
+_VAULT_DECRYPT_WINDOW = 60  # seconds
 
 router = APIRouter(prefix="/vault", tags=["vault"])
 
@@ -46,8 +56,15 @@ _SECRET_NAME_RE = re.compile(r"^[A-Za-z0-9_]+$")
 class SecretCreate(BaseModel):
     """Request body for storing a secret."""
 
-    name: str = Field(..., min_length=1, max_length=128, description="Logical key, e.g. GITHUB_TOKEN")
-    value: str = Field(..., min_length=1, max_length=10000, description="Raw secret value — will be encrypted at rest")
+    name: str = Field(
+        ..., min_length=1, max_length=128, description="Logical key, e.g. GITHUB_TOKEN"
+    )
+    value: str = Field(
+        ...,
+        min_length=1,
+        max_length=10000,
+        description="Raw secret value — will be encrypted at rest",
+    )
     agent_id: uuid.UUID | None = Field(None, description="Scope the secret to a specific agent")
 
     @field_validator("name")
@@ -145,7 +162,12 @@ async def list_secrets(
     total = await db.scalar(select(func.count(VaultSecret.id)).where(*filters)) or 0
     result = await db.execute(select(VaultSecret).where(*filters).offset(skip).limit(limit))
     secrets = result.scalars().all()
-    return Page(items=[SecretResponse.model_validate(s) for s in secrets], total=total, skip=skip, limit=limit)
+    return Page(
+        items=[SecretResponse.model_validate(s) for s in secrets],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get(
@@ -156,8 +178,26 @@ async def list_secrets(
 async def get_secret(
     secret_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
     current_user: User = Depends(require_role("owner", "admin")),
 ) -> SecretValueResponse:
+    # ── Rate limit: 10 decryptions per user per minute ────────────────────────
+    if redis is not None:
+        rate_key = f"vault:decrypt:{current_user.id}"
+        try:
+            count = await redis.incr(rate_key)
+            if count == 1:
+                await redis.expire(rate_key, _VAULT_DECRYPT_WINDOW)
+            if count > _VAULT_DECRYPT_RATE_LIMIT:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Too many secret decryption requests — try again in a minute",
+                )
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.warning("vault: Redis rate limit check failed: %s", exc)
+
     result = await db.execute(
         select(VaultSecret).where(
             VaultSecret.id == secret_id,
@@ -173,7 +213,15 @@ async def get_secret(
 
     service = VaultService(db)
     value = service.decrypt(secret.ciphertext)
-    # SECURITY: value is never logged — only passed to the response serialiser.
+
+    logger.info(
+        "vault: secret decrypted org=%s user=%s secret_id=%s name=%r",
+        current_user.org_id,
+        current_user.id,
+        secret.id,
+        secret.name,
+    )
+
     return SecretValueResponse(
         id=secret.id,
         name=secret.name,

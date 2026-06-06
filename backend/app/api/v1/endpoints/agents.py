@@ -34,7 +34,7 @@ from app.schemas.agent import (
 )
 from app.schemas.pagination import Page
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
-from app.services.plan.plan_service import check_resource_limit, check_tool_call_quota
+from app.services.plan.plan_service import check_resource_limit
 from app.services.proxy.proxy_service import ProxyService
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -310,12 +310,5 @@ async def test_tool_call(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found"
         )
 
-    org = await db.get(Organization, agent.org_id)
-    if org is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found"
-        )
-
-    await check_tool_call_quota(redis=redis, db=db, org=org)
     service = ProxyService(db=db, redis=redis)
     return await service.forward_tool_call(request=body, agent=agent)

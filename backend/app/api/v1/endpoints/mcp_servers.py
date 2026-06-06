@@ -15,6 +15,7 @@ Routes:
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import json as _json
 import re
@@ -124,22 +125,36 @@ _PRIVATE_NETS = [
 ]
 
 
-def _assert_ssrf_safe(url: str) -> None:
-    """Raise ValueError if url resolves to a private/loopback address."""
+async def _assert_ssrf_safe_async(url: str) -> None:
+    """Raise HTTPException 422 if url resolves to a private/loopback address.
+
+    Uses asyncio DNS resolution instead of blocking socket.getaddrinfo() to
+    avoid starving the event loop on slow or malicious hostnames.
+    """
     parsed = urlparse(url)
     hostname = parsed.hostname
     if not hostname:
-        raise ValueError("base_url must contain a valid hostname")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="base_url must contain a valid hostname",
+        )
+    loop = asyncio.get_running_loop()
     try:
-        infos = socket.getaddrinfo(hostname, None)
+        infos = await loop.getaddrinfo(hostname, None)
     except socket.gaierror:
-        raise ValueError(f"base_url hostname {hostname!r} could not be resolved")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"base_url hostname {hostname!r} could not be resolved",
+        )
     for _family, _type, _proto, _canonname, sockaddr in infos:
         addr = ipaddress.ip_address(sockaddr[0])
         if any(addr in net for net in _PRIVATE_NETS):
-            raise ValueError(
-                f"base_url resolves to a private/reserved address ({addr}) — "
-                "registering internal hosts as MCP servers is not allowed"
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"base_url resolves to a private/reserved address ({addr}) — "
+                    "registering internal hosts as MCP servers is not allowed"
+                ),
             )
 
 
@@ -167,12 +182,11 @@ class MCPServerCreate(BaseModel):
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, v: str) -> str:
-        """Ensure base_url is a public HTTP(S) URL — blocks SSRF via private IPs."""
+        """Validate base_url scheme; async SSRF/DNS check runs in the endpoint handler."""
         stripped = v.strip()
         lower = stripped.lower()
         if not (lower.startswith("http://") or lower.startswith("https://")):
             raise ValueError("base_url must be a valid http:// or https:// URL")
-        _assert_ssrf_safe(stripped)
         return stripped
 
 
@@ -189,14 +203,13 @@ class MCPServerUpdate(BaseModel):
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, v: str | None) -> str | None:
-        """Ensure base_url is a public HTTP(S) URL when provided — blocks SSRF via private IPs."""
+        """Validate base_url scheme when provided; async SSRF/DNS check runs in the endpoint handler."""
         if v is None:
             return v
         stripped = v.strip()
         lower = stripped.lower()
         if not (lower.startswith("http://") or lower.startswith("https://")):
             raise ValueError("base_url must be a valid http:// or https:// URL")
-        _assert_ssrf_safe(stripped)
         return stripped
 
 
@@ -268,7 +281,10 @@ async def create_mcp_server(
 
     Raises:
         HTTPException 409: If an active server with the same name already exists.
+        HTTPException 422: If base_url resolves to a private/reserved address.
     """
+    await _assert_ssrf_safe_async(body.base_url)
+
     existing = await db.execute(
         select(MCPServer).where(
             MCPServer.name == body.name,
@@ -451,6 +467,9 @@ async def update_mcp_server(
             filter_col=MCPServer.org_id,
             count_active_only=True,
         )
+
+    if body.base_url is not None:
+        await _assert_ssrf_safe_async(body.base_url)
 
     if body.name is not None:
         server.name = body.name

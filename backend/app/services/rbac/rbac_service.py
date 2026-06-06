@@ -147,9 +147,7 @@ class RBACService:
                 tool_name=tool_name,
                 granted_by=granted_by,
             )
-            .on_conflict_do_nothing(
-                index_elements=["agent_id", "mcp_server_id", "tool_name"]
-            )
+            .on_conflict_do_nothing(index_elements=["agent_id", "mcp_server_id", "tool_name"])
         )
         await self.db.execute(stmt)
         await self.db.commit()
@@ -182,6 +180,17 @@ class RBACService:
         )
         await self.db.execute(stmt)
         await self.db.commit()
+
+        if self.redis is not None:
+            try:
+                # Clear all cached permission entries for this agent+server pair so
+                # revocation takes effect immediately rather than after TTL expiry.
+                pattern = f"rbac:{agent_id}:{mcp_server_id}:*"
+                async for key in self.redis.scan_iter(pattern):
+                    await self.redis.delete(key)
+            except Exception as exc:
+                logger.warning("rbac: Redis cache invalidation failed on revoke: %s", exc)
+
         logger.info(
             "rbac: revoked agent=%s server=%s tool=%r",
             agent_id,
