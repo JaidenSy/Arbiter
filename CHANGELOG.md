@@ -2,6 +2,16 @@
 
 All notable changes to Arbiter are documented here.
 
+## [0.3.1] — 2026-06-06
+
+### Fixed
+- **Proxy tools-list now works with auth-protected MCP servers** — `POST /proxy/tools-list` was sending only `Content-Type`/`Accept` headers to upstream servers, causing silent 401s on any server that requires authentication (e.g. `Authorization: {{vault:API_KEY}}`). Vault-referenced headers are now resolved before the upstream request, matching the behaviour of `POST /proxy/tool-call`.
+- **SSE streaming no longer drops events** — the proxy was breaking on the first `data:` event in a Server-Sent Events stream, silently discarding all subsequent events from multi-event responses. All events are now collected and the last valid JSON-RPC result is returned.
+
+### Security
+- **MCP server headers masked in list API** — `GET /mcp-servers` previously returned all header values verbatim, including any raw API keys pasted directly into the header field instead of using vault placeholders. Values that are not `{{vault:SECRET}}` references are now returned as `***`. Use the vault for secrets.
+- **Rate limiting no longer bypassable via spoofed X-Forwarded-For** — all 9 IP-based rate limits (login, register, CLI device flow, health endpoints) previously extracted `X-Forwarded-For.split(",")[0]`, which an attacker could set to any value. The correct IP is now derived from the rightmost entry added by the trusted reverse proxy (configurable via `TRUSTED_PROXY_COUNT`, default `1` for Railway).
+
 ## [0.3.0] — 2026-06-05
 
 ### Added
