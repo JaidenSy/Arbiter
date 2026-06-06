@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import ipaddress
 import json as _json
+import re
 import socket
 import uuid
 from urllib.parse import urlparse
@@ -28,10 +29,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db, require_role
-from app.schemas.pagination import Page
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
 from app.db.models.user import User
+from app.schemas.pagination import Page
 from app.services.plan.plan_service import check_resource_limit
 from app.services.vault.vault_service import VaultService
 
@@ -55,14 +56,28 @@ async def _mcp_tools_list(base_url: str, extra_headers: dict[str, str] | None = 
     if extra_headers:
         base.update(extra_headers)
     async with httpx.AsyncClient(timeout=10.0) as client:
-        init_resp = await client.post(url, json={
-            "jsonrpc": "2.0", "id": "init", "method": "initialize",
-            "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "arbiter-discover", "version": "1.0"}},
-        }, headers=base)
+        init_resp = await client.post(
+            url,
+            json={
+                "jsonrpc": "2.0",
+                "id": "init",
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "arbiter-discover", "version": "1.0"},
+                },
+            },
+            headers=base,
+        )
         session_headers = dict(base)
         if session_id := init_resp.headers.get("Mcp-Session-Id"):
             session_headers["Mcp-Session-Id"] = session_id
-        resp = await client.post(url, json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}, headers=session_headers)
+        resp = await client.post(
+            url,
+            json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+            headers=session_headers,
+        )
     data = _parse_mcp_response(resp)
     return data.get("result", {}).get("tools", [])
 
@@ -70,27 +85,41 @@ async def _mcp_tools_list(base_url: str, extra_headers: dict[str, str] | None = 
 async def _resolve_server_headers(server: MCPServer, db: AsyncSession) -> dict[str, str]:
     """Resolve {{vault:SECRET}} placeholders in server headers using org-level vault secrets."""
     import re
+
     if not server.headers:
         return {}
     vault = VaultService(db)
     _PLACEHOLDER = re.compile(r"\{\{(?:vault:)?([A-Za-z0-9_]+)\}\}")
     resolved: dict[str, str] = {}
     for hdr_name, hdr_value in server.headers.items():
+
         async def _resolve(val: str) -> str:
             for secret_name in set(_PLACEHOLDER.findall(val)):
                 try:
-                    secret_value = await vault.get_secret(secret_name, org_id=server.org_id, agent_id=None)
-                    val = re.sub(r"\{\{(?:vault:)?" + re.escape(secret_name) + r"\}\}", secret_value, val)
+                    secret_value = await vault.get_secret(
+                        secret_name, org_id=server.org_id, agent_id=None
+                    )
+                    val = re.sub(
+                        r"\{\{(?:vault:)?" + re.escape(secret_name) + r"\}\}", secret_value, val
+                    )
                 except KeyError:
                     pass
             return val
+
         resolved[hdr_name] = await _resolve(hdr_value)
     return resolved
 
+
 _PRIVATE_NETS = [
-    ipaddress.ip_network(cidr) for cidr in (
-        "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
-        "127.0.0.0/8", "169.254.0.0/16", "::1/128", "fc00::/7",
+    ipaddress.ip_network(cidr)
+    for cidr in (
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+        "127.0.0.0/8",
+        "169.254.0.0/16",
+        "::1/128",
+        "fc00::/7",
     )
 ]
 
@@ -112,6 +141,7 @@ def _assert_ssrf_safe(url: str) -> None:
                 f"base_url resolves to a private/reserved address ({addr}) — "
                 "registering internal hosts as MCP servers is not allowed"
             )
+
 
 router = APIRouter(prefix="/mcp-servers", tags=["mcp-servers"])
 
@@ -177,6 +207,18 @@ class MCPServerTestResponse(BaseModel):
     latency_ms: int | None = None
 
 
+_VAULT_REF = re.compile(r"^\{\{(?:vault:)?[A-Za-z0-9_]+\}\}$")
+
+
+def _mask_header_value(value: str) -> str:
+    """Return value as-is if it's a vault reference; mask otherwise.
+
+    Any raw value stored in the DB is a potential secret — users should be
+    using {{vault:SECRET_NAME}} placeholders, not pasting keys directly.
+    """
+    return value if _VAULT_REF.match(value) else "***"
+
+
 class MCPServerResponse(BaseModel):
     """Response schema for an MCP server."""
 
@@ -192,6 +234,11 @@ class MCPServerResponse(BaseModel):
     )
 
     model_config = {"from_attributes": True}
+
+    @field_validator("headers")
+    @classmethod
+    def mask_plaintext_headers(cls, v: dict[str, str]) -> dict[str, str]:
+        return {k: _mask_header_value(val) for k, val in v.items()}
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -289,9 +336,12 @@ async def list_mcp_servers(
         Page[MCPServerResponse]: Active servers ordered by created_at DESC.
     """
     limit = min(limit, 200)
-    total = await db.scalar(
-        select(func.count(MCPServer.id)).where(MCPServer.org_id == current_user.org_id)
-    ) or 0
+    total = (
+        await db.scalar(
+            select(func.count(MCPServer.id)).where(MCPServer.org_id == current_user.org_id)
+        )
+        or 0
+    )
     result = await db.execute(
         select(MCPServer)
         .where(MCPServer.org_id == current_user.org_id)
@@ -300,7 +350,12 @@ async def list_mcp_servers(
         .limit(limit)
     )
     servers = result.scalars().all()
-    return Page(items=[MCPServerResponse.model_validate(s) for s in servers], total=total, skip=skip, limit=limit)
+    return Page(
+        items=[MCPServerResponse.model_validate(s) for s in servers],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get(
@@ -389,8 +444,12 @@ async def update_mcp_server(
         if org is None:
             raise HTTPException(status_code=500, detail="Org not found")
         await check_resource_limit(
-            db=db, org=org, resource="mcp_servers",
-            model=MCPServer, filter_col=MCPServer.org_id, count_active_only=True,
+            db=db,
+            org=org,
+            resource="mcp_servers",
+            model=MCPServer,
+            filter_col=MCPServer.org_id,
+            count_active_only=True,
         )
 
     if body.name is not None:
@@ -434,7 +493,9 @@ async def delete_mcp_server(
     Raises:
         HTTPException 404: If the server does not exist.
     """
-    result = await db.execute(select(MCPServer).where(MCPServer.id == server_id, MCPServer.org_id == current_user.org_id))
+    result = await db.execute(
+        select(MCPServer).where(MCPServer.id == server_id, MCPServer.org_id == current_user.org_id)
+    )
     server = result.scalar_one_or_none()
     if server is None:
         raise HTTPException(
@@ -467,9 +528,12 @@ async def test_mcp_server(
     )
     server = result.scalar_one_or_none()
     if server is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {server_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {server_id} not found"
+        )
 
     import time
+
     try:
         t0 = time.monotonic()
         auth_headers = await _resolve_server_headers(server, db)
@@ -505,10 +569,16 @@ async def list_mcp_server_tools(
     )
     server = result.scalar_one_or_none()
     if server is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {server_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {server_id} not found"
+        )
     try:
         auth_headers = await _resolve_server_headers(server, db)
         tools = await _mcp_tools_list(server.base_url, extra_headers=auth_headers)
-        return [MCPToolInfo(name=t.get("name", ""), description=t.get("description")) for t in tools]
+        return [
+            MCPToolInfo(name=t.get("name", ""), description=t.get("description")) for t in tools
+        ]
     except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not fetch tools: {exc}") from exc
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not fetch tools: {exc}"
+        ) from exc
