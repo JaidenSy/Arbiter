@@ -74,6 +74,52 @@ _USER_CODE_WORDS = [
     "TIDE",
     "ULTRA",
     "VAPOR",
+    "AMBER",
+    "BLAZE",
+    "CEDAR",
+    "DRIFT",
+    "FABLE",
+    "GLYPH",
+    "HAZE",
+    "INLET",
+    "JEWEL",
+    "KNOLL",
+    "LYRIC",
+    "MARSH",
+    "NEXUS",
+    "OAKEN",
+    "PRISM",
+    "QUOTA",
+    "RIDGE",
+    "SABLE",
+    "TORCH",
+    "UMBRA",
+    "VEIL",
+    "WISP",
+    "XENON",
+    "YIELD",
+    "ZEPHYR",
+    "ARCTIC",
+    "BIRCH",
+    "COMET",
+    "DUNE",
+    "EPOCH",
+    "FJORD",
+    "GUST",
+    "HELIX",
+    "INDIGO",
+    "JOULE",
+    "KELP",
+    "LUMEN",
+    "MIST",
+    "NADIR",
+    "ONYX",
+    "PULSE",
+    "QUARTZ",
+    "REEF",
+    "SLATE",
+    "THORN",
+    "UMBER",
 ]
 
 _VERIFICATION_URI = "https://arbiterai.dev/cli-auth"
@@ -316,15 +362,38 @@ async def poll_for_token(
 )
 async def approve_device(
     user_code: str,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ) -> MessageResponse:
     """
     Authorize a CLI session by approving the device code displayed in the terminal.
 
     The authenticated user's identity and org are bound to the device code so
     the CLI receives a token scoped to the correct org on the next poll.
+
+    Rate-limited to 10 requests/minute per IP to prevent user_code brute-force.
     """
+    # ── Rate limiting (10 req/min per IP) ─────────────────────────────────────
+    if redis is not None:
+        client_ip = (
+            request.headers.get(
+                "X-Forwarded-For", request.client.host if request.client else "unknown"
+            )
+            .split(",")[0]
+            .strip()
+        )
+        rl_key = f"rate_limit:cli_approve:{client_ip}"
+        count = await redis.incr(rl_key)
+        if count == 1:
+            await redis.expire(rl_key, 60)  # 1-minute window
+        if count > 10:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many requests. Try again in 1 minute.",
+            )
+
     record = await db.scalar(select(CliDeviceCode).where(CliDeviceCode.user_code == user_code))
 
     if record is None:

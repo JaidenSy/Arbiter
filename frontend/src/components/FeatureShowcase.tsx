@@ -46,15 +46,16 @@ function CodePanel({ lines }: { lines: CodeLine[] }): React.ReactElement {
 // ── Step content ──────────────────────────────────────────────────────────────
 
 const REGISTER_LINES: CodeLine[] = [
-  [{ text: 'POST', color: T.accent }, { text: ' /api/v1/agents', color: T.primary }],
-  [{ text: 'Authorization: Bearer ', color: T.muted }, { text: 'sk-org-...', color: T.success }],
+  [{ text: '$ ', color: T.muted }, { text: 'arbiter ', color: T.accent }, { text: 'agent create ', color: T.primary }, { text: '--name ', color: T.accent }, { text: '"claude-local"', color: T.success }],
   [],
-  [{ text: '→  201 Created', color: T.teal }],
+  [{ text: '✔ Agent created', color: T.success }],
   [{ text: '{', color: T.teal }],
   [{ text: '  "id":      ', color: T.accent }, { text: '"agt_k7x2m9p3"', color: T.success }, { text: ',', color: T.primary }],
   [{ text: '  "name":    ', color: T.accent }, { text: '"claude-local"', color: T.success }, { text: ',', color: T.primary }],
-  [{ text: '  "api_key": ', color: T.accent }, { text: '"nxai_k7x2m9p3r1..."', color: T.success }],
+  [{ text: '  "api_key": ', color: T.accent }, { text: '"arb_sk_k7x2m9p3..."', color: T.success }],
   [{ text: '}', color: T.teal }],
+  [],
+  [{ text: '⚠ Copy the key — it will not be shown again.', color: T.warning }],
 ]
 
 const PROXY_LINES: CodeLine[] = [
@@ -181,7 +182,7 @@ function renderStepContent(index: number): React.ReactNode {
 // ── Step definitions ──────────────────────────────────────────────────────────
 
 const STEPS = [
-  { id: 'register',    label: 'Register agent',  description: 'Create an agent, get a unique API key.'    },
+  { id: 'register',    label: 'Register agent',  description: 'One CLI command. Get a scoped API key.'    },
   { id: 'permissions', label: 'Set permissions', description: 'Grant only the tools each agent needs.'    },
   { id: 'proxy',       label: 'Proxy a call',    description: 'Point your MCP client at Arbiter.'         },
   { id: 'trace',       label: 'View the trace',  description: 'Every call logged with full context.'      },

@@ -14,9 +14,39 @@ const C = {
   accent:    'var(--color-accent-light)',
   teal:      'var(--color-teal-light)',
   success:   'var(--color-success)',
+  warning:   'var(--color-warning)',
 }
 
-const LINES: CodeLine[] = [
+const CLI_LINES: CodeLine[] = [
+  [{ text: '$ ', color: C.muted }, { text: 'npm install -g @arbiterai/cli', color: C.primary }],
+  [{ text: '$ ', color: C.muted }, { text: 'arbiter ', color: C.accent }, { text: 'login', color: C.primary }],
+  [{ text: '  ✔ Authenticated as ', color: C.success }, { text: 'you@arbiterai.dev', color: C.teal }],
+  [
+    { text: '$ ', color: C.muted },
+    { text: 'arbiter ', color: C.accent },
+    { text: 'agent create ', color: C.primary },
+    { text: '--name ', color: C.accent },
+    { text: '"claude-local"', color: C.success },
+  ],
+  [{ text: '  ✔ Agent created · key: ', color: C.success }, { text: 'arb_sk_k7x2m9...', color: C.teal }],
+  [
+    { text: '$ ', color: C.muted },
+    { text: 'arbiter ', color: C.accent },
+    { text: 'permissions grant ', color: C.primary },
+    { text: '--agent ', color: C.accent },
+    { text: 'claude-local ', color: C.success },
+    { text: '--server ', color: C.accent },
+    { text: 'filesystem', color: C.success },
+  ],
+  [{ text: '  ✔ Permission granted', color: C.success }],
+  [],
+  [
+    { text: '✓ Connected   ', color: C.success },
+    { text: '1 agent · filesystem · logging on', color: C.teal },
+  ],
+]
+
+const CONFIG_LINES: CodeLine[] = [
   [{ text: '# Add to your MCP client config', color: C.muted }],
   [{ text: '{', color: C.teal }],
   [
@@ -33,7 +63,7 @@ const LINES: CodeLine[] = [
     { text: '      ', color: C.primary },
     { text: '"url"', color: C.accent },
     { text: ': ', color: C.primary },
-    { text: '"https://api.arbiterai.dev/mcp/nxai_k7x2m..."', color: C.success },
+    { text: '"https://api.arbiterai.dev/mcp/arb_sk_..."', color: C.success },
   ],
   [{ text: '    }', color: C.primary }],
   [{ text: '  }', color: C.primary }],
@@ -49,8 +79,7 @@ function lineLen(line: CodeLine): number {
   return line.reduce((s, t) => s + t.text.length, 0)
 }
 
-const TOTAL_CHARS = LINES.reduce((s, l) => s + lineLen(l), 0)
-const CHAR_DELAY  = 28
+const CHAR_DELAY = 22
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -63,12 +92,16 @@ export default function GatewayConnectedCTA({ onGetStarted }: Props): React.Reac
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+  const [activeTab,   setActiveTab]   = useState<'cli' | 'config'>('cli')
   const [started,     setStarted]     = useState(false)
-  const [chars,       setChars]       = useState(prefersReduced ? TOTAL_CHARS : 0)
+  const [chars,       setChars]       = useState(0)
   const [ctasVisible, setCtasVisible] = useState(prefersReduced)
   const sectionRef  = useRef<HTMLElement>(null)
   const headingRef  = useScrollReveal<HTMLHeadingElement>()
-  const done        = chars >= TOTAL_CHARS
+
+  const LINES      = activeTab === 'cli' ? CLI_LINES : CONFIG_LINES
+  const TOTAL_CHARS = LINES.reduce((s, l) => s + lineLen(l), 0)
+  const done       = chars >= TOTAL_CHARS
 
   // Start typing when section enters viewport
   useEffect(() => {
@@ -96,6 +129,12 @@ export default function GatewayConnectedCTA({ onGetStarted }: Props): React.Reac
     const t = setTimeout(() => setCtasVisible(true), 600)
     return () => clearTimeout(t)
   }, [done, ctasVisible])
+
+  function switchTab(tab: 'cli' | 'config') {
+    setActiveTab(tab)
+    setChars(0)
+    setCtasVisible(false)
+  }
 
   // Render lines up to `chars`
   let consumed = 0
@@ -139,6 +178,23 @@ export default function GatewayConnectedCTA({ onGetStarted }: Props): React.Reac
         >
           Thirty seconds to a secured gateway.
         </h2>
+
+        {/* Tab switcher */}
+        <div className="flex items-center justify-center gap-1 mb-4">
+          {(['cli', 'config'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => switchTab(tab)}
+              className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 ${
+                activeTab === tab
+                  ? 'bg-accent/15 text-accent border border-accent/25'
+                  : 'text-muted hover:text-secondary border border-transparent'
+              }`}
+            >
+              {tab === 'cli' ? 'CLI' : 'Config'}
+            </button>
+          ))}
+        </div>
 
         {/* Terminal */}
         <div className="bg-elevated border border-border-strong rounded-lg p-5 text-left mb-10">
