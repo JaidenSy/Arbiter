@@ -16,10 +16,18 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def _make_mock_redis(cached: bytes | None = None) -> AsyncMock:
+    """Return a mock Redis client. Defaults to cache miss (get returns None)."""
+    redis = AsyncMock()
+    redis.get = AsyncMock(return_value=cached)
+    redis.setex = AsyncMock(return_value=True)
+    return redis
+
 
 def _signals(**kwargs):
     """Call _build_signals with sensible defaults, overriding specified fields."""
@@ -43,6 +51,7 @@ def _signals(**kwargs):
 # ─────────────────────────────────────────────────────────────────────────────
 # TestRiskScoreMath
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestRiskScoreMath:
     """_build_signals() produces correct normalised signal values."""
@@ -144,10 +153,14 @@ class TestRiskScoreMath:
         from app.api.v1.endpoints.agents import _RISK_WEIGHTS
 
         s = _signals(
-            total_7d=110, total_24h=10, errors_7d=10, errors_24h=5,  # spike = 1.0
-            total_1h=0,     # burst = 0
+            total_7d=110,
+            total_24h=10,
+            errors_7d=10,
+            errors_24h=5,  # spike = 1.0
+            total_1h=0,  # burst = 0
             novel_count=0,  # novel = 0
-            avg_dur_7d=None, avg_dur_24h=None,  # latency = 0
+            avg_dur_7d=None,
+            avg_dur_24h=None,  # latency = 0
             off_hours_24h=0,  # off_hours = 0
         )
         # Only error_rate_spike fires (1.0 × 0.35)
@@ -166,10 +179,14 @@ class TestRiskScoreMath:
         from app.api.v1.endpoints.agents import _RISK_WEIGHTS
 
         s = _signals(
-            total_7d=110, total_24h=10, errors_7d=10, errors_24h=5,  # spike = 1.0
-            total_1h=1000,   # burst = 1.0 (capped)
+            total_7d=110,
+            total_24h=10,
+            errors_7d=10,
+            errors_24h=5,  # spike = 1.0
+            total_1h=1000,  # burst = 1.0 (capped)
             novel_count=10,  # novel = 1.0 (capped)
-            avg_dur_7d=100.0, avg_dur_24h=250.0,  # latency = 1.0
+            avg_dur_7d=100.0,
+            avg_dur_24h=250.0,  # latency = 1.0
             off_hours_24h=10,  # off_hours = 1.0 (all 10 out of 10)
         )
         score = (
@@ -186,39 +203,48 @@ class TestRiskScoreMath:
 # TestRiskLevelThresholds
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestRiskLevelThresholds:
     """_score_to_level() maps scores to the correct named levels."""
 
     def test_zero_score_is_low(self):
         from app.api.v1.endpoints.agents import _score_to_level
+
         assert _score_to_level(0.0) == "low"
 
     def test_below_0_25_is_low(self):
         from app.api.v1.endpoints.agents import _score_to_level
+
         assert _score_to_level(0.24) == "low"
 
     def test_0_25_is_medium(self):
         from app.api.v1.endpoints.agents import _score_to_level
+
         assert _score_to_level(0.25) == "medium"
 
     def test_0_49_is_medium(self):
         from app.api.v1.endpoints.agents import _score_to_level
+
         assert _score_to_level(0.49) == "medium"
 
     def test_0_50_is_high(self):
         from app.api.v1.endpoints.agents import _score_to_level
+
         assert _score_to_level(0.50) == "high"
 
     def test_0_74_is_high(self):
         from app.api.v1.endpoints.agents import _score_to_level
+
         assert _score_to_level(0.74) == "high"
 
     def test_0_75_is_critical(self):
         from app.api.v1.endpoints.agents import _score_to_level
+
         assert _score_to_level(0.75) == "critical"
 
     def test_1_0_is_critical(self):
         from app.api.v1.endpoints.agents import _score_to_level
+
         assert _score_to_level(1.0) == "critical"
 
 
@@ -226,8 +252,9 @@ class TestRiskLevelThresholds:
 # TestRiskPlanGate
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestRiskPlanGate:
-    """GET /agents/{id}/risk returns 402 for free-plan orgs."""
+    """GET /agents/{id}/risk returns 402 for non-pro/enterprise orgs."""
 
     @pytest.mark.asyncio
     async def test_free_plan_raises_402(self):
@@ -247,10 +274,37 @@ class TestRiskPlanGate:
         mock_db.get = AsyncMock(return_value=mock_org)
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_agent_risk(agent_id=agent_id, db=mock_db, current_user=mock_user)
+            await get_agent_risk(
+                agent_id=agent_id, db=mock_db, redis=_make_mock_redis(), current_user=mock_user
+            )
 
         assert exc_info.value.status_code == 402
         assert "Pro" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_unknown_plan_raises_402(self):
+        """Any unrecognised tier (e.g. future 'starter') is denied, not silently granted."""
+        from fastapi import HTTPException
+
+        from app.api.v1.endpoints.agents import get_agent_risk
+
+        agent_id = uuid.uuid4()
+
+        mock_org = MagicMock()
+        mock_org.plan_tier = "starter"
+
+        mock_user = MagicMock()
+        mock_user.org_id = uuid.uuid4()
+
+        mock_db = AsyncMock()
+        mock_db.get = AsyncMock(return_value=mock_org)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await get_agent_risk(
+                agent_id=agent_id, db=mock_db, redis=_make_mock_redis(), current_user=mock_user
+            )
+
+        assert exc_info.value.status_code == 402
 
     @pytest.mark.asyncio
     async def test_pro_plan_does_not_raise_plan_error(self):
@@ -267,9 +321,6 @@ class TestRiskPlanGate:
         mock_user = MagicMock()
         mock_user.org_id = uuid.uuid4()
 
-        mock_agent = MagicMock()
-        mock_agent.id = agent_id
-
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None  # triggers 404
 
@@ -278,7 +329,9 @@ class TestRiskPlanGate:
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_agent_risk(agent_id=agent_id, db=mock_db, current_user=mock_user)
+            await get_agent_risk(
+                agent_id=agent_id, db=mock_db, redis=_make_mock_redis(), current_user=mock_user
+            )
 
         # 404 means we passed the plan gate — a 402 would mean we didn't
         assert exc_info.value.status_code == 404
@@ -306,7 +359,9 @@ class TestRiskPlanGate:
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_agent_risk(agent_id=agent_id, db=mock_db, current_user=mock_user)
+            await get_agent_risk(
+                agent_id=agent_id, db=mock_db, redis=_make_mock_redis(), current_user=mock_user
+            )
 
         assert exc_info.value.status_code == 404
 
@@ -326,7 +381,9 @@ class TestRiskPlanGate:
         mock_db.get = AsyncMock(return_value=None)
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_agent_risk(agent_id=agent_id, db=mock_db, current_user=mock_user)
+            await get_agent_risk(
+                agent_id=agent_id, db=mock_db, redis=_make_mock_redis(), current_user=mock_user
+            )
 
         assert exc_info.value.status_code == 500
 
@@ -335,6 +392,7 @@ class TestRiskPlanGate:
 # TestRiskSignalBoundaries
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestRiskSignalBoundaries:
     """Edge cases: exact-2× thresholds (strictly >), zero-baseline burst, full off-hours."""
 
@@ -342,8 +400,10 @@ class TestRiskSignalBoundaries:
         # Condition is rate_24h > 2.0 * rate_baseline (strictly greater).
         # baseline: 100 calls, 10 errors (10%); 24h: 10 calls, 2 errors (20%) = exactly 2×.
         s = _signals(
-            total_7d=110, total_24h=10,
-            errors_7d=12, errors_24h=2,
+            total_7d=110,
+            total_24h=10,
+            errors_7d=12,
+            errors_24h=2,
         )
         assert s.error_rate_spike == 0.0
 
@@ -368,16 +428,12 @@ class TestRiskSignalBoundaries:
         assert s.novel_tool_count == 1.0
 
     def test_error_spike_just_above_2x_fires(self):
-        # rate_24h = 21% vs baseline 10% → 2.1× > 2× → spike fires.
+        # baseline 100 calls, 10 errors (10%); 24h: 10 calls, 3 errors (30%) > 20% → fires
         s = _signals(
-            total_7d=110, total_24h=10,
-            errors_7d=12, errors_24h=21,  # 21/100 baseline, 21/10 = 210%? No wait
-        )
-        # Let's use cleaner numbers: baseline 100 calls, 10 errors (10%)
-        # 24h: 10 calls, 3 errors (30%) > 20% → fires
-        s = _signals(
-            total_7d=110, total_24h=10,
-            errors_7d=13, errors_24h=3,
+            total_7d=110,
+            total_24h=10,
+            errors_7d=13,
+            errors_24h=3,
         )
         assert s.error_rate_spike == 1.0
 
@@ -385,6 +441,7 @@ class TestRiskSignalBoundaries:
 # ─────────────────────────────────────────────────────────────────────────────
 # TestRiskEndpointHappyPath
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestRiskEndpointHappyPath:
     """Full endpoint pipeline with mocked DB — verifies response shape and score."""
@@ -411,22 +468,30 @@ class TestRiskEndpointHappyPath:
         mock_agent_result.scalar_one_or_none.return_value = MagicMock(id=agent_id)
 
         stats_data = {
-            "total_7d": 0, "total_24h": 0, "total_1h": 0,
-            "errors_7d": 0, "errors_24h": 0,
-            "avg_dur_7d": None, "avg_dur_24h": None,
+            "total_7d": 0,
+            "total_24h": 0,
+            "total_1h": 0,
+            "errors_7d": 0,
+            "errors_24h": 0,
+            "avg_dur_7d": None,
+            "avg_dur_24h": None,
             "off_hours_24h": 0,
         }
         novel_data = {"novel_tool_count": 0}
 
         mock_db = AsyncMock()
         mock_db.get = AsyncMock(return_value=mock_org)
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_agent_result,
-            self._make_stats_mock(stats_data),
-            self._make_stats_mock(novel_data),
-        ])
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                mock_agent_result,
+                self._make_stats_mock(stats_data),
+                self._make_stats_mock(novel_data),
+            ]
+        )
 
-        response = await get_agent_risk(agent_id=agent_id, db=mock_db, current_user=mock_user)
+        response = await get_agent_risk(
+            agent_id=agent_id, db=mock_db, redis=_make_mock_redis(), current_user=mock_user
+        )
 
         assert response.agent_id == agent_id
         assert response.score == 0.0
@@ -440,7 +505,7 @@ class TestRiskEndpointHappyPath:
     @pytest.mark.asyncio
     async def test_only_error_spike_fires_score_equals_weight(self):
         """When only error_rate_spike fires, score == its weight (0.35)."""
-        from app.api.v1.endpoints.agents import get_agent_risk, _RISK_WEIGHTS
+        from app.api.v1.endpoints.agents import _RISK_WEIGHTS, get_agent_risk
 
         agent_id = uuid.uuid4()
 
@@ -455,22 +520,30 @@ class TestRiskEndpointHappyPath:
 
         # 24h error rate (50%) is 10× baseline (5%) → spike fires; nothing else triggers.
         stats_data = {
-            "total_7d": 110, "total_24h": 10, "total_1h": 0,
-            "errors_7d": 10, "errors_24h": 5,       # baseline 5/100=5%, 24h 5/10=50%
-            "avg_dur_7d": None, "avg_dur_24h": None,
+            "total_7d": 110,
+            "total_24h": 10,
+            "total_1h": 0,
+            "errors_7d": 10,
+            "errors_24h": 5,  # baseline 5/100=5%, 24h 5/10=50%
+            "avg_dur_7d": None,
+            "avg_dur_24h": None,
             "off_hours_24h": 0,
         }
         novel_data = {"novel_tool_count": 0}
 
         mock_db = AsyncMock()
         mock_db.get = AsyncMock(return_value=mock_org)
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_agent_result,
-            self._make_stats_mock(stats_data),
-            self._make_stats_mock(novel_data),
-        ])
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                mock_agent_result,
+                self._make_stats_mock(stats_data),
+                self._make_stats_mock(novel_data),
+            ]
+        )
 
-        response = await get_agent_risk(agent_id=agent_id, db=mock_db, current_user=mock_user)
+        response = await get_agent_risk(
+            agent_id=agent_id, db=mock_db, redis=_make_mock_redis(), current_user=mock_user
+        )
 
         expected_score = round(_RISK_WEIGHTS["error_rate_spike"], 4)
         assert abs(response.score - expected_score) < 0.0001
@@ -493,21 +566,29 @@ class TestRiskEndpointHappyPath:
         mock_agent_result.scalar_one_or_none.return_value = MagicMock(id=agent_id)
 
         stats_data = {
-            "total_7d": 0, "total_24h": 0, "total_1h": 0,
-            "errors_7d": 0, "errors_24h": 0,
-            "avg_dur_7d": None, "avg_dur_24h": None,
+            "total_7d": 0,
+            "total_24h": 0,
+            "total_1h": 0,
+            "errors_7d": 0,
+            "errors_24h": 0,
+            "avg_dur_7d": None,
+            "avg_dur_24h": None,
             "off_hours_24h": 0,
         }
         novel_data = {"novel_tool_count": 0}
 
         mock_db = AsyncMock()
         mock_db.get = AsyncMock(return_value=mock_org)
-        mock_db.execute = AsyncMock(side_effect=[
-            mock_agent_result,
-            self._make_stats_mock(stats_data),
-            self._make_stats_mock(novel_data),
-        ])
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                mock_agent_result,
+                self._make_stats_mock(stats_data),
+                self._make_stats_mock(novel_data),
+            ]
+        )
 
-        response = await get_agent_risk(agent_id=agent_id, db=mock_db, current_user=mock_user)
+        response = await get_agent_risk(
+            agent_id=agent_id, db=mock_db, redis=_make_mock_redis(), current_user=mock_user
+        )
 
         assert response.agent_id == agent_id

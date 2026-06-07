@@ -325,6 +325,9 @@ async def test_tool_call(
 
 # ── Risk / anomaly detection helpers ─────────────────────────────────────────
 
+_HOURS_IN_7_DAYS = 168
+_RISK_CACHE_TTL = 60  # seconds — risk scores are recomputed at most once per minute
+
 _RISK_WEIGHTS = {
     "error_rate_spike": 0.35,
     "burst_ratio": 0.25,
@@ -424,7 +427,7 @@ def _build_signals(
         error_spike = 0.0
 
     # ── Signal 2: burst_ratio ─────────────────────────────────────────────────
-    hourly_avg = total_7d / 168.0
+    hourly_avg = total_7d / _HOURS_IN_7_DAYS
     raw_burst = total_1h / max(hourly_avg, 0.001)
     burst = min(raw_burst / 10.0, 1.0)
 
@@ -451,6 +454,7 @@ def _build_signals(
 
 # ── Risk endpoint ─────────────────────────────────────────────────────────────
 
+
 @router.get(
     "/{agent_id}/risk",
     response_model=AgentRiskResponse,
@@ -459,6 +463,7 @@ def _build_signals(
 async def get_agent_risk(
     agent_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    redis: object = Depends(get_redis),
     current_user: User = Depends(get_current_user),
 ) -> AgentRiskResponse:
     org = await db.get(Organization, current_user.org_id)
@@ -467,11 +472,16 @@ async def get_agent_risk(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found"
         )
 
-    if org.plan_tier == "free":
+    if org.plan_tier not in ("pro", "enterprise"):
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Anomaly detection requires a Pro or Enterprise plan",
         )
+
+    cache_key = f"agent_risk:{current_user.org_id}:{agent_id}"
+    cached = await redis.get(cache_key)
+    if cached is not None:
+        return AgentRiskResponse.model_validate_json(cached)
 
     result = await db.execute(
         select(Agent).where(
@@ -499,7 +509,9 @@ async def get_agent_risk(
         errors_7d=int(stats_row["errors_7d"] or 0),
         errors_24h=int(stats_row["errors_24h"] or 0),
         avg_dur_7d=float(stats_row["avg_dur_7d"]) if stats_row["avg_dur_7d"] is not None else None,
-        avg_dur_24h=float(stats_row["avg_dur_24h"]) if stats_row["avg_dur_24h"] is not None else None,
+        avg_dur_24h=float(stats_row["avg_dur_24h"])
+        if stats_row["avg_dur_24h"] is not None
+        else None,
         off_hours_24h=int(stats_row["off_hours_24h"] or 0),
         novel_count=int(novel_row["novel_tool_count"] or 0),
     )
@@ -513,9 +525,11 @@ async def get_agent_risk(
         4,
     )
 
-    return AgentRiskResponse(
+    response = AgentRiskResponse(
         agent_id=agent_id,
         score=score,
         level=_score_to_level(score),
         signals=signals,
     )
+    await redis.setex(cache_key, _RISK_CACHE_TTL, response.model_dump_json())
+    return response
