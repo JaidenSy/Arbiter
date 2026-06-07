@@ -1,49 +1,27 @@
 /**
  * Arbiter — Verify Email page.
  *
- * Route: /verify-email?token=<token> (public, no sidebar)
- * Hits GET /auth/verify-email?token=<token> on mount.
+ * Route: /verify-email?status=success|error[&detail=...] (public, no sidebar)
+ * The backend handles verification server-side and redirects here with the result.
  */
 
-import React, { useEffect, useRef, useState } from 'react'
+import React from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { authClient } from '../api/client'
 import { ArbiterMark } from '../components/ArbiterLogo'
 import { useAuth } from '../context/AuthContext'
 
-type Status = 'loading' | 'success' | 'error'
-
 function VerifyEmail(): React.ReactElement {
   const [searchParams] = useSearchParams()
-  const token = searchParams.get('token') ?? ''
-  const [status, setStatus] = useState<Status>('loading')
-  const [message, setMessage] = useState('')
+  const status = searchParams.get('status')
+  const detail = searchParams.get('detail')
   const { refreshUser } = useAuth()
-  const didRun = useRef(false)
 
-  useEffect(() => {
-    if (didRun.current) return
-    didRun.current = true
-
-    if (!token) {
-      setStatus('error')
-      setMessage('Missing verification token.')
-      return
+  // Refresh user state in the background so dashboard shows verified immediately
+  React.useEffect(() => {
+    if (status === 'success') {
+      refreshUser().catch(() => null)
     }
-
-    authClient
-      .get<{ message: string }>(`/auth/verify-email?token=${encodeURIComponent(token)}`)
-      .then(async () => {
-        setStatus('success')
-        await refreshUser().catch(() => null)
-      })
-      .catch((err: unknown) => {
-        const detail =
-          (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-        setMessage(detail ?? 'Network error. Please try again.')
-        setStatus('error')
-      })
-  }, [token, refreshUser])
+  }, [status, refreshUser])
 
   return (
     <div className="min-h-screen bg-base flex items-center justify-center px-4">
@@ -54,7 +32,7 @@ function VerifyEmail(): React.ReactElement {
         </div>
 
         <div className="bg-card border border-border rounded-xl p-8 shadow-xl">
-          {status === 'loading' && (
+          {!status && (
             <>
               <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
               <p className="text-secondary text-sm">Verifying your email…</p>
@@ -87,7 +65,9 @@ function VerifyEmail(): React.ReactElement {
                 </svg>
               </div>
               <h1 className="text-lg font-bold text-primary mb-2">Verification failed</h1>
-              <p className="text-secondary text-sm mb-5">{message}</p>
+              <p className="text-secondary text-sm mb-5">
+                {detail ?? 'Something went wrong. Please try again.'}
+              </p>
               <Link to="/login" className="text-accent-light hover:text-white text-sm font-medium transition-colors">
                 Back to sign in
               </Link>
