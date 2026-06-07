@@ -114,9 +114,14 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: str | list[str]) -> list[str]:
-        """Accept comma-separated string or list from env."""
+        """Accept JSON array, comma-separated string, or list from env."""
         if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",")]
+            stripped = value.strip()
+            if stripped.startswith("["):
+                import json
+
+                return json.loads(stripped)
+            return [origin.strip() for origin in stripped.split(",")]
         return value
 
     @field_validator("vault_encryption_key")
