@@ -29,6 +29,7 @@ from sqlalchemy.orm import selectinload
 from app.core import security as _sec
 from app.core.config import settings
 from app.core.dependencies import get_current_user, get_db, get_redis
+from app.core.request_utils import get_client_ip
 from app.db.models.organization import Organization
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.user import User
