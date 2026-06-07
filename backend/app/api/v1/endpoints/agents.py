@@ -10,6 +10,7 @@ Routes:
     GET    /agents/{id}          — get a single agent by UUID
     DELETE /agents/{id}          — soft-delete (sets is_active=False); does not count against plan cap
     POST   /agents/{id}/rotate-key — invalidate old key, issue new one (returned once)
+    GET    /agents/{id}/risk     — anomaly risk score (Pro+ only)
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
@@ -34,6 +35,7 @@ from app.schemas.agent import (
 )
 from app.schemas.pagination import Page
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
+from app.schemas.risk import AgentRiskResponse, AgentRiskSignals
 from app.services.plan.plan_service import check_resource_limit, check_tool_call_quota
 from app.services.proxy.proxy_service import ProxyService
 
@@ -319,3 +321,215 @@ async def test_tool_call(
     await check_tool_call_quota(redis=redis, db=db, org=org)
     service = ProxyService(db=db, redis=redis)
     return await service.forward_tool_call(request=body, agent=agent)
+
+
+# ── Risk / anomaly detection helpers ─────────────────────────────────────────
+
+_HOURS_IN_7_DAYS = 168
+_RISK_CACHE_TTL = 60  # seconds — risk scores are recomputed at most once per minute
+
+_RISK_WEIGHTS = {
+    "error_rate_spike": 0.35,
+    "burst_ratio": 0.25,
+    "novel_tool_count": 0.20,
+    "latency_spike_ratio": 0.10,
+    "off_hours_ratio_24h": 0.10,
+}
+
+_MAIN_STATS_SQL = text("""
+    SELECT
+        COUNT(*) FILTER (WHERE se.occurred_at >= NOW() - INTERVAL '7 days')  AS total_7d,
+        COUNT(*) FILTER (WHERE se.occurred_at >= NOW() - INTERVAL '24 hours') AS total_24h,
+        COUNT(*) FILTER (WHERE se.occurred_at >= NOW() - INTERVAL '1 hour')   AS total_1h,
+        COUNT(*) FILTER (
+            WHERE se.occurred_at >= NOW() - INTERVAL '7 days'
+              AND se.error IS NOT NULL
+        ) AS errors_7d,
+        COUNT(*) FILTER (
+            WHERE se.occurred_at >= NOW() - INTERVAL '24 hours'
+              AND se.error IS NOT NULL
+        ) AS errors_24h,
+        AVG(se.duration_ms) FILTER (
+            WHERE se.occurred_at >= NOW() - INTERVAL '7 days'
+              AND se.duration_ms IS NOT NULL
+        ) AS avg_dur_7d,
+        AVG(se.duration_ms) FILTER (
+            WHERE se.occurred_at >= NOW() - INTERVAL '24 hours'
+              AND se.duration_ms IS NOT NULL
+        ) AS avg_dur_24h,
+        COUNT(*) FILTER (
+            WHERE se.occurred_at >= NOW() - INTERVAL '24 hours'
+              AND (
+                  EXTRACT(HOUR FROM se.occurred_at AT TIME ZONE 'UTC') < 6
+                  OR EXTRACT(HOUR FROM se.occurred_at AT TIME ZONE 'UTC') >= 22
+              )
+        ) AS off_hours_24h
+    FROM session_events se
+    JOIN sessions s ON s.id = se.session_id
+    WHERE s.agent_id = :agent_id
+      AND s.org_id   = :org_id
+      AND se.occurred_at >= NOW() - INTERVAL '7 days'
+""")
+
+_NOVEL_TOOLS_SQL = text("""
+    WITH prior_tools AS (
+        SELECT DISTINCT se.tool_name
+        FROM session_events se
+        JOIN sessions s ON s.id = se.session_id
+        WHERE s.agent_id = :agent_id
+          AND s.org_id   = :org_id
+          AND se.occurred_at >= NOW() - INTERVAL '7 days'
+          AND se.occurred_at <  NOW() - INTERVAL '24 hours'
+    ),
+    recent_tools AS (
+        SELECT DISTINCT se.tool_name
+        FROM session_events se
+        JOIN sessions s ON s.id = se.session_id
+        WHERE s.agent_id = :agent_id
+          AND s.org_id   = :org_id
+          AND se.occurred_at >= NOW() - INTERVAL '24 hours'
+    )
+    SELECT COUNT(*) AS novel_tool_count
+    FROM recent_tools rt
+    WHERE rt.tool_name NOT IN (SELECT tool_name FROM prior_tools)
+""")
+
+
+def _score_to_level(score: float) -> str:
+    if score < 0.25:
+        return "low"
+    if score < 0.50:
+        return "medium"
+    if score < 0.75:
+        return "high"
+    return "critical"
+
+
+def _build_signals(
+    total_7d: int,
+    total_24h: int,
+    total_1h: int,
+    errors_7d: int,
+    errors_24h: int,
+    avg_dur_7d: float | None,
+    avg_dur_24h: float | None,
+    off_hours_24h: int,
+    novel_count: int,
+) -> AgentRiskSignals:
+    # ── Signal 1: error_rate_spike ────────────────────────────────────────────
+    total_baseline = total_7d - total_24h
+    errors_baseline = errors_7d - errors_24h
+    rate_24h = errors_24h / total_24h if total_24h > 0 else 0.0
+    rate_baseline = errors_baseline / total_baseline if total_baseline > 0 else 0.0
+    if total_24h > 0 and rate_24h > 2.0 * rate_baseline:
+        error_spike = 1.0
+    else:
+        error_spike = 0.0
+
+    # ── Signal 2: burst_ratio ─────────────────────────────────────────────────
+    hourly_avg = total_7d / _HOURS_IN_7_DAYS
+    raw_burst = total_1h / max(hourly_avg, 0.001)
+    burst = min(raw_burst / 10.0, 1.0)
+
+    # ── Signal 3: novel_tool_count ────────────────────────────────────────────
+    novel = min(novel_count / 5.0, 1.0)
+
+    # ── Signal 4: latency_spike_ratio ─────────────────────────────────────────
+    if avg_dur_7d and avg_dur_7d > 0 and avg_dur_24h and avg_dur_24h > 2.0 * avg_dur_7d:
+        latency_spike = 1.0
+    else:
+        latency_spike = 0.0
+
+    # ── Signal 5: off_hours_ratio_24h ─────────────────────────────────────────
+    off_hours = off_hours_24h / max(total_24h, 1)
+
+    return AgentRiskSignals(
+        error_rate_spike=round(error_spike, 4),
+        burst_ratio=round(burst, 4),
+        novel_tool_count=round(novel, 4),
+        latency_spike_ratio=round(latency_spike, 4),
+        off_hours_ratio_24h=round(off_hours, 4),
+    )
+
+
+# ── Risk endpoint ─────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/{agent_id}/risk",
+    response_model=AgentRiskResponse,
+    summary="Anomaly risk score for an agent (Pro+ only)",
+)
+async def get_agent_risk(
+    agent_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    redis: object = Depends(get_redis),
+    current_user: User = Depends(get_current_user),
+) -> AgentRiskResponse:
+    org = await db.get(Organization, current_user.org_id)
+    if org is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found"
+        )
+
+    if org.plan_tier not in ("pro", "enterprise"):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Anomaly detection requires a Pro or Enterprise plan",
+        )
+
+    cache_key = f"agent_risk:{current_user.org_id}:{agent_id}"
+    cached = await redis.get(cache_key)
+    if cached is not None:
+        return AgentRiskResponse.model_validate_json(cached)
+
+    result = await db.execute(
+        select(Agent).where(
+            Agent.id == agent_id,
+            Agent.is_active.is_(True),
+            Agent.org_id == current_user.org_id,
+        )
+    )
+    agent = result.scalar_one_or_none()
+    if agent is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Agent {agent_id} not found",
+        )
+
+    params = {"agent_id": str(agent_id), "org_id": str(current_user.org_id)}
+
+    stats_row = (await db.execute(_MAIN_STATS_SQL, params)).mappings().one()
+    novel_row = (await db.execute(_NOVEL_TOOLS_SQL, params)).mappings().one()
+
+    signals = _build_signals(
+        total_7d=int(stats_row["total_7d"] or 0),
+        total_24h=int(stats_row["total_24h"] or 0),
+        total_1h=int(stats_row["total_1h"] or 0),
+        errors_7d=int(stats_row["errors_7d"] or 0),
+        errors_24h=int(stats_row["errors_24h"] or 0),
+        avg_dur_7d=float(stats_row["avg_dur_7d"]) if stats_row["avg_dur_7d"] is not None else None,
+        avg_dur_24h=float(stats_row["avg_dur_24h"])
+        if stats_row["avg_dur_24h"] is not None
+        else None,
+        off_hours_24h=int(stats_row["off_hours_24h"] or 0),
+        novel_count=int(novel_row["novel_tool_count"] or 0),
+    )
+
+    score = round(
+        signals.error_rate_spike * _RISK_WEIGHTS["error_rate_spike"]
+        + signals.burst_ratio * _RISK_WEIGHTS["burst_ratio"]
+        + signals.novel_tool_count * _RISK_WEIGHTS["novel_tool_count"]
+        + signals.latency_spike_ratio * _RISK_WEIGHTS["latency_spike_ratio"]
+        + signals.off_hours_ratio_24h * _RISK_WEIGHTS["off_hours_ratio_24h"],
+        4,
+    )
+
+    response = AgentRiskResponse(
+        agent_id=agent_id,
+        score=score,
+        level=_score_to_level(score),
+        signals=signals,
+    )
+    await redis.setex(cache_key, _RISK_CACHE_TTL, response.model_dump_json())
+    return response
