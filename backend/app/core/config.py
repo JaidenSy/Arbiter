@@ -88,6 +88,7 @@ class Settings(BaseSettings):
     github_client_id: str = ""
     github_client_secret: str = ""
     oauth_redirect_base_url: str = "http://localhost:8000"
+    backend_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:3000"
 
     # ── Stripe ────────────────────────────────────────────────────────────────

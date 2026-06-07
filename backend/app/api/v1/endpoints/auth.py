@@ -142,7 +142,7 @@ async def register(
     )
 
     token = _token_serializer.dumps(str(user.id), salt="email-verify")
-    verify_url = f"{settings.frontend_url}/verify-email?token={token}"
+    verify_url = f"{settings.backend_url}/api/v1/auth/verify-email?token={token}"
     await send_email_verification(user.email, verify_url)
 
     return TokenResponse(
@@ -591,48 +591,50 @@ async def resend_verification(
             )
 
     token = _token_serializer.dumps(str(current_user.id), salt="email-verify")
-    verify_url = f"{settings.frontend_url}/verify-email?token={token}"
+    verify_url = f"{settings.backend_url}/api/v1/auth/verify-email?token={token}"
     await send_email_verification(current_user.email, verify_url)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/verify-email", status_code=status.HTTP_200_OK, summary="Verify email address")
+@router.get("/verify-email", summary="Verify email address")
 async def verify_email(
     token: str = Query(...),
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
-) -> dict:
+) -> RedirectResponse:
+    frontend = settings.frontend_url
+
+    def _redirect_error(detail: str) -> RedirectResponse:
+        from urllib.parse import urlencode
+
+        return RedirectResponse(
+            url=f"{frontend}/verify-email?status=error&detail={urlencode({'': detail})[1:]}",
+            status_code=302,
+        )
+
     try:
         user_id_str = _token_serializer.loads(
             token, salt="email-verify", max_age=settings.email_verification_expire_hours * 3600
         )
         user_id = _uuid.UUID(user_id_str)
     except SignatureExpired:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Verification link has expired"
-        )
+        return _redirect_error("Verification link has expired. Please request a new one.")
     except (BadSignature, ValueError):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification token"
-        )
+        return _redirect_error("Invalid verification link.")
+
     try:
         user = await db.get(User, user_id)
         if user is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            return _redirect_error("Account not found.")
         if not user.is_verified:
             user.is_verified = True
             await db.commit()
             if redis is not None:
                 await redis.delete(f"org_verified:{user.org_id}")
-        return {"message": "Email verified successfully"}
-    except HTTPException:
-        raise
-    except Exception as exc:
+        return RedirectResponse(url=f"{frontend}/verify-email?status=success", status_code=302)
+    except Exception:
         _log.exception("verify_email: unexpected error for user_id=%s", user_id)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Verification error: {type(exc).__name__}",
-        ) from exc
+        return _redirect_error("An unexpected error occurred. Please try again.")
 
 
 @router.get(
