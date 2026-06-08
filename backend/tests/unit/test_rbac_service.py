@@ -297,3 +297,47 @@ class TestFilterToolsList:
         names = [t["name"] for t in result]
         assert set(names) == {"alpha", "gamma"}
         assert len(result) == 2
+
+
+class TestRevokePermission:
+    @pytest.mark.asyncio
+    async def test_revoke_deletes_redis_cache_key(self):
+        """revoke_permission deletes the RBAC cache entry so the 30s stale window is closed."""
+        from app.services.rbac.rbac_service import RBACService
+
+        agent_id = uuid.uuid4()
+        server_id = uuid.uuid4()
+        tool = "write_file"
+
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=MagicMock())
+        db.commit = AsyncMock()
+
+        redis = AsyncMock()
+        redis.delete = AsyncMock()
+
+        svc = RBACService(db=db, redis=redis)
+        await svc.revoke_permission(
+            agent_id=agent_id,
+            mcp_server_id=server_id,
+            tool_name=tool,
+        )
+
+        expected_key = f"rbac:{agent_id}:{server_id}:{tool}"
+        redis.delete.assert_awaited_once_with(expected_key)
+
+    @pytest.mark.asyncio
+    async def test_revoke_without_redis_does_not_raise(self):
+        """revoke_permission works correctly when no Redis client is provided."""
+        from app.services.rbac.rbac_service import RBACService
+
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=MagicMock())
+        db.commit = AsyncMock()
+
+        svc = RBACService(db=db, redis=None)
+        await svc.revoke_permission(
+            agent_id=uuid.uuid4(),
+            mcp_server_id=uuid.uuid4(),
+            tool_name="read_file",
+        )  # must not raise
