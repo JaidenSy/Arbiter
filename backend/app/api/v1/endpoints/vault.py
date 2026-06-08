@@ -15,17 +15,18 @@ Routes:
 
 from __future__ import annotations
 
+import logging
+import re
+import time
 import uuid
 from datetime import datetime
-
-import re
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user, get_db, require_role
+from app.core.dependencies import get_current_user, get_db, get_redis, require_role
 from app.schemas.pagination import Page
 from app.db.models.agent import Agent
 from app.db.models.organization import Organization
@@ -33,6 +34,10 @@ from app.db.models.user import User
 from app.db.models.vault import VaultSecret
 from app.services.plan.plan_service import check_resource_limit
 from app.services.vault.vault_service import VaultService
+
+logger = logging.getLogger(__name__)
+
+_VAULT_DECRYPT_RATE_LIMIT = 10  # requests per minute per user
 
 router = APIRouter(prefix="/vault", tags=["vault"])
 
@@ -156,8 +161,20 @@ async def list_secrets(
 async def get_secret(
     secret_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    redis: object = Depends(get_redis),
     current_user: User = Depends(require_role("owner", "admin")),
 ) -> SecretValueResponse:
+    minute_bucket = int(time.time() // 60)
+    rl_key = f"rate_limit:vault_decrypt:{current_user.id}:{minute_bucket}"
+    count = await redis.incr(rl_key)
+    if count == 1:
+        await redis.expire(rl_key, 120)
+    if count > _VAULT_DECRYPT_RATE_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Rate limit exceeded: vault decrypt allows 10 requests per minute",
+        )
+
     result = await db.execute(
         select(VaultSecret).where(
             VaultSecret.id == secret_id,
@@ -173,6 +190,13 @@ async def get_secret(
 
     service = VaultService(db)
     value = service.decrypt(secret.ciphertext)
+    logger.info(
+        "vault: decrypt secret_id=%s name=%s user=%s org=%s",
+        secret_id,
+        secret.name,
+        current_user.id,
+        current_user.org_id,
+    )
     # SECURITY: value is never logged — only passed to the response serialiser.
     return SecretValueResponse(
         id=secret.id,

@@ -349,6 +349,105 @@ class TestDeleteSecret:
         assert resp.status_code == 404, resp.text
 
 
+class TestGetSecretRateLimit:
+    @pytest.mark.asyncio
+    async def test_11th_request_gets_429(self, fake_redis):
+        """GET /vault/secrets/{id} — 11th request within the same minute returns 429."""
+        from app.main import app
+        from app.core.dependencies import get_db, get_redis, get_current_user
+        from tests.conftest import _make_mock_user
+        from app.core.security import generate_api_key
+        from app.services.vault.vault_service import VaultService
+
+        mock_user = _make_mock_user()
+        secret_id = uuid.uuid4()
+
+        svc = VaultService.__new__(VaultService)
+        svc.db = None
+        ciphertext = svc.encrypt("secret-value")
+        secret = _make_vault_secret(secret_id, "API_KEY", uuid.uuid4(), ciphertext)
+
+        db = _make_authed_db(secret_obj=secret)
+
+        # Pre-load the rate limit counter to 10 (at the limit)
+        import time
+        minute_bucket = int(time.time() // 60)
+        rl_key = f"rate_limit:vault_decrypt:{mock_user.id}:{minute_bucket}"
+        await fake_redis.set(rl_key, b"10")
+        await fake_redis.expire(rl_key, 120)
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_user():
+            return mock_user
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get(
+                    f"/api/v1/vault/secrets/{secret_id}",
+                    headers={"Authorization": "Bearer dummy"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 429, (
+            f"Expected 429 after rate limit exceeded, got {resp.status_code}: {resp.text}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_first_request_under_limit_gets_200(self, fake_redis):
+        """GET /vault/secrets/{id} — first request is under limit and succeeds."""
+        from app.main import app
+        from app.core.dependencies import get_db, get_redis, get_current_user
+        from tests.conftest import _make_mock_user
+        from app.services.vault.vault_service import VaultService
+
+        mock_user = _make_mock_user()
+        secret_id = uuid.uuid4()
+
+        svc = VaultService.__new__(VaultService)
+        svc.db = None
+        ciphertext = svc.encrypt("first-secret")
+        secret = _make_vault_secret(secret_id, "FIRST_KEY", uuid.uuid4(), ciphertext)
+        db = _make_authed_db(secret_obj=secret)
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_user():
+            return mock_user
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get(
+                    f"/api/v1/vault/secrets/{secret_id}",
+                    headers={"Authorization": "Bearer dummy"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 200, (
+            f"First request should succeed (under rate limit), got {resp.status_code}: {resp.text}"
+        )
+
+
 class TestCrossAgentIsolation:
     @pytest.mark.asyncio
     async def test_agent_b_cannot_list_agent_a_secrets(self, fake_redis):
