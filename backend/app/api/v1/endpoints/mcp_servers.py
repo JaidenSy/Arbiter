@@ -15,12 +15,9 @@ Routes:
 
 from __future__ import annotations
 
-import asyncio
-import ipaddress
 import json as _json
 import re
 import uuid
-from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -108,49 +105,6 @@ async def _resolve_server_headers(server: MCPServer, db: AsyncSession) -> dict[s
 
         resolved[hdr_name] = await _resolve(hdr_value)
     return resolved
-
-
-_PRIVATE_NETS = [
-    ipaddress.ip_network(cidr)
-    for cidr in (
-        "10.0.0.0/8",
-        "172.16.0.0/12",
-        "192.168.0.0/16",
-        "127.0.0.0/8",
-        "169.254.0.0/16",
-        "::1/128",
-        "fc00::/7",
-    )
-]
-
-
-async def _assert_ssrf_safe_async(url: str) -> None:
-    """Raise HTTPException 422 if url resolves to a private/loopback address."""
-    parsed = urlparse(url)
-    hostname = parsed.hostname
-    if not hostname:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="base_url must contain a valid hostname",
-        )
-    loop = asyncio.get_running_loop()
-    try:
-        infos = await loop.getaddrinfo(hostname, None)
-    except OSError:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"base_url hostname {hostname!r} could not be resolved",
-        )
-    for _family, _type, _proto, _canonname, sockaddr in infos:
-        addr = ipaddress.ip_address(sockaddr[0])
-        if any(addr in net for net in _PRIVATE_NETS):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    f"base_url resolves to a private/reserved address ({addr}) — "
-                    "registering internal hosts as MCP servers is not allowed"
-                ),
-            )
 
 
 router = APIRouter(prefix="/mcp-servers", tags=["mcp-servers"])
@@ -277,7 +231,7 @@ async def create_mcp_server(
     Raises:
         HTTPException 409: If an active server with the same name already exists.
     """
-    await _assert_ssrf_safe_async(body.base_url)
+    await assert_ssrf_safe(body.base_url)
 
     existing = await db.execute(
         select(MCPServer).where(
@@ -437,7 +391,7 @@ async def update_mcp_server(
         HTTPException 404: If the server does not exist or is inactive.
     """
     if body.base_url is not None:
-        await _assert_ssrf_safe_async(body.base_url)
+        await assert_ssrf_safe(body.base_url)
 
     result = await db.execute(
         select(MCPServer).where(

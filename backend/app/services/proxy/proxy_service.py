@@ -260,6 +260,13 @@ class ProxyService:
 
         _headers_fp = _hl.md5(str(sorted(mcp_server.headers.items())).encode()).hexdigest()[:8]
         upstream_session_key = f"mcp_sessions:{session.id}:{request.server_name}:{_headers_fp}"
+
+        # Re-validate DNS at request time to guard against DNS rebinding (#182):
+        # a hostname that resolved to a public IP at registration may now point
+        # to a private address.  This check runs before both the MCP initialize
+        # handshake and the tool call so neither can be redirected internally.
+        await assert_ssrf_safe(mcp_server.base_url, error_status=status.HTTP_502_BAD_GATEWAY)
+
         outbound_headers = await self._ensure_mcp_session(
             mcp_server=mcp_server,
             cache_key=upstream_session_key,

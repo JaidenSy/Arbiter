@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     )
     jwt_refresh_token_expire_days: int = 30
     cli_token_expire_minutes: int = 10080  # 7 days — CLI sessions are long-lived
+    # When True, JWT blocklist check allows the token through if Redis is down.
+    # Default False (fail closed) — set True only if uptime > revocation guarantee.
+    jwt_blocklist_fail_open: bool = False
 
     # ── Registration ──────────────────────────────────────────────────────────
     allow_public_registration: bool = False  # set True or provide INVITE_CODE to enable
