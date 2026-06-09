@@ -29,6 +29,8 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.v1.endpoints import (
     agents,
+    analytics,
+    audit,
     auth,
     billing,
     cache,
@@ -41,6 +43,7 @@ from app.api.v1.endpoints import (
     sso,
     stats,
     tool_permissions,
+    traces,
     vault,
 )
 from app.core.config import settings
@@ -51,6 +54,7 @@ from app.db.models.cli_device_code import CliDeviceCode
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.session import Session, SessionEvent
 from app.services.plan.plan_limits import PlanLimitError, QuotaExceededError
+from app.services.quota.quota_alert_service import quota_alert_loop
 from app.tasks.purge_gdpr import gdpr_purge_loop
 
 logger = logging.getLogger(__name__)
@@ -219,17 +223,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     gdpr_purge_task = asyncio.create_task(gdpr_purge_loop())
     logger.info("arbiter: GDPR purge task started (interval=86400s)")
 
+    # Start hourly quota alert task.
+    quota_alert_task = asyncio.create_task(quota_alert_loop())
+    logger.info("arbiter: quota alert task started (interval=3600s)")
+
     yield
 
     # Shutdown: cancel background tasks cleanly.
     eviction_task.cancel()
     gdpr_purge_task.cancel()
+    quota_alert_task.cancel()
     try:
         await eviction_task
     except asyncio.CancelledError:
         pass
     try:
         await gdpr_purge_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await quota_alert_task
     except asyncio.CancelledError:
         pass
 
@@ -365,6 +378,9 @@ def create_app() -> FastAPI:
     app.include_router(vault.router, prefix=settings.api_prefix)
     app.include_router(tool_permissions.router, prefix=settings.api_prefix)
     app.include_router(stats.router, prefix=settings.api_prefix)
+    app.include_router(analytics.router, prefix=settings.api_prefix)
+    app.include_router(audit.router, prefix=settings.api_prefix)
+    app.include_router(traces.router, prefix=settings.api_prefix)
     app.include_router(onboarding.router, prefix=settings.api_prefix)
     app.include_router(billing.router, prefix=settings.api_prefix)
     app.include_router(cache.router, prefix=settings.api_prefix)
