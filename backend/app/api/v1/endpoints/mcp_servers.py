@@ -549,3 +549,89 @@ async def list_mcp_server_tools(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not fetch tools: {exc}"
         ) from exc
+
+
+# ── Health history endpoint ───────────────────────────────────────────────────
+
+
+class HealthCheckEntry(BaseModel):
+    checked_at: str
+    is_healthy: bool
+    latency_ms: int | None
+    error: str | None
+
+
+class MCPServerHealthResponse(BaseModel):
+    server_id: str
+    uptime_pct: float  # 0.0–100.0; -1.0 = no data yet
+    total_checks: int
+    recent_checks: list[HealthCheckEntry]  # last 24 checks, newest first
+
+
+@router.get(
+    "/{server_id}/health",
+    response_model=MCPServerHealthResponse,
+    summary="Get health check history for an MCP server",
+)
+async def get_mcp_server_health(
+    server_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> MCPServerHealthResponse:
+    """Return the last 24 health checks and uptime % for this server."""
+    from app.db.models.mcp_server_health_check import MCPServerHealthCheck
+
+    # Verify ownership
+    result = await db.execute(
+        select(MCPServer).where(MCPServer.id == server_id, MCPServer.org_id == current_user.org_id)
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {server_id} not found"
+        )
+
+    # Fetch last 24 checks
+    checks_result = await db.execute(
+        select(MCPServerHealthCheck)
+        .where(
+            MCPServerHealthCheck.server_id == server_id,
+            MCPServerHealthCheck.org_id == current_user.org_id,
+        )
+        .order_by(MCPServerHealthCheck.checked_at.desc())
+        .limit(24)
+    )
+    checks = checks_result.scalars().all()
+
+    # Uptime % from all-time checks
+    total_checks_result = await db.execute(
+        select(func.count(MCPServerHealthCheck.id)).where(
+            MCPServerHealthCheck.server_id == server_id,
+            MCPServerHealthCheck.org_id == current_user.org_id,
+        )
+    )
+    total_checks = int(total_checks_result.scalar_one() or 0)
+
+    healthy_checks_result = await db.execute(
+        select(func.count(MCPServerHealthCheck.id)).where(
+            MCPServerHealthCheck.server_id == server_id,
+            MCPServerHealthCheck.org_id == current_user.org_id,
+            MCPServerHealthCheck.is_healthy.is_(True),
+        )
+    )
+    healthy_count = int(healthy_checks_result.scalar_one() or 0)
+    uptime_pct = (healthy_count / total_checks * 100) if total_checks > 0 else -1.0
+
+    return MCPServerHealthResponse(
+        server_id=str(server_id),
+        uptime_pct=round(uptime_pct, 1),
+        total_checks=total_checks,
+        recent_checks=[
+            HealthCheckEntry(
+                checked_at=c.checked_at.isoformat(),
+                is_healthy=c.is_healthy,
+                latency_ms=c.latency_ms,
+                error=c.error,
+            )
+            for c in checks
+        ],
+    )

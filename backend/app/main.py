@@ -227,18 +227,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     quota_alert_task = asyncio.create_task(quota_alert_loop())
     logger.info("arbiter: quota alert task started (interval=3600s)")
 
+    # Start hourly MCP server health monitoring.
+    from app.tasks.health_check import health_check_loop  # noqa: PLC0415
+
+    health_task = asyncio.create_task(health_check_loop(redis=redis_client))
+    logger.info("arbiter: MCP health check task started (interval=3600s)")
+
     yield
 
     # Shutdown: cancel background tasks cleanly.
     eviction_task.cancel()
     gdpr_purge_task.cancel()
     quota_alert_task.cancel()
+    health_task.cancel()
     try:
         await eviction_task
     except asyncio.CancelledError:
         pass
     try:
         await gdpr_purge_task
+    except asyncio.CancelledError:
+        pass
+    try:
+        await health_task
     except asyncio.CancelledError:
         pass
     try:
