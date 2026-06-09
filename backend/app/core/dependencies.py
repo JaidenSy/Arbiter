@@ -14,8 +14,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Callable
-from typing import AsyncGenerator, Union
+from collections.abc import AsyncGenerator, Callable
 
 from fastapi import Depends, Header, HTTPException, Request, Security, status
 
@@ -25,12 +24,13 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
+from app.core.config import settings
 from app.db.base import async_session_factory
 from app.db.models.agent import Agent
 from app.db.models.user import User
 
-
 # ── Database ─────────────────────────────────────────────────────────────────
+
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
@@ -47,6 +47,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 # ── Redis ─────────────────────────────────────────────────────────────────────
+
 
 async def get_redis(request: Request):  # type: ignore[return]
     """
@@ -158,8 +159,20 @@ async def get_current_user(
         try:
             is_blocked = await redis.exists(f"jti_blocklist:{jti}")
         except Exception:
-            _logger.warning("Redis unavailable for JWT blocklist check — failing open")
-            is_blocked = False
+            if settings.jwt_blocklist_fail_open:
+                _logger.warning(
+                    "Redis unavailable for JWT blocklist check — failing open (JWT_BLOCKLIST_FAIL_OPEN=true)"
+                )
+                is_blocked = False
+            else:
+                _logger.error(
+                    "Redis unavailable for JWT blocklist check — failing closed (set JWT_BLOCKLIST_FAIL_OPEN=true to allow)"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Authentication service temporarily unavailable",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
         if is_blocked:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -183,7 +196,7 @@ async def get_current_principal(
     authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
-) -> Union[User, Agent]:
+) -> User | Agent:
     """
     Accept either a JWT (human user) or an API key (agent).
 
@@ -286,12 +299,7 @@ async def require_org_verified(
             )
 
     result = await db.execute(
-        text(
-            "SELECT EXISTS("
-            "  SELECT 1 FROM users"
-            "  WHERE org_id = :org_id AND is_verified = true"
-            ")"
-        ),
+        text("SELECT EXISTS(  SELECT 1 FROM users  WHERE org_id = :org_id AND is_verified = true)"),
         {"org_id": str(agent.org_id)},
     )
     is_verified: bool = result.scalar_one()
