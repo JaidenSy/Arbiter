@@ -144,12 +144,23 @@ export interface VaultSecretCreate {
   value: string;
 }
 
+export interface SlowTool {
+  tool_name: string;
+  server_name: string | null;
+  avg_duration_ms: number;
+  call_count: number;
+}
+
 export interface DashboardStats {
   agents_count: number;
   servers_count: number;
   tool_calls_today: number;
   cache_hit_rate_today: number; // 0.0–1.0
   error_rate_today: number; // 0.0–1.0
+  latency_p50_ms: number | null;
+  latency_p95_ms: number | null;
+  latency_p99_ms: number | null;
+  slowest_tools: SlowTool[];
 }
 
 export interface CacheToolStat {

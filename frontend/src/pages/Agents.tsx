@@ -8,6 +8,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "../api/client";
 import type { Agent, AgentCreateResponse, AgentScope, MCPServer, Page } from "../api/types";
@@ -863,6 +864,13 @@ function Agents(): React.ReactElement {
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <Link
+                        to={`/?agent_id=${agent.id}`}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-muted hover:text-accent-light hover:bg-accent/10 transition-all"
+                        title="View stats for this agent"
+                      >
+                        Stats
+                      </Link>
                       <Button variant="ghost" size="sm" onClick={() => setTestCallAgent(agent)}>
                         Test
                       </Button>
