@@ -26,10 +26,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.dependencies import get_current_user, get_db
-from app.schemas.pagination import Page
 from app.db.models.mcp_server import MCPServer
-from app.db.models.user import User
 from app.db.models.session import Session, SessionEvent
+from app.db.models.user import User
+from app.schemas.pagination import Page
 from app.schemas.session import SessionEventResponse, SessionListResponse, SessionResponse
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -44,14 +44,23 @@ async def list_sessions(
     agent_id: uuid.UUID | None = Query(None, description="Filter by agent UUID"),
     tool_name: str | None = Query(None, description="Filter sessions that called this tool"),
     has_error: bool | None = Query(None, description="True = only sessions with errors"),
-    from_date: datetime | None = Query(None, description="Sessions started on or after this ISO timestamp"),
-    to_date: datetime | None = Query(None, description="Sessions started on or before this ISO timestamp"),
+    from_date: datetime | None = Query(
+        None, description="Sessions started on or after this ISO timestamp"
+    ),
+    to_date: datetime | None = Query(
+        None, description="Sessions started on or before this ISO timestamp"
+    ),
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Page[SessionListResponse]:
     limit = min(limit, 200)
+    if from_date is not None and to_date is not None and from_date > to_date:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="from_date must be before to_date",
+        )
     conditions = [Session.org_id == current_user.org_id]
     if agent_id is not None:
         conditions.append(Session.agent_id == agent_id)
@@ -89,10 +98,19 @@ async def list_sessions(
 
     total = await db.scalar(select(func.count(Session.id)).where(*conditions)) or 0
     result = await db.execute(
-        select(Session).where(*conditions).order_by(Session.started_at.desc()).offset(skip).limit(limit)
+        select(Session)
+        .where(*conditions)
+        .order_by(Session.started_at.desc())
+        .offset(skip)
+        .limit(limit)
     )
     sessions = result.scalars().all()
-    return Page(items=[SessionListResponse.model_validate(s) for s in sessions], total=total, skip=skip, limit=limit)
+    return Page(
+        items=[SessionListResponse.model_validate(s) for s in sessions],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get(
@@ -110,7 +128,15 @@ async def export_sessions(
 ) -> StreamingResponse:
     """Stream session events for the org as CSV or JSON for compliance/audit export."""
     if format not in ("csv", "json"):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="format must be 'csv' or 'json'")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="format must be 'csv' or 'json'",
+        )
+    if from_date is not None and to_date is not None and from_date > to_date:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="from_date must be before to_date",
+        )
 
     session_query = select(Session).where(Session.org_id == current_user.org_id)
     if agent_id is not None:
@@ -137,17 +163,19 @@ async def export_sessions(
     rows = []
     for s in sessions:
         for e in s.events:
-            rows.append({
-                "session_id": str(s.id),
-                "agent_id": str(s.agent_id),
-                "event_id": str(e.id),
-                "tool_name": e.tool_name,
-                "mcp_server": server_map.get(e.mcp_server_id, ""),
-                "cache_hit": e.cache_hit,
-                "duration_ms": e.duration_ms,
-                "error": e.error or "",
-                "occurred_at": e.occurred_at.isoformat() if e.occurred_at else "",
-            })
+            rows.append(
+                {
+                    "session_id": str(s.id),
+                    "agent_id": str(s.agent_id),
+                    "event_id": str(e.id),
+                    "tool_name": e.tool_name,
+                    "mcp_server": server_map.get(e.mcp_server_id, ""),
+                    "cache_hit": e.cache_hit,
+                    "duration_ms": e.duration_ms,
+                    "error": e.error or "",
+                    "occurred_at": e.occurred_at.isoformat() if e.occurred_at else "",
+                }
+            )
 
     ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     if format == "json":
@@ -274,9 +302,12 @@ async def list_session_events(
         )
 
     limit = min(limit, 500)
-    total = await db.scalar(
-        select(func.count(SessionEvent.id)).where(SessionEvent.session_id == session_id)
-    ) or 0
+    total = (
+        await db.scalar(
+            select(func.count(SessionEvent.id)).where(SessionEvent.session_id == session_id)
+        )
+        or 0
+    )
     result = await db.execute(
         select(SessionEvent)
         .where(SessionEvent.session_id == session_id)

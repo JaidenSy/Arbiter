@@ -123,7 +123,9 @@ _USER_CODE_WORDS = [
     "UMBER",
 ]
 
-_VERIFICATION_URI = "https://arbiterai.dev/cli-auth"
+
+def _verification_uri() -> str:
+    return f"{settings.frontend_url.rstrip('/')}/cli-auth"
 
 
 # ── Request / response schemas ────────────────────────────────────────────────
@@ -228,7 +230,7 @@ async def initiate_device_flow(
     return DeviceCodeResponse(
         device_code=device_code,
         user_code=user_code,
-        verification_uri=_VERIFICATION_URI,
+        verification_uri=_verification_uri(),
         expires_in=_DEVICE_CODE_TTL_SECONDS,
     )
 

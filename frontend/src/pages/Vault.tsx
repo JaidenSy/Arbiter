@@ -261,6 +261,15 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
   const [revealedValues, setRevealedValues] = useState<Map<string, string>>(new Map())
   const [revealingId, setRevealingId] = useState<string | null>(null)
 
+  // Auto-hide revealed secrets after 30 seconds
+  useEffect(() => {
+    if (revealedValues.size === 0) return
+    const timer = setTimeout(() => {
+      setRevealedValues(new Map())
+    }, 30_000)
+    return () => clearTimeout(timer)
+  }, [revealedValues])
+
   const { data: secretsPage, isLoading } = useQuery<Page<VaultSecret>>({
     queryKey: ['vault', agentId],
     queryFn: () => fetchSecrets(agentId),
