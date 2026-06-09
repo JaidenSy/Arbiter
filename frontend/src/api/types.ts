@@ -171,6 +171,18 @@ export interface MCPServerTestResult {
   latency_ms: number | null;
 }
 
+export interface MCPServerHealthSummary {
+  server_id: string;
+  uptime_pct: number; // -1.0 = no data yet; 0–100 otherwise
+  total_checks: number;
+  recent_checks: {
+    checked_at: string;
+    is_healthy: boolean;
+    latency_ms: number | null;
+    error: string | null;
+  }[];
+}
+
 export interface HistoryBucket {
   timestamp: string;
   label: string;
