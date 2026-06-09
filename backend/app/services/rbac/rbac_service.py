@@ -182,6 +182,14 @@ class RBACService:
         )
         await self.db.execute(stmt)
         await self.db.commit()
+
+        if self.redis is not None:
+            cache_key = f"rbac:{agent_id}:{mcp_server_id}:{tool_name}"
+            try:
+                await self.redis.delete(cache_key)
+            except Exception as exc:
+                logger.warning("rbac: Redis cache invalidation failed on revoke: %s", exc)
+
         logger.info(
             "rbac: revoked agent=%s server=%s tool=%r",
             agent_id,
