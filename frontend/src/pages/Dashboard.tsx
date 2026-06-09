@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart,
@@ -11,15 +11,19 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { authClient } from "../api/client";
-import type { Agent, DashboardStats, HistoryBucket, Page, Session, StatsHistoryResponse, UsageSummary } from "../api/types";
+import type { Agent, DashboardStats, HistoryBucket, MCPServer, Page, Session, StatsHistoryResponse, UsageSummary } from "../api/types";
 import UsageStrip from "../components/UsageStrip";
 import { Tile } from "../components/ui/Tile";
 import { CHART_COLORS, CHART_TOOLTIP_STYLE } from "../chartColors";
 
 // ── Data fetchers ─────────────────────────────────────────────────────────────
 
-const fetchStats = (): Promise<DashboardStats> =>
-  authClient.get<DashboardStats>("/stats").then((r) => r.data);
+const fetchStats = (agentId?: string, serverName?: string): Promise<DashboardStats> => {
+  const params: Record<string, string> = {};
+  if (agentId) params.agent_id = agentId;
+  if (serverName) params.server_name = serverName;
+  return authClient.get<DashboardStats>("/stats", { params }).then((r) => r.data);
+};
 
 const fetchRecentSessions = (): Promise<Session[]> =>
   authClient
@@ -29,8 +33,15 @@ const fetchRecentSessions = (): Promise<Session[]> =>
 const fetchAgents = (): Promise<Page<Agent>> =>
   authClient.get<Page<Agent>>("/agents").then((r) => r.data);
 
-const fetchHistory = (period: string): Promise<StatsHistoryResponse> =>
-  authClient.get<StatsHistoryResponse>(`/stats/history?period=${period}`).then((r) => r.data);
+const fetchMcpServers = (): Promise<Page<MCPServer>> =>
+  authClient.get<Page<MCPServer>>("/mcp-servers").then((r) => r.data);
+
+const fetchHistory = (period: string, agentId?: string, serverName?: string): Promise<StatsHistoryResponse> => {
+  const params: Record<string, string> = { period };
+  if (agentId) params.agent_id = agentId;
+  if (serverName) params.server_name = serverName;
+  return authClient.get<StatsHistoryResponse>("/stats/history", { params }).then((r) => r.data);
+};
 
 const fetchUsageSummary = (): Promise<UsageSummary> =>
   authClient.get<UsageSummary>("/stats/usage/summary").then((r) => r.data);
@@ -59,6 +70,18 @@ function errorRateColorClass(rate: number): string {
   return "text-error";
 }
 
+function latencyColorClass(ms: number): string {
+  if (ms < 300) return "text-teal-light";
+  if (ms < 1000) return "text-warning";
+  return "text-error";
+}
+
+function fmtMs(ms: number | null | undefined): string {
+  if (ms == null) return "—";
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
 function last12(buckets: HistoryBucket[]): HistoryBucket[] {
   return buckets.slice(-12);
 }
@@ -83,15 +106,75 @@ function ShimmerRow(): React.ReactElement {
   );
 }
 
+// ── Filter bar ────────────────────────────────────────────────────────────────
+
+interface FilterBarProps {
+  agents: Agent[];
+  servers: MCPServer[];
+  selectedAgentId: string;
+  selectedServerName: string;
+  onAgentChange: (v: string) => void;
+  onServerChange: (v: string) => void;
+}
+
+function FilterBar({ agents, servers, selectedAgentId, selectedServerName, onAgentChange, onServerChange }: FilterBarProps): React.ReactElement {
+  const hasFilter = selectedAgentId !== "" || selectedServerName !== "";
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <select
+        value={selectedAgentId}
+        onChange={(e) => onAgentChange(e.target.value)}
+        className="text-xs font-mono bg-elevated border border-border rounded-lg px-3 py-1.5 text-secondary focus:outline-none focus:border-accent/50 transition-colors"
+      >
+        <option value="">All agents</option>
+        {agents.map((a) => (
+          <option key={a.id} value={a.id}>{a.name}</option>
+        ))}
+      </select>
+      <select
+        value={selectedServerName}
+        onChange={(e) => onServerChange(e.target.value)}
+        className="text-xs font-mono bg-elevated border border-border rounded-lg px-3 py-1.5 text-secondary focus:outline-none focus:border-accent/50 transition-colors"
+      >
+        <option value="">All servers</option>
+        {servers.map((s) => (
+          <option key={s.id} value={s.name}>{s.name}</option>
+        ))}
+      </select>
+      {hasFilter && (
+        <button
+          onClick={() => { onAgentChange(""); onServerChange(""); }}
+          className="text-xs font-mono text-muted hover:text-error transition-colors px-2 py-1.5"
+        >
+          ✕ Clear
+        </button>
+      )}
+      {hasFilter && (
+        <span className="text-xs font-mono text-accent-light bg-accent/10 border border-accent/20 rounded px-2 py-1">
+          filtered
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function Dashboard(): React.ReactElement {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [period, setPeriod] = useState<"7d" | "24h">("7d");
 
+  // Persist filter in URL so Agents page can deep-link here with ?agent_id=...
+  const selectedAgentId = searchParams.get("agent_id") ?? "";
+  const selectedServerName = searchParams.get("server_name") ?? "";
+
+  const setAgentId = (v: string) => setSearchParams((p) => { const n = new URLSearchParams(p); if (v) n.set("agent_id", v); else n.delete("agent_id"); return n; });
+  const setServerName = (v: string) => setSearchParams((p) => { const n = new URLSearchParams(p); if (v) n.set("server_name", v); else n.delete("server_name"); return n; });
+
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
-    queryKey: ["stats"],
-    queryFn: fetchStats,
+    queryKey: ["stats", selectedAgentId, selectedServerName],
+    queryFn: () => fetchStats(selectedAgentId || undefined, selectedServerName || undefined),
     refetchInterval: 30_000,
   });
 
@@ -106,16 +189,21 @@ function Dashboard(): React.ReactElement {
     queryFn: fetchAgents,
     staleTime: 60_000,
   });
-  const agents = agentsPage?.items;
+  const agents = agentsPage?.items ?? [];
 
-  // Period-based history for the main activity chart
+  const { data: mcpServersPage } = useQuery<Page<MCPServer>>({
+    queryKey: ["mcp-servers"],
+    queryFn: fetchMcpServers,
+    staleTime: 60_000,
+  });
+  const mcpServers = mcpServersPage?.items ?? [];
+
   const { data: history } = useQuery({
-    queryKey: ["stats-history", period],
-    queryFn: () => fetchHistory(period),
+    queryKey: ["stats-history", period, selectedAgentId, selectedServerName],
+    queryFn: () => fetchHistory(period, selectedAgentId || undefined, selectedServerName || undefined),
     refetchInterval: 60_000,
   });
 
-  // Always-24h history for sparklines in metric tiles
   const { data: history24h } = useQuery({
     queryKey: ["stats-history", "24h"],
     queryFn: () => fetchHistory("24h"),
@@ -162,15 +250,27 @@ function Dashboard(): React.ReactElement {
   const quotaBarColor = isOverLimit ? "bg-error" : isNearLimit ? "bg-warning" : "bg-accent";
   const resetDate = firstDayOfNextMonth();
 
+  const hasFilter = selectedAgentId !== "" || selectedServerName !== "";
+
   return (
     <div>
       <UsageStrip />
       <div className="p-6 md:p-8 max-w-[1400px] mx-auto">
 
         {/* Page title */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="font-display text-primary text-xl font-semibold tracking-tight">Overview</h1>
         </div>
+
+        {/* Filter bar */}
+        <FilterBar
+          agents={agents}
+          servers={mcpServers}
+          selectedAgentId={selectedAgentId}
+          selectedServerName={selectedServerName}
+          onAgentChange={setAgentId}
+          onServerChange={setServerName}
+        />
 
         {/* Zero-state CTA for new users */}
         {isNewUser && (
@@ -203,7 +303,10 @@ function Dashboard(): React.ReactElement {
             <div className="flex items-center justify-between mb-5">
               <div>
                 <span className="text-primary text-sm font-semibold">Activity</span>
-                <p className="text-secondary text-xs mt-0.5">Tool calls & cache hits over time</p>
+                <p className="text-secondary text-xs mt-0.5">
+                  Tool calls & cache hits over time
+                  {hasFilter && <span className="ml-1 text-accent-light">(filtered)</span>}
+                </p>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
@@ -363,6 +466,63 @@ function Dashboard(): React.ReactElement {
             mountDelay={5}
           />
         </div>
+
+        {/* ── Bento Row 3: Latency tiles ── */}
+        <div className="grid grid-cols-3 gap-3 mb-3">
+          <Tile
+            variant="default"
+            label="p50 Latency"
+            value={statsLoading ? "…" : fmtMs(stats?.latency_p50_ms)}
+            valueClass={stats?.latency_p50_ms != null ? latencyColorClass(stats.latency_p50_ms) : "text-muted"}
+            mountDelay={6}
+          />
+          <Tile
+            variant="default"
+            label="p95 Latency"
+            value={statsLoading ? "…" : fmtMs(stats?.latency_p95_ms)}
+            valueClass={stats?.latency_p95_ms != null ? latencyColorClass(stats.latency_p95_ms) : "text-muted"}
+            mountDelay={6}
+          />
+          <Tile
+            variant="default"
+            label="p99 Latency"
+            value={statsLoading ? "…" : fmtMs(stats?.latency_p99_ms)}
+            valueClass={stats?.latency_p99_ms != null ? latencyColorClass(stats.latency_p99_ms) : "text-muted"}
+            mountDelay={6}
+          />
+        </div>
+
+        {/* ── Slowest Tools table (shown when there's data) ── */}
+        {stats && stats.slowest_tools.length > 0 && (
+          <div className="border border-border rounded-xl bg-surface overflow-hidden mb-3 tile-mount stagger-5">
+            <div className="px-5 py-3.5 border-b border-border">
+              <span className="text-primary text-sm font-semibold">Slowest Tools Today</span>
+              <p className="text-secondary text-xs mt-0.5">By average call duration</p>
+            </div>
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="py-2 px-5 text-left text-xs font-mono text-muted uppercase tracking-wider">Tool</th>
+                  <th className="py-2 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Server</th>
+                  <th className="py-2 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">Avg</th>
+                  <th className="py-2 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">Calls</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.slowest_tools.map((t, i) => (
+                  <tr key={i} className="border-b border-border last:border-0 hover:bg-white/[0.015] transition-colors">
+                    <td className="py-2.5 px-5 text-sm font-mono text-primary">{t.tool_name}</td>
+                    <td className="py-2.5 px-4 text-xs font-mono text-muted">{t.server_name ?? "—"}</td>
+                    <td className={`py-2.5 px-4 text-sm font-mono text-right tabular-nums ${latencyColorClass(t.avg_duration_ms)}`}>
+                      {fmtMs(t.avg_duration_ms)}
+                    </td>
+                    <td className="py-2.5 px-4 text-sm font-mono text-secondary text-right tabular-nums">{t.call_count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* ── Monthly Quota Card ── */}
         <div className="border border-border rounded-xl p-5 bg-surface tile-mount stagger-5 mb-6">

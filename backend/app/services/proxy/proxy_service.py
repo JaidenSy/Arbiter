@@ -28,6 +28,7 @@ Design decisions:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -42,6 +43,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ssrf import assert_ssrf_safe
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
@@ -58,6 +60,7 @@ logger = logging.getLogger(__name__)
 
 _SECRET_PLACEHOLDER = re.compile(r"\{\{(?:vault:)?([A-Za-z0-9_]+)\}\}")
 _HTTP_TIMEOUT = httpx.Timeout(30.0)
+_MAX_RETRIES = 2  # retries on TimeoutException/ConnectError; backoff 1s then 2s
 
 
 class ProxyService:
@@ -274,13 +277,28 @@ class ProxyService:
         )
 
         try:
-            async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-                http_resp = await client.post(
-                    mcp_server.base_url,
-                    json=jsonrpc_body,
-                    headers=outbound_headers,
-                )
+            # Retry on transient network errors only; never retry upstream 4xx/5xx.
+            _last_exc: Exception | None = None
+            http_resp = None
+            for _attempt in range(_MAX_RETRIES + 1):
+                try:
+                    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+                        http_resp = await client.post(
+                            mcp_server.base_url,
+                            json=jsonrpc_body,
+                            headers=outbound_headers,
+                        )
+                    _last_exc = None
+                    break
+                except (httpx.TimeoutException, httpx.ConnectError) as exc:
+                    _last_exc = exc
+                    if _attempt < _MAX_RETRIES:
+                        await asyncio.sleep(2**_attempt)  # 1s then 2s
 
+            if _last_exc is not None:
+                raise _last_exc
+
+            assert http_resp is not None
             if http_resp.status_code >= 400:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
@@ -341,8 +359,10 @@ class ProxyService:
                 error=error,
             )
             raise
-        except httpx.TimeoutException as exc:
-            error = f"MCP server {request.server_name!r} timed out after 30s"
+        except (httpx.TimeoutException, httpx.ConnectError) as exc:
+            error = (
+                f"MCP server {request.server_name!r} unreachable after {_MAX_RETRIES + 1} attempts"
+            )
             duration_ms = int((time.monotonic() - start_ms) * 1000)
             await self._persist_event(
                 session=session,

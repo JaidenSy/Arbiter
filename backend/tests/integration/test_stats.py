@@ -22,29 +22,35 @@ Coverage:
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timezone, timedelta, date
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import AsyncClient, ASGITransport
-
+from httpx import ASGITransport, AsyncClient
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_stats_db(
     agents_count: int = 0,
     servers_count: int = 0,
     tool_calls_today: int = 0,
     cache_hits_today: int = 0,
+    errors_today: int = 0,
+    latency_p50: float | None = None,
+    latency_p95: float | None = None,
+    latency_p99: float | None = None,
+    slowest_tools: list[dict] | None = None,
 ) -> AsyncMock:
     """
     Build a mock DB session that returns pre-computed stats values.
 
-    The stats endpoint issues 3 queries in order:
-      1. COUNT(Agent.id) WHERE is_active
-      2. COUNT(MCPServer.id) WHERE is_active
-      3. COUNT(SessionEvent.id) + SUM(cache_hit) WHERE occurred_at >= today
+    The stats endpoint issues 5 queries in order:
+      1. COUNT(Agent.id) WHERE is_active          → scalar_one()
+      2. COUNT(MCPServer.id) WHERE is_active       → scalar_one()
+      3. COUNT/SUM calls+hits+errors for today     → one()
+      4. percentile_cont p50/p95/p99               → one_or_none()
+      5. AVG/COUNT slowest tools                   → all()
     """
     db = AsyncMock()
     call_count = 0
@@ -55,17 +61,34 @@ def _make_stats_db(
         result = MagicMock()
 
         if call_count == 1:
-            # agents count
             result.scalar_one.return_value = agents_count
         elif call_count == 2:
-            # servers count
             result.scalar_one.return_value = servers_count
-        else:
-            # today's tool calls + cache hits
+        elif call_count == 3:
             row = MagicMock()
             row.total = tool_calls_today
             row.hits = cache_hits_today
+            row.errors = errors_today
             result.one.return_value = row
+        elif call_count == 4:
+            if latency_p50 is None:
+                result.one_or_none.return_value = None
+            else:
+                lat_row = MagicMock()
+                lat_row.p50 = latency_p50
+                lat_row.p95 = latency_p95
+                lat_row.p99 = latency_p99
+                result.one_or_none.return_value = lat_row
+        else:
+            rows = []
+            for t in slowest_tools or []:
+                r = MagicMock()
+                r.tool_name = t["tool_name"]
+                r.server_name = t.get("server_name")
+                r.avg_ms = t["avg_ms"]
+                r.cnt = t["cnt"]
+                rows.append(r)
+            result.all.return_value = rows
 
         return result
 
@@ -75,14 +98,15 @@ def _make_stats_db(
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
+
 class TestStatsZeroState:
     @pytest.mark.asyncio
     async def test_stats_all_zeros_when_no_data(self, fake_redis):
         """GET /stats with no data → all zeros, no crash."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -131,10 +155,10 @@ class TestStatsZeroState:
     @pytest.mark.asyncio
     async def test_stats_no_division_by_zero(self, fake_redis):
         """cache_hit_rate_today must be 0.0 (not NaN/error) when tool_calls_today=0."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -179,10 +203,10 @@ class TestStatsWithData:
     @pytest.mark.asyncio
     async def test_stats_agents_and_servers_count(self, fake_redis):
         """GET /stats returns correct agents_count and servers_count."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -224,10 +248,10 @@ class TestStatsWithData:
     @pytest.mark.asyncio
     async def test_stats_cache_hit_rate_50_percent(self, fake_redis):
         """GET /stats with 4 calls (2 hits, 2 misses) → cache_hit_rate_today=0.5."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -275,10 +299,10 @@ class TestStatsWithData:
         We return tool_calls_today=4 to assert that yesterday's event (which the
         real SQL excludes via DATE_TRUNC) is not counted.
         """
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -361,10 +385,10 @@ class TestStatsHistory:
     @pytest.mark.asyncio
     async def test_history_default_7d_returns_7_buckets(self, fake_redis):
         """GET /stats/history (default period=7d) returns exactly 7 buckets."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -407,10 +431,10 @@ class TestStatsHistory:
     @pytest.mark.asyncio
     async def test_history_24h_returns_24_buckets(self, fake_redis):
         """GET /stats/history?period=24h returns exactly 24 buckets."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -452,21 +476,23 @@ class TestStatsHistory:
     @pytest.mark.asyncio
     async def test_history_seeded_today_bucket_counts(self, fake_redis):
         """With a seeded row for today, today's bucket has correct tool_calls and cache_hits."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
         mock_user = _make_mock_user()
 
-        today = datetime.now(timezone.utc).date()
-        today_dt = datetime(today.year, today.month, today.day, tzinfo=timezone.utc)
+        today = datetime.now(UTC).date()
+        today_dt = datetime(today.year, today.month, today.day, tzinfo=UTC)
 
-        db = _make_history_db([
-            {"bucket": today_dt, "total": 10, "hits": 4, "errors": 1},
-        ])
+        db = _make_history_db(
+            [
+                {"bucket": today_dt, "total": 10, "hits": 4, "errors": 1},
+            ]
+        )
 
         async def override_get_db():
             yield db
@@ -509,10 +535,10 @@ class TestStatsHistory:
     @pytest.mark.asyncio
     async def test_history_invalid_period_returns_422(self, fake_redis):
         """GET /stats/history?period=invalid → 422."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -547,3 +573,207 @@ class TestStatsHistory:
             app.dependency_overrides.clear()
 
         assert resp.status_code == 422, resp.text
+
+
+# ── Latency + drill-down tests (#185, #205) ───────────────────────────────────
+
+
+class TestStatsLatencyAndDrillDown:
+    @pytest.mark.asyncio
+    async def test_stats_returns_latency_fields(self, fake_redis):
+        """GET /stats returns latency_p50/p95/p99 when data is available."""
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
+        from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
+
+        raw_key = generate_api_key()
+        mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
+        db = _make_stats_db(
+            tool_calls_today=5,
+            latency_p50=120.0,
+            latency_p95=450.0,
+            latency_p99=800.0,
+        )
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_agent():
+            return mock_agent
+
+        async def override_get_current_user():
+            return mock_user
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get(
+                    "/api/v1/stats",
+                    headers={"Authorization": f"Bearer {raw_key}"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["latency_p50_ms"] == pytest.approx(120.0)
+        assert data["latency_p95_ms"] == pytest.approx(450.0)
+        assert data["latency_p99_ms"] == pytest.approx(800.0)
+
+    @pytest.mark.asyncio
+    async def test_stats_latency_null_when_no_duration_data(self, fake_redis):
+        """GET /stats returns null latency fields when no events have duration_ms."""
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
+        from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
+
+        raw_key = generate_api_key()
+        mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
+        db = _make_stats_db()
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_agent():
+            return mock_agent
+
+        async def override_get_current_user():
+            return mock_user
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get(
+                    "/api/v1/stats",
+                    headers={"Authorization": f"Bearer {raw_key}"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["latency_p50_ms"] is None
+        assert data["latency_p95_ms"] is None
+        assert data["latency_p99_ms"] is None
+        assert data["slowest_tools"] == []
+
+    @pytest.mark.asyncio
+    async def test_stats_slowest_tools_in_response(self, fake_redis):
+        """GET /stats includes slowest_tools list when data exists."""
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
+        from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
+
+        raw_key = generate_api_key()
+        mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
+        db = _make_stats_db(
+            tool_calls_today=10,
+            latency_p50=200.0,
+            latency_p95=500.0,
+            latency_p99=900.0,
+            slowest_tools=[
+                {"tool_name": "slow_query", "server_name": "db", "avg_ms": 850.0, "cnt": 3},
+            ],
+        )
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_agent():
+            return mock_agent
+
+        async def override_get_current_user():
+            return mock_user
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get(
+                    "/api/v1/stats",
+                    headers={"Authorization": f"Bearer {raw_key}"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data["slowest_tools"]) == 1
+        assert data["slowest_tools"][0]["tool_name"] == "slow_query"
+        assert data["slowest_tools"][0]["avg_duration_ms"] == pytest.approx(850.0)
+        assert data["slowest_tools"][0]["call_count"] == 3
+
+    @pytest.mark.asyncio
+    async def test_stats_agent_id_filter_accepted_200(self, fake_redis):
+        """GET /stats?agent_id=<uuid> returns 200 and applies the filter without error."""
+        import uuid as _uuid
+
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
+        from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
+
+        raw_key = generate_api_key()
+        mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
+        db = _make_stats_db(tool_calls_today=2)
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_agent():
+            return mock_agent
+
+        async def override_get_current_user():
+            return mock_user
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        agent_id = str(_uuid.uuid4())
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get(
+                    f"/api/v1/stats?agent_id={agent_id}",
+                    headers={"Authorization": f"Bearer {raw_key}"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["tool_calls_today"] == 2
