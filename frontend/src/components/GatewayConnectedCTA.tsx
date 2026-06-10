@@ -28,7 +28,7 @@ const CLI_LINES: CodeLine[] = [
     { text: '--name ', color: C.accent },
     { text: '"claude-local"', color: C.success },
   ],
-  [{ text: '  ✔ Agent created · key: ', color: C.success }, { text: 'arb_sk_k7x2m9...', color: C.teal }],
+  [{ text: '  ✔ Agent created · key: ', color: C.success }, { text: 'nxai_k7x2m9...', color: C.teal }],
   [
     { text: '$ ', color: C.muted },
     { text: 'arbiter ', color: C.accent },
@@ -63,7 +63,7 @@ const CONFIG_LINES: CodeLine[] = [
     { text: '      ', color: C.primary },
     { text: '"url"', color: C.accent },
     { text: ': ', color: C.primary },
-    { text: '"https://api.arbiterai.dev/mcp/arb_sk_..."', color: C.success },
+    { text: '"https://api.arbiterai.dev/mcp/nxai_..."', color: C.success },
   ],
   [{ text: '    }', color: C.primary }],
   [{ text: '  }', color: C.primary }],
