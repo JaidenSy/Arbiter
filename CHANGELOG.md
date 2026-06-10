@@ -2,6 +2,37 @@
 
 All notable changes to Arbiter are documented here.
 
+## [0.4.0] — 2026-06-10
+
+### Added
+- **Per-session tool-call budget** (#211) — Agents can now be assigned a `max_calls_per_session` cap. Once exceeded, the gateway returns HTTP 402 `session_budget_exceeded` with `{ session_id, used, limit }`. Agents can check their remaining budget via `GET /proxy/session-budget?session_id=...`. Cache hits are excluded from the count. Configurable in the Register and Edit agent modals.
+- **Multi-hop agent chain tracing** (#210) — When an agent passes `X-Arbiter-Parent-Session-Id` on a tool call, the new session inherits a shared `trace_id`. `GET /sessions/{id}/chain` reconstructs the full call tree across any chain depth. Sessions that are part of a chain now show a collapsible `CallChainPanel` in the SessionTrace view with click-through links to parent and child sessions.
+- **Webhooks** (#184) — Orgs on Pro+ can register webhook endpoints that receive HMAC-signed `POST` requests for key events: `permission.denied`, `quota.exceeded`, and `mcp_server.offline`. Delivery is attempted up to 3 times with exponential backoff. A full delivery log is available in Settings.
+- **Cost tracking** (#186) — MCP servers now have an optional `cost_per_call_usd` field. When set, each tool call records its USD cost in the `SessionEvent`. Cumulative cost is exposed via `GET /stats/cost` (Pro+) and surfaced as a tile on the Dashboard.
+- **MCP server health monitoring + circuit breaker** (#208) — Each registered MCP server is now periodically health-checked. Servers with repeated failures are automatically circuit-broken and marked offline. An uptime badge is shown on the MCP Servers list. The `mcp_server.offline` webhook fires on state change.
+- **Latency percentiles + drill-down stats** (#185, #205) — `GET /stats` now returns p50/p95/p99 latency and a slowest-tools list. All stats endpoints accept `agent_id` and `server_id` query params for drill-down. A filter bar on the Dashboard exposes these filters.
+- **Per-agent analytics** (GROWTH-01) — `GET /agents/{id}/analytics` returns call volume, error rate, and latency breakdown for a single agent over a configurable time window.
+- **Quota alerts** (GROWTH-03) — Orgs approaching their monthly tool-call quota receive an email alert at 80% and 95% usage.
+- **Audit log export** (GROWTH-04) — `GET /audit/export` returns a paginated CSV or JSON export of the audit log, filterable by date range.
+- **Execution traces** (GROWTH-05) — `GET /traces` and `GET /traces/{id}` provide structured execution traces for individual tool calls, including latency breakdown by pipeline stage.
+- **Anomaly detection** — `GET /agents/{id}/risk` (Pro+) returns a risk score and anomaly flags based on recent call patterns.
+- **Retry backoff** (#181) — Tool calls that fail with a timeout or connection error are automatically retried up to 2 times with 1s → 2s exponential backoff.
+
+### Fixed
+- **JWT blocklist fails closed** (#198) — A Redis outage previously left the token blocklist unreachable, allowing revoked tokens to pass. The blocklist now fails closed by default (treats Redis unavailability as "token may be revoked"). Set `JWT_BLOCKLIST_FAIL_OPEN=true` to revert to the old behaviour.
+- **DNS rebinding / SSRF guard** (#182) — The SSRF check is now performed at proxy-request time (not only at server registration) and shared via `app/core/ssrf.py`. This closes a window where a DNS rebinding attack could swap a safe hostname for a private IP after the server was registered.
+- **Vault rate limit** (#192) — Vault read endpoints are now rate-limited to prevent secret enumeration.
+- **RBAC cache invalidation** (#193) — Permission cache entries are now correctly evicted when a permission rule is revoked.
+- **Quota deduplication** (#194) — Concurrent tool calls that raced the quota check could previously double-count usage. Deduplication via Redis ensures each call is counted exactly once.
+- **Async SSRF DNS** (#195) — The synchronous `socket.getaddrinfo` call in the SSRF check blocked the event loop; replaced with async DNS resolution.
+- **Vault secret auto-hide** (#180) — Revealed vault secrets now automatically re-hide after 30 seconds without requiring a manual click.
+- **Date filter validation** (#187) — `from_date` / `to_date` on list and export endpoints now validates that `from_date < to_date`, returning 422 on invalid ranges.
+- **CLI verification URI** (#175) — The `verification_uri` returned by `POST /auth/cli/device` is now derived from `settings.frontend_url` instead of being hardcoded to localhost.
+
+### Security
+- **JWT blocklist fails closed on Redis outage** — see Fixed above.
+- **DNS rebinding SSRF guard at proxy request time** — see Fixed above.
+
 ## [0.3.1] — 2026-06-06
 
 ### Fixed

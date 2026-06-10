@@ -140,7 +140,7 @@ function Endpoint({ method, path, description }: EndpointProps): React.ReactElem
   return (
     <div className="flex items-start gap-3 py-3 px-4 border-b border-border last:border-0">
       <span
-        className={`inline-block px-2 py-0.5 rounded text-xs font-mono font-semibold border flex-shrink-0 mt-0.5 ${color}`}
+        className={`inline-flex items-center justify-center w-16 py-0.5 rounded text-xs font-mono font-semibold border flex-shrink-0 mt-0.5 ${color}`}
       >
         {method}
       </span>
@@ -170,7 +170,7 @@ function DocsContent(): React.ReactElement {
             'Make your first tool call. Traffic is proxied, cached, and logged automatically.',
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3 text-sm text-secondary">
-              <span className="w-5 h-5 rounded-full bg-accent/15 border border-accent/25 flex items-center justify-center text-accent-light text-xs font-mono flex-shrink-0 mt-0.5">
+              <span className="w-5 h-5 rounded-full bg-accent border border-accent/60 flex items-center justify-center text-white text-xs font-mono flex-shrink-0 mt-0.5">
                 {i + 1}
               </span>
               {step}

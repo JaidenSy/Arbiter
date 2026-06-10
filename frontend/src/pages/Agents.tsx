@@ -8,6 +8,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authClient } from "../api/client";
 import type { Agent, AgentCreateResponse, AgentScope, MCPServer, Page } from "../api/types";
@@ -26,13 +27,14 @@ const createAgent = (payload: {
   description: string;
   scope: AgentScope;
   rate_limit_per_minute?: number | null;
+  max_calls_per_session?: number | null;
 }): Promise<AgentCreateResponse> =>
   authClient.post<AgentCreateResponse>("/agents", payload).then((r) => r.data);
 
 const deleteAgent = (id: string): Promise<void> =>
   authClient.delete(`/agents/${id}`).then(() => undefined);
 
-const updateAgent = (id: string, payload: { name?: string; description?: string; rate_limit_per_minute?: number | null }): Promise<Agent> =>
+const updateAgent = (id: string, payload: { name?: string; description?: string; rate_limit_per_minute?: number | null; max_calls_per_session?: number | null }): Promise<Agent> =>
   authClient.patch<Agent>(`/agents/${id}`, payload).then((r) => r.data);
 
 const rotateAgentKey = (id: string): Promise<AgentCreateResponse> =>
@@ -65,6 +67,7 @@ function RegisterModal({
   const [description, setDescription] = useState("");
   const [scope, setScope] = useState<AgentScope>("full");
   const [rateLimit, setRateLimit] = useState("");
+  const [sessionBudget, setSessionBudget] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -74,6 +77,7 @@ function RegisterModal({
       setDescription("");
       setScope("full");
       setRateLimit("");
+      setSessionBudget("");
       setError(null);
       onSuccess(data);
     },
@@ -91,6 +95,7 @@ function RegisterModal({
       description: description.trim(),
       scope,
       rate_limit_per_minute: rateLimit.trim() !== "" ? Number(rateLimit) : null,
+      max_calls_per_session: sessionBudget.trim() !== "" ? Number(sessionBudget) : null,
     });
   };
 
@@ -99,6 +104,7 @@ function RegisterModal({
     setDescription("");
     setScope("full");
     setRateLimit("");
+    setSessionBudget("");
     setError(null);
     onClose();
   };
@@ -171,6 +177,20 @@ function RegisterModal({
             min={1}
             value={rateLimit}
             onChange={(e) => setRateLimit(e.target.value)}
+            placeholder="Unlimited"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="agent-session-budget" className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
+            Session Budget <span className="text-muted normal-case font-normal">(max calls per session, leave blank for unlimited)</span>
+          </label>
+          <Input
+            id="agent-session-budget"
+            type="number"
+            min={1}
+            value={sessionBudget}
+            onChange={(e) => setSessionBudget(e.target.value)}
             placeholder="Unlimited"
           />
         </div>
@@ -493,10 +513,11 @@ function RenameModal({ agent, onClose, onSuccess }: RenameModalProps): React.Rea
   const [name, setName] = useState(agent?.name ?? "");
   const [description, setDescription] = useState(agent?.description ?? "");
   const [rateLimit, setRateLimit] = useState(agent?.rate_limit_per_minute != null ? String(agent.rate_limit_per_minute) : "");
+  const [sessionBudget, setSessionBudget] = useState(agent?.max_calls_per_session != null ? String(agent.max_calls_per_session) : "");
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: (payload: { name?: string; description?: string; rate_limit_per_minute?: number | null }) =>
+    mutationFn: (payload: { name?: string; description?: string; rate_limit_per_minute?: number | null; max_calls_per_session?: number | null }) =>
       updateAgent(agent!.id, payload),
     onSuccess: () => {
       onSuccess();
@@ -513,10 +534,12 @@ function RenameModal({ agent, onClose, onSuccess }: RenameModalProps): React.Rea
     e.preventDefault();
     setError(null);
     const newRateLimit = rateLimit.trim() !== "" ? Number(rateLimit) : null;
-    const payload: { name?: string; description?: string; rate_limit_per_minute?: number | null } = {};
+    const newSessionBudget = sessionBudget.trim() !== "" ? Number(sessionBudget) : null;
+    const payload: { name?: string; description?: string; rate_limit_per_minute?: number | null; max_calls_per_session?: number | null } = {};
     if (name.trim() !== agent.name) payload.name = name.trim();
     if (description.trim() !== (agent.description ?? "")) payload.description = description.trim();
     if (newRateLimit !== agent.rate_limit_per_minute) payload.rate_limit_per_minute = newRateLimit;
+    if (newSessionBudget !== agent.max_calls_per_session) payload.max_calls_per_session = newSessionBudget;
     if (Object.keys(payload).length === 0) { onClose(); return; }
     mutation.mutate(payload);
   };
@@ -551,6 +574,18 @@ function RenameModal({ agent, onClose, onSuccess }: RenameModalProps): React.Rea
             min={1}
             value={rateLimit}
             onChange={(e) => setRateLimit(e.target.value)}
+            placeholder="Unlimited"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">
+            Session Budget <span className="text-muted normal-case font-normal">(max calls per session, leave blank for unlimited)</span>
+          </label>
+          <Input
+            type="number"
+            min={1}
+            value={sessionBudget}
+            onChange={(e) => setSessionBudget(e.target.value)}
             placeholder="Unlimited"
           />
         </div>
@@ -863,6 +898,13 @@ function Agents(): React.ReactElement {
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <Link
+                        to={`/?agent_id=${agent.id}`}
+                        className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-muted hover:text-accent-light hover:bg-accent/10 transition-all"
+                        title="View stats for this agent"
+                      >
+                        Stats
+                      </Link>
                       <Button variant="ghost" size="sm" onClick={() => setTestCallAgent(agent)}>
                         Test
                       </Button>

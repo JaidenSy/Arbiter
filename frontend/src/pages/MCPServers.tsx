@@ -16,7 +16,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
-import type { MCPServer, MCPServerCreate, MCPServerUpdate, MCPServerTestResult, Page } from '../api/types'
+import type { MCPServer, MCPServerCreate, MCPServerHealthSummary, MCPServerUpdate, MCPServerTestResult, Page } from '../api/types'
 import Modal from '../components/Modal'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Toggle from '../components/Toggle'
@@ -65,6 +65,29 @@ const deleteMCPServer = (id: string): Promise<void> =>
 
 const testMCPServer = (id: string): Promise<MCPServerTestResult> =>
   authClient.post<MCPServerTestResult>(`/mcp-servers/${id}/test`).then((r) => r.data)
+
+const fetchServerHealth = (id: string): Promise<MCPServerHealthSummary> =>
+  authClient.get<MCPServerHealthSummary>(`/mcp-servers/${id}/health`).then((r) => r.data)
+
+function UptimeBadge({ serverId }: { serverId: string }): React.ReactElement | null {
+  const { data } = useQuery<MCPServerHealthSummary>({
+    queryKey: ['mcp-server-health', serverId],
+    queryFn: () => fetchServerHealth(serverId),
+    staleTime: 300_000, // 5 min
+    retry: false,
+  })
+  if (!data || data.total_checks === 0) return null
+  const uptime = data.uptime_pct
+  const colorClass =
+    uptime >= 99 ? 'text-success bg-success/10 border-success/20' :
+    uptime >= 95 ? 'text-warning bg-warning/10 border-warning/20' :
+    'text-error bg-error/10 border-error/20'
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono border ml-1.5 ${colorClass}`}>
+      {uptime.toFixed(0)}%
+    </span>
+  )
+}
 
 // ── Auth header helpers ───────────────────────────────────────────────────────
 
@@ -138,6 +161,7 @@ function ServerFormModal({
     parseHeadersToRows(editTarget?.headers ?? {})
   )
   const [cacheEnabled, setCacheEnabled] = useState(editTarget?.cache_enabled ?? false)
+  const [costPerCall, setCostPerCall] = useState(editTarget?.cost_per_call_usd != null ? String(editTarget.cost_per_call_usd) : '')
   const [error, setError] = useState<string | null>(null)
 
   React.useEffect(() => {
@@ -147,6 +171,7 @@ function ServerFormModal({
       setDescription(editTarget?.description ?? '')
       setAuthHeaders(parseHeadersToRows(editTarget?.headers ?? {}))
       setCacheEnabled(editTarget?.cache_enabled ?? false)
+      setCostPerCall(editTarget?.cost_per_call_usd != null ? String(editTarget.cost_per_call_usd) : '')
       setError(null)
     }
   }, [isOpen, editTarget])
@@ -177,12 +202,14 @@ function ServerFormModal({
     if (!name.trim() || !baseUrl.trim()) return
     setError(null)
 
+    const parsedCost = costPerCall.trim() !== '' ? parseFloat(costPerCall) : null
     const payload = {
       name: name.trim(),
       base_url: baseUrl.trim(),
       description: description.trim() || null,
       headers: buildHeadersFromRows(authHeaders),
       cache_enabled: isPro ? cacheEnabled : false,
+      cost_per_call_usd: isPro && parsedCost != null && !isNaN(parsedCost) ? parsedCost : null,
     }
 
     if (isEditing) {
@@ -351,6 +378,29 @@ function ServerFormModal({
             </p>
           </div>
           <Toggle checked={isPro ? cacheEnabled : false} onChange={isPro ? setCacheEnabled : () => {}} />
+        </div>
+
+        <div className={!isPro ? 'opacity-50' : ''}>
+          <div className="flex items-center gap-2 mb-1.5">
+            <label htmlFor="cost-per-call" className={labelClass}>Cost per call (USD)</label>
+            {!isPro && (
+              <span className="text-[10px] font-semibold tracking-wide uppercase px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/20">Pro</span>
+            )}
+          </div>
+          <input
+            id="cost-per-call"
+            type="number"
+            min="0"
+            step="0.000001"
+            disabled={!isPro}
+            value={costPerCall}
+            onChange={(e) => setCostPerCall(e.target.value)}
+            placeholder="e.g. 0.001"
+            className={`${inputClass} font-mono`}
+          />
+          <p className="text-[11px] text-muted mt-1.5">
+            Used for cost tracking on the dashboard. Leave blank if this server has no per-call cost.
+          </p>
         </div>
 
         {error && (
@@ -748,7 +798,10 @@ function MCPServers(): React.ReactElement {
                     }`}
                   >
                     <td className="py-3 px-4">
-                      <span className="text-sm font-medium text-primary">{server.name}</span>
+                      <span className="inline-flex items-center">
+                        <span className="text-sm font-medium text-primary">{server.name}</span>
+                        <UptimeBadge serverId={server.id} />
+                      </span>
                     </td>
                     <td className="py-3 px-4 max-w-xs">
                       <span

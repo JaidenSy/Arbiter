@@ -83,6 +83,14 @@ const DocsIcon = (): React.ReactElement => (
   </svg>
 )
 
+const WebhooksIcon = (): React.ReactElement => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+    <polyline points="15 3 21 3 21 9"/>
+    <line x1="10" y1="14" x2="21" y2="3"/>
+  </svg>
+)
+
 const SettingsIcon = (): React.ReactElement => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -317,6 +325,7 @@ function Sidebar(): React.ReactElement {
         <NavItem id="nav-vault" to="/vault" icon={<VaultIcon />} title="Vault" />
         <NavItem id="nav-sessions" to="/sessions" icon={<SessionsIcon />} title="Sessions" />
         <NavItem id="nav-permissions" to="/permissions" icon={<PermissionsIcon />} title="Permissions" />
+        <NavItem id="nav-webhooks" to="/webhooks" icon={<WebhooksIcon />} title="Webhooks" />
         <NavItem id="nav-organization" to="/organization" icon={<UsersIcon />} title="Organization" />
         <NavItem id="nav-account" to="/account" icon={<AccountIcon />} title="Account" />
       </nav>

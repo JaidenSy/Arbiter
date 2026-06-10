@@ -28,6 +28,7 @@ Design decisions:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -42,6 +43,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ssrf import assert_ssrf_safe
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
@@ -49,15 +51,24 @@ from app.db.models.session import Session, SessionEvent
 from app.db.models.usage_event import UsageEvent
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.services.cache.cache_service import CacheService
-from app.services.plan.plan_limits import PLAN_LIMITS
+from app.services.plan.plan_limits import (
+    PLAN_LIMITS,
+    QuotaExceededError,
+    SessionBudgetExceededError,
+)
 from app.services.plan.plan_service import check_tool_call_quota
 from app.services.rbac.rbac_service import RBACService
 from app.services.vault.vault_service import VaultService
+from app.services.webhook.webhook_service import dispatch_event as _dispatch_webhook
 
 logger = logging.getLogger(__name__)
 
 _SECRET_PLACEHOLDER = re.compile(r"\{\{(?:vault:)?([A-Za-z0-9_]+)\}\}")
 _HTTP_TIMEOUT = httpx.Timeout(30.0)
+_MAX_RETRIES = 2  # retries on TimeoutException/ConnectError; backoff 1s then 2s
+_QuotaExceededError = QuotaExceededError  # keep import alive past linter
+_SessionBudgetExceededError = SessionBudgetExceededError  # keep import alive past linter
+_SESSION_BUDGET_TTL = 86_400  # 24 h — sessions don't outlive a day
 
 
 class ProxyService:
@@ -130,6 +141,14 @@ class ProxyService:
             tool_name=request.tool_name,
         )
         if not permitted:
+            asyncio.create_task(
+                _dispatch_webhook(
+                    self.db,
+                    agent.org_id,
+                    "permission.denied",
+                    {"agent": agent.name, "tool": request.tool_name, "server": request.server_name},
+                )
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(
@@ -189,10 +208,11 @@ class ProxyService:
                 semantic=semantic_cache,
             )
 
-        # Ensure/create session.
+        # Ensure/create session — propagate parent for multi-hop tracing.
         session = await self._ensure_session(
             agent=agent,
             session_id=request.session_id,
+            parent_session_id=request.parent_session_id,
         )
 
         if cached_result is not None:
@@ -217,7 +237,31 @@ class ProxyService:
             )
 
         # ── 4. Quota check (skipped for cache hits) ───────────────────────────
-        await check_tool_call_quota(self.redis, self.db, org)
+        try:
+            await check_tool_call_quota(self.redis, self.db, org)
+        except _QuotaExceededError:
+            asyncio.create_task(
+                _dispatch_webhook(
+                    self.db,
+                    agent.org_id,
+                    "quota.exceeded",
+                    {"agent": agent.name, "plan": org.plan_tier},
+                )
+            )
+            raise
+
+        # ── 4b. Per-session budget check (skipped for cache hits) ─────────────
+        if agent.max_calls_per_session is not None:
+            budget_key = f"session_budget:{session.id}"
+            used = await self.redis.incr(budget_key)
+            if used == 1:
+                await self.redis.expire(budget_key, _SESSION_BUDGET_TTL)
+            if used > agent.max_calls_per_session:
+                raise _SessionBudgetExceededError(
+                    session_id=str(session.id),
+                    used=used,
+                    limit=agent.max_calls_per_session,
+                )
 
         # ── 5. Secret injection ────────────────────────────────────────────────
         injected_params = await self.intercept_request(
@@ -260,6 +304,13 @@ class ProxyService:
 
         _headers_fp = _hl.md5(str(sorted(mcp_server.headers.items())).encode()).hexdigest()[:8]
         upstream_session_key = f"mcp_sessions:{session.id}:{request.server_name}:{_headers_fp}"
+
+        # Re-validate DNS at request time to guard against DNS rebinding (#182):
+        # a hostname that resolved to a public IP at registration may now point
+        # to a private address.  This check runs before both the MCP initialize
+        # handshake and the tool call so neither can be redirected internally.
+        await assert_ssrf_safe(mcp_server.base_url, error_status=status.HTTP_502_BAD_GATEWAY)
+
         outbound_headers = await self._ensure_mcp_session(
             mcp_server=mcp_server,
             cache_key=upstream_session_key,
@@ -267,13 +318,28 @@ class ProxyService:
         )
 
         try:
-            async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-                http_resp = await client.post(
-                    mcp_server.base_url,
-                    json=jsonrpc_body,
-                    headers=outbound_headers,
-                )
+            # Retry on transient network errors only; never retry upstream 4xx/5xx.
+            _last_exc: Exception | None = None
+            http_resp = None
+            for _attempt in range(_MAX_RETRIES + 1):
+                try:
+                    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+                        http_resp = await client.post(
+                            mcp_server.base_url,
+                            json=jsonrpc_body,
+                            headers=outbound_headers,
+                        )
+                    _last_exc = None
+                    break
+                except (httpx.TimeoutException, httpx.ConnectError) as exc:
+                    _last_exc = exc
+                    if _attempt < _MAX_RETRIES:
+                        await asyncio.sleep(2**_attempt)  # 1s then 2s
 
+            if _last_exc is not None:
+                raise _last_exc
+
+            assert http_resp is not None
             if http_resp.status_code >= 400:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
@@ -334,8 +400,10 @@ class ProxyService:
                 error=error,
             )
             raise
-        except httpx.TimeoutException as exc:
-            error = f"MCP server {request.server_name!r} timed out after 30s"
+        except (httpx.TimeoutException, httpx.ConnectError) as exc:
+            error = (
+                f"MCP server {request.server_name!r} unreachable after {_MAX_RETRIES + 1} attempts"
+            )
             duration_ms = int((time.monotonic() - start_ms) * 1000)
             await self._persist_event(
                 session=session,
@@ -567,12 +635,18 @@ class ProxyService:
         self,
         agent: Agent,
         session_id: uuid.UUID | None,
+        parent_session_id: uuid.UUID | None = None,
     ) -> Session:
         """
         Fetch an existing session or create a new one.
 
         If session_id is provided but does not belong to this agent, a new
         session is created (prevents session hijacking).
+
+        When parent_session_id is provided the new session is linked into the
+        parent's call chain: trace_id is inherited from the parent so the full
+        multi-hop chain shares one trace_id.  If the parent belongs to a
+        different org it is silently ignored (no cross-org linking).
         """
         if session_id is not None:
             result = await self.db.execute(
@@ -581,15 +655,36 @@ class ProxyService:
                     Session.agent_id == agent.id,
                 )
             )
-            session = result.scalar_one_or_none()
-            if session is not None:
-                return session
+            existing = result.scalar_one_or_none()
+            if existing is not None:
+                return existing
 
-        session = Session(agent_id=agent.id, org_id=agent.org_id, metadata_={})
+        # Resolve trace_id: inherit from parent if valid, else start a new chain.
+        trace_id: uuid.UUID | None = None
+        validated_parent_id: uuid.UUID | None = None
+        if parent_session_id is not None:
+            parent_result = await self.db.execute(
+                select(Session).where(
+                    Session.id == parent_session_id,
+                    Session.org_id == agent.org_id,
+                )
+            )
+            parent = parent_result.scalar_one_or_none()
+            if parent is not None:
+                trace_id = parent.trace_id
+                validated_parent_id = parent.id
+
+        new_id = uuid.uuid4()
+        session = Session(
+            id=new_id,
+            agent_id=agent.id,
+            org_id=agent.org_id,
+            metadata_={},
+            parent_session_id=validated_parent_id,
+            trace_id=trace_id if trace_id is not None else new_id,
+        )
         self.db.add(session)
-        await (
-            self.db.commit()
-        )  # commit immediately so session.id is durable before events are written
+        await self.db.commit()
         await self.db.refresh(session)
         return session
 
@@ -606,6 +701,10 @@ class ProxyService:
         user_id: uuid.UUID | None = None,
     ) -> SessionEvent:
         """Append an immutable audit record and increment daily usage counters."""
+        cost_usd: float | None = None
+        if not cache_hit and mcp_server.cost_per_call_usd is not None:
+            cost_usd = float(mcp_server.cost_per_call_usd)
+
         event = SessionEvent(
             session_id=session.id,
             org_id=session.org_id,
@@ -617,6 +716,7 @@ class ProxyService:
             cache_hit=cache_hit,
             duration_ms=duration_ms,
             error=error,
+            cost_usd=cost_usd,
         )
         self.db.add(event)
 

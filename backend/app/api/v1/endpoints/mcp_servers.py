@@ -15,12 +15,9 @@ Routes:
 
 from __future__ import annotations
 
-import ipaddress
 import json as _json
 import re
-import socket
 import uuid
-from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -110,39 +107,6 @@ async def _resolve_server_headers(server: MCPServer, db: AsyncSession) -> dict[s
     return resolved
 
 
-_PRIVATE_NETS = [
-    ipaddress.ip_network(cidr)
-    for cidr in (
-        "10.0.0.0/8",
-        "172.16.0.0/12",
-        "192.168.0.0/16",
-        "127.0.0.0/8",
-        "169.254.0.0/16",
-        "::1/128",
-        "fc00::/7",
-    )
-]
-
-
-def _assert_ssrf_safe(url: str) -> None:
-    """Raise ValueError if url resolves to a private/loopback address."""
-    parsed = urlparse(url)
-    hostname = parsed.hostname
-    if not hostname:
-        raise ValueError("base_url must contain a valid hostname")
-    try:
-        infos = socket.getaddrinfo(hostname, None)
-    except socket.gaierror:
-        raise ValueError(f"base_url hostname {hostname!r} could not be resolved")
-    for _family, _type, _proto, _canonname, sockaddr in infos:
-        addr = ipaddress.ip_address(sockaddr[0])
-        if any(addr in net for net in _PRIVATE_NETS):
-            raise ValueError(
-                f"base_url resolves to a private/reserved address ({addr}) — "
-                "registering internal hosts as MCP servers is not allowed"
-            )
-
-
 router = APIRouter(prefix="/mcp-servers", tags=["mcp-servers"])
 
 
@@ -163,16 +127,19 @@ class MCPServerCreate(BaseModel):
         True,
         description="Set False for side-effectful servers that must never serve cached responses",
     )
+    cost_per_call_usd: float | None = Field(
+        None,
+        description="Optional per-call cost in USD for cost tracking; omit to disable",
+    )
 
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, v: str) -> str:
-        """Ensure base_url is a public HTTP(S) URL — blocks SSRF via private IPs."""
+        """Ensure base_url is a valid HTTP(S) URL — SSRF/DNS check happens async in the endpoint."""
         stripped = v.strip()
         lower = stripped.lower()
         if not (lower.startswith("http://") or lower.startswith("https://")):
             raise ValueError("base_url must be a valid http:// or https:// URL")
-        _assert_ssrf_safe(stripped)
         return stripped
 
 
@@ -184,19 +151,19 @@ class MCPServerUpdate(BaseModel):
     description: str | None = None
     headers: dict[str, str] | None = None
     cache_enabled: bool | None = None
+    cost_per_call_usd: float | None = None
     is_active: bool | None = None
 
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, v: str | None) -> str | None:
-        """Ensure base_url is a public HTTP(S) URL when provided — blocks SSRF via private IPs."""
+        """Ensure base_url is a valid HTTP(S) URL when provided — SSRF/DNS check happens async in the endpoint."""
         if v is None:
             return v
         stripped = v.strip()
         lower = stripped.lower()
         if not (lower.startswith("http://") or lower.startswith("https://")):
             raise ValueError("base_url must be a valid http:// or https:// URL")
-        _assert_ssrf_safe(stripped)
         return stripped
 
 
@@ -232,6 +199,7 @@ class MCPServerResponse(BaseModel):
         ...,
         description="Set False for side-effectful servers that must never serve cached responses",
     )
+    cost_per_call_usd: float | None = None
 
     model_config = {"from_attributes": True}
 
@@ -269,6 +237,8 @@ async def create_mcp_server(
     Raises:
         HTTPException 409: If an active server with the same name already exists.
     """
+    await assert_ssrf_safe(body.base_url)
+
     existing = await db.execute(
         select(MCPServer).where(
             MCPServer.name == body.name,
@@ -304,6 +274,7 @@ async def create_mcp_server(
         description=body.description,
         headers=body.headers,
         cache_enabled=body.cache_enabled,
+        cost_per_call_usd=body.cost_per_call_usd,
         is_active=True,
     )
     db.add(server)
@@ -426,6 +397,9 @@ async def update_mcp_server(
     Raises:
         HTTPException 404: If the server does not exist or is inactive.
     """
+    if body.base_url is not None:
+        await assert_ssrf_safe(body.base_url)
+
     result = await db.execute(
         select(MCPServer).where(
             MCPServer.id == server_id,
@@ -462,6 +436,8 @@ async def update_mcp_server(
         server.headers = body.headers
     if body.cache_enabled is not None:
         server.cache_enabled = body.cache_enabled
+    if body.cost_per_call_usd is not None:
+        server.cost_per_call_usd = body.cost_per_call_usd
     if body.is_active is not None:
         server.is_active = body.is_active
 
@@ -582,3 +558,89 @@ async def list_mcp_server_tools(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not fetch tools: {exc}"
         ) from exc
+
+
+# ── Health history endpoint ───────────────────────────────────────────────────
+
+
+class HealthCheckEntry(BaseModel):
+    checked_at: str
+    is_healthy: bool
+    latency_ms: int | None
+    error: str | None
+
+
+class MCPServerHealthResponse(BaseModel):
+    server_id: str
+    uptime_pct: float  # 0.0–100.0; -1.0 = no data yet
+    total_checks: int
+    recent_checks: list[HealthCheckEntry]  # last 24 checks, newest first
+
+
+@router.get(
+    "/{server_id}/health",
+    response_model=MCPServerHealthResponse,
+    summary="Get health check history for an MCP server",
+)
+async def get_mcp_server_health(
+    server_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> MCPServerHealthResponse:
+    """Return the last 24 health checks and uptime % for this server."""
+    from app.db.models.mcp_server_health_check import MCPServerHealthCheck
+
+    # Verify ownership
+    result = await db.execute(
+        select(MCPServer).where(MCPServer.id == server_id, MCPServer.org_id == current_user.org_id)
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {server_id} not found"
+        )
+
+    # Fetch last 24 checks
+    checks_result = await db.execute(
+        select(MCPServerHealthCheck)
+        .where(
+            MCPServerHealthCheck.server_id == server_id,
+            MCPServerHealthCheck.org_id == current_user.org_id,
+        )
+        .order_by(MCPServerHealthCheck.checked_at.desc())
+        .limit(24)
+    )
+    checks = checks_result.scalars().all()
+
+    # Uptime % from all-time checks
+    total_checks_result = await db.execute(
+        select(func.count(MCPServerHealthCheck.id)).where(
+            MCPServerHealthCheck.server_id == server_id,
+            MCPServerHealthCheck.org_id == current_user.org_id,
+        )
+    )
+    total_checks = int(total_checks_result.scalar_one() or 0)
+
+    healthy_checks_result = await db.execute(
+        select(func.count(MCPServerHealthCheck.id)).where(
+            MCPServerHealthCheck.server_id == server_id,
+            MCPServerHealthCheck.org_id == current_user.org_id,
+            MCPServerHealthCheck.is_healthy.is_(True),
+        )
+    )
+    healthy_count = int(healthy_checks_result.scalar_one() or 0)
+    uptime_pct = (healthy_count / total_checks * 100) if total_checks > 0 else -1.0
+
+    return MCPServerHealthResponse(
+        server_id=str(server_id),
+        uptime_pct=round(uptime_pct, 1),
+        total_checks=total_checks,
+        recent_checks=[
+            HealthCheckEntry(
+                checked_at=c.checked_at.isoformat(),
+                is_healthy=c.is_healthy,
+                latency_ms=c.latency_ms,
+                error=c.error,
+            )
+            for c in checks
+        ],
+    )

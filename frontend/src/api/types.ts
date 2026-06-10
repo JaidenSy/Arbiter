@@ -21,6 +21,7 @@ export interface Agent {
   is_active: boolean;
   scope: AgentScope;
   rate_limit_per_minute: number | null;
+  max_calls_per_session: number | null;
   created_at: string;
 }
 
@@ -36,6 +37,7 @@ export interface MCPServer {
   description: string | null;
   headers: Record<string, string>;
   cache_enabled: boolean;
+  cost_per_call_usd: number | null;
   is_active: boolean;
   created_at: string;
 }
@@ -46,6 +48,7 @@ export interface MCPServerCreate {
   description?: string | null;
   headers?: Record<string, string>;
   cache_enabled?: boolean;
+  cost_per_call_usd?: number | null;
 }
 
 export interface MCPServerUpdate {
@@ -55,6 +58,7 @@ export interface MCPServerUpdate {
   headers?: Record<string, string>;
   cache_enabled?: boolean;
   is_active?: boolean;
+  cost_per_call_usd?: number | null;
 }
 
 export interface SessionEvent {
@@ -74,10 +78,33 @@ export interface SessionEvent {
 export interface Session {
   id: string;
   agent_id: string;
+  parent_session_id: string | null;
+  trace_id: string | null;
   started_at: string;
   ended_at: string | null;
   metadata: Record<string, unknown>;
   events?: SessionEvent[];
+  children?: SessionChild[];
+}
+
+export interface SessionChild {
+  id: string;
+  agent_id: string;
+  parent_session_id: string | null;
+  trace_id: string | null;
+  started_at: string;
+  ended_at: string | null;
+}
+
+export interface ChainNode {
+  id: string;
+  agent_id: string;
+  parent_session_id: string | null;
+  trace_id: string;
+  started_at: string;
+  ended_at: string | null;
+  event_count: number;
+  children: ChainNode[];
 }
 
 export interface ToolPermission {
@@ -144,12 +171,23 @@ export interface VaultSecretCreate {
   value: string;
 }
 
+export interface SlowTool {
+  tool_name: string;
+  server_name: string | null;
+  avg_duration_ms: number;
+  call_count: number;
+}
+
 export interface DashboardStats {
   agents_count: number;
   servers_count: number;
   tool_calls_today: number;
   cache_hit_rate_today: number; // 0.0–1.0
   error_rate_today: number; // 0.0–1.0
+  latency_p50_ms: number | null;
+  latency_p95_ms: number | null;
+  latency_p99_ms: number | null;
+  slowest_tools: SlowTool[];
 }
 
 export interface CacheToolStat {
@@ -171,6 +209,18 @@ export interface MCPServerTestResult {
   latency_ms: number | null;
 }
 
+export interface MCPServerHealthSummary {
+  server_id: string;
+  uptime_pct: number; // -1.0 = no data yet; 0–100 otherwise
+  total_checks: number;
+  recent_checks: {
+    checked_at: string;
+    is_healthy: boolean;
+    latency_ms: number | null;
+    error: string | null;
+  }[];
+}
+
 export interface HistoryBucket {
   timestamp: string;
   label: string;
@@ -188,6 +238,51 @@ export interface StatsHistoryResponse {
 export interface UsageSummary {
   tool_calls_month: number;
   tool_calls_month_limit: number | null; // null = unlimited (enterprise)
+}
+
+export interface CostBreakdownItem {
+  name: string;
+  cost_usd: number;
+}
+
+export interface CostStats {
+  cost_this_month_usd: number;
+  cost_saved_by_cache_usd: number;
+  by_agent: CostBreakdownItem[];
+  by_server: CostBreakdownItem[];
+}
+
+export interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface WebhookCreateResponse extends Webhook {
+  secret: string;
+}
+
+export interface WebhookCreate {
+  url: string;
+  events: string[];
+  is_active?: boolean;
+}
+
+export interface WebhookUpdate {
+  url?: string;
+  events?: string[];
+  is_active?: boolean;
+}
+
+export interface DeliveryLog {
+  id: string;
+  event_type: string;
+  response_status: number | null;
+  error: string | null;
+  attempt: number;
+  delivered_at: string;
 }
 
 export interface BillingStatus {

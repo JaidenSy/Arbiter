@@ -42,11 +42,12 @@ class SessionEventResponse(BaseModel):
 
 
 class SessionListResponse(BaseModel):
-    """
-    Response schema for a Session in list context — no events loaded."""
+    """Response schema for a Session in list context — no events loaded."""
 
     id: uuid.UUID
     agent_id: uuid.UUID
+    parent_session_id: uuid.UUID | None = None
+    trace_id: uuid.UUID | None = None
     started_at: datetime
     ended_at: datetime | None
     metadata: dict[str, Any] = Field(default_factory=dict, alias="metadata_")
@@ -59,13 +60,35 @@ class SessionResponse(BaseModel):
     Response schema for a Session resource.
 
     events is omitted from list responses (included only in GET /sessions/{id}).
+    children lists immediately-spawned child sessions (one level only).
     """
 
     id: uuid.UUID
     agent_id: uuid.UUID
+    parent_session_id: uuid.UUID | None = None
+    trace_id: uuid.UUID | None = None
     started_at: datetime
     ended_at: datetime | None
     metadata: dict[str, Any] = Field(default_factory=dict, alias="metadata_")
     events: list[SessionEventResponse] = Field(default_factory=list)
+    children: list[SessionListResponse] = Field(default_factory=list)
 
     model_config = {"populate_by_name": True, "from_attributes": True}
+
+
+class ChainNode(BaseModel):
+    """A single node in the multi-hop call chain tree."""
+
+    id: uuid.UUID
+    agent_id: uuid.UUID
+    parent_session_id: uuid.UUID | None
+    trace_id: uuid.UUID
+    started_at: datetime
+    ended_at: datetime | None
+    event_count: int = 0
+    children: list[ChainNode] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}
+
+
+ChainNode.model_rebuild()

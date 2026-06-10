@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -67,6 +67,11 @@ class MCPServer(Base):
         nullable=False,
         default=True,
         comment="Set False for side-effectful servers that must never serve cached responses",
+    )
+    cost_per_call_usd: Mapped[float | None] = mapped_column(
+        Numeric(precision=10, scale=8),
+        nullable=True,
+        comment="Optional per-call cost in USD; NULL = no cost tracking",
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
