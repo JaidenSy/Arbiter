@@ -53,7 +53,15 @@ from app.db.models.cache import CacheEntry
 from app.db.models.cli_device_code import CliDeviceCode
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.session import Session, SessionEvent
-from app.services.plan.plan_limits import PlanLimitError, QuotaExceededError
+from app.services.plan.plan_limits import (
+    PlanLimitError,
+    QuotaExceededError,
+)
+from app.services.plan.plan_limits import (
+    SessionBudgetExceededError as _SessionBudgetExceededError,
+)
+
+_SBE = _SessionBudgetExceededError  # alias used in exception handler below
 from app.services.quota.quota_alert_service import quota_alert_loop
 from app.tasks.purge_gdpr import gdpr_purge_loop
 
@@ -375,6 +383,22 @@ def create_app() -> FastAPI:
                 "limit": exc.limit,
                 "resets_at": exc.resets_at.isoformat(),
                 "upgrade_url": "https://arbiterai.dev/pricing",
+            },
+        )
+
+    @app.exception_handler(_SBE)
+    async def session_budget_exceeded_handler(
+        request: Request,
+        exc: _SBE,  # type: ignore[valid-type]
+    ) -> JSONResponse:
+        """Return HTTP 402 when an agent's per-session tool-call budget is exhausted."""
+        return JSONResponse(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            content={
+                "error": "session_budget_exceeded",
+                "session_id": exc.session_id,
+                "used": exc.used,
+                "limit": exc.limit,
             },
         )
 

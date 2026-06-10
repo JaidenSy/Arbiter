@@ -13,7 +13,6 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-
 _VALID_SCOPES = {"full", "read_only", "vault_read_only"}
 
 
@@ -36,6 +35,11 @@ class AgentCreate(BaseModel):
         ge=1,
         description="Max total tool calls per minute across all tools. Null = unlimited.",
     )
+    max_calls_per_session: int | None = Field(
+        None,
+        ge=1,
+        description="Max tool calls allowed per session. Null = unlimited.",
+    )
 
 
 class AgentResponse(BaseModel):
@@ -51,6 +55,7 @@ class AgentResponse(BaseModel):
     is_active: bool
     scope: str
     rate_limit_per_minute: int | None
+    max_calls_per_session: int | None
     created_at: datetime
     updated_at: datetime
 
@@ -63,6 +68,7 @@ class AgentUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = Field(None, max_length=1000)
     rate_limit_per_minute: int | None = Field(None, ge=1)
+    max_calls_per_session: int | None = Field(None, ge=1)
 
 
 class AgentCreateResponse(AgentResponse):
@@ -73,4 +79,6 @@ class AgentCreateResponse(AgentResponse):
     it cannot be retrieved again.
     """
 
-    api_key: str = Field(..., description="Raw API key — store this now, it will not be shown again")
+    api_key: str = Field(
+        ..., description="Raw API key — store this now, it will not be shown again"
+    )

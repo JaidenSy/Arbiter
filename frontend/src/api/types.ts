@@ -21,6 +21,7 @@ export interface Agent {
   is_active: boolean;
   scope: AgentScope;
   rate_limit_per_minute: number | null;
+  max_calls_per_session: number | null;
   created_at: string;
 }
 
