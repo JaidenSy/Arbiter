@@ -13,8 +13,9 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { authClient } from "../api/client";
-import type { Agent, Session, SessionEvent, Page } from "../api/types";
+import type { Agent, ChainNode, Session, SessionEvent, Page } from "../api/types";
 import JsonViewer from "../components/JsonViewer";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -293,6 +294,96 @@ function DiffPanel({ eventA, eventB, onClose }: DiffPanelProps): React.ReactElem
   );
 }
 
+// ── Call chain tree ───────────────────────────────────────────────────────────
+
+function ChainNodeRow({
+  node,
+  depth,
+  currentId,
+}: {
+  node: ChainNode;
+  depth: number;
+  currentId: string;
+}): React.ReactElement {
+  const isCurrent = node.id === currentId;
+  return (
+    <>
+      <div
+        className={`flex items-center gap-2 py-1.5 px-3 rounded-lg transition-colors ${
+          isCurrent ? "bg-accent/10 border border-accent/20" : "hover:bg-elevated"
+        }`}
+        style={{ paddingLeft: `${12 + depth * 20}px` }}
+      >
+        {depth > 0 && (
+          <span className="text-border font-mono text-xs select-none">└─</span>
+        )}
+        <span className="w-1.5 h-1.5 rounded-full bg-accent/60 flex-shrink-0" />
+        {isCurrent ? (
+          <span className="font-mono text-xs text-accent-light font-semibold truncate">
+            {node.id.slice(0, 8)}…
+          </span>
+        ) : (
+          <Link
+            to={`/sessions/${node.id}`}
+            className="font-mono text-xs text-secondary hover:text-primary transition-colors truncate"
+          >
+            {node.id.slice(0, 8)}…
+          </Link>
+        )}
+        <span className="text-muted text-[10px] font-mono ml-auto flex-shrink-0">
+          {node.event_count} call{node.event_count !== 1 ? "s" : ""}
+        </span>
+        {isCurrent && (
+          <span className="text-[10px] font-mono text-accent-light bg-accent/10 border border-accent/20 rounded px-1.5 py-0.5 flex-shrink-0">
+            current
+          </span>
+        )}
+      </div>
+      {node.children.map((child) => (
+        <ChainNodeRow key={child.id} node={child} depth={depth + 1} currentId={currentId} />
+      ))}
+    </>
+  );
+}
+
+function CallChainPanel({ sessionId, traceId }: { sessionId: string; traceId: string }): React.ReactElement | null {
+  const [expanded, setExpanded] = useState(false);
+
+  const { data: chain } = useQuery<ChainNode>({
+    queryKey: ["session-chain", sessionId],
+    queryFn: () => authClient.get<ChainNode>(`/sessions/${sessionId}/chain`).then((r) => r.data),
+    enabled: expanded,
+  });
+
+  const isChained = traceId !== sessionId;
+
+  if (!isChained && !expanded) {
+    return null;
+  }
+
+  return (
+    <div className="mb-6 border border-accent/20 rounded-xl overflow-hidden bg-surface">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-accent/5 transition-colors"
+      >
+        <span className="text-accent-light text-xs font-mono font-semibold">Agent Call Chain</span>
+        <span className="text-muted text-xs font-mono">trace {traceId.slice(0, 8)}…</span>
+        <span className="ml-auto text-muted text-xs">{expanded ? "▲" : "▼"}</span>
+      </button>
+      {expanded && (
+        <div className="px-3 pb-3 pt-1 border-t border-border">
+          {chain == null ? (
+            <div className="py-4 text-center text-muted text-xs font-mono">Loading chain…</div>
+          ) : (
+            <ChainNodeRow node={chain} depth={0} currentId={sessionId} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function SessionTrace(): React.ReactElement {
@@ -388,6 +479,11 @@ function SessionTrace(): React.ReactElement {
       >
         ← Back to Sessions
       </button>
+
+      {/* Call chain — shown when this session is part of a multi-hop trace */}
+      {session.trace_id && (
+        <CallChainPanel sessionId={session.id} traceId={session.trace_id} />
+      )}
 
       {/* Session header */}
       <div className="flex items-start justify-between mb-6">

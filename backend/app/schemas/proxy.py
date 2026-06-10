@@ -40,6 +40,10 @@ class ToolCallRequest(BaseModel):
         None,
         description="Optional session UUID. If omitted a new session is created.",
     )
+    parent_session_id: uuid.UUID | None = Field(
+        None,
+        description="UUID of the calling session when this call was spawned by another agent. Links sessions into a traceable call chain.",
+    )
 
 
 class ToolCallResponse(BaseModel):

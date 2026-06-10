@@ -77,10 +77,33 @@ export interface SessionEvent {
 export interface Session {
   id: string;
   agent_id: string;
+  parent_session_id: string | null;
+  trace_id: string | null;
   started_at: string;
   ended_at: string | null;
   metadata: Record<string, unknown>;
   events?: SessionEvent[];
+  children?: SessionChild[];
+}
+
+export interface SessionChild {
+  id: string;
+  agent_id: string;
+  parent_session_id: string | null;
+  trace_id: string | null;
+  started_at: string;
+  ended_at: string | null;
+}
+
+export interface ChainNode {
+  id: string;
+  agent_id: string;
+  parent_session_id: string | null;
+  trace_id: string;
+  started_at: string;
+  ended_at: string | null;
+  event_count: number;
+  children: ChainNode[];
 }
 
 export interface ToolPermission {

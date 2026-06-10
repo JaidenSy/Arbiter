@@ -30,7 +30,11 @@ from app.db.models.mcp_server import MCPServer
 from app.db.models.session import Session, SessionEvent
 from app.db.models.user import User
 from app.schemas.pagination import Page
-from app.schemas.session import SessionEventResponse, SessionListResponse, SessionResponse
+from app.schemas.session import (
+    SessionEventResponse,
+    SessionListResponse,
+    SessionResponse,
+)
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -227,7 +231,7 @@ async def get_session(
     result = await db.execute(
         select(Session)
         .where(Session.id == session_id, Session.org_id == current_user.org_id)
-        .options(selectinload(Session.events))
+        .options(selectinload(Session.events), selectinload(Session.children))
     )
     session = result.scalar_one_or_none()
     if session is None:
@@ -236,7 +240,6 @@ async def get_session(
             detail=f"Session {session_id} not found",
         )
 
-    # Build MCP server name lookup for all server IDs referenced by events.
     server_ids = {e.mcp_server_id for e in session.events if e.mcp_server_id}
     server_map: dict[uuid.UUID, str] = {}
     if server_ids:
@@ -248,13 +251,13 @@ async def get_session(
         )
         server_map = {row.id: row.name for row in servers_result}
 
-    # Build the response manually so we can inject mcp_server_name per event.
     session_data = SessionResponse.model_validate(session)
     enriched_events: list[SessionEventResponse] = []
     for event, schema_event in zip(session.events, session_data.events):
         schema_event.mcp_server_name = server_map.get(event.mcp_server_id)
         enriched_events.append(schema_event)
     session_data.events = enriched_events
+    session_data.children = [SessionListResponse.model_validate(c) for c in session.children]
     return session_data
 
 
@@ -335,3 +338,84 @@ async def list_session_events(
         schema_event.mcp_server_name = server_map.get(event.mcp_server_id)
         enriched.append(schema_event)
     return Page(items=enriched, total=total, skip=skip, limit=limit)
+
+
+@router.get(
+    "/{session_id}/chain",
+    response_model=ChainNode,
+    summary="Get the full multi-hop call chain for a session",
+)
+async def get_session_chain(
+    session_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ChainNode:
+    """
+    Return the full call chain tree rooted at the trace_id root for this session.
+
+    All sessions sharing the same trace_id are fetched in one query and assembled
+    into a tree.  The returned root node is the session with no parent in the chain.
+    """
+    # Fetch the requested session to get its trace_id.
+    target_result = await db.execute(
+        select(Session).where(
+            Session.id == session_id,
+            Session.org_id == current_user.org_id,
+        )
+    )
+    target = target_result.scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    # Fetch all sessions sharing the same trace_id (whole chain, one query).
+    chain_result = await db.execute(
+        select(
+            Session.id,
+            Session.agent_id,
+            Session.parent_session_id,
+            Session.trace_id,
+            Session.started_at,
+            Session.ended_at,
+            func.count(SessionEvent.id).label("event_count"),
+        )
+        .outerjoin(SessionEvent, SessionEvent.session_id == Session.id)
+        .where(
+            Session.trace_id == target.trace_id,
+            Session.org_id == current_user.org_id,
+        )
+        .group_by(
+            Session.id,
+            Session.agent_id,
+            Session.parent_session_id,
+            Session.trace_id,
+            Session.started_at,
+            Session.ended_at,
+        )
+        .order_by(Session.started_at.asc())
+    )
+    rows = chain_result.all()
+
+    # Build tree from flat list.
+    nodes: dict[uuid.UUID, ChainNode] = {}
+    for row in rows:
+        nodes[row.id] = ChainNode(
+            id=row.id,
+            agent_id=row.agent_id,
+            parent_session_id=row.parent_session_id,
+            trace_id=row.trace_id,
+            started_at=row.started_at,
+            ended_at=row.ended_at,
+            event_count=row.event_count,
+        )
+
+    root: ChainNode | None = None
+    for node in nodes.values():
+        if node.parent_session_id is not None and node.parent_session_id in nodes:
+            nodes[node.parent_session_id].children.append(node)
+        else:
+            root = node
+
+    if root is None:
+        root = nodes[session_id]
+
+    return root

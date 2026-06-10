@@ -202,10 +202,11 @@ class ProxyService:
                 semantic=semantic_cache,
             )
 
-        # Ensure/create session.
+        # Ensure/create session — propagate parent for multi-hop tracing.
         session = await self._ensure_session(
             agent=agent,
             session_id=request.session_id,
+            parent_session_id=request.parent_session_id,
         )
 
         if cached_result is not None:
@@ -615,12 +616,18 @@ class ProxyService:
         self,
         agent: Agent,
         session_id: uuid.UUID | None,
+        parent_session_id: uuid.UUID | None = None,
     ) -> Session:
         """
         Fetch an existing session or create a new one.
 
         If session_id is provided but does not belong to this agent, a new
         session is created (prevents session hijacking).
+
+        When parent_session_id is provided the new session is linked into the
+        parent's call chain: trace_id is inherited from the parent so the full
+        multi-hop chain shares one trace_id.  If the parent belongs to a
+        different org it is silently ignored (no cross-org linking).
         """
         if session_id is not None:
             result = await self.db.execute(
@@ -629,15 +636,36 @@ class ProxyService:
                     Session.agent_id == agent.id,
                 )
             )
-            session = result.scalar_one_or_none()
-            if session is not None:
-                return session
+            existing = result.scalar_one_or_none()
+            if existing is not None:
+                return existing
 
-        session = Session(agent_id=agent.id, org_id=agent.org_id, metadata_={})
+        # Resolve trace_id: inherit from parent if valid, else start a new chain.
+        trace_id: uuid.UUID | None = None
+        validated_parent_id: uuid.UUID | None = None
+        if parent_session_id is not None:
+            parent_result = await self.db.execute(
+                select(Session).where(
+                    Session.id == parent_session_id,
+                    Session.org_id == agent.org_id,
+                )
+            )
+            parent = parent_result.scalar_one_or_none()
+            if parent is not None:
+                trace_id = parent.trace_id
+                validated_parent_id = parent.id
+
+        new_id = uuid.uuid4()
+        session = Session(
+            id=new_id,
+            agent_id=agent.id,
+            org_id=agent.org_id,
+            metadata_={},
+            parent_session_id=validated_parent_id,
+            trace_id=trace_id if trace_id is not None else new_id,
+        )
         self.db.add(session)
-        await (
-            self.db.commit()
-        )  # commit immediately so session.id is durable before events are written
+        await self.db.commit()
         await self.db.refresh(session)
         return session
 

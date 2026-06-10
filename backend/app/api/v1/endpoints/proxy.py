@@ -13,10 +13,12 @@ Routes:
 
 from __future__ import annotations
 
+import json
+import uuid as _uuid
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,39 +42,28 @@ async def tool_call(
     db: AsyncSession = Depends(get_db),
     redis: object = Depends(get_redis),
     agent: Agent = Depends(get_current_agent),
+    x_arbiter_parent_session_id: str | None = Header(
+        None,
+        alias="X-Arbiter-Parent-Session-Id",
+        description="Calling session UUID — links this call into a multi-hop agent chain.",
+    ),
 ) -> ToolCallResponse:
     """
     The central gateway endpoint for all MCP tool calls.
 
-    This endpoint is the single entry point for all agent tool invocations.
-    It delegates to ProxyService which implements the full pipeline.
-
-    Request flow:
-        1. get_current_agent() validates the Bearer API key.
-        2. ProxyService.forward_tool_call() orchestrates:
-            a. RBAC check (403 if denied)
-            b. Semantic cache lookup (return early on hit)
-            c. Vault secret injection into params
-            d. HTTP POST to the target MCP server (JSON-RPC tools/call)
-            e. Cache the response
-            f. Persist SessionEvent audit record
-        3. Return ToolCallResponse with result + metadata.
-
-    Args:
-        body:  Validated request body with server, tool, and params.
-        db:    Injected async database session.
-        redis: Injected async Redis client.
-        agent: Authenticated agent (from Bearer token).
-
-    Returns:
-        ToolCallResponse: Tool result, cache metadata, session/event UUIDs.
-
-    Raises:
-        HTTPException 401: Missing or invalid API key.
-        HTTPException 403: Agent lacks permission for this tool.
-        HTTPException 404: MCP server not found or inactive.
-        HTTPException 502: MCP server returned an error response.
+    Multi-hop tracing: pass X-Arbiter-Parent-Session-Id header (or
+    body.parent_session_id) to link a child agent's session back to the
+    originating session.  All sessions in the chain share a trace_id.
     """
+    # Header takes precedence over body field; silently ignore malformed UUIDs.
+    if x_arbiter_parent_session_id and body.parent_session_id is None:
+        try:
+            body = body.model_copy(
+                update={"parent_session_id": _uuid.UUID(x_arbiter_parent_session_id)}
+            )
+        except ValueError:
+            pass
+
     service = ProxyService(db=db, redis=redis)
     return await service.forward_tool_call(request=body, agent=agent)
 
@@ -112,20 +103,6 @@ async def tools_list(
     Calls the upstream server's tools/list endpoint and filters the result
     so the agent only sees tools they are permitted to call.  This prevents
     information leakage about tools the agent cannot access.
-
-    Args:
-        body:  Request body containing server_name.
-        db:    Injected async database session.
-        redis: Injected async Redis client.
-        agent: Authenticated agent (from Bearer token).
-
-    Returns:
-        ToolsListResponse: List of permitted tools for this agent.
-
-    Raises:
-        HTTPException 401: Missing or invalid API key.
-        HTTPException 404: MCP server not found or inactive.
-        HTTPException 502: Upstream MCP server communication error.
     """
     service = ProxyService(db=db, redis=redis)
 
@@ -140,7 +117,6 @@ async def tools_list(
         **resolved_headers,
     }
 
-    # Build JSON-RPC tools/list request.
     jsonrpc_body = {
         "jsonrpc": "2.0",
         "id": "tools-list",
@@ -160,7 +136,6 @@ async def tools_list(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=(f"MCP server {body.server_name!r} returned HTTP {resp.status_code}"),
             )
-        # Handle SSE response: collect all data events, use the last valid JSON-RPC result.
         if "text/event-stream" in resp.headers.get("content-type", ""):
             json_body: dict = {}
             for line in resp.text.splitlines():
@@ -181,12 +156,10 @@ async def tools_list(
             detail=f"MCP server communication error: {exc}",
         ) from exc
 
-    # Extract tool list from JSON-RPC response.
     tools: list[dict] = []
     if "result" in json_body and "tools" in json_body["result"]:
         tools = json_body["result"]["tools"]
 
-    # Filter by RBAC — pass pre-resolved server to avoid second DB round-trip.
     filtered_tools = await service.filter_tools_list(
         agent=agent,
         server_name=body.server_name,
