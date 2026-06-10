@@ -24,6 +24,7 @@ from app.db.base import async_session_factory
 from app.db.models.mcp_server import MCPServer
 from app.db.models.mcp_server_health_check import MCPServerHealthCheck
 from app.services.vault.vault_service import VaultService
+from app.services.webhook.webhook_service import dispatch_event as _dispatch_webhook
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,14 @@ async def run_health_checks(redis: object | None = None) -> None:
                                 server.name,
                                 server.id,
                                 fail_count,
+                            )
+                            asyncio.create_task(
+                                _dispatch_webhook(
+                                    db,
+                                    server.org_id,
+                                    "mcp_server.offline",
+                                    {"server": server.name, "failures": int(fail_count)},
+                                )
                             )
 
                 await db.commit()

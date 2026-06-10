@@ -54,6 +54,7 @@ const Consent        = lazy(() => import('./pages/Consent'))
 const Security       = lazy(() => import('./pages/Security'))
 const Changelog      = lazy(() => import('./pages/Changelog'))
 const CliAuth        = lazy(() => import('./pages/CliAuth'))
+const Webhooks       = lazy(() => import('./pages/Webhooks'))
 
 // ── 404 page ──────────────────────────────────────────────────────────────────
 
@@ -238,6 +239,14 @@ function App(): React.ReactElement {
           element={
             <ProtectedRoute>
               <AppLayout><Members /></AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/webhooks"
+          element={
+            <ProtectedRoute>
+              <AppLayout><Webhooks /></AppLayout>
             </ProtectedRoute>
           }
         />

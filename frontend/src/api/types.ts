@@ -36,6 +36,7 @@ export interface MCPServer {
   description: string | null;
   headers: Record<string, string>;
   cache_enabled: boolean;
+  cost_per_call_usd: number | null;
   is_active: boolean;
   created_at: string;
 }
@@ -46,6 +47,7 @@ export interface MCPServerCreate {
   description?: string | null;
   headers?: Record<string, string>;
   cache_enabled?: boolean;
+  cost_per_call_usd?: number | null;
 }
 
 export interface MCPServerUpdate {
@@ -55,6 +57,7 @@ export interface MCPServerUpdate {
   headers?: Record<string, string>;
   cache_enabled?: boolean;
   is_active?: boolean;
+  cost_per_call_usd?: number | null;
 }
 
 export interface SessionEvent {
@@ -211,6 +214,51 @@ export interface StatsHistoryResponse {
 export interface UsageSummary {
   tool_calls_month: number;
   tool_calls_month_limit: number | null; // null = unlimited (enterprise)
+}
+
+export interface CostBreakdownItem {
+  name: string;
+  cost_usd: number;
+}
+
+export interface CostStats {
+  cost_this_month_usd: number;
+  cost_saved_by_cache_usd: number;
+  by_agent: CostBreakdownItem[];
+  by_server: CostBreakdownItem[];
+}
+
+export interface Webhook {
+  id: string;
+  url: string;
+  events: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface WebhookCreateResponse extends Webhook {
+  secret: string;
+}
+
+export interface WebhookCreate {
+  url: string;
+  events: string[];
+  is_active?: boolean;
+}
+
+export interface WebhookUpdate {
+  url?: string;
+  events?: string[];
+  is_active?: boolean;
+}
+
+export interface DeliveryLog {
+  id: string;
+  event_type: string;
+  response_status: number | null;
+  error: string | null;
+  attempt: number;
+  delivered_at: string;
 }
 
 export interface BillingStatus {

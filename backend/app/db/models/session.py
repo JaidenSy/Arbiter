@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -71,8 +71,8 @@ class Session(Base):
     )
 
     # ── Relationships ─────────────────────────────────────────────────────────
-    agent: Mapped["Agent"] = relationship("Agent", back_populates="sessions")
-    events: Mapped[list["SessionEvent"]] = relationship(
+    agent: Mapped[Agent] = relationship("Agent", back_populates="sessions")
+    events: Mapped[list[SessionEvent]] = relationship(
         "SessionEvent",
         back_populates="session",
         cascade="all, delete-orphan",
@@ -123,7 +123,7 @@ class SessionEvent(Base):
         ForeignKey("mcp_servers.id", ondelete="SET NULL"),
         nullable=True,
     )
-    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
@@ -135,6 +135,11 @@ class SessionEvent(Base):
     cache_hit: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cost_usd: Mapped[float | None] = mapped_column(
+        Numeric(precision=12, scale=6),
+        nullable=True,
+        comment="Cost in USD; NULL when server has no cost configured or call was a cache hit",
+    )
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -142,12 +147,9 @@ class SessionEvent(Base):
     )
 
     # ── Relationships ─────────────────────────────────────────────────────────
-    session: Mapped["Session"] = relationship("Session", back_populates="events")
-    mcp_server: Mapped["MCPServer | None"] = relationship("MCPServer")
-    user: Mapped["User | None"] = relationship("User")
+    session: Mapped[Session] = relationship("Session", back_populates="events")
+    mcp_server: Mapped[MCPServer | None] = relationship("MCPServer")
+    user: Mapped[User | None] = relationship("User")
 
     def __repr__(self) -> str:
-        return (
-            f"<SessionEvent id={self.id} tool={self.tool_name!r} "
-            f"cache_hit={self.cache_hit}>"
-        )
+        return f"<SessionEvent id={self.id} tool={self.tool_name!r} cache_hit={self.cache_hit}>"

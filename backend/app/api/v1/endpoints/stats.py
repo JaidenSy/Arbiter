@@ -18,7 +18,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import case, func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -84,6 +84,20 @@ class UsageSummaryResponse(BaseModel):
 
     tool_calls_month: int
     tool_calls_month_limit: int | None  # None = unlimited (enterprise)
+
+
+class CostBreakdownItem(BaseModel):
+    name: str
+    cost_usd: float
+
+
+class CostStatsResponse(BaseModel):
+    """Monthly cost summary for Pro/Enterprise orgs."""
+
+    cost_this_month_usd: float
+    cost_saved_by_cache_usd: float
+    by_agent: list[CostBreakdownItem]
+    by_server: list[CostBreakdownItem]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -294,7 +308,6 @@ async def get_stats_history(
     Buckets with no events are filled with zeros.
     Optional ?agent_id and ?server_name filters scope all counts to a single agent/server.
     """
-    from fastapi import HTTPException
 
     if period not in ("7d", "24h"):
         raise HTTPException(
@@ -391,3 +404,106 @@ async def get_stats_history(
             )
 
     return StatsHistoryResponse(period=period, buckets=buckets)
+
+
+# ── Cost stats endpoint ───────────────────────────────────────────────────────
+
+
+@router.get(
+    "/cost",
+    response_model=CostStatsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get monthly cost breakdown (Pro+)",
+)
+async def get_cost_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> CostStatsResponse:
+    """
+    Return monthly cost totals broken down by agent and MCP server.
+
+    Cost is recorded per tool call when the MCP server has cost_per_call_usd set.
+    Cache hits are free; cost_saved_by_cache reflects what would have been spent
+    if those calls had hit the upstream server.
+
+    Requires Pro or Enterprise plan.
+    """
+    org = await db.get(Organization, current_user.org_id)
+    if not org or org.plan_tier not in ("pro", "enterprise"):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Cost tracking requires a Pro or Enterprise plan",
+        )
+
+    month_start = func.date_trunc("month", func.now())
+
+    # ── Total cost this month ─────────────────────────────────────────────────
+    cost_result = await db.execute(
+        select(func.coalesce(func.sum(SessionEvent.cost_usd), 0).label("total")).where(
+            SessionEvent.org_id == current_user.org_id,
+            SessionEvent.occurred_at >= month_start,
+            SessionEvent.cost_usd.isnot(None),
+        )
+    )
+    cost_this_month: float = float(cost_result.scalar_one() or 0)
+
+    # ── Cost saved by cache: sum of cost_per_call_usd for cache hits this month ─
+    cache_savings_result = await db.execute(
+        select(func.coalesce(func.sum(MCPServer.cost_per_call_usd), 0).label("saved"))
+        .join(MCPServer, SessionEvent.mcp_server_id == MCPServer.id)
+        .where(
+            SessionEvent.org_id == current_user.org_id,
+            SessionEvent.occurred_at >= month_start,
+            SessionEvent.cache_hit.is_(True),
+            MCPServer.cost_per_call_usd.isnot(None),
+        )
+    )
+    cost_saved: float = float(cache_savings_result.scalar_one() or 0)
+
+    # ── Breakdown by agent ────────────────────────────────────────────────────
+    by_agent_result = await db.execute(
+        select(
+            Agent.name.label("agent_name"),
+            func.coalesce(func.sum(SessionEvent.cost_usd), 0).label("total"),
+        )
+        .join(Session, SessionEvent.session_id == Session.id)
+        .join(Agent, Session.agent_id == Agent.id)
+        .where(
+            SessionEvent.org_id == current_user.org_id,
+            SessionEvent.occurred_at >= month_start,
+            SessionEvent.cost_usd.isnot(None),
+        )
+        .group_by(Agent.name)
+        .order_by(func.sum(SessionEvent.cost_usd).desc())
+    )
+    by_agent = [
+        CostBreakdownItem(name=r.agent_name, cost_usd=round(float(r.total), 6))
+        for r in by_agent_result.all()
+    ]
+
+    # ── Breakdown by server ───────────────────────────────────────────────────
+    by_server_result = await db.execute(
+        select(
+            MCPServer.name.label("server_name"),
+            func.coalesce(func.sum(SessionEvent.cost_usd), 0).label("total"),
+        )
+        .join(MCPServer, SessionEvent.mcp_server_id == MCPServer.id)
+        .where(
+            SessionEvent.org_id == current_user.org_id,
+            SessionEvent.occurred_at >= month_start,
+            SessionEvent.cost_usd.isnot(None),
+        )
+        .group_by(MCPServer.name)
+        .order_by(func.sum(SessionEvent.cost_usd).desc())
+    )
+    by_server = [
+        CostBreakdownItem(name=r.server_name, cost_usd=round(float(r.total), 6))
+        for r in by_server_result.all()
+    ]
+
+    return CostStatsResponse(
+        cost_this_month_usd=round(cost_this_month, 6),
+        cost_saved_by_cache_usd=round(cost_saved, 6),
+        by_agent=by_agent,
+        by_server=by_server,
+    )
