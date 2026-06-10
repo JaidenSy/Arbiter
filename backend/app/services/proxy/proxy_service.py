@@ -51,16 +51,18 @@ from app.db.models.session import Session, SessionEvent
 from app.db.models.usage_event import UsageEvent
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.services.cache.cache_service import CacheService
-from app.services.plan.plan_limits import PLAN_LIMITS
+from app.services.plan.plan_limits import PLAN_LIMITS, QuotaExceededError
 from app.services.plan.plan_service import check_tool_call_quota
 from app.services.rbac.rbac_service import RBACService
 from app.services.vault.vault_service import VaultService
+from app.services.webhook.webhook_service import dispatch_event as _dispatch_webhook
 
 logger = logging.getLogger(__name__)
 
 _SECRET_PLACEHOLDER = re.compile(r"\{\{(?:vault:)?([A-Za-z0-9_]+)\}\}")
 _HTTP_TIMEOUT = httpx.Timeout(30.0)
 _MAX_RETRIES = 2  # retries on TimeoutException/ConnectError; backoff 1s then 2s
+_QuotaExceededError = QuotaExceededError  # keep import alive past linter
 
 
 class ProxyService:
@@ -133,6 +135,14 @@ class ProxyService:
             tool_name=request.tool_name,
         )
         if not permitted:
+            asyncio.create_task(
+                _dispatch_webhook(
+                    self.db,
+                    agent.org_id,
+                    "permission.denied",
+                    {"agent": agent.name, "tool": request.tool_name, "server": request.server_name},
+                )
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(
@@ -220,7 +230,18 @@ class ProxyService:
             )
 
         # ── 4. Quota check (skipped for cache hits) ───────────────────────────
-        await check_tool_call_quota(self.redis, self.db, org)
+        try:
+            await check_tool_call_quota(self.redis, self.db, org)
+        except _QuotaExceededError:
+            asyncio.create_task(
+                _dispatch_webhook(
+                    self.db,
+                    agent.org_id,
+                    "quota.exceeded",
+                    {"agent": agent.name, "plan": org.plan_tier},
+                )
+            )
+            raise
 
         # ── 5. Secret injection ────────────────────────────────────────────────
         injected_params = await self.intercept_request(
@@ -633,6 +654,10 @@ class ProxyService:
         user_id: uuid.UUID | None = None,
     ) -> SessionEvent:
         """Append an immutable audit record and increment daily usage counters."""
+        cost_usd: float | None = None
+        if not cache_hit and mcp_server.cost_per_call_usd is not None:
+            cost_usd = float(mcp_server.cost_per_call_usd)
+
         event = SessionEvent(
             session_id=session.id,
             org_id=session.org_id,
@@ -644,6 +669,7 @@ class ProxyService:
             cache_hit=cache_hit,
             duration_ms=duration_ms,
             error=error,
+            cost_usd=cost_usd,
         )
         self.db.add(event)
 

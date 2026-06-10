@@ -11,7 +11,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { authClient } from "../api/client";
-import type { Agent, DashboardStats, HistoryBucket, MCPServer, Page, Session, StatsHistoryResponse, UsageSummary } from "../api/types";
+import type { Agent, CostStats, DashboardStats, HistoryBucket, MCPServer, Page, Session, StatsHistoryResponse, UsageSummary } from "../api/types";
+import { useAuth } from "../context/AuthContext";
 import UsageStrip from "../components/UsageStrip";
 import { Tile } from "../components/ui/Tile";
 import { CHART_COLORS, CHART_TOOLTIP_STYLE } from "../chartColors";
@@ -45,6 +46,9 @@ const fetchHistory = (period: string, agentId?: string, serverName?: string): Pr
 
 const fetchUsageSummary = (): Promise<UsageSummary> =>
   authClient.get<UsageSummary>("/stats/usage/summary").then((r) => r.data);
+
+const fetchCostStats = (): Promise<CostStats> =>
+  authClient.get<CostStats>("/stats/cost").then((r) => r.data);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -162,6 +166,8 @@ function FilterBar({ agents, servers, selectedAgentId, selectedServerName, onAge
 
 function Dashboard(): React.ReactElement {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isPro = user?.org_plan !== "free";
   const [searchParams, setSearchParams] = useSearchParams();
   const [period, setPeriod] = useState<"7d" | "24h">("7d");
 
@@ -216,6 +222,15 @@ function Dashboard(): React.ReactElement {
     queryFn: fetchUsageSummary,
     refetchInterval: 60_000,
     staleTime: 30_000,
+  });
+
+  const { data: costStats } = useQuery<CostStats>({
+    queryKey: ["cost-stats"],
+    queryFn: fetchCostStats,
+    enabled: isPro,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    retry: false,
   });
 
   const chartData = history?.buckets ?? [];
@@ -491,6 +506,25 @@ function Dashboard(): React.ReactElement {
             mountDelay={6}
           />
         </div>
+
+        {/* ── Bento Row 4: Cost tiles (Pro+) ── */}
+        {isPro && (
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <Tile
+              variant="amber"
+              label="Cost This Month"
+              value={costStats != null ? `$${costStats.cost_this_month_usd.toFixed(4)}` : "—"}
+              mountDelay={7}
+            />
+            <Tile
+              variant="teal"
+              label="Saved by Cache"
+              value={costStats != null ? `$${costStats.cost_saved_by_cache_usd.toFixed(4)}` : "—"}
+              trend="up"
+              mountDelay={7}
+            />
+          </div>
+        )}
 
         {/* ── Slowest Tools table (shown when there's data) ── */}
         {stats && stats.slowest_tools.length > 0 && (

@@ -68,6 +68,11 @@ class MCPServer(Base):
         default=True,
         comment="Set False for side-effectful servers that must never serve cached responses",
     )
+    cost_per_call_usd: Mapped[float | None] = mapped_column(
+        Numeric(precision=10, scale=8),
+        nullable=True,
+        comment="Optional per-call cost in USD; NULL = no cost tracking",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

@@ -127,6 +127,10 @@ class MCPServerCreate(BaseModel):
         True,
         description="Set False for side-effectful servers that must never serve cached responses",
     )
+    cost_per_call_usd: float | None = Field(
+        None,
+        description="Optional per-call cost in USD for cost tracking; omit to disable",
+    )
 
     @field_validator("base_url")
     @classmethod
@@ -147,6 +151,7 @@ class MCPServerUpdate(BaseModel):
     description: str | None = None
     headers: dict[str, str] | None = None
     cache_enabled: bool | None = None
+    cost_per_call_usd: float | None = None
     is_active: bool | None = None
 
     @field_validator("base_url")
@@ -194,6 +199,7 @@ class MCPServerResponse(BaseModel):
         ...,
         description="Set False for side-effectful servers that must never serve cached responses",
     )
+    cost_per_call_usd: float | None = None
 
     model_config = {"from_attributes": True}
 
@@ -268,6 +274,7 @@ async def create_mcp_server(
         description=body.description,
         headers=body.headers,
         cache_enabled=body.cache_enabled,
+        cost_per_call_usd=body.cost_per_call_usd,
         is_active=True,
     )
     db.add(server)
@@ -429,6 +436,8 @@ async def update_mcp_server(
         server.headers = body.headers
     if body.cache_enabled is not None:
         server.cache_enabled = body.cache_enabled
+    if body.cost_per_call_usd is not None:
+        server.cost_per_call_usd = body.cost_per_call_usd
     if body.is_active is not None:
         server.is_active = body.is_active
 
