@@ -62,6 +62,7 @@ class Agent(Base):
     #   "vault_read_only"— only allowed to read vault secrets, no tool calls
     scope: Mapped[str] = mapped_column(String(32), nullable=False, default="full")
     rate_limit_per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_calls_per_session: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Tracks which org member registered this agent so we can deactivate their
     # agents automatically when they are removed from the org.
     created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -83,12 +84,12 @@ class Agent(Base):
     )
 
     # ── Relationships ─────────────────────────────────────────────────────────
-    sessions: Mapped[list["Session"]] = relationship(
+    sessions: Mapped[list[Session]] = relationship(
         "Session",
         back_populates="agent",
         cascade="all, delete-orphan",
     )
-    vault_secrets: Mapped[list["VaultSecret"]] = relationship(
+    vault_secrets: Mapped[list[VaultSecret]] = relationship(
         "VaultSecret",
         back_populates="agent",
     )

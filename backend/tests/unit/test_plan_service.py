@@ -22,13 +22,13 @@ Coverage:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_org(plan_tier: str = "free", org_id: uuid.UUID | None = None) -> MagicMock:
     org = MagicMock()
@@ -47,13 +47,14 @@ def _make_fake_redis(cached_value: bytes | None = None) -> AsyncMock:
 
 # ── check_tool_call_quota tests ───────────────────────────────────────────────
 
+
 class TestCheckToolCallQuota:
     @pytest.mark.asyncio
     async def test_passes_when_usage_under_limit(self):
         """Under-limit usage must not raise."""
         from app.services.plan.plan_service import check_tool_call_quota
 
-        org = _make_org(plan_tier="free")      # limit = 1000, grace = 1050
+        org = _make_org(plan_tier="free")  # limit = 1000, grace = 1050
         redis = _make_fake_redis(cached_value=b"500")  # 500 < 1050
 
         db = AsyncMock()
@@ -74,22 +75,22 @@ class TestCheckToolCallQuota:
     @pytest.mark.asyncio
     async def test_raises_quota_exceeded_when_at_effective_limit(self):
         """
-        Effective limit = limit * OVERAGE_GRACE_FACTOR = 1000 * 1.05 = 1050.
-        Used = 1050 → must raise QuotaExceededError.
+        Effective limit = limit * OVERAGE_GRACE_FACTOR = 5000 * 1.05 = 5250.
+        Used = 5250 → must raise QuotaExceededError.
         """
         from app.services.plan.plan_limits import QuotaExceededError
         from app.services.plan.plan_service import check_tool_call_quota
 
-        org = _make_org(plan_tier="free")  # limit = 1000 → effective = 1050
-        redis = _make_fake_redis(cached_value=b"1050")
+        org = _make_org(plan_tier="free")  # limit = 5000 → effective = 5250
+        redis = _make_fake_redis(cached_value=b"5250")
         db = AsyncMock()
 
         with pytest.raises(QuotaExceededError) as exc_info:
             await check_tool_call_quota(redis=redis, db=db, org=org)
 
         err = exc_info.value
-        assert err.used == 1050
-        assert err.limit == 1000
+        assert err.used == 5250
+        assert err.limit == 5000
         assert err.resource == "tool_calls"
 
     @pytest.mark.asyncio
@@ -98,7 +99,7 @@ class TestCheckToolCallQuota:
         from app.services.plan.plan_limits import QuotaExceededError
         from app.services.plan.plan_service import check_tool_call_quota
 
-        org = _make_org(plan_tier="free")  # limit = 1000 → effective = 1050
+        org = _make_org(plan_tier="free")  # limit = 5000 → effective = 5250
         redis = _make_fake_redis(cached_value=b"9999")
         db = AsyncMock()
 
@@ -110,8 +111,8 @@ class TestCheckToolCallQuota:
         """Used = effective_limit - 1 must NOT raise."""
         from app.services.plan.plan_service import check_tool_call_quota
 
-        org = _make_org(plan_tier="free")  # limit = 1000 → effective = 1050
-        redis = _make_fake_redis(cached_value=b"1049")
+        org = _make_org(plan_tier="free")  # limit = 5000 → effective = 5250
+        redis = _make_fake_redis(cached_value=b"5249")
         db = AsyncMock()
 
         # Should not raise
@@ -162,13 +163,13 @@ class TestCheckToolCallQuota:
         """
         from app.services.plan.plan_service import check_tool_call_quota
 
-        org = _make_org(plan_tier="free")  # limit = 1000
+        org = _make_org(plan_tier="free")  # limit = 5000
         redis = _make_fake_redis(cached_value=None)  # cache miss
 
         db = AsyncMock()
         db.scalar = AsyncMock(return_value=None)  # no rows
 
-        # Should not raise (0 < 1050)
+        # Should not raise (0 < 5250)
         await check_tool_call_quota(redis=redis, db=db, org=org)
 
     @pytest.mark.asyncio
@@ -193,7 +194,7 @@ class TestCheckToolCallQuota:
         from app.services.plan.plan_service import check_tool_call_quota
 
         org = _make_org(plan_tier="free")
-        redis = _make_fake_redis(cached_value=b"1050")  # at effective limit
+        redis = _make_fake_redis(cached_value=b"5250")  # at effective limit
         db = AsyncMock()
 
         with pytest.raises(QuotaExceededError) as exc_info:
@@ -205,6 +206,7 @@ class TestCheckToolCallQuota:
 
 
 # ── check_resource_limit tests ────────────────────────────────────────────────
+
 
 class TestCheckResourceLimit:
     def _make_model_col(self):
@@ -222,14 +224,16 @@ class TestCheckResourceLimit:
         """Current count < limit should not raise."""
         from app.services.plan.plan_service import check_resource_limit
 
-        org = _make_org(plan_tier="free")  # max_agents = 3
+        org = _make_org(plan_tier="free")  # max_agents = 2
         model, filter_col = self._make_model_col()
 
         db = AsyncMock()
-        db.scalar = AsyncMock(return_value=2)  # 2 active agents, limit is 3
+        db.scalar = AsyncMock(return_value=1)  # 1 active agent, limit is 2
 
         # Should not raise
-        await check_resource_limit(db=db, org=org, resource="agents", model=model, filter_col=filter_col)
+        await check_resource_limit(
+            db=db, org=org, resource="agents", model=model, filter_col=filter_col
+        )
 
     @pytest.mark.asyncio
     async def test_raises_when_at_limit(self):
@@ -237,19 +241,21 @@ class TestCheckResourceLimit:
         from app.services.plan.plan_limits import PlanLimitError
         from app.services.plan.plan_service import check_resource_limit
 
-        org = _make_org(plan_tier="free")  # max_agents = 3
+        org = _make_org(plan_tier="free")  # max_agents = 2
         model, filter_col = self._make_model_col()
 
         db = AsyncMock()
-        db.scalar = AsyncMock(return_value=3)  # exactly at limit
+        db.scalar = AsyncMock(return_value=2)  # exactly at limit
 
         with pytest.raises(PlanLimitError) as exc_info:
-            await check_resource_limit(db=db, org=org, resource="agents", model=model, filter_col=filter_col)
+            await check_resource_limit(
+                db=db, org=org, resource="agents", model=model, filter_col=filter_col
+            )
 
         err = exc_info.value
         assert err.resource == "agents"
-        assert err.current == 3
-        assert err.limit == 3
+        assert err.current == 2
+        assert err.limit == 2
         assert err.plan == "free"
 
     @pytest.mark.asyncio
@@ -258,14 +264,16 @@ class TestCheckResourceLimit:
         from app.services.plan.plan_limits import PlanLimitError
         from app.services.plan.plan_service import check_resource_limit
 
-        org = _make_org(plan_tier="free")  # max_agents = 3
+        org = _make_org(plan_tier="free")  # max_agents = 2
         model, filter_col = self._make_model_col()
 
         db = AsyncMock()
         db.scalar = AsyncMock(return_value=5)
 
         with pytest.raises(PlanLimitError):
-            await check_resource_limit(db=db, org=org, resource="agents", model=model, filter_col=filter_col)
+            await check_resource_limit(
+                db=db, org=org, resource="agents", model=model, filter_col=filter_col
+            )
 
     @pytest.mark.asyncio
     async def test_enterprise_plan_never_raises(self):
@@ -279,7 +287,9 @@ class TestCheckResourceLimit:
         db.scalar = AsyncMock(return_value=9999)
 
         # Should not raise — and should not even query the DB
-        await check_resource_limit(db=db, org=org, resource="agents", model=model, filter_col=filter_col)
+        await check_resource_limit(
+            db=db, org=org, resource="agents", model=model, filter_col=filter_col
+        )
         db.scalar.assert_not_called()
 
     @pytest.mark.asyncio
@@ -287,14 +297,16 @@ class TestCheckResourceLimit:
         """If DB returns None (no rows), current should be treated as 0 (< limit)."""
         from app.services.plan.plan_service import check_resource_limit
 
-        org = _make_org(plan_tier="free")  # max_agents = 3
+        org = _make_org(plan_tier="free")  # max_agents = 2
         model, filter_col = self._make_model_col()
 
         db = AsyncMock()
         db.scalar = AsyncMock(return_value=None)  # no rows
 
         # 0 < 3 → should not raise
-        await check_resource_limit(db=db, org=org, resource="agents", model=model, filter_col=filter_col)
+        await check_resource_limit(
+            db=db, org=org, resource="agents", model=model, filter_col=filter_col
+        )
 
     @pytest.mark.asyncio
     async def test_plan_limit_error_attributes(self):
@@ -329,4 +341,6 @@ class TestCheckResourceLimit:
         db = AsyncMock()
         db.scalar = AsyncMock(return_value=0)
 
-        await check_resource_limit(db=db, org=org, resource="agents", model=model, filter_col=filter_col)
+        await check_resource_limit(
+            db=db, org=org, resource="agents", model=model, filter_col=filter_col
+        )

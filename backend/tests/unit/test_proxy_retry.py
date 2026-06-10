@@ -73,6 +73,7 @@ def _make_agent() -> MagicMock:
     agent.name = "test-agent"
     agent.scope = "full"
     agent.rate_limit_per_minute = None
+    agent.max_calls_per_session = None
     return agent
 
 

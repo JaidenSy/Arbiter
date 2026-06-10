@@ -51,7 +51,11 @@ from app.db.models.session import Session, SessionEvent
 from app.db.models.usage_event import UsageEvent
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.services.cache.cache_service import CacheService
-from app.services.plan.plan_limits import PLAN_LIMITS, QuotaExceededError
+from app.services.plan.plan_limits import (
+    PLAN_LIMITS,
+    QuotaExceededError,
+    SessionBudgetExceededError,
+)
 from app.services.plan.plan_service import check_tool_call_quota
 from app.services.rbac.rbac_service import RBACService
 from app.services.vault.vault_service import VaultService
@@ -63,6 +67,8 @@ _SECRET_PLACEHOLDER = re.compile(r"\{\{(?:vault:)?([A-Za-z0-9_]+)\}\}")
 _HTTP_TIMEOUT = httpx.Timeout(30.0)
 _MAX_RETRIES = 2  # retries on TimeoutException/ConnectError; backoff 1s then 2s
 _QuotaExceededError = QuotaExceededError  # keep import alive past linter
+_SessionBudgetExceededError = SessionBudgetExceededError  # keep import alive past linter
+_SESSION_BUDGET_TTL = 86_400  # 24 h — sessions don't outlive a day
 
 
 class ProxyService:
@@ -243,6 +249,19 @@ class ProxyService:
                 )
             )
             raise
+
+        # ── 4b. Per-session budget check (skipped for cache hits) ─────────────
+        if agent.max_calls_per_session is not None:
+            budget_key = f"session_budget:{session.id}"
+            used = await self.redis.incr(budget_key)
+            if used == 1:
+                await self.redis.expire(budget_key, _SESSION_BUDGET_TTL)
+            if used > agent.max_calls_per_session:
+                raise _SessionBudgetExceededError(
+                    session_id=str(session.id),
+                    used=used,
+                    limit=agent.max_calls_per_session,
+                )
 
         # ── 5. Secret injection ────────────────────────────────────────────────
         injected_params = await self.intercept_request(

@@ -18,7 +18,7 @@ import uuid as _uuid
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -168,3 +168,47 @@ async def tools_list(
     )
 
     return ToolsListResponse(server_name=body.server_name, tools=filtered_tools)
+
+
+class SessionBudgetResponse(BaseModel):
+    """Response body for GET /proxy/session-budget."""
+
+    session_id: str
+    limit: int
+    used: int
+    remaining: int
+
+
+@router.get(
+    "/session-budget",
+    response_model=SessionBudgetResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get remaining tool-call budget for a session",
+    dependencies=[Depends(require_org_verified)],
+)
+async def get_session_budget(
+    session_id: str = Query(..., description="Session UUID to check budget for"),
+    redis: object = Depends(get_redis),
+    agent: Agent = Depends(get_current_agent),
+) -> SessionBudgetResponse:
+    """
+    Return how many tool calls remain in the current session's budget.
+
+    Returns 404 if the agent has no per-session budget configured.
+    The counter resets after 24 hours (matching the session budget TTL).
+    """
+    if agent.max_calls_per_session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This agent has no per-session budget configured",
+        )
+    budget_key = f"session_budget:{session_id}"
+    raw = await redis.get(budget_key)
+    used = int(raw) if raw is not None else 0
+    remaining = max(0, agent.max_calls_per_session - used)
+    return SessionBudgetResponse(
+        session_id=session_id,
+        limit=agent.max_calls_per_session,
+        used=used,
+        remaining=remaining,
+    )

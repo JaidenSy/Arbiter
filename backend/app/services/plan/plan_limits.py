@@ -10,8 +10,7 @@ return the correct HTTP status codes and JSON shapes.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
+from datetime import UTC, datetime
 
 # ── Plan limits ───────────────────────────────────────────────────────────────
 
@@ -72,9 +71,7 @@ class PlanLimitError(Exception):
         self.current = current
         self.limit = limit
         self.plan = plan
-        super().__init__(
-            f"Plan limit reached: {resource} ({current}/{limit}) on {plan} plan"
-        )
+        super().__init__(f"Plan limit reached: {resource} ({current}/{limit}) on {plan} plan")
 
 
 class QuotaExceededError(Exception):
@@ -101,9 +98,26 @@ class QuotaExceededError(Exception):
         self.used = used
         self.limit = limit
         self.resets_at = resets_at
-        super().__init__(
-            f"Quota exceeded: {used}/{limit} {resource} this month"
-        )
+        super().__init__(f"Quota exceeded: {used}/{limit} {resource} this month")
+
+
+class SessionBudgetExceededError(Exception):
+    """
+    Raised when a session exceeds the agent's per-session tool-call budget.
+
+    Maps to HTTP 402.
+
+    Attributes:
+        session_id: UUID string of the offending session.
+        used:       Calls made so far in this session (including the current one).
+        limit:      The agent's max_calls_per_session cap.
+    """
+
+    def __init__(self, session_id: str, used: int, limit: int) -> None:
+        self.session_id = session_id
+        self.used = used
+        self.limit = limit
+        super().__init__(f"Session budget exceeded: {used}/{limit} calls in session {session_id}")
 
 
 # ── Utility ───────────────────────────────────────────────────────────────────
@@ -111,7 +125,9 @@ class QuotaExceededError(Exception):
 
 def first_day_of_next_month() -> datetime:
     """Return midnight UTC of the first day of next month."""
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     if now.month == 12:
-        return now.replace(year=now.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        return now.replace(
+            year=now.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0
+        )
     return now.replace(month=now.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
