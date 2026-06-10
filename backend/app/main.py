@@ -45,6 +45,7 @@ from app.api.v1.endpoints import (
     tool_permissions,
     traces,
     vault,
+    webhooks,
 )
 from app.core.config import settings
 from app.core.request_utils import get_client_ip

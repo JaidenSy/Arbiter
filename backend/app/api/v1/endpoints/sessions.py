@@ -31,6 +31,7 @@ from app.db.models.session import Session, SessionEvent
 from app.db.models.user import User
 from app.schemas.pagination import Page
 from app.schemas.session import (
+    ChainNode,
     SessionEventResponse,
     SessionListResponse,
     SessionResponse,
