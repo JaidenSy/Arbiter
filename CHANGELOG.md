@@ -2,6 +2,16 @@
 
 All notable changes to Arbiter are documented here.
 
+## [Unreleased]
+
+### Added
+- **Native MCP endpoint** — The gateway is now itself an MCP server. Any MCP client (Claude Code, Claude Desktop, Cursor, VS Code) connects with one URL: `POST /mcp` with `Authorization: Bearer nxai_...`, or `POST /mcp/{api_key}` for clients that cannot set headers. All registered MCP servers in the org are aggregated into one virtual server with tools namespaced as `server__tool`, RBAC-filtered per agent (60s per-agent cache). Every `tools/call` runs the full gateway pipeline — RBAC, vault injection, semantic cache, quotas, budgets, audit log. Gateway denials are returned as JSON-RPC errors with the HTTP status in `error.data.http_status`. See `docs/mcp-endpoint.md`.
+
+### Fixed
+- **App could not boot on v0.4.0** — two missing imports (`ChainNode` in sessions.py, `webhooks` in main.py) crashed the API at startup; Railway silently kept serving the previous deployment.
+- **SSRF re-check on tools/list** — the REST `POST /proxy/tools-list` path now re-validates the upstream URL at request time (DNS-rebinding guard), matching `tool-call` behaviour.
+- Landing page now shows the real agent key format (`nxai_...`) instead of a fictional `arb_sk_...` prefix.
+
 ## [0.4.0] — 2026-06-10
 
 ### Added

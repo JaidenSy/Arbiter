@@ -71,6 +71,26 @@ _SessionBudgetExceededError = SessionBudgetExceededError  # keep import alive pa
 _SESSION_BUDGET_TTL = 86_400  # 24 h — sessions don't outlive a day
 
 
+def _extract_jsonrpc_from_sse(text: str) -> dict:
+    """
+    Return the last complete JSON-RPC message from an SSE response body.
+
+    Upstream servers may emit keepalives or partial events before the final
+    response — breaking on the first event silently drops data, so we keep
+    the last frame that carries a ``result`` or ``error``.
+    """
+    json_body: dict = {}
+    for line in text.splitlines():
+        if line.startswith("data: "):
+            try:
+                candidate = json.loads(line[6:])
+                if "result" in candidate or "error" in candidate:
+                    json_body = candidate
+            except json.JSONDecodeError:
+                pass
+    return json_body
+
+
 class ProxyService:
     """
     Orchestrates the full lifecycle of a proxied MCP tool call.
@@ -358,18 +378,7 @@ class ProxyService:
 
             try:
                 if "text/event-stream" in http_resp.headers.get("content-type", ""):
-                    # Collect all SSE data events; keep the last valid JSON-RPC result.
-                    # Upstream servers may emit keepalives or partial events before the
-                    # final response — breaking on the first event silently drops data.
-                    json_body = {}
-                    for line in http_resp.text.splitlines():
-                        if line.startswith("data: "):
-                            try:
-                                candidate = json.loads(line[6:])
-                                if "result" in candidate or "error" in candidate:
-                                    json_body = candidate
-                            except json.JSONDecodeError:
-                                pass
+                    json_body = _extract_jsonrpc_from_sse(http_resp.text)
                 else:
                     json_body = http_resp.json()
             except Exception:
@@ -564,6 +573,72 @@ class ProxyService:
             resolved[name] = await self._inject_secrets(value, agent_id=None, org_id=server.org_id)
         return resolved
 
+    async def fetch_tools_list(self, mcp_server: MCPServer) -> list[dict]:
+        """
+        Fetch the raw (unfiltered) tools/list from an upstream MCP server.
+
+        Resolves vault-referenced auth headers, validates the URL against
+        SSRF/DNS-rebinding at request time, posts a JSON-RPC tools/list, and
+        parses either a plain JSON or SSE response.
+
+        Returns:
+            list[dict]: Raw tool dicts from the upstream server.
+
+        Raises:
+            HTTPException 502: upstream returned an error or was unreachable.
+        """
+        resolved_headers = await self.resolve_server_headers(mcp_server)
+        request_headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            **resolved_headers,
+        }
+
+        jsonrpc_body = {
+            "jsonrpc": "2.0",
+            "id": "tools-list",
+            "method": "tools/list",
+            "params": {},
+        }
+
+        # Same DNS-rebinding guard as forward_tool_call — re-validate at
+        # request time, not just at server registration.
+        await assert_ssrf_safe(mcp_server.base_url, error_status=status.HTTP_502_BAD_GATEWAY)
+
+        try:
+            async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+                resp = await client.post(
+                    mcp_server.base_url,
+                    json=jsonrpc_body,
+                    headers=request_headers,
+                )
+            if resp.status_code >= 400:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=(f"MCP server {mcp_server.name!r} returned HTTP {resp.status_code}"),
+                )
+            if "text/event-stream" in resp.headers.get("content-type", ""):
+                json_body: dict = _extract_jsonrpc_from_sse(resp.text)
+            else:
+                json_body = resp.json()
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"MCP server communication error: {exc}",
+            ) from exc
+
+        if "result" in json_body and "tools" in json_body["result"]:
+            return json_body["result"]["tools"]
+        if "error" in json_body:
+            logger.warning(
+                "proxy: tools/list on %r returned JSON-RPC error: %s",
+                mcp_server.name,
+                json_body["error"],
+            )
+        return []
+
     async def _ensure_mcp_session(
         self,
         mcp_server: MCPServer,
@@ -630,6 +705,15 @@ class ProxyService:
             )
 
         return headers
+
+    async def create_session(self, agent: Agent) -> Session:
+        """
+        Create a fresh audit session for an agent.
+
+        Used by the native MCP endpoint's initialize handshake so the whole
+        client connection maps to one session (returned as Mcp-Session-Id).
+        """
+        return await self._ensure_session(agent=agent, session_id=None)
 
     async def _ensure_session(
         self,

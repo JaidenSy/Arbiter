@@ -45,7 +45,21 @@ Arbiter is an MCP gateway that sits between your AI agents and your MCP servers.
 
 1. Sign up at [arbiterai.dev](https://arbiterai.dev).
 2. Register an agent → get your `nxai_...` key.
-3. Proxy tool calls through `https://api.arbiterai.dev/api/v1/proxy/tool-call`.
+3. Point your MCP client at the gateway — done:
+
+```json
+{
+  "mcpServers": {
+    "arbiter": {
+      "type": "http",
+      "url": "https://api.arbiterai.dev/mcp",
+      "headers": { "Authorization": "Bearer nxai_..." }
+    }
+  }
+}
+```
+
+Works with Claude Code, Claude Desktop, Cursor, VS Code — anything that speaks MCP. All your registered MCP servers appear as one connection, tools namespaced as `server__tool`, RBAC-filtered per agent. See [docs/mcp-endpoint.md](./docs/mcp-endpoint.md).
 
 ### Self-hosted
 
@@ -83,6 +97,8 @@ curl -X POST https://api.arbiterai.dev/api/v1/agents/<agent-id>/permissions \
 ```
 
 ### 3 — Proxy a tool call
+
+Through any MCP client (see config above), or directly via the REST API:
 
 ```bash
 curl -X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \

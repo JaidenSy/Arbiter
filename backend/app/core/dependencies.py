@@ -94,7 +94,27 @@ async def get_current_agent(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    raw_key = credentials.credentials
+    return await resolve_agent_by_api_key(credentials.credentials, db)
+
+
+async def resolve_agent_by_api_key(raw_key: str, db: AsyncSession) -> Agent:
+    """
+    Look up an active Agent by its raw API key.
+
+    Shared by the Bearer-header dependency above and the MCP endpoint's
+    key-in-URL variant (POST /mcp/{api_key}), where clients that cannot set
+    custom headers embed the key in the path instead.
+
+    Args:
+        raw_key: Raw ``nxai_...`` API key.
+        db: Async database session.
+
+    Returns:
+        Agent: the authenticated agent row.
+
+    Raises:
+        HTTPException 401: when the key does not match any active agent.
+    """
     key_hash = security.hash_api_key(raw_key)
 
     result = await db.execute(
@@ -271,11 +291,20 @@ async def require_org_verified(
     redis=Depends(get_redis),
 ) -> None:
     """
+    Dependency wrapper around :func:`ensure_org_verified` for Bearer-auth routes.
+    """
+    await ensure_org_verified(agent, db, redis)
+
+
+async def ensure_org_verified(agent: Agent, db: AsyncSession, redis) -> None:
+    """
     Ensure that at least one user in the agent's org has a verified email.
 
     Caches the result in Redis for 5 minutes to avoid repeated DB queries on
     every proxied request.  Cache is invalidated when the user verifies their
     email (see the verify_email endpoint).
+
+    Callable directly (MCP key-in-URL route) or via the dependency above.
 
     Raises:
         HTTPException 403: When no verified user exists in the org.

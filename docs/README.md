@@ -24,6 +24,7 @@ The API is available at `http://localhost:8000` and the dashboard at `http://loc
 
 | Doc | Description |
 |-----|-------------|
+| [mcp-endpoint.md](./mcp-endpoint.md) | Connect any MCP client (Claude Code, Cursor, ...) with one URL |
 | [self-hosting.md](./self-hosting.md) | Full setup guide, all environment variables, upgrade instructions |
 | [api-reference.md](./api-reference.md) | Every endpoint with request/response schemas and curl examples |
 | [agent-integration.md](./agent-integration.md) | How to connect an AI agent to the gateway |
