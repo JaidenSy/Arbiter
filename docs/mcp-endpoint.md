@@ -51,7 +51,9 @@ filesystem__read_file
 slack__post_message
 ```
 
-`tools/list` only returns tools the calling agent has RBAC permission for — an agent that can't call a tool can't see it either. The aggregated list is cached per-agent for 60 seconds, so permission changes propagate within a minute.
+`tools/list` only returns tools the calling agent has RBAC permission for — an agent that can't call a tool can't see it either. The aggregated list is cached per-agent for 60 seconds, so permission changes propagate within a minute. (Tool calls are always RBAC-checked at call time regardless of the cached listing.)
+
+Server names cannot contain `__` (rejected at registration) so the split is unambiguous; tool names may contain `__`.
 
 ## Transport details
 

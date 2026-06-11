@@ -119,6 +119,33 @@ class TestEnvelope:
         assert resp.status_code == 202
 
     @pytest.mark.asyncio
+    async def test_id_bearing_notification_method_gets_method_not_found(self, authed_client):
+        # An id-bearing message is a request per JSON-RPC 2.0, even with a
+        # notifications/ method — it must get a reply, not a silent 202.
+        client, _, _ = authed_client
+        resp = await client.post(MCP_URL, json=_rpc("notifications/initialized", req_id=7))
+        assert resp.status_code == 200
+        assert resp.json()["error"]["code"] == -32601
+
+    @pytest.mark.asyncio
+    async def test_unhandled_exception_returns_jsonrpc_internal_error(self, authed_client):
+        client, _, _ = authed_client
+
+        async def mock_forward(self, request, agent):
+            raise RuntimeError("db exploded")
+
+        with patch(
+            "app.services.proxy.proxy_service.ProxyService.forward_tool_call",
+            new=mock_forward,
+        ):
+            resp = await client.post(
+                MCP_URL, json=_rpc("tools/call", {"name": "a__b", "arguments": {}})
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["error"]["code"] == -32603
+
+    @pytest.mark.asyncio
     async def test_unauthenticated_returns_401(self, test_client):
         resp = await test_client.post(MCP_URL, json=_rpc("ping"))
         assert resp.status_code == 401
@@ -368,6 +395,22 @@ class TestToolsCall:
             MCP_URL, json=_rpc("tools/call", {"name": "create_issue", "arguments": {}})
         )
         assert resp.status_code == 200
+        assert resp.json()["error"]["code"] == -32602
+
+    @pytest.mark.asyncio
+    async def test_empty_tool_after_separator_is_invalid_params(self, authed_client):
+        client, _, _ = authed_client
+        resp = await client.post(
+            MCP_URL, json=_rpc("tools/call", {"name": "github__", "arguments": {}})
+        )
+        assert resp.json()["error"]["code"] == -32602
+
+    @pytest.mark.asyncio
+    async def test_non_dict_arguments_is_invalid_params(self, authed_client):
+        client, _, _ = authed_client
+        resp = await client.post(
+            MCP_URL, json=_rpc("tools/call", {"name": "a__b", "arguments": "not-a-dict"})
+        )
         assert resp.json()["error"]["code"] == -32602
 
     @pytest.mark.asyncio

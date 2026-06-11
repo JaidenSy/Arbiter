@@ -71,6 +71,26 @@ _SessionBudgetExceededError = SessionBudgetExceededError  # keep import alive pa
 _SESSION_BUDGET_TTL = 86_400  # 24 h — sessions don't outlive a day
 
 
+def _extract_jsonrpc_from_sse(text: str) -> dict:
+    """
+    Return the last complete JSON-RPC message from an SSE response body.
+
+    Upstream servers may emit keepalives or partial events before the final
+    response — breaking on the first event silently drops data, so we keep
+    the last frame that carries a ``result`` or ``error``.
+    """
+    json_body: dict = {}
+    for line in text.splitlines():
+        if line.startswith("data: "):
+            try:
+                candidate = json.loads(line[6:])
+                if "result" in candidate or "error" in candidate:
+                    json_body = candidate
+            except json.JSONDecodeError:
+                pass
+    return json_body
+
+
 class ProxyService:
     """
     Orchestrates the full lifecycle of a proxied MCP tool call.
@@ -358,18 +378,7 @@ class ProxyService:
 
             try:
                 if "text/event-stream" in http_resp.headers.get("content-type", ""):
-                    # Collect all SSE data events; keep the last valid JSON-RPC result.
-                    # Upstream servers may emit keepalives or partial events before the
-                    # final response — breaking on the first event silently drops data.
-                    json_body = {}
-                    for line in http_resp.text.splitlines():
-                        if line.startswith("data: "):
-                            try:
-                                candidate = json.loads(line[6:])
-                                if "result" in candidate or "error" in candidate:
-                                    json_body = candidate
-                            except json.JSONDecodeError:
-                                pass
+                    json_body = _extract_jsonrpc_from_sse(http_resp.text)
                 else:
                     json_body = http_resp.json()
             except Exception:
@@ -609,15 +618,7 @@ class ProxyService:
                     detail=(f"MCP server {mcp_server.name!r} returned HTTP {resp.status_code}"),
                 )
             if "text/event-stream" in resp.headers.get("content-type", ""):
-                json_body: dict = {}
-                for line in resp.text.splitlines():
-                    if line.startswith("data: "):
-                        try:
-                            candidate = json.loads(line[6:])
-                            if "result" in candidate or "error" in candidate:
-                                json_body = candidate
-                        except json.JSONDecodeError:
-                            pass
+                json_body: dict = _extract_jsonrpc_from_sse(resp.text)
             else:
                 json_body = resp.json()
         except HTTPException:
@@ -630,6 +631,12 @@ class ProxyService:
 
         if "result" in json_body and "tools" in json_body["result"]:
             return json_body["result"]["tools"]
+        if "error" in json_body:
+            logger.warning(
+                "proxy: tools/list on %r returned JSON-RPC error: %s",
+                mcp_server.name,
+                json_body["error"],
+            )
         return []
 
     async def _ensure_mcp_session(

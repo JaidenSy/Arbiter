@@ -72,8 +72,8 @@ _LATEST_PROTOCOL_VERSION = "2025-06-18"
 _SERVER_INFO = {"name": "arbiter-gateway", "version": "0.4.0"}
 
 # Separator between server name and tool name in aggregated tool names.
-# Split on the FIRST occurrence — server names are slugs and cannot contain
-# "__", tool names may.
+# Split on the FIRST occurrence — MCPServerCreate rejects "__" in server
+# names so the split is unambiguous; tool names may contain "__".
 _TOOL_SEPARATOR = "__"
 
 # Aggregated tools/list hits every upstream server in the org; MCP clients
@@ -87,6 +87,7 @@ _PARSE_ERROR = -32700
 _INVALID_REQUEST = -32600
 _METHOD_NOT_FOUND = -32601
 _INVALID_PARAMS = -32602
+_INTERNAL_ERROR = -32603
 _SERVER_ERROR = -32000
 
 
@@ -185,21 +186,31 @@ async def _handle_mcp_request(
     req_id = body.get("id")
     params: dict[str, Any] = body.get("params") or {}
 
-    # Notifications (no id) are acknowledged with 202 Accepted and no body.
-    if method.startswith("notifications/") or req_id is None:
+    # Per JSON-RPC 2.0, a message without an id is a notification: acknowledge
+    # with 202 and no body. An id-bearing "notifications/*" message is a
+    # malformed request and falls through to method-not-found below.
+    if req_id is None:
         return Response(status_code=status.HTTP_202_ACCEPTED)
 
-    service = ProxyService(db=db, redis=redis)
-    mcp_session_id = _session_id_from_header(request)
-
-    if method == "initialize":
-        return await _handle_initialize(req_id, params, agent, service)
     if method == "ping":
         return JSONResponse(_rpc_result(req_id, {}))
-    if method == "tools/list":
-        return await _handle_tools_list(req_id, agent, db, redis, service)
-    if method == "tools/call":
-        return await _handle_tools_call(req_id, params, agent, service, mcp_session_id)
+
+    try:
+        service = ProxyService(db=db, redis=redis)
+        if method == "initialize":
+            return await _handle_initialize(req_id, params, agent, service)
+        if method == "tools/list":
+            return await _handle_tools_list(req_id, agent, db, redis, service)
+        if method == "tools/call":
+            mcp_session_id = _session_id_from_header(request)
+            return await _handle_tools_call(req_id, params, agent, service, mcp_session_id)
+    except HTTPException:
+        raise
+    except Exception:
+        # Never leak a bare HTTP 500 to an MCP client — surface a JSON-RPC
+        # internal error so the client can show something actionable.
+        logger.exception("mcp: unhandled error processing %r", method)
+        return JSONResponse(_rpc_error(req_id, _INTERNAL_ERROR, "Internal error"))
 
     return JSONResponse(_rpc_error(req_id, _METHOD_NOT_FOUND, f"Method not found: {method!r}"))
 
@@ -272,8 +283,13 @@ async def _handle_tools_list(
     )
     servers = list(result_servers.scalars().all())
 
+    # Servers are fetched sequentially on purpose: ProxyService shares this
+    # request's AsyncSession, and a SQLAlchemy async session must not be used
+    # concurrently. Parallelizing needs a session per task — follow-up.
     aggregated: list[dict] = []
     for server in servers:
+        # Any failure (unreachable upstream, RBAC lookup error) skips this one
+        # server rather than failing the whole aggregated listing.
         try:
             raw_tools = await service.fetch_tools_list(server)
             permitted = await service.filter_tools_list(
@@ -287,9 +303,17 @@ async def _handle_tools_list(
                 "mcp: skipping server %r in aggregated tools/list: %s", server.name, exc.detail
             )
             continue
+        except Exception as exc:
+            logger.warning("mcp: skipping server %r in aggregated tools/list: %s", server.name, exc)
+            continue
         for tool in permitted:
+            if not tool.get("name"):
+                logger.warning(
+                    "mcp: server %r returned a tool without a name — skipped", server.name
+                )
+                continue
             namespaced = dict(tool)
-            namespaced["name"] = f"{server.name}{_TOOL_SEPARATOR}{tool.get('name', '')}"
+            namespaced["name"] = f"{server.name}{_TOOL_SEPARATOR}{tool['name']}"
             aggregated.append(namespaced)
 
     try:
@@ -316,6 +340,14 @@ async def _handle_tools_call(
     """
     name = params.get("name") or ""
     arguments = params.get("arguments") or {}
+    if not isinstance(arguments, dict):
+        return JSONResponse(
+            _rpc_error(
+                req_id,
+                _INVALID_PARAMS,
+                f"'arguments' must be an object, got {type(arguments).__name__}",
+            )
+        )
 
     if _TOOL_SEPARATOR not in name:
         return JSONResponse(
@@ -330,6 +362,14 @@ async def _handle_tools_call(
         )
 
     server_name, tool_name = name.split(_TOOL_SEPARATOR, 1)
+    if not server_name or not tool_name:
+        return JSONResponse(
+            _rpc_error(
+                req_id,
+                _INVALID_PARAMS,
+                f"Tool name {name!r} is malformed: expected '<server>{_TOOL_SEPARATOR}<tool>'.",
+            )
+        )
     tool_request = ToolCallRequest(
         server_name=server_name,
         tool_name=tool_name,
