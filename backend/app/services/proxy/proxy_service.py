@@ -163,7 +163,6 @@ class ProxyService:
         if not permitted:
             asyncio.create_task(
                 _dispatch_webhook(
-                    self.db,
                     agent.org_id,
                     "permission.denied",
                     {"agent": agent.name, "tool": request.tool_name, "server": request.server_name},
@@ -262,7 +261,6 @@ class ProxyService:
         except _QuotaExceededError:
             asyncio.create_task(
                 _dispatch_webhook(
-                    self.db,
                     agent.org_id,
                     "quota.exceeded",
                     {"agent": agent.name, "plan": org.plan_tier},
