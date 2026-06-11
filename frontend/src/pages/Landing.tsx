@@ -646,7 +646,7 @@ const faqItems: FAQItem[] = [
   {
     question: 'Can I self-host?',
     answer:
-      'Yes. Arbiter is open source (AGPL v3) — clone the repo and run docker compose up. Enterprise adds dedicated deployment support and a custom SLA on top of that.',
+      'Yes. The Arbiter core gateway is open source (Apache 2.0) — clone the repo and run docker compose up. Enterprise adds SSO, SCIM, KMS, dedicated deployment support, and a custom SLA on top of that.',
   },
   {
     question: 'What MCP clients are supported?',
