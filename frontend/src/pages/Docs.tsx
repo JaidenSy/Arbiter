@@ -8,10 +8,13 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
+import { useAuth } from '../context/AuthContext'
 
 // ── Navbar ─────────────────────────────────────────────────────────────────────
 
 function Navbar(): React.ReactElement {
+  const { user } = useAuth()
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-base/80 backdrop-blur-md border-b border-border">
       <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
@@ -22,12 +25,14 @@ function Navbar(): React.ReactElement {
         </Link>
 
         <div className="flex items-center gap-3">
-          <Link
-            to="/login"
-            className="text-secondary hover:text-primary border border-border hover:border-border-strong px-4 py-1.5 rounded-lg text-sm transition-all"
-          >
-            Sign In
-          </Link>
+          {!user && (
+            <Link
+              to="/login"
+              className="text-secondary hover:text-primary border border-border hover:border-border-strong px-4 py-1.5 rounded-lg text-sm transition-all"
+            >
+              Sign In
+            </Link>
+          )}
           <Link
             to="/"
             className="bg-accent hover:bg-accent-light text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-all hover-glow-standard"

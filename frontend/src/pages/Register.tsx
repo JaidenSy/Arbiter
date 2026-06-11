@@ -20,14 +20,16 @@ function Register(): React.ReactElement {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [inviteCode, setInviteCode] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const validate = (): string | null => {
     if (!orgName.trim()) return 'Organization name is required.'
     if (!email.trim()) return 'Email is required.'
-    if (password.length < 8) return 'Password must be at least 8 characters.'
+    if (password.length < 12) return 'Password must be at least 12 characters.'
     if (password !== confirmPassword) return 'Passwords do not match.'
+    if (!agreedToTerms) return 'You must agree to the Terms of Service to continue.'
     if (inviteRequired && !inviteCode.trim()) return 'An invite code is required.'
     return null
   }
@@ -46,11 +48,14 @@ function Register(): React.ReactElement {
       await register(orgName.trim(), email.trim(), password, inviteCode.trim())
       navigate('/')
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number; data?: { detail?: string } } })?.response
-      if (status?.status === 409) {
+      const res = (err as { response?: { status?: number; data?: { detail?: unknown } } })?.response
+      if (res?.status === 409) {
         setError('An account with that email already exists.')
-      } else if (status?.data?.detail) {
-        setError(status.data.detail)
+      } else if (Array.isArray(res?.data?.detail)) {
+        const first = (res.data.detail as Array<{ msg?: string }>)[0]
+        setError(first?.msg?.replace(/^Value error, /, '') ?? 'Registration failed. Please try again.')
+      } else if (typeof res?.data?.detail === 'string') {
+        setError(res.data.detail)
       } else {
         setError('Registration failed. Please try again.')
       }
@@ -129,7 +134,7 @@ function Register(): React.ReactElement {
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="min 8 characters"
+                placeholder="min 12 characters"
                 className={inputClass}
               />
             </div>
@@ -166,6 +171,22 @@ function Register(): React.ReactElement {
                 />
               </div>
             )}
+
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 flex-shrink-0 accent-accent"
+              />
+              <span className="text-xs text-secondary leading-relaxed">
+                I agree to the{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-accent-light hover:text-white transition-colors">
+                  Terms of Service
+                </a>{' '}
+                and confirm I am 13 years of age or older.
+              </span>
+            </label>
 
             {error && (
               <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2">
