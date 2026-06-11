@@ -18,6 +18,12 @@
 
 ---
 
+![Claude Code calling tools through Arbiter: a permitted call succeeds (semantic-cache hit), a denied tool is blocked by per-agent RBAC, and both land in the audit trail](demo.gif)
+
+*Real session, left to right: Claude Code calls `ask_question` through the gateway (cache hit, 10 ms), then attempts `read_wiki_contents` — blocked by tool-level RBAC with a clean error, and every call lands in the session trace.*
+
+---
+
 ## The problem
 
 Most teams give every AI agent the same credentials and let it call any tool it wants. Secrets are copy-pasted into `.env` files or hardcoded in prompts. There's no audit trail and no access control.
