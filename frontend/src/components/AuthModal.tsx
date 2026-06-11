@@ -47,7 +47,6 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
   const [regPassword, setRegPassword]     = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [inviteCode, setInviteCode]       = useState('')
-  const [ageConfirmed, setAgeConfirmed]   = useState(false)
   const [tosAccepted, setTosAccepted]     = useState(false)
   const [regError, setRegError]           = useState<string | null>(null)
   const [regSubmitting, setRegSubmitting] = useState(false)
@@ -100,7 +99,6 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
     if (regPassword.length < 8)      return 'Password must be at least 8 characters.'
     if (regPassword !== confirmPassword) return 'Passwords do not match.'
     if (inviteRequired && !inviteCode.trim()) return 'An invite code is required.'
-    if (!ageConfirmed)               return 'You must confirm you are at least 13 years old.'
     if (!tosAccepted)                return 'You must accept the Terms of Service and Privacy Policy.'
     return null
   }
@@ -341,19 +339,6 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
                   />
                 </div>
               )}
-              {/* Age attestation — COPPA compliance */}
-              <div className="flex items-start gap-2.5">
-                <input
-                  id="reg-age-confirm"
-                  type="checkbox"
-                  checked={ageConfirmed}
-                  onChange={(e) => setAgeConfirmed(e.target.checked)}
-                  className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded border border-border-strong bg-base accent-accent cursor-pointer"
-                />
-                <label htmlFor="reg-age-confirm" className="text-xs text-secondary leading-relaxed cursor-pointer">
-                  I am at least 13 years old
-                </label>
-              </div>
               {regError && (
                 <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />
@@ -377,7 +362,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
                   className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded border border-border-strong bg-base accent-accent cursor-pointer"
                 />
                 <label htmlFor="reg-tos-accept" className="text-xs text-secondary leading-relaxed cursor-pointer">
-                  I agree to the{' '}
+                  I am 13 or older and agree to the{' '}
                   <Link to="/terms" className="text-accent-light hover:text-primary transition-colors underline-offset-2 underline" onClick={onClose}>
                     Terms of Service
                   </Link>{' '}
