@@ -35,6 +35,7 @@ from app.api.v1.endpoints import (
     billing,
     cache,
     cli_auth,
+    mcp,
     mcp_servers,
     onboarding,
     org,
@@ -45,6 +46,7 @@ from app.api.v1.endpoints import (
     tool_permissions,
     traces,
     vault,
+    webhooks,
 )
 from app.core.config import settings
 from app.core.request_utils import get_client_ip
@@ -422,6 +424,9 @@ def create_app() -> FastAPI:
     app.include_router(org.router, prefix=settings.api_prefix)
     app.include_router(org._accept_router, prefix=settings.api_prefix)
     app.include_router(webhooks.router, prefix=settings.api_prefix)
+    # Native MCP endpoint — mounted at the app root (/mcp), not under /api/v1,
+    # so MCP clients connect to the URL advertised on the landing page.
+    app.include_router(mcp.router)
 
     # ── Health checks ─────────────────────────────────────────────────────────
     @app.get("/health", tags=["meta"])

@@ -52,7 +52,7 @@ const REGISTER_LINES: CodeLine[] = [
   [{ text: '{', color: T.teal }],
   [{ text: '  "id":      ', color: T.accent }, { text: '"agt_k7x2m9p3"', color: T.success }, { text: ',', color: T.primary }],
   [{ text: '  "name":    ', color: T.accent }, { text: '"claude-local"', color: T.success }, { text: ',', color: T.primary }],
-  [{ text: '  "api_key": ', color: T.accent }, { text: '"arb_sk_k7x2m9p3..."', color: T.success }],
+  [{ text: '  "api_key": ', color: T.accent }, { text: '"nxai_k7x2m9p3..."', color: T.success }],
   [{ text: '}', color: T.teal }],
   [],
   [{ text: '⚠ Copy the key — it will not be shown again.', color: T.warning }],

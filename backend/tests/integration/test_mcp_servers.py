@@ -245,6 +245,50 @@ class TestCreateMCPServer:
 
         assert resp.status_code == 409, resp.text
 
+    @pytest.mark.asyncio
+    async def test_create_name_with_double_underscore_returns_422(self, fake_redis):
+        """'__' is the MCP endpoint's server__tool separator — reject it in names."""
+        from app.main import app
+        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.security import generate_api_key
+
+        raw_key = generate_api_key()
+        mock_agent = _make_mock_agent(raw_key)
+        mock_user = _make_mock_user()
+        mock_user.role = "owner"
+        db = _make_db_for_create(existing_server=None)
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_agent():
+            return mock_agent
+
+        async def override_get_current_user():
+            return mock_user
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_agent] = override_get_current_agent
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.post(
+                    "/api/v1/mcp-servers",
+                    json={"name": "billing__v2", "base_url": "http://mcp.example.com"},
+                    headers={"Authorization": f"Bearer {raw_key}"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 422, resp.text
+
 
 class TestListMCPServers:
     @pytest.mark.asyncio

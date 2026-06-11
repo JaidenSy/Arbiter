@@ -26,6 +26,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db, require_role
+from app.core.ssrf import assert_ssrf_safe
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
 from app.db.models.user import User
@@ -142,6 +143,16 @@ class MCPServerCreate(BaseModel):
             raise ValueError("base_url must be a valid http:// or https:// URL")
         return stripped
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        """Reject '__' — it is the server/tool separator in the MCP endpoint's namespaced tool names."""
+        if "__" in v:
+            raise ValueError(
+                "server name must not contain '__' (reserved as the server__tool separator)"
+            )
+        return v
+
 
 class MCPServerUpdate(BaseModel):
     """Partial update body — all fields optional."""
@@ -165,6 +176,16 @@ class MCPServerUpdate(BaseModel):
         if not (lower.startswith("http://") or lower.startswith("https://")):
             raise ValueError("base_url must be a valid http:// or https:// URL")
         return stripped
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str | None) -> str | None:
+        """Reject '__' — it is the server/tool separator in the MCP endpoint's namespaced tool names."""
+        if v is not None and "__" in v:
+            raise ValueError(
+                "server name must not contain '__' (reserved as the server__tool separator)"
+            )
+        return v
 
 
 class MCPServerTestResponse(BaseModel):
