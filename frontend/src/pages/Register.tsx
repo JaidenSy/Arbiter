@@ -184,7 +184,10 @@ function Register(): React.ReactElement {
                 <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-accent-light hover:text-white transition-colors">
                   Terms of Service
                 </a>{' '}
-                and confirm I am 13 years of age or older.
+                and{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-accent-light hover:text-white transition-colors">
+                  Privacy Policy
+                </a>.
               </span>
             </label>
 
