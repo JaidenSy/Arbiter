@@ -26,6 +26,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db, require_role
+from app.core.ssrf import assert_ssrf_safe
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
 from app.db.models.user import User
