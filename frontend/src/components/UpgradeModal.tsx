@@ -7,11 +7,13 @@
  */
 
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Modal from "./Modal";
 import { PLAN_LIMIT_EVENT, type PlanLimitPayload } from "../api/client";
 
 export default function UpgradeModal(): React.ReactElement | null {
   const [payload, setPayload] = useState<PlanLimitPayload | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handler = (e: Event): void => {
@@ -40,14 +42,12 @@ export default function UpgradeModal(): React.ReactElement | null {
         </p>
 
         <div className="flex gap-3 pt-1">
-          <a
-            href="https://arbiterai.dev/pricing"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => { setPayload(null); navigate('/pricing'); }}
             className="press flex-1 bg-accent hover:bg-accent-light text-white text-center py-2.5 rounded-lg text-sm font-semibold transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard"
           >
             Upgrade to Pro
-          </a>
+          </button>
           <button
             onClick={() => setPayload(null)}
             className="press flex-1 border border-border-strong hover:border-border-strong text-secondary hover:text-primary py-2.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"

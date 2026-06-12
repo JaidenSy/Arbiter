@@ -161,6 +161,7 @@ export interface VaultSecret {
   name: string;
   agent_id: string | null;
   created_at: string;
+  updated_at: string;  // #254 — last rotation timestamp
 }
 
 export interface VaultSecretWithValue extends VaultSecret {

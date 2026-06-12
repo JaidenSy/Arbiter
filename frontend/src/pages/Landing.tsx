@@ -8,7 +8,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
-import { useAuth } from '../context/AuthContext'
 import AuthModal, { type AuthMode } from '../components/AuthModal'
 import HeroBackground from '../components/HeroBackground'
 import HeroArchDiagram from '../components/HeroArchDiagram'
@@ -18,9 +17,8 @@ import FeatureShowcase from '../components/FeatureShowcase'
 import GatewayConnectedCTA from '../components/GatewayConnectedCTA'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { RevealGroup } from '../components/RevealGroup'
-
-const SUPPORT_EMAIL: string =
-  (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'support@arbiterai.dev'
+import PricingTiers from '../components/PricingTiers'
+import { SUPPORT_EMAIL } from '../components/pricingData'
 
 // ── Typewriter Terminal ───────────────────────────────────────────────────────
 
@@ -161,6 +159,18 @@ function Navbar({ onSignIn, onGetStarted }: NavbarProps): React.ReactElement {
 
         {/* Right nav */}
         <div className="flex items-center gap-3">
+          <Link
+            to="/pricing"
+            className="hidden sm:block text-secondary hover:text-primary px-2 py-1.5 text-sm transition-colors duration-150"
+          >
+            Pricing
+          </Link>
+          <Link
+            to="/docs"
+            className="hidden sm:block text-secondary hover:text-primary px-2 py-1.5 text-sm transition-colors duration-150"
+          >
+            Docs
+          </Link>
           <button
             onClick={onSignIn}
             className="press text-secondary hover:text-primary border border-border-strong hover:border-border-strong px-4 py-2.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
@@ -482,73 +492,8 @@ function Comparison(): React.ReactElement {
 
 // ── Pricing ────────────────────────────────────────────────────────────────────
 
-interface PricingTier {
-  name: string
-  price: string
-  period?: string
-  features: string[]
-  cta: string
-  ctaHref: string
-  highlighted?: boolean
-}
-
-const pricingTiers: PricingTier[] = [
-  {
-    name: 'Free',
-    price: '$0',
-    period: '/mo',
-    features: [
-      '2 agents',
-      '3 MCP servers',
-      '5,000 tool calls/mo',
-      '10 vault secrets',
-      'Community support',
-    ],
-    cta: 'Get Started Free',
-    ctaHref: '/register',
-  },
-  {
-    name: 'Pro',
-    price: '$29',
-    period: '/mo',
-    features: [
-      '25 agents',
-      '50 MCP servers',
-      '100,000 tool calls/mo',
-      '100 vault secrets',
-      'Priority support',
-    ],
-    cta: 'Upgrade to Pro',
-    ctaHref: '/register',
-    highlighted: true,
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    features: [
-      'Unlimited everything',
-      'Custom SLA',
-      'Dedicated support',
-      'SSO',
-      'Self-hosted deployment support',
-    ],
-    cta: 'Contact Sales',
-    ctaHref: `mailto:${SUPPORT_EMAIL}`,
-  },
-]
-
 function Pricing(): React.ReactElement {
-  const { user } = useAuth()
-  const navigate = useNavigate()
   const headingRef = useScrollReveal<HTMLHeadingElement>()
-
-  function handleProCta(): void {
-    if (user) {
-      navigate('/settings?tab=billing')
-    } else {
-      navigate('/register')
-    }
-  }
 
   return (
     <section className="py-24 px-6" id="pricing">
@@ -556,65 +501,7 @@ function Pricing(): React.ReactElement {
         <div className="text-center mb-16">
           <h2 ref={headingRef} className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Start free. Scale when you need to.</h2>
         </div>
-
-        <RevealGroup className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch" stagger={80}>
-          {pricingTiers.map((tier) => (
-            <div
-              key={tier.name}
-              className={`flex flex-col rounded-2xl p-7 transition-colors duration-200 ${
-                tier.highlighted
-                  ? 'bg-surface border border-border-accent shadow-[0_0_28px_rgba(61,53,206,0.16)]'
-                  : 'bg-surface border border-border'
-              }`}
-            >
-              {tier.highlighted && (
-                <div className="inline-flex self-start mb-4 px-2.5 py-0.5 rounded-full bg-accent/15 border border-border-accent">
-                  <span className="text-accent-light text-xs font-medium tracking-wide">Most popular</span>
-                </div>
-              )}
-              <p className="font-display text-primary font-semibold text-base tracking-tight mb-1">{tier.name}</p>
-              <div className="flex items-baseline gap-0.5 mb-5">
-                <span className="font-display text-3xl font-semibold tracking-tight text-primary">{tier.price}</span>
-                {tier.period && <span className="text-muted text-sm">{tier.period}</span>}
-              </div>
-
-              <ul className="flex-1 space-y-2.5 mb-7">
-                {tier.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-secondary">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-success flex-shrink-0">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              {tier.ctaHref.startsWith('mailto') ? (
-                <a
-                  href={tier.ctaHref}
-                  className="press block text-center border border-border-strong hover:border-border-accent text-secondary hover:text-accent-light px-4 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 ease-[var(--ease-out-expo)]"
-                >
-                  {tier.cta}
-                </a>
-              ) : tier.highlighted ? (
-                <button
-                  type="button"
-                  onClick={handleProCta}
-                  className="press block w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] bg-accent hover:bg-accent-light text-white hover-glow-standard"
-                >
-                  {user ? 'Go to Billing' : tier.cta}
-                </button>
-              ) : (
-                <Link
-                  to={tier.ctaHref}
-                  className="press block text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-150 ease-[var(--ease-out-expo)] border border-border-strong hover:border-border-accent text-secondary hover:text-accent-light"
-                >
-                  {tier.cta}
-                </Link>
-              )}
-            </div>
-          ))}
-        </RevealGroup>
+        <PricingTiers showCompareLink />
       </div>
     </section>
   )
@@ -723,6 +610,9 @@ function Footer(): React.ReactElement {
         <div className="flex items-center gap-5">
           <Link to="/" className="text-secondary hover:text-primary text-xs transition-colors">
             Dashboard
+          </Link>
+          <Link to="/pricing" className="text-secondary hover:text-primary text-xs transition-colors">
+            Pricing
           </Link>
           <Link to="/docs" className="text-secondary hover:text-primary text-xs transition-colors">
             API Docs

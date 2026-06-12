@@ -6,13 +6,18 @@ Arbiter — CacheService.
 Implements a two-phase semantic cache for MCP tool calls:
 
     Phase 1 — Exact match:
-        SHA-256 hash of the canonical (sorted-key) JSON of the input.
-        O(1) lookup in Redis (and Postgres fallback).
+        SHA-256 hash of org id + MCP server id + the canonical (sorted-key)
+        JSON of the input.  O(1) lookup in Redis (and Postgres fallback).
 
     Phase 2 — Semantic match:
         sentence-transformers/all-MiniLM-L6-v2 embedding of the input.
         pgvector cosine-distance ANN search (single SQL query, no Python loop).
         Threshold controlled by CACHE_SIMILARITY_THRESHOLD env var (default 0.95).
+
+Scoping: every lookup and store is keyed by (org_id, mcp_server_id).  Two
+servers in the same org may expose tools with identical names ("search",
+"query", ...); without the server id in the key, one server's cached response
+would be served for the other server's call.
 
 Design decisions:
     - Embeddings stored as vector(384) using pgvector; cosine distance (<=>)
@@ -31,7 +36,7 @@ import asyncio
 import hashlib
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select, update
@@ -55,10 +60,9 @@ def _get_model():
     if _embedding_model is None:
         try:
             from sentence_transformers import SentenceTransformer  # type: ignore
+
             _embedding_model = SentenceTransformer(settings.cache_embedding_model)
-            logger.info(
-                "cache: loaded embedding model %r", settings.cache_embedding_model
-            )
+            logger.info("cache: loaded embedding model %r", settings.cache_embedding_model)
         except ImportError as exc:
             raise RuntimeError(
                 "sentence-transformers is required for semantic caching. "
@@ -68,8 +72,19 @@ def _get_model():
 
 
 def _canonical(tool_name: str, input_payload: dict[str, Any]) -> str:
-    """Return the canonical string used for both hashing and embedding."""
+    """Return the canonical string embedded for semantic lookups."""
     return f"{tool_name}:{json.dumps(input_payload, sort_keys=True)}"
+
+
+def _exact_hash(org_id: Any, mcp_server_id: Any, canonical: str) -> str:
+    """
+    SHA-256 over org id, MCP server id, and the canonical input string.
+
+    Folding the tenant and server into the hash guarantees exact-match keys
+    never collide across orgs (uq_cache_entry_tool_hash spans all tenants)
+    or across two servers that expose a tool with the same name.
+    """
+    return hashlib.sha256(f"{org_id}:{mcp_server_id}:{canonical}".encode()).hexdigest()
 
 
 class CacheService:
@@ -103,6 +118,7 @@ class CacheService:
         tool_name: str,
         input_payload: dict[str, Any],
         org_id: Any = None,
+        mcp_server_id: Any = None,
         semantic: bool = True,
     ) -> dict[str, Any] | None:
         """
@@ -117,11 +133,12 @@ class CacheService:
             tool_name:     Name of the MCP tool being called.
             input_payload: The tool call arguments dict.
             org_id:        Organization UUID for tenant isolation.
+            mcp_server_id: MCP server UUID — entries never cross server boundaries.
             semantic:      When False, skip embedding and pgvector search (free tier).
         """
         canonical = _canonical(tool_name, input_payload)
-        input_hash = hashlib.sha256(canonical.encode()).hexdigest()
-        redis_key = f"cache:exact:{org_id}:{tool_name}:{input_hash}"
+        input_hash = _exact_hash(org_id, mcp_server_id, canonical)
+        redis_key = f"cache:exact:{org_id}:{mcp_server_id}:{tool_name}:{input_hash}"
 
         # ── Phase 1a: Redis exact match ────────────────────────────────────────
         if self.redis is not None:
@@ -134,12 +151,13 @@ class CacheService:
                     logger.warning("cache: Redis value for %s was not valid JSON", redis_key)
 
         # ── Phase 1b: Postgres exact match ────────────────────────────────────
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         result = await self.db.execute(
             select(CacheEntry).where(
                 CacheEntry.tool_name == tool_name,
                 CacheEntry.input_hash == input_hash,
                 CacheEntry.org_id == org_id,
+                CacheEntry.mcp_server_id == mcp_server_id,
                 CacheEntry.expires_at > now,
             )
         )
@@ -148,7 +166,7 @@ class CacheService:
             logger.debug("cache: L2 Postgres exact hit tool=%r", tool_name)
             # Backfill Redis with remaining TTL.
             if self.redis is not None:
-                remaining_ttl = int((entry.expires_at.replace(tzinfo=timezone.utc) - now).total_seconds())
+                remaining_ttl = int((entry.expires_at.replace(tzinfo=UTC) - now).total_seconds())
                 if remaining_ttl > 0:
                     await self.redis.setex(
                         redis_key,
@@ -160,7 +178,9 @@ class CacheService:
 
         # ── Phase 2: pgvector ANN cosine-distance search (Pro/Enterprise only) ──
         if not semantic:
-            logger.debug("cache: miss tool=%r (semantic search not available on free tier)", tool_name)
+            logger.debug(
+                "cache: miss tool=%r (semantic search not available on free tier)", tool_name
+            )
             return None
 
         try:
@@ -179,11 +199,12 @@ class CacheService:
             .where(
                 CacheEntry.tool_name == tool_name,
                 CacheEntry.org_id == org_id,
+                CacheEntry.mcp_server_id == mcp_server_id,
                 CacheEntry.input_embedding.is_not(None),
                 CacheEntry.expires_at > now,
-                CacheEntry.input_embedding.op("<=>") (query_embedding) <= max_distance,
+                CacheEntry.input_embedding.op("<=>")(query_embedding) <= max_distance,
             )
-            .order_by(CacheEntry.input_embedding.op("<=>") (query_embedding))
+            .order_by(CacheEntry.input_embedding.op("<=>")(query_embedding))
             .limit(1)
         )
         entry = result.scalar_one_or_none()
@@ -201,6 +222,7 @@ class CacheService:
         input_payload: dict[str, Any],
         response_payload: dict[str, Any],
         org_id: Any = None,
+        mcp_server_id: Any = None,
         ttl_override: int | None = None,
         semantic: bool = True,
     ) -> None:
@@ -215,12 +237,14 @@ class CacheService:
             tool_name:        Name of the MCP tool.
             input_payload:    The tool call arguments dict.
             response_payload: The response from the MCP server.
+            org_id:           Organization UUID for tenant isolation.
+            mcp_server_id:    MCP server UUID — entries never cross server boundaries.
         """
         canonical = _canonical(tool_name, input_payload)
-        input_hash = hashlib.sha256(canonical.encode()).hexdigest()
-        redis_key = f"cache:exact:{org_id}:{tool_name}:{input_hash}"
+        input_hash = _exact_hash(org_id, mcp_server_id, canonical)
+        redis_key = f"cache:exact:{org_id}:{mcp_server_id}:{tool_name}:{input_hash}"
         ttl_seconds = ttl_override if ttl_override is not None else settings.cache_ttl_seconds
-        expires_at = datetime.now(tz=timezone.utc) + timedelta(seconds=ttl_seconds)
+        expires_at = datetime.now(tz=UTC) + timedelta(seconds=ttl_seconds)
 
         # Compute embedding only for Pro/Enterprise — free tier uses exact-match only.
         embedding: list[float] | None = None
@@ -239,12 +263,13 @@ class CacheService:
             )
 
         # ── Write to Postgres (upsert) ─────────────────────────────────────────
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         result = await self.db.execute(
             select(CacheEntry).where(
                 CacheEntry.tool_name == tool_name,
                 CacheEntry.input_hash == input_hash,
                 CacheEntry.org_id == org_id,
+                CacheEntry.mcp_server_id == mcp_server_id,
             )
         )
         existing = result.scalar_one_or_none()
@@ -262,6 +287,7 @@ class CacheService:
                 response_payload=response_payload,
                 expires_at=expires_at,
                 org_id=org_id,
+                mcp_server_id=mcp_server_id,
             )
             self.db.add(entry)
 

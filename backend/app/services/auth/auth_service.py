@@ -15,7 +15,6 @@ Token strategy:
 from __future__ import annotations
 
 import hashlib
-import re
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -28,23 +27,12 @@ from app.core import security
 from app.db.models.organization import Organization
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.user import User
+from app.services.org import org_service
 
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-
-def _slugify(text: str) -> str:
-    """
-    Convert a human-readable name to a URL-safe slug.
-
-    Example: "Acme Corp!" → "acme-corp"
-    """
-    slug = text.lower().strip()
-    slug = re.sub(r"[^a-z0-9]+", "-", slug)
-    slug = slug.strip("-")
-    return slug or "org"
 
 
 def _pre_hash(plain: str) -> str:
@@ -99,21 +87,13 @@ async def register(
             detail="An account with that email already exists",
         )
 
-    # Slugify org name and check uniqueness.
-    slug = _slugify(org_name)
-    base_slug = slug
-    counter = 1
-    while await db.scalar(select(Organization).where(Organization.slug == slug)):
-        slug = f"{base_slug}-{counter}"
-        counter += 1
-
-    # Create organization.
-    org = Organization(name=org_name, slug=slug, plan_tier="free", is_active=True)
-    db.add(org)
-    await db.flush()  # populate org.id before referencing it
+    # Create organization (unique slug handled by the org service).
+    org = await org_service.create_org(db, org_name)
 
     # Create owner user. tos_accepted_at is set immediately since the registration
     # form requires explicit checkbox acceptance before the form can be submitted.
+    # users.org_id / users.role are the active-org projection; the membership
+    # row below is the source of truth.
     user = User(
         org_id=org.id,
         email=email,
@@ -125,6 +105,7 @@ async def register(
     )
     db.add(user)
     await db.flush()
+    await org_service.add_membership(db, user=user, org_id=org.id, role="owner")
 
     # Issue tokens.
     access_token = security.create_access_token(

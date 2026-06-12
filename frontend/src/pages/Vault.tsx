@@ -344,7 +344,7 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
           <thead>
             <tr className="border-b border-border">
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Name</th>
-              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Stored</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Last Updated</th>
               <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Value</th>
               <th className="py-3 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">Actions</th>
             </tr>
@@ -386,8 +386,8 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                       </span>
                     </td>
 
-                    <td className="py-3 px-4 font-mono text-xs text-muted">
-                      {relativeTime(secret.created_at)}
+                    <td className="py-3 px-4 font-mono text-xs text-muted" title={new Date(secret.updated_at).toLocaleString()}>
+                      {relativeTime(secret.updated_at)}
                     </td>
 
                     <td className="py-3 px-4">
