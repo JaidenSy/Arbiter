@@ -535,27 +535,52 @@ class ProxyService:
     async def _inject_secrets(
         self, value: str, agent_id: uuid.UUID | None, org_id: uuid.UUID
     ) -> str:
-        """Replace all {{SECRET_NAME}} and {{vault:SECRET_NAME}} placeholders in a string value."""
+        """Replace all {{SECRET_NAME}} and {{vault:SECRET_NAME}} placeholders in a string value.
+
+        Lookup order (mirrors the server-header pattern at line 325-328):
+          1. Agent-scoped secret  (agent_id, org_id) — most specific.
+          2. Org-level fallback   (agent_id=None, org_id) — shared secrets.
+
+        If neither scope has the secret, a ValueError is raised so the proxy
+        can surface a clear error rather than forwarding the raw placeholder.
+        """
         matches = _SECRET_PLACEHOLDER.findall(value)
         if not matches:
             return value
         for secret_name in set(matches):
-            try:
-                secret_value = await self._vault.get_secret(
-                    secret_name, org_id=org_id, agent_id=agent_id
+            secret_value: str | None = None
+
+            # 1. Try agent-scoped lookup (only when an agent_id is present)
+            if agent_id is not None:
+                try:
+                    secret_value = await self._vault.get_secret(
+                        secret_name, org_id=org_id, agent_id=agent_id
+                    )
+                except KeyError:
+                    pass  # fall through to org-level lookup below
+
+            # 2. Org-level fallback (agent_id=None)
+            if secret_value is None:
+                try:
+                    secret_value = await self._vault.get_secret(
+                        secret_name, org_id=org_id, agent_id=None
+                    )
+                except KeyError:
+                    pass
+
+            if secret_value is None:
+                raise ValueError(
+                    f"Secret placeholder {{{{{secret_name}}}}} could not be resolved: "
+                    f"no agent-scoped or org-level secret with that name exists "
+                    f"(agent_id={agent_id}, org_id={org_id})"
                 )
-                # Replace both {{secret_name}} and {{vault:secret_name}} forms
-                value = re.sub(
-                    r"\{\{(?:vault:)?" + re.escape(secret_name) + r"\}\}",
-                    secret_value,
-                    value,
-                )
-            except KeyError:
-                logger.warning(
-                    "proxy: secret placeholder {{%s}} not found in vault for agent %s",
-                    secret_name,
-                    agent_id,
-                )
+
+            # Replace both {{secret_name}} and {{vault:secret_name}} forms
+            value = re.sub(
+                r"\{\{(?:vault:)?" + re.escape(secret_name) + r"\}\}",
+                secret_value,
+                value,
+            )
         return value
 
     # ── Helpers ───────────────────────────────────────────────────────────────
