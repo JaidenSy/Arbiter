@@ -15,13 +15,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.base import async_session_factory
+from app.db.models.org_membership import OrgMembership
 from app.db.models.organization import Organization
 from app.db.models.usage_event import UsageEvent
 from app.db.models.user import User
@@ -77,7 +78,7 @@ async def check_and_send_quota_alerts(db: AsyncSession) -> None:
     Enterprise orgs (max_tool_calls_mo=None) are skipped — they have no cap.
     If today is the 1st of the month, both alert flags are reset first.
     """
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     today = now.date()
     first_of_month = today.replace(day=1)
 
@@ -115,7 +116,13 @@ async def check_and_send_quota_alerts(db: AsyncSession) -> None:
             User.email.label("owner_email"),
             func.coalesce(monthly_usage_sq.c.monthly_calls, 0).label("monthly_calls"),
         )
-        .join(User, (User.org_id == Organization.id) & (User.role == "owner"))
+        # Owners resolved via memberships — users.org_id/role only reflect the
+        # org a user currently has active, not every org they own.
+        .join(
+            OrgMembership,
+            (OrgMembership.org_id == Organization.id) & (OrgMembership.role == "owner"),
+        )
+        .join(User, (User.id == OrgMembership.user_id) & (User.is_active.is_(True)))
         .outerjoin(monthly_usage_sq, monthly_usage_sq.c.org_id == Organization.id)
         .where(Organization.is_active.is_(True))
     )
@@ -148,10 +155,15 @@ async def check_and_send_quota_alerts(db: AsyncSession) -> None:
                 alerts_sent += 1
                 logger.info(
                     "quota_alerts: sent 100%% alert to %s (org=%s used=%d/%d)",
-                    owner_email, org_id, used, plan_limit,
+                    owner_email,
+                    org_id,
+                    used,
+                    plan_limit,
                 )
             except Exception as exc:
-                logger.warning("quota_alerts: failed to send 100%% alert to %s: %s", owner_email, exc)
+                logger.warning(
+                    "quota_alerts: failed to send 100%% alert to %s: %s", owner_email, exc
+                )
 
         elif pct >= 0.8 and not row.quota_alert_80_sent:
             subject, html = _make_80_email(org_name, used, plan_limit)
@@ -165,16 +177,22 @@ async def check_and_send_quota_alerts(db: AsyncSession) -> None:
                 alerts_sent += 1
                 logger.info(
                     "quota_alerts: sent 80%% alert to %s (org=%s used=%d/%d)",
-                    owner_email, org_id, used, plan_limit,
+                    owner_email,
+                    org_id,
+                    used,
+                    plan_limit,
                 )
             except Exception as exc:
-                logger.warning("quota_alerts: failed to send 80%% alert to %s: %s", owner_email, exc)
+                logger.warning(
+                    "quota_alerts: failed to send 80%% alert to %s: %s", owner_email, exc
+                )
 
     await db.commit()
 
     logger.info(
         "quota_alerts: checked %d org(s), sent %d alert(s)",
-        len(rows), alerts_sent,
+        len(rows),
+        alerts_sent,
     )
 
 

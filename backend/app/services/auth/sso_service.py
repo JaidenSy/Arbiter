@@ -16,7 +16,6 @@ URL (which would appear in server logs and browser history).
 
 from __future__ import annotations
 
-import re
 import secrets
 
 from fastapi import HTTPException, status
@@ -24,26 +23,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
-from app.db.models.organization import Organization
 from app.db.models.social_account import SocialAccount
 from app.db.models.user import User
 from app.services.auth.auth_service import _store_refresh_token
+from app.services.org import org_service
 
 # Redis key prefix for one-time tokens
 _OTT_PREFIX = "ott:"
 # TTL in seconds
 _OTT_TTL = 60
-
-
-# ── Internal helpers ──────────────────────────────────────────────────────────
-
-
-def _slugify(text: str) -> str:
-    """Convert a human-readable name to a URL-safe slug."""
-    slug = text.lower().strip()
-    slug = re.sub(r"[^a-z0-9]+", "-", slug)
-    slug = slug.strip("-")
-    return slug or "org"
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -120,18 +108,9 @@ async def get_or_create_user(
         await db.commit()
         return existing_user
 
-    # 3. Brand-new user: create org + user + social account.
+    # 3. Brand-new user: create org + user + membership + social account.
     display_name = name or email.split("@")[0]
-    slug = _slugify(display_name)
-    base_slug = slug
-    counter = 1
-    while await db.scalar(select(Organization).where(Organization.slug == slug)):
-        slug = f"{base_slug}-{counter}"
-        counter += 1
-
-    org = Organization(name=display_name, slug=slug, plan_tier="free", is_active=True)
-    db.add(org)
-    await db.flush()
+    org = await org_service.create_org(db, display_name)
 
     user = User(
         org_id=org.id,
@@ -143,6 +122,7 @@ async def get_or_create_user(
     )
     db.add(user)
     await db.flush()
+    await org_service.add_membership(db, user=user, org_id=org.id, role="owner")
 
     sa = SocialAccount(
         user_id=user.id,
@@ -190,8 +170,11 @@ async def link_provider(
         )
     await redis.delete(nonce_key)
 
-    user_id_str = user_id_bytes.decode("utf-8") if isinstance(user_id_bytes, bytes) else user_id_bytes
+    user_id_str = (
+        user_id_bytes.decode("utf-8") if isinstance(user_id_bytes, bytes) else user_id_bytes
+    )
     import uuid as _uuid
+
     user = await db.get(User, _uuid.UUID(user_id_str))
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not found")
@@ -279,9 +262,7 @@ async def exchange_one_time_token(
     await redis.delete(redis_key)
 
     user_id_str = (
-        user_id_bytes.decode("utf-8")
-        if isinstance(user_id_bytes, bytes)
-        else user_id_bytes
+        user_id_bytes.decode("utf-8") if isinstance(user_id_bytes, bytes) else user_id_bytes
     )
 
     import uuid
