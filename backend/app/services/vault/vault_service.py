@@ -195,6 +195,37 @@ class VaultService:
         logger.info("vault: stored secret name=%r agent_id=%s org_id=%s", name, agent_id, org_id)
         return secret
 
+    async def list_secrets(
+        self,
+        org_id: uuid.UUID,
+        agent_ids: list[uuid.UUID] | None = None,
+    ) -> list[VaultSecret]:
+        """
+        Return vault secrets for an org, optionally filtered to a set of agent IDs.
+
+        When ``agent_ids`` is None, all secrets in the org are returned (used for
+        owner/admin callers).  When provided, only secrets whose ``agent_id`` is
+        in the list are returned — used for ``member``-role callers who should
+        only see secrets scoped to agents they created (Issue #264).
+
+        Args:
+            org_id:    Organization UUID — enforces org isolation.
+            agent_ids: Optional list of agent UUIDs to filter on.
+                       Pass an empty list to return no secrets.
+
+        Returns:
+            list[VaultSecret]: Matching secret rows (values still encrypted).
+        """
+
+        query = select(VaultSecret).where(VaultSecret.org_id == org_id)
+        if agent_ids is not None:
+            if not agent_ids:
+                # Empty list — member has no owned agents; return nothing.
+                return []
+            query = query.where(VaultSecret.agent_id.in_(agent_ids))
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
     async def get_secret(
         self, name: str, org_id: uuid.UUID, agent_id: uuid.UUID | None = None
     ) -> str:

@@ -23,7 +23,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db, get_redis, require_role
@@ -31,7 +31,10 @@ from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.db.models.vault import VaultSecret
+from app.db.models.vault_audit_event import VaultAuditEvent, VaultOperation
 from app.schemas.pagination import Page
+from app.services.agent.agent_service import get_agent_ids_by_owner
+from app.services.org.org_service import get_membership
 from app.services.plan.plan_service import check_resource_limit
 from app.services.vault.vault_service import VaultService
 
@@ -161,21 +164,36 @@ async def create_secret(
     summary="List secret names",
 )
 async def list_secrets(
-    agent_id: uuid.UUID | None = None,
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Page[SecretResponse]:
-    filters = [VaultSecret.org_id == current_user.org_id]
-    if agent_id is not None:
-        filters.append(VaultSecret.agent_id == agent_id)
-    total = await db.scalar(select(func.count(VaultSecret.id)).where(*filters)) or 0
-    result = await db.execute(select(VaultSecret).where(*filters).offset(skip).limit(limit))
-    secrets = result.scalars().all()
+    """
+    Return secret names (no values) for the current user's org.
+
+    Role-based visibility (Issue #264):
+      - **owner / admin**: sees all secrets in the org.
+      - **member**: sees only secrets scoped to agents they created.
+    """
+    membership = await get_membership(db, current_user.id, current_user.org_id)
+    is_privileged = membership is not None and membership.role in ("owner", "admin")
+
+    service = VaultService(db)
+    if is_privileged:
+        secrets = await service.list_secrets(org_id=current_user.org_id)
+    else:
+        owned_agent_ids = await get_agent_ids_by_owner(
+            db, org_id=current_user.org_id, user_id=current_user.id
+        )
+        secrets = await service.list_secrets(org_id=current_user.org_id, agent_ids=owned_agent_ids)
+
+    items = [SecretResponse.model_validate(s) for s in secrets]
+    # Apply pagination over the already-filtered list.
+    page_items = items[skip : skip + limit]
     return Page(
-        items=[SecretResponse.model_validate(s) for s in secrets],
-        total=total,
+        items=page_items,
+        total=len(items),
         skip=skip,
         limit=limit,
     )
