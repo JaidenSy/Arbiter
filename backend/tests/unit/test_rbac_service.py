@@ -6,19 +6,18 @@ Coverage:
     - check_permission returns True when "*" wildcard is granted
     - check_permission returns False when no permission exists
     - get_allowed_tools returns correct list for agent
-    - filter_tools_list removes tools agent cannot access
+    - filter_tools_list returns all tools regardless of permissions (enforcement is call-time only)
 """
 
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import pytest_asyncio
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_agent(agent_id: uuid.UUID | None = None, org_id: uuid.UUID | None = None) -> MagicMock:
     """Return a mock Agent ORM object."""
@@ -63,6 +62,7 @@ def _make_db_for_get_allowed(tool_names: list[str]) -> AsyncMock:
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 class TestCheckPermission:
     @pytest.mark.asyncio
@@ -142,8 +142,6 @@ class TestCheckPermission:
         We capture the compiled SQL text and assert ToolPermission.org_id is
         referenced, preventing cross-org permission leakage from orphaned rows.
         """
-        from sqlalchemy import exists, or_, select
-        from app.db.models.tool_permission import ToolPermission
         from app.services.rbac.rbac_service import RBACService
 
         captured_stmts: list = []
@@ -223,8 +221,8 @@ class TestGetAllowedTools:
 
 class TestFilterToolsList:
     @pytest.mark.asyncio
-    async def test_removes_disallowed_tools(self):
-        """filter_tools_list removes tools not in the allowed set."""
+    async def test_returns_all_tools_regardless_of_permissions(self):
+        """filter_tools_list returns every tool — RBAC is enforced at call time, not manifest time."""
         from app.services.rbac.rbac_service import RBACService
 
         tools = [
@@ -232,7 +230,6 @@ class TestFilterToolsList:
             {"name": "write_file"},
             {"name": "delete_file"},
         ]
-        # Agent only allowed to call read_file
         db = _make_db_for_get_allowed(["read_file"])
         svc = RBACService(db=db)
         result = await svc.filter_tools_list(
@@ -240,12 +237,11 @@ class TestFilterToolsList:
             mcp_server_id=uuid.uuid4(),
             tools=tools,
         )
-        assert len(result) == 1
-        assert result[0]["name"] == "read_file"
+        assert result == tools
 
     @pytest.mark.asyncio
-    async def test_wildcard_returns_all_tools(self):
-        """filter_tools_list returns all tools when "*" is in allowed set."""
+    async def test_returns_all_tools_with_wildcard(self):
+        """filter_tools_list returns all tools when agent has wildcard permission."""
         from app.services.rbac.rbac_service import RBACService
 
         tools = [
@@ -263,8 +259,8 @@ class TestFilterToolsList:
         assert result == tools
 
     @pytest.mark.asyncio
-    async def test_empty_allowed_returns_empty_list(self):
-        """filter_tools_list returns [] when agent has no permissions."""
+    async def test_returns_all_tools_with_no_permissions(self):
+        """filter_tools_list returns all tools even when agent has no permissions."""
         from app.services.rbac.rbac_service import RBACService
 
         tools = [{"name": "read_file"}, {"name": "write_file"}]
@@ -275,11 +271,11 @@ class TestFilterToolsList:
             mcp_server_id=uuid.uuid4(),
             tools=tools,
         )
-        assert result == []
+        assert result == tools
 
     @pytest.mark.asyncio
-    async def test_partial_match(self):
-        """Only tools in the allowed list are returned."""
+    async def test_returns_all_tools_with_partial_permissions(self):
+        """filter_tools_list returns all upstream tools regardless of which are permitted."""
         from app.services.rbac.rbac_service import RBACService
 
         tools = [
@@ -294,9 +290,7 @@ class TestFilterToolsList:
             mcp_server_id=uuid.uuid4(),
             tools=tools,
         )
-        names = [t["name"] for t in result]
-        assert set(names) == {"alpha", "gamma"}
-        assert len(result) == 2
+        assert result == tools
 
 
 class TestRevokePermission:

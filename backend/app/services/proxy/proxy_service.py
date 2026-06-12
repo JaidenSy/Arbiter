@@ -154,6 +154,14 @@ class ProxyService:
                 detail=f"Agent {agent.name!r} has scope 'vault_read_only' and cannot make tool calls",
             )
 
+        # Session is created before the RBAC check so denied calls still produce
+        # an audit record visible in the dashboard.
+        session = await self._ensure_session(
+            agent=agent,
+            session_id=request.session_id,
+            parent_session_id=request.parent_session_id,
+        )
+
         # ── 2. RBAC check ──────────────────────────────────────────────────────
         permitted = await self._rbac.check_permission(
             agent=agent,
@@ -161,6 +169,21 @@ class ProxyService:
             tool_name=request.tool_name,
         )
         if not permitted:
+            denial_msg = (
+                f"Agent {agent.name!r} does not have permission to call "
+                f"tool {request.tool_name!r} on server {request.server_name!r}"
+            )
+            duration_ms = int((time.monotonic() - start_ms) * 1000)
+            await self._persist_event(
+                session=session,
+                mcp_server=mcp_server,
+                tool_name=request.tool_name,
+                request_payload=request.params,
+                response_payload=None,
+                cache_hit=False,
+                duration_ms=duration_ms,
+                error=denial_msg,
+            )
             asyncio.create_task(
                 _dispatch_webhook(
                     agent.org_id,
@@ -170,10 +193,7 @@ class ProxyService:
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=(
-                    f"Agent {agent.name!r} does not have permission to call "
-                    f"tool {request.tool_name!r} on server {request.server_name!r}"
-                ),
+                detail=denial_msg,
             )
 
         # ── 2b. Per-tool rate limiting ─────────────────────────────────────────
@@ -226,13 +246,6 @@ class ProxyService:
                 org_id=agent.org_id,
                 semantic=semantic_cache,
             )
-
-        # Ensure/create session — propagate parent for multi-hop tracing.
-        session = await self._ensure_session(
-            agent=agent,
-            session_id=request.session_id,
-            parent_session_id=request.parent_session_id,
-        )
 
         if cached_result is not None:
             duration_ms = int((time.monotonic() - start_ms) * 1000)
