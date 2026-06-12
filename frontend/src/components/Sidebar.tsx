@@ -3,6 +3,7 @@ import { NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { ArbiterMark } from './ArbiterLogo'
+import OrgSwitcher from './OrgSwitcher'
 import { useTour } from '../hooks/useTour'
 
 const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? 'support@arbiterai.dev'
@@ -201,6 +202,9 @@ function UserAvatar(): React.ReactElement | null {
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent): void {
+      // Clicks inside the portaled create-org modal are not "outside" —
+      // closing the popover would unmount the modal mid-interaction.
+      if ((e.target as Element).closest?.('[data-org-modal]')) return
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false)
       }
@@ -244,6 +248,8 @@ function UserAvatar(): React.ReactElement | null {
               {planLabel}
             </span>
           </div>
+          {/* Org switcher — mounted only while the popover is open (lazy fetch) */}
+          <OrgSwitcher />
           <div className="border-t border-border mt-1 pt-1">
             <a
               href="/account"
