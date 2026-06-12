@@ -16,10 +16,9 @@ Strategy:
 from __future__ import annotations
 
 import os
-import secrets
 import uuid
-from datetime import datetime, timezone
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -37,7 +36,7 @@ os.environ.setdefault("VAULT_ENCRYPTION_KEY", _TEST_VAULT_KEY)
 TEST_AGENT_ID = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")
 TEST_AGENT_NAME = "test-agent"
 TEST_RAW_API_KEY: str = ""  # filled by fixture
-TEST_AGENT_HASH: str = ""   # filled by fixture
+TEST_AGENT_HASH: str = ""  # filled by fixture
 
 
 def _make_mock_agent(raw_key: str) -> MagicMock:
@@ -50,8 +49,8 @@ def _make_mock_agent(raw_key: str) -> MagicMock:
     agent.description = "Integration test agent"
     agent.is_active = True
     agent.api_key_hash = hash_api_key(raw_key)
-    agent.created_at = datetime.now(tz=timezone.utc)
-    agent.updated_at = datetime.now(tz=timezone.utc)
+    agent.created_at = datetime.now(tz=UTC)
+    agent.updated_at = datetime.now(tz=UTC)
     return agent
 
 
@@ -61,6 +60,8 @@ def _make_mock_user() -> MagicMock:
     user.id = uuid.UUID("cccccccc-0000-0000-0000-000000000001")
     user.email = "test@arbiter.test"
     user.is_active = True
+    user.role = "owner"  # satisfies require_role("owner", "admin") checks
+    user.org_id = uuid.UUID("dddddddd-0000-0000-0000-000000000001")
     return user
 
 
@@ -74,6 +75,7 @@ def _make_mock_org() -> MagicMock:
 
 # ── fakeredis fixture ─────────────────────────────────────────────────────────
 
+
 @pytest_asyncio.fixture
 async def fake_redis():
     """
@@ -83,12 +85,14 @@ async def fake_redis():
         fakeredis.aioredis.FakeRedis: ready to use, no server required.
     """
     import fakeredis.aioredis as fakeredis_aioredis
+
     redis = fakeredis_aioredis.FakeRedis(decode_responses=False)
     yield redis
     await redis.aclose()
 
 
 # ── mock_db fixture ───────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def mock_db() -> AsyncMock:
@@ -102,6 +106,7 @@ def mock_db() -> AsyncMock:
 
 # ── test_client factory ───────────────────────────────────────────────────────
 
+
 @pytest_asyncio.fixture
 async def test_client(fake_redis) -> AsyncGenerator:
     """
@@ -114,9 +119,10 @@ async def test_client(fake_redis) -> AsyncGenerator:
     Yields:
         httpx.AsyncClient: pointed at the FastAPI test app.
     """
-    from httpx import AsyncClient, ASGITransport
-    from app.main import app
+    from httpx import ASGITransport, AsyncClient
+
     from app.core.dependencies import get_db, get_redis
+    from app.main import app
 
     mock_org = _make_mock_org()
 
@@ -140,6 +146,7 @@ async def test_client(fake_redis) -> AsyncGenerator:
 
 # ── authenticated client fixture ──────────────────────────────────────────────
 
+
 @pytest_asyncio.fixture
 async def authed_client(fake_redis) -> AsyncGenerator:
     """
@@ -151,10 +158,11 @@ async def authed_client(fake_redis) -> AsyncGenerator:
     Yields:
         tuple[AsyncClient, str, MagicMock]: (client, raw_api_key, mock_agent)
     """
-    from httpx import AsyncClient, ASGITransport
-    from app.main import app
-    from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
+    from httpx import ASGITransport, AsyncClient
+
+    from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
     from app.core.security import generate_api_key
+    from app.main import app
 
     raw_key = generate_api_key()
     mock_agent = _make_mock_agent(raw_key)

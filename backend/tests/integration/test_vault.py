@@ -36,6 +36,7 @@ def _make_vault_secret(
     s.agent_id = agent_id
     s.ciphertext = ciphertext
     s.created_at = datetime.now(UTC)
+    s.updated_at = datetime.now(UTC)
     return s
 
 
@@ -44,6 +45,7 @@ def _make_authed_db(secret_obj=None, scalars_list=None):
     Build a mock DB where:
       - scalar_one_or_none returns secret_obj
       - scalars().all() returns scalars_list (or [])
+      - scalar() returns 0 (for count queries used by list_secrets)
     """
     db = AsyncMock()
 
@@ -56,6 +58,7 @@ def _make_authed_db(secret_obj=None, scalars_list=None):
         return result
 
     db.execute = execute
+    db.scalar = AsyncMock(return_value=0)
     return db
 
 
@@ -91,6 +94,7 @@ class TestCreateSecret:
             obj.name = "MY_TOKEN"
             obj.agent_id = mock_agent.id
             obj.created_at = datetime.now(UTC)
+            obj.updated_at = datetime.now(UTC)
 
         db.execute = execute
         db.refresh = refresh
@@ -163,6 +167,7 @@ class TestListSecrets:
             return result
 
         db.execute = execute
+        db.scalar = AsyncMock(return_value=1)
 
         async def override_get_db():
             yield db
@@ -178,7 +183,7 @@ class TestListSecrets:
             app.dependency_overrides.pop(get_db, None)
 
         assert resp.status_code == 200, resp.text
-        items = resp.json()
+        items = resp.json()["items"]
         assert len(items) == 1
         assert items[0]["name"] == "GITHUB_TOKEN"
         assert "value" not in items[0], "List response must NOT include secret value"
@@ -207,7 +212,7 @@ class TestListSecrets:
             app.dependency_overrides.pop(get_db, None)
 
         assert resp.status_code == 200, resp.text
-        assert resp.json() == []
+        assert resp.json()["items"] == []
 
 
 class TestGetSecret:
@@ -478,6 +483,7 @@ class TestCrossAgentIsolation:
             return result
 
         db.execute = execute
+        db.scalar = AsyncMock(return_value=0)
 
         async def override_get_db():
             yield db
@@ -507,7 +513,9 @@ class TestCrossAgentIsolation:
             app.dependency_overrides.clear()
 
         assert resp.status_code == 200, resp.text
-        assert resp.json() == [], "Agent B must see 0 secrets (Agent A's secrets are isolated)"
+        assert resp.json()["items"] == [], (
+            "Agent B must see 0 secrets (Agent A's secrets are isolated)"
+        )
 
     @pytest.mark.asyncio
     async def test_agent_b_get_agent_a_secret_by_id_returns_404(self, fake_redis):
