@@ -104,6 +104,22 @@ def _rpc_result(req_id: Any, result: dict) -> dict:
     return {"jsonrpc": "2.0", "id": req_id, "result": result}
 
 
+def _tool_error_result(req_id: Any, message: str) -> dict:
+    """
+    Build a spec-compliant MCP tool error response.
+
+    Per the MCP spec, tool-level errors (RBAC denials, rate-limit rejections,
+    scope violations, quota exceeded) must be returned as a successful JSON-RPC
+    result with ``isError: true`` rather than a JSON-RPC protocol error.  This
+    lets MCP clients handle the denial gracefully at the tool layer instead of
+    treating it as a transport failure.
+    """
+    return _rpc_result(
+        req_id,
+        {"content": [{"type": "text", "text": message}], "isError": True},
+    )
+
+
 def _session_id_from_header(request: Request) -> _uuid.UUID | None:
     """Parse the Mcp-Session-Id header into a UUID, or None if absent/malformed."""
     raw = request.headers.get("Mcp-Session-Id")
@@ -334,9 +350,15 @@ async def _handle_tools_call(
     """
     Route a namespaced tools/call through the full gateway pipeline.
 
-    Gateway-side denials (RBAC 403, quota 429, budget 402, upstream 502, ...)
-    are returned as JSON-RPC errors with the HTTP status in error.data, so MCP
-    clients surface a meaningful message instead of a transport failure.
+    Gateway-side denials (RBAC 403, rate-limit 429, scope violation, quota
+    exceeded, session budget exceeded) are returned as spec-compliant MCP tool
+    errors: ``{"result": {"content": [...], "isError": true}}``.  This is the
+    correct MCP representation for tool-level errors — JSON-RPC protocol errors
+    (-32xxx) are reserved for transport/envelope problems only.
+
+    Upstream 502/504 errors from the MCP server itself still surface as
+    JSON-RPC -32000 errors because they represent a proxy failure, not a
+    meaningful tool result.
     """
     name = params.get("name") or ""
     arguments = params.get("arguments") or {}
@@ -380,26 +402,23 @@ async def _handle_tools_call(
     try:
         proxied = await service.forward_tool_call(request=tool_request, agent=agent)
     except HTTPException as exc:
+        # RBAC denials (403), rate-limit rejections (429), scope violations
+        # (403), and upstream 502/404 are all gateway-side tool errors.
+        # Return isError: true per the MCP spec rather than a protocol error.
         detail = exc.detail if isinstance(exc.detail, str) else json.dumps(exc.detail)
-        return JSONResponse(
-            _rpc_error(req_id, _SERVER_ERROR, detail, data={"http_status": exc.status_code})
-        )
+        return JSONResponse(_tool_error_result(req_id, detail))
     except QuotaExceededError as exc:
         return JSONResponse(
-            _rpc_error(
+            _tool_error_result(
                 req_id,
-                _SERVER_ERROR,
                 f"Monthly tool-call quota exceeded ({exc.used}/{exc.limit}); resets {exc.resets_at}",
-                data={"http_status": status.HTTP_429_TOO_MANY_REQUESTS},
             )
         )
     except SessionBudgetExceededError as exc:
         return JSONResponse(
-            _rpc_error(
+            _tool_error_result(
                 req_id,
-                _SERVER_ERROR,
                 f"Per-session tool-call budget exceeded ({exc.used}/{exc.limit})",
-                data={"http_status": status.HTTP_402_PAYMENT_REQUIRED},
             )
         )
 
