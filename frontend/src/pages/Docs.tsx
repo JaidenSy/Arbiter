@@ -352,11 +352,11 @@ POST /api/v1/vault/secrets
       <DocSection id="pricing" title="Pricing">
         <p className="text-secondary text-sm leading-relaxed">
           Arbiter offers a free tier with generous limits for personal projects and evaluation.
-          See the full plan comparison on the landing page.
+          See the full plan and feature comparison on the pricing page.
         </p>
         <div>
           <Link
-            to="/#pricing"
+            to="/pricing"
             className="inline-flex items-center gap-2 text-accent-light hover:text-primary text-sm font-medium transition-colors group"
           >
             View pricing plans →
