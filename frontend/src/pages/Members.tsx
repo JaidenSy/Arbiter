@@ -39,6 +39,9 @@ interface Invite {
   accepted_at: string | null
 }
 
+const ACCESS_KEY = 'arbiter_access_token'
+const REFRESH_KEY = 'arbiter_refresh_token'
+
 const VALID_ROLES = ['owner', 'admin', 'member'] as const
 type Role = typeof VALID_ROLES[number]
 
@@ -116,6 +119,11 @@ function Organization(): React.ReactElement {
   // Remove member confirm dialog state
   const [removeMemberId, setRemoveMemberId] = useState<string | null>(null)
 
+  // Leave org state
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [leaveError, setLeaveError] = useState('')
+  const [leaving, setLeaving] = useState(false)
+
   // Invite modal state
   const [showInvite, setShowInvite] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -184,6 +192,27 @@ function Organization(): React.ReactElement {
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
       setError(msg ?? 'Failed to remove member.')
+    }
+  }
+
+  async function doLeaveOrg() {
+    setLeaving(true)
+    setLeaveError('')
+    try {
+      // Returns a fresh token pair with the next org active (or a new
+      // personal org when no other membership remains).
+      const res = await authClient.post<{ access_token: string; refresh_token: string }>(
+        '/org/leave'
+      )
+      localStorage.setItem(ACCESS_KEY, res.data.access_token)
+      localStorage.setItem(REFRESH_KEY, res.data.refresh_token)
+      // Hard reload — every org-scoped view must rehydrate for the new org.
+      window.location.href = '/'
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+      setLeaveError(msg ?? 'Failed to leave organization.')
+      setLeaving(false)
+      setShowLeaveConfirm(false)
     }
   }
 
@@ -429,14 +458,45 @@ function Organization(): React.ReactElement {
         </div>
       )}
 
+      {/* Leave organization */}
+      <div className="bg-surface border border-border rounded-xl p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-primary">Leave this organization</p>
+            <p className="text-secondary text-xs mt-0.5">
+              Your account stays active — you'll switch to another organization you belong to,
+              or get a fresh personal one. Agents you created here will be deactivated.
+            </p>
+            {leaveError && <p className="text-error text-xs mt-1.5">{leaveError}</p>}
+          </div>
+          <button
+            onClick={() => { setLeaveError(''); setShowLeaveConfirm(true) }}
+            disabled={leaving}
+            className="flex-shrink-0 border border-error/30 text-error hover:bg-error/10 disabled:opacity-50 text-sm font-medium py-2 px-4 rounded-lg transition-colors"
+          >
+            {leaving ? 'Leaving…' : 'Leave organization'}
+          </button>
+        </div>
+      </div>
+
       {/* Remove member confirm dialog */}
       <ConfirmDialog
         isOpen={removeMemberId !== null}
         onClose={() => setRemoveMemberId(null)}
         onConfirm={() => { if (removeMemberId) void doRemoveMember(removeMemberId) }}
         title="Remove member"
-        message="Are you sure you want to remove this member from your organization? This action cannot be undone."
+        message="Remove this member from your organization? Their account stays active, but they lose access here and any agents they created in this organization are deactivated."
         confirmLabel="Remove"
+      />
+
+      {/* Leave org confirm dialog */}
+      <ConfirmDialog
+        isOpen={showLeaveConfirm}
+        onClose={() => setShowLeaveConfirm(false)}
+        onConfirm={() => void doLeaveOrg()}
+        title="Leave organization"
+        message={`Leave ${org?.name ?? 'this organization'}? You'll lose access to its agents, servers, and sessions, and agents you created here will be deactivated.`}
+        confirmLabel="Leave"
       />
 
       {/* Invite modal */}
