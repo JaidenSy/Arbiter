@@ -27,11 +27,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db, get_redis, require_role
-from app.schemas.pagination import Page
 from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.db.models.vault import VaultSecret
+from app.schemas.pagination import Page
 from app.services.plan.plan_service import check_resource_limit
 from app.services.vault.vault_service import VaultService
 
@@ -51,8 +51,15 @@ _SECRET_NAME_RE = re.compile(r"^[A-Za-z0-9_]+$")
 class SecretCreate(BaseModel):
     """Request body for storing a secret."""
 
-    name: str = Field(..., min_length=1, max_length=128, description="Logical key, e.g. GITHUB_TOKEN")
-    value: str = Field(..., min_length=1, max_length=10000, description="Raw secret value — will be encrypted at rest")
+    name: str = Field(
+        ..., min_length=1, max_length=128, description="Logical key, e.g. GITHUB_TOKEN"
+    )
+    value: str = Field(
+        ...,
+        min_length=1,
+        max_length=10000,
+        description="Raw secret value — will be encrypted at rest",
+    )
     agent_id: uuid.UUID | None = Field(None, description="Scope the secret to a specific agent")
 
     @field_validator("name")
@@ -73,6 +80,7 @@ class SecretResponse(BaseModel):
     name: str
     agent_id: uuid.UUID | None
     created_at: datetime
+    updated_at: datetime  # #254 — tracks last rotation timestamp
 
     model_config = {"from_attributes": True}
 
@@ -128,7 +136,22 @@ async def create_secret(
         count_active_only=False,
     )
     service = VaultService(db)
-    secret = await service.store_secret(body.name, body.value, agent_id, current_user.org_id)
+    secret = await service.store_secret(body.name, body.value, current_user.org_id, agent_id)
+
+    # Determine if this is an initial create or a rotation (upsert) by checking
+    # whether created_at == updated_at (within 1 s tolerance).
+    delta = abs((secret.updated_at - secret.created_at).total_seconds())
+    operation = VaultOperation.create if delta < 1 else VaultOperation.rotate
+    db.add(
+        VaultAuditEvent(
+            org_id=current_user.org_id,
+            secret_id=secret.id,
+            user_id=current_user.id,
+            operation=operation,
+        )
+    )
+    await db.commit()
+
     return SecretResponse.model_validate(secret)
 
 
@@ -150,7 +173,12 @@ async def list_secrets(
     total = await db.scalar(select(func.count(VaultSecret.id)).where(*filters)) or 0
     result = await db.execute(select(VaultSecret).where(*filters).offset(skip).limit(limit))
     secrets = result.scalars().all()
-    return Page(items=[SecretResponse.model_validate(s) for s in secrets], total=total, skip=skip, limit=limit)
+    return Page(
+        items=[SecretResponse.model_validate(s) for s in secrets],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get(
@@ -197,12 +225,24 @@ async def get_secret(
         current_user.id,
         current_user.org_id,
     )
+
+    db.add(
+        VaultAuditEvent(
+            org_id=current_user.org_id,
+            secret_id=secret.id,
+            user_id=current_user.id,
+            operation=VaultOperation.read,
+        )
+    )
+    await db.commit()
+
     # SECURITY: value is never logged — only passed to the response serialiser.
     return SecretValueResponse(
         id=secret.id,
         name=secret.name,
         agent_id=secret.agent_id,
         created_at=secret.created_at,
+        updated_at=secret.updated_at,
         value=value,
     )
 
@@ -230,6 +270,16 @@ async def delete_secret(
             detail=f"Secret {secret_id} not found",
         )
 
+    secret_id_for_audit = secret.id
     await db.delete(secret)
+
+    db.add(
+        VaultAuditEvent(
+            org_id=current_user.org_id,
+            secret_id=secret_id_for_audit,
+            user_id=current_user.id,
+            operation=VaultOperation.delete,
+        )
+    )
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
