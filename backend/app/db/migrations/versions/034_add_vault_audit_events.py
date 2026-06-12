@@ -22,7 +22,9 @@ depends_on: str | None = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE TYPE vault_operation AS ENUM ('create', 'read', 'delete', 'rotate')")
+    op.execute(
+        "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'vault_operation') THEN CREATE TYPE vault_operation AS ENUM ('create', 'read', 'delete', 'rotate'); END IF; END $$"
+    )
 
     op.create_table(
         "vault_audit_events",
@@ -56,7 +58,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "operation",
-            sa.Enum(
+            postgresql.ENUM(
                 "create", "read", "delete", "rotate", name="vault_operation", create_type=False
             ),
             nullable=False,
