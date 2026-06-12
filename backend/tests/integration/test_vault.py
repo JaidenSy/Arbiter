@@ -14,14 +14,14 @@ Coverage:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import AsyncClient, ASGITransport
-
+from httpx import ASGITransport, AsyncClient
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_vault_secret(
     secret_id: uuid.UUID,
@@ -29,14 +29,13 @@ def _make_vault_secret(
     agent_id: uuid.UUID,
     ciphertext: str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 ) -> MagicMock:
-    from datetime import datetime, timezone
 
     s = MagicMock()
     s.id = secret_id
     s.name = name
     s.agent_id = agent_id
     s.ciphertext = ciphertext
-    s.created_at = datetime.now(timezone.utc)
+    s.created_at = datetime.now(UTC)
     return s
 
 
@@ -62,14 +61,15 @@ def _make_authed_db(secret_obj=None, scalars_list=None):
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
+
 class TestCreateSecret:
     @pytest.mark.asyncio
     async def test_create_secret_returns_201_no_value(self, fake_redis):
         """POST /vault/secrets → 201, response has id/name/agent_id but NOT value."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user, _make_mock_org
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_org, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -86,12 +86,11 @@ class TestCreateSecret:
             return result
 
         async def refresh(obj):
-            from datetime import datetime, timezone
 
             obj.id = secret_id
             obj.name = "MY_TOKEN"
             obj.agent_id = mock_agent.id
-            obj.created_at = datetime.now(timezone.utc)
+            obj.created_at = datetime.now(UTC)
 
         db.execute = execute
         db.refresh = refresh
@@ -148,8 +147,8 @@ class TestListSecrets:
         """GET /vault/secrets returns only the calling agent's secrets."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         secret_id = uuid.uuid4()
         secret = _make_vault_secret(secret_id, "GITHUB_TOKEN", mock_agent.id)
@@ -189,8 +188,8 @@ class TestListSecrets:
         """GET /vault/secrets returns [] when agent has no secrets."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         db = _make_authed_db(scalars_list=[])
 
@@ -215,11 +214,11 @@ class TestGetSecret:
     @pytest.mark.asyncio
     async def test_get_secret_returns_decrypted_value(self, fake_redis):
         """GET /vault/secrets/{id} returns id/name/value with plaintext."""
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
+        from app.core.security import generate_api_key
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
         from app.services.vault.vault_service import VaultService
         from tests.conftest import _make_mock_agent, _make_mock_user
-        from app.core.security import generate_api_key
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -272,8 +271,8 @@ class TestGetSecret:
         """GET /vault/secrets/{non_existent_id} → 404."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         db = _make_authed_db(secret_obj=None)
 
@@ -299,8 +298,8 @@ class TestDeleteSecret:
         """DELETE /vault/secrets/{id} → 204."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         secret_id = uuid.uuid4()
         secret = _make_vault_secret(secret_id, "OLD_KEY", mock_agent.id)
@@ -328,8 +327,8 @@ class TestDeleteSecret:
         """DELETE /vault/secrets/{non_existent_id} → 404."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         db = _make_authed_db(secret_obj=None)
 
@@ -353,11 +352,10 @@ class TestGetSecretRateLimit:
     @pytest.mark.asyncio
     async def test_11th_request_gets_429(self, fake_redis):
         """GET /vault/secrets/{id} — 11th request within the same minute returns 429."""
+        from app.core.dependencies import get_current_user, get_db, get_redis
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_user
-        from tests.conftest import _make_mock_user
-        from app.core.security import generate_api_key
         from app.services.vault.vault_service import VaultService
+        from tests.conftest import _make_mock_user
 
         mock_user = _make_mock_user()
         secret_id = uuid.uuid4()
@@ -371,6 +369,7 @@ class TestGetSecretRateLimit:
 
         # Pre-load the rate limit counter to 10 (at the limit)
         import time
+
         minute_bucket = int(time.time() // 60)
         rl_key = f"rate_limit:vault_decrypt:{mock_user.id}:{minute_bucket}"
         await fake_redis.set(rl_key, b"10")
@@ -406,10 +405,10 @@ class TestGetSecretRateLimit:
     @pytest.mark.asyncio
     async def test_first_request_under_limit_gets_200(self, fake_redis):
         """GET /vault/secrets/{id} — first request is under limit and succeeds."""
+        from app.core.dependencies import get_current_user, get_db, get_redis
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_user
-        from tests.conftest import _make_mock_user
         from app.services.vault.vault_service import VaultService
+        from tests.conftest import _make_mock_user
 
         mock_user = _make_mock_user()
         secret_id = uuid.uuid4()
@@ -457,10 +456,10 @@ class TestCrossAgentIsolation:
         The endpoint filters by current_agent.id so Agent B's call should never
         see Agent A's secrets — DB mock returns empty list when Agent B is the caller.
         """
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         # Agent B
         raw_key_b = generate_api_key()
@@ -518,10 +517,10 @@ class TestCrossAgentIsolation:
         The endpoint queries with WHERE id=? AND agent_id=current_agent.id,
         so a secret owned by Agent A returns None → 404.
         """
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key_b = generate_api_key()
         mock_agent_b = _make_mock_agent(raw_key_b)
@@ -564,4 +563,166 @@ class TestCrossAgentIsolation:
         assert resp.status_code == 404, (
             f"Expected 404 (not 403), got {resp.status_code}. "
             "Cross-agent access must not reveal secret existence."
+        )
+
+
+# ── Role-based enumeration tests (Issue #264) ─────────────────────────────────
+
+
+class TestRoleBasedSecretEnumeration:
+    """
+    Verify that admin/owner users see all org secrets while member users
+    only see secrets scoped to agents they own.
+    """
+
+    @staticmethod
+    def _make_membership(role: str) -> MagicMock:
+        m = MagicMock()
+        m.role = role
+        return m
+
+    @pytest.mark.asyncio
+    async def test_admin_sees_all_org_secrets(self, fake_redis):
+        """
+        GET /vault/secrets — admin role returns all secrets in the org
+        regardless of which agent owns them.
+        """
+        from app.core.dependencies import get_current_user, get_db, get_redis
+        from app.main import app
+        from app.services.org.org_service import get_membership
+        from tests.conftest import _make_mock_user
+
+        mock_user = _make_mock_user()
+        mock_user.org_id = uuid.UUID("dddddddd-0000-0000-0000-000000000001")
+
+        agent_a_id = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")
+        agent_b_id = uuid.UUID("bbbbbbbb-0000-0000-0000-000000000002")
+        secret_a = _make_vault_secret(uuid.uuid4(), "AGENT_A_TOKEN", agent_a_id)
+        secret_b = _make_vault_secret(uuid.uuid4(), "AGENT_B_TOKEN", agent_b_id)
+
+        admin_membership = self._make_membership("admin")
+
+        db = AsyncMock()
+
+        async def execute(stmt):
+            result = MagicMock()
+            scalars_mock = MagicMock()
+            scalars_mock.all.return_value = [secret_a, secret_b]
+            result.scalars.return_value = scalars_mock
+            result.scalar_one_or_none.return_value = None
+            return result
+
+        db.execute = execute
+        db.scalar = AsyncMock(return_value=admin_membership)
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_user():
+            return mock_user
+
+        async def override_get_membership(db, user_id, org_id):
+            return admin_membership
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_user] = override_get_current_user
+        app.dependency_overrides[get_membership] = override_get_membership
+
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get(
+                    "/api/v1/vault/secrets",
+                    headers={"Authorization": "Bearer dummy"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        names = {item["name"] for item in data["items"]}
+        assert names == {"AGENT_A_TOKEN", "AGENT_B_TOKEN"}, (
+            "Admin must see all org secrets; got: " + str(names)
+        )
+
+    @pytest.mark.asyncio
+    async def test_member_sees_only_own_agent_secrets(self, fake_redis):
+        """
+        GET /vault/secrets — member role returns only secrets belonging
+        to agents that the member created; other agents' secrets are hidden.
+        """
+        from app.core.dependencies import get_current_user, get_db, get_redis
+        from app.main import app
+        from app.services.agent.agent_service import get_agent_ids_by_owner
+        from app.services.org.org_service import get_membership
+        from tests.conftest import _make_mock_user
+
+        mock_user = _make_mock_user()
+        mock_user.org_id = uuid.UUID("dddddddd-0000-0000-0000-000000000001")
+
+        # Member owns agent_a; agent_b belongs to another user.
+        member_agent_id = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")
+        other_agent_id = uuid.UUID("bbbbbbbb-0000-0000-0000-000000000002")
+        member_secret = _make_vault_secret(uuid.uuid4(), "MY_OWN_TOKEN", member_agent_id)
+        # other_secret is NOT returned — filtered out by vault_service
+
+        member_membership = self._make_membership("member")
+
+        db = AsyncMock()
+
+        async def execute(stmt):
+            result = MagicMock()
+            scalars_mock = MagicMock()
+            # Only the member's own secret is returned by vault_service
+            scalars_mock.all.return_value = [member_secret]
+            result.scalars.return_value = scalars_mock
+            result.scalar_one_or_none.return_value = None
+            return result
+
+        db.execute = execute
+        db.scalar = AsyncMock(return_value=member_membership)
+
+        async def override_get_db():
+            yield db
+
+        async def override_get_redis(request=None):
+            return fake_redis
+
+        async def override_get_current_user():
+            return mock_user
+
+        async def override_get_membership(db, user_id, org_id):
+            return member_membership
+
+        async def override_get_agent_ids_by_owner(db, org_id, user_id):
+            return [member_agent_id]
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_redis] = override_get_redis
+        app.dependency_overrides[get_current_user] = override_get_current_user
+        app.dependency_overrides[get_membership] = override_get_membership
+        app.dependency_overrides[get_agent_ids_by_owner] = override_get_agent_ids_by_owner
+
+        try:
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                resp = await client.get(
+                    "/api/v1/vault/secrets",
+                    headers={"Authorization": "Bearer dummy"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        names = [item["name"] for item in data["items"]]
+        assert names == ["MY_OWN_TOKEN"], (
+            "Member must only see secrets for their own agents; got: " + str(names)
+        )
+        assert all(item["agent_id"] == str(member_agent_id) for item in data["items"]), (
+            "All returned secrets must belong to the member's agent"
         )
