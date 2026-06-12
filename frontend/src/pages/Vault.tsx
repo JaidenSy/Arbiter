@@ -5,6 +5,9 @@
  *   Left:  Agent selector list
  *   Right: Secrets table for the selected agent + add/rotate/delete actions
  *
+ * Org-level secrets (agent_id=null) are shown in a separate "Organization
+ * Secrets" section visible only to owners and admins.
+ *
  * Secrets are write-only by default; values can be revealed one at a time
  * via GET /vault/secrets/{id}. Revealed values are held only in local state.
  */
@@ -13,6 +16,7 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 import { Button } from '../components/ui'
 import type { Agent, VaultSecret, VaultSecretWithValue, VaultSecretCreate, Page } from '../api/types'
 import Modal from '../components/Modal'
@@ -29,10 +33,15 @@ const fetchSecrets = (agentId: string): Promise<Page<VaultSecret>> =>
     .get<Page<VaultSecret>>('/vault/secrets', { params: { agent_id: agentId } })
     .then((r) => r.data)
 
+/** Fetch all secrets for the org (no agent_id filter). Returns all secrets the
+ *  current user can see — for admins/owners this includes org-level secrets. */
+const fetchAllSecrets = (): Promise<Page<VaultSecret>> =>
+  authClient.get<Page<VaultSecret>>('/vault/secrets').then((r) => r.data)
+
 const fetchSecretById = (id: string): Promise<VaultSecretWithValue> =>
   authClient.get<VaultSecretWithValue>(`/vault/secrets/${id}`).then((r) => r.data)
 
-const createSecret = (payload: VaultSecretCreate & { agent_id: string }): Promise<VaultSecret> =>
+const createSecret = (payload: VaultSecretCreate & { agent_id: string | null }): Promise<VaultSecret> =>
   authClient.post<VaultSecret>('/vault/secrets', payload).then((r) => r.data)
 
 const deleteSecret = (id: string): Promise<void> =>
@@ -96,13 +105,33 @@ const LockIcon = (): React.ReactElement => (
   </svg>
 )
 
+const InfoIcon = (): React.ReactElement => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+)
+
+const BuildingIcon = (): React.ReactElement => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="2" y="3" width="20" height="18" rx="1"/>
+    <path d="M8 21V8h8v13"/>
+    <path d="M8 3v2M16 3v2"/>
+    <path d="M2 8h20"/>
+  </svg>
+)
+
 // ── Add / Rotate Secret Modal ──────────────────────────────────────────────────
 
 interface SecretFormModalProps {
   isOpen: boolean
   onClose: () => void
-  agentId: string
+  /** null for org-level secrets, a UUID string for agent-scoped secrets */
+  agentId: string | null
   rotateTarget: VaultSecret | null
+  /** Query cache key to invalidate on success */
+  queryKey: unknown[]
 }
 
 function SecretFormModal({
@@ -110,6 +139,7 @@ function SecretFormModal({
   onClose,
   agentId,
   rotateTarget,
+  queryKey,
 }: SecretFormModalProps): React.ReactElement | null {
   const queryClient = useQueryClient()
   const isRotating = rotateTarget !== null
@@ -131,7 +161,7 @@ function SecretFormModal({
   const mutation = useMutation({
     mutationFn: createSecret,
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['vault', agentId] })
+      void queryClient.invalidateQueries({ queryKey })
       onClose()
     },
     onError: () => {
@@ -245,14 +275,285 @@ function SkeletonRow(): React.ReactElement {
   )
 }
 
-// ── Secrets Table ─────────────────────────────────────────────────────────────
+// ── Shared secrets table rows ──────────────────────────────────────────────────
 
-interface SecretsTableProps {
+interface SecretsRowsProps {
+  secrets: VaultSecret[]
+  isLoading: boolean
+  revealedValues: Map<string, string>
+  revealingId: string | null
+  onReveal: (secret: VaultSecret) => Promise<void>
+  onRotate: (secret: VaultSecret) => void
+  onDelete: (secret: VaultSecret) => void
+  emptyMessage: React.ReactNode
+}
+
+function SecretsRows({
+  secrets,
+  isLoading,
+  revealedValues,
+  revealingId,
+  onReveal,
+  onRotate,
+  onDelete,
+  emptyMessage,
+}: SecretsRowsProps): React.ReactElement {
+  if (isLoading) {
+    return (
+      <>
+        <SkeletonRow />
+        <SkeletonRow />
+        <SkeletonRow />
+      </>
+    )
+  }
+
+  if (secrets.length === 0) {
+    return (
+      <tr>
+        <td colSpan={4} className="py-12 px-4 text-center">
+          {emptyMessage}
+        </td>
+      </tr>
+    )
+  }
+
+  return (
+    <>
+      {secrets.map((secret) => {
+        const revealedValue = revealedValues.get(secret.id)
+        const isRevealed = revealedValue !== undefined
+        const isRevealing = revealingId === secret.id
+
+        return (
+          <tr
+            key={secret.id}
+            className="group border-b border-border hover:bg-white/[0.025] transition-colors"
+          >
+            <td className="py-3 px-4">
+              <span className="font-mono text-sm text-accent-light">
+                {secret.name}
+              </span>
+            </td>
+
+            <td className="py-3 px-4 font-mono text-xs text-muted" title={new Date(secret.updated_at).toLocaleString()}>
+              {relativeTime(secret.updated_at)}
+            </td>
+
+            <td className="py-3 px-4">
+              <div className="flex items-center gap-2">
+                {isRevealed ? (
+                  <>
+                    <span className="font-mono text-xs text-teal-light break-all">
+                      {revealedValue}
+                    </span>
+                    <CopyButton text={revealedValue} />
+                  </>
+                ) : (
+                  <span className="font-mono text-xs text-muted">
+                    {isRevealing ? 'Loading…' : '••••••••'}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void onReveal(secret)}
+                  disabled={isRevealing}
+                  className="text-secondary hover:text-primary border border-border hover:border-border-strong px-2 py-1 rounded-md text-xs transition-all disabled:cursor-wait flex items-center gap-1"
+                  aria-label={isRevealed ? 'Hide value' : 'Reveal value'}
+                >
+                  {isRevealed ? <EyeClosedIcon /> : <EyeOpenIcon />}
+                  <span>{isRevealed ? 'Hide' : 'Reveal'}</span>
+                </button>
+              </div>
+            </td>
+
+            <td className="py-3 px-4 text-right">
+              <div className="flex items-center justify-end gap-1">
+                <button
+                  type="button"
+                  onClick={() => onRotate(secret)}
+                  className="text-secondary hover:text-primary border border-border hover:border-border-strong px-2 py-1.5 rounded-md text-xs transition-all flex items-center gap-1"
+                  aria-label="Update secret"
+                  title="Update"
+                >
+                  <PencilIcon />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(secret)}
+                  className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-2 py-1.5 rounded-md text-xs transition-all flex items-center gap-1"
+                  aria-label="Delete secret"
+                  title="Delete"
+                >
+                  <TrashIcon />
+                </button>
+              </div>
+            </td>
+          </tr>
+        )
+      })}
+    </>
+  )
+}
+
+// ── Org Secrets Section ────────────────────────────────────────────────────────
+
+function OrgSecretsSection(): React.ReactElement {
+  const queryClient = useQueryClient()
+
+  const [addOpen, setAddOpen] = useState(false)
+  const [rotateTarget, setRotateTarget] = useState<VaultSecret | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<VaultSecret | null>(null)
+  const [revealedValues, setRevealedValues] = useState<Map<string, string>>(new Map())
+  const [revealingId, setRevealingId] = useState<string | null>(null)
+
+  // Auto-hide revealed secrets after 30 seconds
+  useEffect(() => {
+    if (revealedValues.size === 0) return
+    const timer = setTimeout(() => setRevealedValues(new Map()), 30_000)
+    return () => clearTimeout(timer)
+  }, [revealedValues])
+
+  const { data: allSecretsPage, isLoading } = useQuery<Page<VaultSecret>>({
+    queryKey: ['vault', 'org'],
+    queryFn: fetchAllSecrets,
+  })
+
+  const orgSecrets = (allSecretsPage?.items ?? []).filter((s) => s.agent_id === null)
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteSecret,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vault', 'org'] })
+    },
+    onError: (err) => {
+      console.error('Failed to delete org secret', err)
+      void queryClient.invalidateQueries({ queryKey: ['vault', 'org'] })
+    },
+  })
+
+  const handleDeleteConfirm = (): void => {
+    if (deleteTarget) {
+      deleteMutation.mutate(deleteTarget.id)
+      setDeleteTarget(null)
+    }
+  }
+
+  const handleReveal = async (secret: VaultSecret): Promise<void> => {
+    if (revealedValues.has(secret.id)) {
+      setRevealedValues((prev) => {
+        const next = new Map(prev)
+        next.delete(secret.id)
+        return next
+      })
+      return
+    }
+    setRevealingId(secret.id)
+    try {
+      const data = await fetchSecretById(secret.id)
+      setRevealedValues((prev) => new Map(prev).set(secret.id, data.value))
+    } catch (err) {
+      console.error('Failed to reveal org secret', err)
+    } finally {
+      setRevealingId(null)
+    }
+  }
+
+  return (
+    <div className="mb-8">
+      {/* Section header */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <BuildingIcon />
+          <div>
+            <p className="text-primary text-sm font-semibold">Organization Secrets</p>
+            <p className="text-secondary text-xs mt-0.5">
+              Injected into MCP server request headers. Not scoped to a specific agent.
+            </p>
+          </div>
+        </div>
+        <Button size="sm" onClick={() => setAddOpen(true)}>
+          + Add Org Secret
+        </Button>
+      </div>
+
+      {/* Info callout */}
+      <div className="flex items-start gap-2 text-xs text-muted mb-4 bg-elevated/50 border border-border rounded-lg px-3 py-2">
+        <InfoIcon />
+        <span>
+          Organization secrets are available to all MCP servers as header values (e.g.{' '}
+          <code className="font-mono text-accent-light bg-accent/10 px-1 rounded">{'{{GITHUB_TOKEN}}'}</code>).
+          They are not associated with any single agent and are visible only to owners and admins.
+        </span>
+      </div>
+
+      {/* Table */}
+      <div className="bg-surface border border-border rounded-xl overflow-hidden">
+        <table className="min-w-full">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Name</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Last Updated</th>
+              <th className="py-3 px-4 text-left text-xs font-mono text-muted uppercase tracking-wider">Value</th>
+              <th className="py-3 px-4 text-right text-xs font-mono text-muted uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <SecretsRows
+              secrets={orgSecrets}
+              isLoading={isLoading}
+              revealedValues={revealedValues}
+              revealingId={revealingId}
+              onReveal={handleReveal}
+              onRotate={setRotateTarget}
+              onDelete={setDeleteTarget}
+              emptyMessage={
+                <div>
+                  <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center mx-auto mb-2">
+                    <BuildingIcon />
+                  </div>
+                  <p className="text-primary text-sm font-medium mb-1">No organization secrets</p>
+                  <p className="text-secondary text-xs">
+                    Add a shared secret to inject it as a header into all MCP server requests.
+                  </p>
+                </div>
+              }
+            />
+          </tbody>
+        </table>
+      </div>
+
+      <SecretFormModal
+        isOpen={addOpen || rotateTarget !== null}
+        onClose={() => {
+          setAddOpen(false)
+          setRotateTarget(null)
+        }}
+        agentId={null}
+        rotateTarget={rotateTarget}
+        queryKey={['vault', 'org']}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Organization Secret"
+        message={`Delete secret "${deleteTarget?.name ?? ''}"? This cannot be undone.`}
+        confirmLabel="Delete"
+      />
+    </div>
+  )
+}
+
+// ── Agent Secrets Section ──────────────────────────────────────────────────────
+
+interface AgentSectionProps {
   agentId: string
   agentName: string
 }
 
-function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactElement {
+function AgentSecretsSection({ agentId, agentName }: AgentSectionProps): React.ReactElement {
   const queryClient = useQueryClient()
 
   const [addOpen, setAddOpen] = useState(false)
@@ -275,7 +576,12 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
     queryFn: () => fetchSecrets(agentId),
     enabled: !!agentId,
   })
-  const secrets = secretsPage?.items
+
+  // Show only agent-scoped secrets (filter out org-level in case the backend
+  // returns them when no agent_id filter is applied)
+  const agentSecrets = (secretsPage?.items ?? []).filter(
+    (s) => s.agent_id !== null
+  )
 
   const deleteMutation = useMutation({
     mutationFn: deleteSecret,
@@ -316,22 +622,21 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
     }
   }
 
-  const hasSecrets = secrets && secrets.length > 0
-
   return (
     <div className="flex-1">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
           <p className="text-primary text-sm font-semibold">
-            Vault — <span className="text-accent-light">{agentName}</span>
+            Agent Secrets — <span className="text-accent-light">{agentName}</span>
           </p>
+          <p className="text-secondary text-xs mt-0.5">Scoped to this agent only.</p>
         </div>
         <Button onClick={() => setAddOpen(true)}>Add Secret</Button>
       </div>
 
       {/* Security banner */}
-      {hasSecrets && (
+      {agentSecrets.length > 0 && (
         <div className="flex items-center gap-2 text-xs text-muted mb-5 bg-elevated/50 border border-border rounded-lg px-3 py-2">
           <LockIcon />
           <span>Values are AES-256-GCM encrypted at rest. Revealed values are never stored by this interface.</span>
@@ -350,15 +655,16 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
             </tr>
           </thead>
           <tbody>
-            {isLoading ? (
-              <>
-                <SkeletonRow />
-                <SkeletonRow />
-                <SkeletonRow />
-              </>
-            ) : !secrets || secrets.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="py-16 px-4 text-center">
+            <SecretsRows
+              secrets={agentSecrets}
+              isLoading={isLoading}
+              revealedValues={revealedValues}
+              revealingId={revealingId}
+              onReveal={handleReveal}
+              onRotate={setRotateTarget}
+              onDelete={setDeleteTarget}
+              emptyMessage={
+                <div>
                   <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center mx-auto mb-3">
                     <LockIcon />
                   </div>
@@ -367,82 +673,9 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
                     Add a secret to inject into tool calls using{' '}
                     <code className="font-mono text-accent-light bg-accent/10 px-1 rounded">{'{{SECRET_NAME}}'}</code>.
                   </p>
-                </td>
-              </tr>
-            ) : (
-              secrets.map((secret) => {
-                const revealedValue = revealedValues.get(secret.id)
-                const isRevealed = revealedValue !== undefined
-                const isRevealing = revealingId === secret.id
-
-                return (
-                  <tr
-                    key={secret.id}
-                    className={`group border-b border-border hover:bg-white/[0.025] transition-colors ${''}`}
-                  >
-                    <td className="py-3 px-4">
-                      <span className="font-mono text-sm text-accent-light">
-                        {secret.name}
-                      </span>
-                    </td>
-
-                    <td className="py-3 px-4 font-mono text-xs text-muted" title={new Date(secret.updated_at).toLocaleString()}>
-                      {relativeTime(secret.updated_at)}
-                    </td>
-
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        {isRevealed ? (
-                          <>
-                            <span className="font-mono text-xs text-teal-light break-all">
-                              {revealedValue}
-                            </span>
-                            <CopyButton text={revealedValue} />
-                          </>
-                        ) : (
-                          <span className="font-mono text-xs text-muted">
-                            {isRevealing ? 'Loading…' : '••••••••'}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => void handleReveal(secret)}
-                          disabled={isRevealing}
-                          className="text-secondary hover:text-primary border border-border hover:border-border-strong px-2 py-1 rounded-md text-xs transition-all disabled:cursor-wait flex items-center gap-1"
-                          aria-label={isRevealed ? 'Hide value' : 'Reveal value'}
-                        >
-                          {isRevealed ? <EyeClosedIcon /> : <EyeOpenIcon />}
-                          <span>{isRevealed ? 'Hide' : 'Reveal'}</span>
-                        </button>
-                      </div>
-                    </td>
-
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setRotateTarget(secret)}
-                          className="text-secondary hover:text-primary border border-border hover:border-border-strong px-2 py-1.5 rounded-md text-xs transition-all flex items-center gap-1"
-                          aria-label="Update secret"
-                          title="Update"
-                        >
-                          <PencilIcon />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget(secret)}
-                          className="text-error hover:bg-error/10 border border-transparent hover:border-error/20 px-2 py-1.5 rounded-md text-xs transition-all flex items-center gap-1"
-                          aria-label="Delete secret"
-                          title="Delete"
-                        >
-                          <TrashIcon />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })
-            )}
+                </div>
+              }
+            />
           </tbody>
         </table>
       </div>
@@ -455,6 +688,7 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
         }}
         agentId={agentId}
         rotateTarget={rotateTarget}
+        queryKey={['vault', agentId]}
       />
 
       <ConfirmDialog
@@ -472,7 +706,10 @@ function SecretsTable({ agentId, agentName }: SecretsTableProps): React.ReactEle
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 function Vault(): React.ReactElement {
+  const { user } = useAuth()
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+
+  const isPrivileged = user?.role === 'owner' || user?.role === 'admin'
 
   const { data: agentsPage } = useQuery<Page<Agent>>({
     queryKey: ['agents'],
@@ -494,6 +731,18 @@ function Vault(): React.ReactElement {
         <h1 className="font-display text-xl font-semibold tracking-tight text-primary">Vault</h1>
         <p className="text-secondary text-sm mt-1">AES-256-GCM encrypted secrets per agent</p>
       </div>
+
+      {/* Organization Secrets — owners and admins only */}
+      {isPrivileged && <OrgSecretsSection />}
+
+      {/* Divider between org and agent sections */}
+      {isPrivileged && (
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-muted text-xs font-semibold uppercase tracking-widest">Agent Secrets</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+      )}
 
       <div className="grid grid-cols-[240px_1fr] gap-6">
         {/* Left panel — agent selector */}
@@ -550,9 +799,9 @@ function Vault(): React.ReactElement {
           </div>
         </div>
 
-        {/* Right panel — secrets */}
+        {/* Right panel — agent secrets */}
         {selectedAgent ? (
-          <SecretsTable agentId={selectedAgent.id} agentName={selectedAgent.name} />
+          <AgentSecretsSection agentId={selectedAgent.id} agentName={selectedAgent.name} />
         ) : (
           <div className="flex flex-col items-center justify-center gap-3 text-center py-20 bg-surface border border-border rounded-xl">
             <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
