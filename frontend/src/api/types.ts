@@ -83,6 +83,7 @@ export interface Session {
   started_at: string;
   ended_at: string | null;
   metadata: Record<string, unknown>;
+  event_count?: number;
   events?: SessionEvent[];
   children?: SessionChild[];
 }
