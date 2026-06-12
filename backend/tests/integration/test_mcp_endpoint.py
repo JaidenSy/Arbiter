@@ -14,7 +14,7 @@ Coverage:
     - tools/call: namespaced routing into ProxyService.forward_tool_call,
       session header propagation, _meta.arbiter passthrough, gateway errors
       (HTTPException / QuotaExceededError / SessionBudgetExceededError) mapped
-      to JSON-RPC errors with http_status in error.data
+      to MCP isError: true tool results per the MCP spec
     - key-in-URL variant: auth success and 401
 """
 
@@ -414,7 +414,8 @@ class TestToolsCall:
         assert resp.json()["error"]["code"] == -32602
 
     @pytest.mark.asyncio
-    async def test_rbac_denial_maps_to_jsonrpc_error(self, authed_client):
+    async def test_rbac_denial_returns_iserror_result(self, authed_client):
+        """RBAC 403 must return isError: true tool result, not a protocol error."""
         client, _, _ = authed_client
         from fastapi import HTTPException
 
@@ -430,13 +431,17 @@ class TestToolsCall:
             )
 
         assert resp.status_code == 200
-        err = resp.json()["error"]
-        assert err["code"] == -32000
-        assert err["data"]["http_status"] == 403
-        assert "permission" in err["message"]
+        body = resp.json()
+        # Must be a successful JSON-RPC result envelope, not an error envelope.
+        assert "error" not in body
+        result = body["result"]
+        assert result["isError"] is True
+        assert result["content"][0]["type"] == "text"
+        assert "permission" in result["content"][0]["text"]
 
     @pytest.mark.asyncio
-    async def test_quota_exceeded_maps_to_429_data(self, authed_client):
+    async def test_quota_exceeded_returns_iserror_result(self, authed_client):
+        """Quota exceeded must return isError: true, not a protocol error."""
         client, _, _ = authed_client
         from app.services.plan.plan_limits import QuotaExceededError
 
@@ -456,12 +461,15 @@ class TestToolsCall:
                 MCP_URL, json=_rpc("tools/call", {"name": "a__b", "arguments": {}})
             )
 
-        err = resp.json()["error"]
-        assert err["code"] == -32000
-        assert err["data"]["http_status"] == 429
+        body = resp.json()
+        assert "error" not in body
+        result = body["result"]
+        assert result["isError"] is True
+        assert "quota" in result["content"][0]["text"].lower()
 
     @pytest.mark.asyncio
-    async def test_session_budget_maps_to_402_data(self, authed_client):
+    async def test_session_budget_returns_iserror_result(self, authed_client):
+        """Session budget exceeded must return isError: true, not a protocol error."""
         client, _, _ = authed_client
         from app.services.plan.plan_limits import SessionBudgetExceededError
 
@@ -476,9 +484,11 @@ class TestToolsCall:
                 MCP_URL, json=_rpc("tools/call", {"name": "a__b", "arguments": {}})
             )
 
-        err = resp.json()["error"]
-        assert err["code"] == -32000
-        assert err["data"]["http_status"] == 402
+        body = resp.json()
+        assert "error" not in body
+        result = body["result"]
+        assert result["isError"] is True
+        assert "budget" in result["content"][0]["text"].lower()
 
 
 # ── key-in-URL variant ────────────────────────────────────────────────────────
