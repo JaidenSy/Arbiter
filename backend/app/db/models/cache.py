@@ -28,9 +28,13 @@ class CacheEntry(Base):
 
     Columns:
         id:               UUID primary key.
+        mcp_server_id:    FK → mcp_servers.id.  Entries are scoped per server so
+                          that two servers exposing a tool with the same name
+                          never serve each other's cached responses.
         tool_name:        Name of the tool (e.g. "read_file").
-        input_hash:       SHA-256 of the canonical (sorted-key) JSON of the input.
-                          Used for exact-match lookups before embedding search.
+        input_hash:       SHA-256 of org id + server id + the canonical
+                          (sorted-key) JSON of the input.  Used for exact-match
+                          lookups before embedding search.
         input_embedding:  Float array from the sentence-transformer model,
                           stored as vector(384) for pgvector ANN search.
                           Used for approximate nearest-neighbour lookup when
@@ -52,6 +56,11 @@ class CacheEntry(Base):
     org_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    mcp_server_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("mcp_servers.id", ondelete="CASCADE"),
         nullable=True,
     )
     tool_name: Mapped[str] = mapped_column(String(255), nullable=False)

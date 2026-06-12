@@ -409,10 +409,32 @@ async def delete_me(
     org_id = current_user.org_id
     original_email = current_user.email
 
-    # ── Step 1: Cancel Stripe subscription (best-effort, before DB changes) ──
+    # ── Step 0: Determine whether the org survives this deletion ─────────────
+    # The Stripe subscription belongs to the ORG, not the user.  It must only
+    # be cancelled when the org itself is being deleted (sole-owner case) —
+    # a member or co-owner deleting their own account must never downgrade
+    # the plan other members are paying for and still using.
     org = await db.get(Organization, org_id)
     had_stripe_subscription = bool(org is not None and org.stripe_subscription_id)
-    if org is not None and org.stripe_subscription_id and settings.stripe_secret_key:
+
+    other_owner_count = 0
+    if org is not None:
+        other_owner_count = (
+            await db.scalar(
+                select(sqlfunc.count(User.id)).where(
+                    User.org_id == org_id,
+                    User.role == "owner",
+                    User.id != user_id,
+                    User.is_active.is_(True),
+                )
+            )
+            or 0
+        )
+    org_will_be_deleted = org is not None and other_owner_count == 0
+
+    # ── Step 1: Cancel Stripe subscription (best-effort, before DB changes) ──
+    # Only when the org is being deleted along with this account.
+    if org_will_be_deleted and org.stripe_subscription_id and settings.stripe_secret_key:
         stripe.api_key = settings.stripe_secret_key
         try:
             await asyncio.to_thread(
@@ -446,18 +468,9 @@ async def delete_me(
     await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
 
     # ── Step 6: Org ownership check and cleanup (FIX-3) ──────────────────────
+    # Sole-ownership was determined in Step 0, before any billing action.
     if org is not None:
-        # Count remaining owners in the org (excluding the deleting user).
-        other_owner_count = await db.scalar(
-            select(sqlfunc.count(User.id)).where(
-                User.org_id == org_id,
-                User.role == "owner",
-                User.id != user_id,
-                User.is_active.is_(True),
-            )
-        )
-
-        if other_owner_count == 0:
+        if org_will_be_deleted:
             # This user is the sole owner — delete all org resources, then the org.
             # Explicit deletes for tables that do NOT cascade directly from org
             # or that need to be cleared before the org row is removed.
@@ -496,8 +509,10 @@ async def delete_me(
         else:
             # Other owners exist — just remove this user from the org.
             # The user row itself is anonymized (FIX-1) and will remain with
-            # is_active=False. Stripe PII is cleared on the org (FIX-5).
-            org.stripe_customer_id = None
+            # is_active=False.  The org's Stripe customer and subscription are
+            # org assets shared with the remaining members and stay intact
+            # (clearing them here — old FIX-5 — broke the surviving org's
+            # billing whenever any member deleted their account).
 
             # P2-FIX-6: Anonymize this user's session events within the org.
             await db.execute(
