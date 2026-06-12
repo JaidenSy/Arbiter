@@ -19,6 +19,7 @@ import app.db.models.agent  # noqa: F401
 import app.db.models.cache  # noqa: F401
 import app.db.models.cli_device_code  # noqa: F401
 import app.db.models.mcp_server  # noqa: F401
+import app.db.models.org_membership  # noqa: F401
 import app.db.models.session  # noqa: F401
 import app.db.models.tool_permission  # noqa: F401
 import app.db.models.tool_permission_event  # noqa: F401
