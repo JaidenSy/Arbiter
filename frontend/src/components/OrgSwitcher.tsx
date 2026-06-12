@@ -70,14 +70,22 @@ function CreateOrgModal({ onClose }: { onClose: () => void }): React.ReactElemen
           Starts on the Free plan with its own agents, servers, vault, and quota.
         </p>
         <form onSubmit={(e) => void handleCreate(e)} className="flex flex-col gap-4">
-          <input
-            type="text"
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Acme Corp"
-            className="w-full bg-base border border-border-strong text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 transition-all placeholder:text-muted"
-          />
+          <div>
+            <input
+              type="text"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={255}
+              placeholder="Acme Corp"
+              className="w-full bg-base border border-border-strong text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 transition-all placeholder:text-muted"
+            />
+            {name.length > 0 && (
+              <p className={`text-right text-xs mt-1 tabular-nums ${name.length >= 240 ? 'text-warning' : 'text-muted'}`}>
+                {name.length}/255
+              </p>
+            )}
+          </div>
           {error && (
             <div className="flex items-center gap-2 bg-error/8 border border-error/20 rounded-lg px-3 py-2">
               <span className="w-1.5 h-1.5 rounded-full bg-error flex-shrink-0" />

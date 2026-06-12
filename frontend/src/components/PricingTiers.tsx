@@ -30,6 +30,14 @@ export default function PricingTiers({ showCompareLink }: PricingTiersProps): Re
     }
   }
 
+  function handleFreeCta(): void {
+    if (user) {
+      navigate('/dashboard')
+    } else {
+      navigate('/register')
+    }
+  }
+
   return (
     <>
       <RevealGroup className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch" stagger={80}>
@@ -80,12 +88,13 @@ export default function PricingTiers({ showCompareLink }: PricingTiersProps): Re
                 {user ? 'Go to Billing' : tier.cta}
               </button>
             ) : (
-              <Link
-                to={tier.ctaHref}
-                className="press block text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-150 ease-[var(--ease-out-expo)] border border-border-strong hover:border-border-accent text-secondary hover:text-accent-light"
+              <button
+                type="button"
+                onClick={handleFreeCta}
+                className="press block w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-150 ease-[var(--ease-out-expo)] border border-border-strong hover:border-border-accent text-secondary hover:text-accent-light"
               >
-                {tier.cta}
-              </Link>
+                {user ? 'Go to Dashboard' : tier.cta}
+              </button>
             )}
           </div>
         ))}

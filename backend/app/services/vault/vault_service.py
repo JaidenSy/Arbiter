@@ -23,7 +23,6 @@ import hashlib
 import logging
 import os
 import uuid
-from typing import Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from sqlalchemy import select
@@ -34,6 +33,7 @@ from app.db.models.vault import VaultSecret
 logger = logging.getLogger(__name__)
 
 # ── Key derivation ─────────────────────────────────────────────────────────────
+
 
 def _load_key() -> bytes:
     """
@@ -58,9 +58,7 @@ def _load_key() -> bytes:
     try:
         key_bytes = bytes.fromhex(raw)
     except ValueError as exc:
-        raise RuntimeError(
-            f"VAULT_ENCRYPTION_KEY is not valid hex: {exc}"
-        ) from exc
+        raise RuntimeError(f"VAULT_ENCRYPTION_KEY is not valid hex: {exc}") from exc
     # key_bytes should be 32 bytes; SHA-256 ensures exactly 32 regardless.
     return hashlib.sha256(key_bytes).digest()
 
@@ -153,20 +151,29 @@ class VaultService:
         self,
         name: str,
         plaintext: str,
+        org_id: uuid.UUID,
         agent_id: uuid.UUID | None = None,
-        org_id: uuid.UUID | None = None,
     ) -> VaultSecret:
         """
         Encrypt and persist a secret, scoped to (org_id, agent_id, name).
 
         If a secret with the same name already exists for this scope it is
         updated (upsert / key rotation).
+
+        Args:
+            name:      Logical key, e.g. "GITHUB_TOKEN".
+            plaintext: Raw secret value — encrypted before storage.
+            org_id:    Required — Organisation UUID. Always included in the DB
+                       filter to enforce org isolation (fix for #251).
+            agent_id:  Optional FK to the owning agent (NULL = org-level secret).
         """
         ciphertext = self.encrypt(plaintext)
 
-        filters = [VaultSecret.name == name, VaultSecret.agent_id == agent_id]
-        if org_id is not None:
-            filters.append(VaultSecret.org_id == org_id)
+        filters = [
+            VaultSecret.name == name,
+            VaultSecret.agent_id == agent_id,
+            VaultSecret.org_id == org_id,
+        ]
 
         result = await self.db.execute(select(VaultSecret).where(*filters))
         secret = result.scalar_one_or_none()
@@ -188,7 +195,9 @@ class VaultService:
         logger.info("vault: stored secret name=%r agent_id=%s org_id=%s", name, agent_id, org_id)
         return secret
 
-    async def get_secret(self, name: str, org_id: uuid.UUID, agent_id: Optional[uuid.UUID] = None) -> str:
+    async def get_secret(
+        self, name: str, org_id: uuid.UUID, agent_id: uuid.UUID | None = None
+    ) -> str:
         """
         Retrieve and decrypt a secret by logical name, scoped to the org.
 

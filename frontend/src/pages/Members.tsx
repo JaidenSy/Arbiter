@@ -458,26 +458,28 @@ function Organization(): React.ReactElement {
         </div>
       )}
 
-      {/* Leave organization */}
-      <div className="bg-surface border border-border rounded-xl p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-primary">Leave this organization</p>
-            <p className="text-secondary text-xs mt-0.5">
-              Your account stays active — you'll switch to another organization you belong to,
-              or get a fresh personal one. Agents you created here will be deactivated.
-            </p>
-            {leaveError && <p className="text-error text-xs mt-1.5">{leaveError}</p>}
+      {/* Leave organization — owners must transfer ownership or delete the org first */}
+      {!isOwner && (
+        <div className="bg-surface border border-border rounded-xl p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-primary">Leave this organization</p>
+              <p className="text-secondary text-xs mt-0.5">
+                Your account stays active — you'll switch to another organization you belong to,
+                or get a fresh personal one. Agents you created here will be deactivated.
+              </p>
+              {leaveError && <p className="text-error text-xs mt-1.5">{leaveError}</p>}
+            </div>
+            <button
+              onClick={() => { setLeaveError(''); setShowLeaveConfirm(true) }}
+              disabled={leaving}
+              className="flex-shrink-0 border border-error/30 text-error hover:bg-error/10 disabled:opacity-50 text-sm font-medium py-2 px-4 rounded-lg transition-colors"
+            >
+              {leaving ? 'Leaving…' : 'Leave organization'}
+            </button>
           </div>
-          <button
-            onClick={() => { setLeaveError(''); setShowLeaveConfirm(true) }}
-            disabled={leaving}
-            className="flex-shrink-0 border border-error/30 text-error hover:bg-error/10 disabled:opacity-50 text-sm font-medium py-2 px-4 rounded-lg transition-colors"
-          >
-            {leaving ? 'Leaving…' : 'Leave organization'}
-          </button>
         </div>
-      </div>
+      )}
 
       {/* Remove member confirm dialog */}
       <ConfirmDialog
