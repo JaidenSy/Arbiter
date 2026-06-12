@@ -55,6 +55,7 @@ from app.db.models.cache import CacheEntry
 from app.db.models.cli_device_code import CliDeviceCode
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.session import Session, SessionEvent
+from app.db.models.vault_audit_event import VaultAuditEvent  # noqa: F401 — registers ORM model
 from app.services.plan.plan_limits import (
     PlanLimitError,
     QuotaExceededError,
