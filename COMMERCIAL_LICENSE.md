@@ -1,34 +1,34 @@
-# Arbiter Commercial License
+# Arbiter Enterprise Commercial License
 
-Copyright (c) 2026 Jaiden Sy. All rights reserved.
+Copyright 2026 Jaiden Sy. All rights reserved.
 
-## Summary
+## Open-Core Model
 
-Arbiter is dual-licensed:
+Arbiter uses an open-core licensing model:
 
-- **Open Source (AGPL v3)** — free to use, modify, and distribute under the terms of the
-  [GNU Affero General Public License v3](./LICENSE). If you distribute Arbiter or build a
-  product on top of it, your source code must also be released under AGPL v3.
+- **Core gateway — [Apache License 2.0](./LICENSE)** — free, permissive, self-hostable. Use it, modify
+  it, build on it, embed it in proprietary products. No copyleft obligations.
 
-- **Commercial License** — if you want to use Arbiter in a closed-source product or SaaS
-  without the AGPL obligations, purchase a commercial license.
+- **Enterprise modules — Commercial License required** — a separate commercial license is required
+  to use the enterprise modules: **SSO, SCIM, and KMS**. These modules are not included in the
+  Apache-2.0 core distribution.
 
 ---
 
-## When you need a commercial license
+## What requires a commercial license
 
-You need a commercial license if **any** of the following apply:
+A commercial license is required only if you are using the **enterprise modules**:
 
-- You are embedding Arbiter (or a modified version) in a proprietary / closed-source product.
-- You are offering Arbiter as a hosted service (SaaS) and do not want to open-source your
-  application under AGPL v3.
-- Your company's legal policy prohibits use of AGPL-licensed software.
+- **SSO** — SAML/OIDC single sign-on integration
+- **SCIM** — automated user provisioning and de-provisioning
+- **KMS** — external key management service integration (AWS KMS, GCP Cloud KMS, HashiCorp Vault)
 
-You do **not** need a commercial license if:
+You do **not** need a commercial license for:
 
-- You are using Arbiter internally and not distributing it.
-- Your product is also licensed under AGPL v3 and you comply with its terms.
-- You are evaluating Arbiter for personal or non-commercial use.
+- Using, modifying, or distributing the core Arbiter gateway (Apache-2.0 covers all of this).
+- Building proprietary products or SaaS on top of the core gateway.
+- Self-hosting the core gateway internally or for customers.
+- Evaluating Arbiter for any purpose.
 
 ---
 
@@ -39,24 +39,23 @@ Contact: **jaidensy07@gmail.com**
 Include in your message:
 
 - Company name and size (number of engineers / seats)
-- Intended use case
+- Which enterprise module(s) you need (SSO, SCIM, KMS)
 - Whether you need a single-deployment or multi-deployment license
 
-Pricing is usage-based and negotiated per engagement.
+Pricing is negotiated per engagement.
 
 ---
 
 ## What a commercial license grants you
 
-- The right to use, modify, and distribute Arbiter in a closed-source product.
-- The right to offer Arbiter (or a product built on it) as a hosted service without AGPL
-  obligations.
-- Access to priority support and a private Slack channel (Pro tier and above).
+- The right to use the licensed enterprise module(s) in production.
+- The right to embed enterprise modules in a closed-source product or hosted service.
+- Access to priority support and a private Slack channel (Enterprise tier).
 - A named invoice suitable for your legal / procurement team.
 
 ---
 
 ## No Warranty
 
-Arbiter is provided "as is", without warranty of any kind. The author is not liable for
-any damages arising from use of this software.
+Arbiter and its enterprise modules are provided "as is", without warranty of any kind.
+The author is not liable for any damages arising from use of this software.

@@ -20,8 +20,8 @@ from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.base import async_session_factory
 from app.db.models.webhook import Webhook, WebhookDeliveryLog
 
 _LOG = logging.getLogger(__name__)
@@ -31,7 +31,6 @@ _BACKOFF_BASE = 1.0  # seconds; doubles each retry
 
 
 async def dispatch_event(
-    db: AsyncSession,
     org_id: uuid.UUID,
     event_type: str,
     payload: dict,
@@ -41,15 +40,26 @@ async def dispatch_event(
 
     Safe to call without awaiting from background tasks — all errors are caught
     and logged; no exception propagates to the caller.
+
+    Opens its own DB sessions: callers invoke this via asyncio.create_task, so
+    it must never borrow a request-scoped session — the request may roll back
+    or close it while delivery (with up to ~7s of retry backoff) is in flight.
     """
-    result = await db.execute(
-        select(Webhook).where(
-            Webhook.org_id == org_id,
-            Webhook.is_active.is_(True),
-        )
-    )
-    hooks = result.scalars().all()
-    matching = [h for h in hooks if event_type in (h.events or [])]
+    try:
+        async with async_session_factory() as db:
+            result = await db.execute(
+                select(Webhook).where(
+                    Webhook.org_id == org_id,
+                    Webhook.is_active.is_(True),
+                )
+            )
+            hooks = result.scalars().all()
+            # Capture plain values before the session closes — ORM instances
+            # expire with the session.
+            matching = [(h.id, h.url, h.secret) for h in hooks if event_type in (h.events or [])]
+    except Exception as exc:
+        _LOG.error("Webhook dispatch lookup failed for org %s: %s", org_id, exc)
+        return
 
     if not matching:
         return
@@ -61,18 +71,19 @@ async def dispatch_event(
         "data": payload,
     }
 
-    for hook in matching:
-        asyncio.create_task(_deliver_with_retry(db, hook, event_type, full_payload))
+    for hook_id, url, secret in matching:
+        asyncio.create_task(_deliver_with_retry(hook_id, url, secret, event_type, full_payload))
 
 
 async def _deliver_with_retry(
-    db: AsyncSession,
-    hook: Webhook,
+    webhook_id: uuid.UUID,
+    url: str,
+    secret: str,
     event_type: str,
     payload: dict,
 ) -> None:
     body = json.dumps(payload, default=str)
-    sig = _sign(hook.secret, body)
+    sig = _sign(secret, body)
     headers = {
         "Content-Type": "application/json",
         "X-Arbiter-Signature": f"sha256={sig}",
@@ -86,18 +97,18 @@ async def _deliver_with_retry(
     async with httpx.AsyncClient(timeout=10.0) as client:
         for attempt in range(1, _MAX_ATTEMPTS + 1):
             try:
-                resp = await client.post(hook.url, content=body, headers=headers)
+                resp = await client.post(url, content=body, headers=headers)
                 last_status = resp.status_code
                 last_body = resp.text[:2000]
                 last_error = None
                 if resp.is_success:
                     await _log_delivery(
-                        db, hook.id, event_type, payload, last_status, last_body, None, attempt
+                        webhook_id, event_type, payload, last_status, last_body, None, attempt
                     )
                     return
                 _LOG.warning(
                     "Webhook %s returned %d (attempt %d/%d)",
-                    hook.id,
+                    webhook_id,
                     resp.status_code,
                     attempt,
                     _MAX_ATTEMPTS,
@@ -108,7 +119,7 @@ async def _deliver_with_retry(
                 last_body = None
                 _LOG.warning(
                     "Webhook %s delivery error (attempt %d/%d): %s",
-                    hook.id,
+                    webhook_id,
                     attempt,
                     _MAX_ATTEMPTS,
                     exc,
@@ -118,12 +129,11 @@ async def _deliver_with_retry(
                 await asyncio.sleep(_BACKOFF_BASE * (2 ** (attempt - 1)))
 
     await _log_delivery(
-        db, hook.id, event_type, payload, last_status, last_body, last_error, _MAX_ATTEMPTS
+        webhook_id, event_type, payload, last_status, last_body, last_error, _MAX_ATTEMPTS
     )
 
 
 async def _log_delivery(
-    db: AsyncSession,
     webhook_id: uuid.UUID,
     event_type: str,
     payload: dict,
@@ -133,17 +143,18 @@ async def _log_delivery(
     attempt: int,
 ) -> None:
     try:
-        log = WebhookDeliveryLog(
-            webhook_id=webhook_id,
-            event_type=event_type,
-            payload=payload,
-            response_status=response_status,
-            response_body=response_body,
-            error=error,
-            attempt=attempt,
-        )
-        db.add(log)
-        await db.commit()
+        async with async_session_factory() as db:
+            log = WebhookDeliveryLog(
+                webhook_id=webhook_id,
+                event_type=event_type,
+                payload=payload,
+                response_status=response_status,
+                response_body=response_body,
+                error=error,
+                attempt=attempt,
+            )
+            db.add(log)
+            await db.commit()
     except Exception as exc:
         _LOG.error("Failed to persist webhook delivery log: %s", exc)
 

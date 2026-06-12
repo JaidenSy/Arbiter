@@ -150,7 +150,6 @@ async def run_health_checks(redis: object | None = None) -> None:
                             )
                             asyncio.create_task(
                                 _dispatch_webhook(
-                                    db,
                                     server.org_id,
                                     "mcp_server.offline",
                                     {"server": server.name, "failures": int(fail_count)},

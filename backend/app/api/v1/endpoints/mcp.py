@@ -292,7 +292,7 @@ async def _handle_tools_list(
         # server rather than failing the whole aggregated listing.
         try:
             raw_tools = await service.fetch_tools_list(server)
-            permitted = await service.filter_tools_list(
+            tools = await service.filter_tools_list(
                 agent=agent,
                 server_name=server.name,
                 tools=raw_tools,
@@ -306,7 +306,7 @@ async def _handle_tools_list(
         except Exception as exc:
             logger.warning("mcp: skipping server %r in aggregated tools/list: %s", server.name, exc)
             continue
-        for tool in permitted:
+        for tool in tools:
             if not tool.get("name"):
                 logger.warning(
                     "mcp: server %r returned a tool without a name — skipped", server.name

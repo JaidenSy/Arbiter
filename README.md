@@ -6,7 +6,7 @@
 
 **The MCP security gateway for AI agents.**
 
-![License](https://img.shields.io/badge/license-AGPL%20v3%20%2F%20Commercial-blue)
+![License](https://img.shields.io/badge/license-Apache%202.0%20%2F%20Commercial-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
@@ -15,6 +15,12 @@
 [**arbiterai.dev →**](https://arbiterai.dev) · [**API Docs →**](https://arbiterai.dev/docs) · [**support@arbiterai.dev**](mailto:support@arbiterai.dev)
 
 </div>
+
+---
+
+![Claude Code calling tools through Arbiter: a permitted call succeeds (semantic-cache hit), a denied tool is blocked by per-agent RBAC, and both land in the audit trail](demo.gif)
+
+*Real session, left to right: Claude Code calls `ask_question` through the gateway (cache hit, 10 ms), then attempts `read_wiki_contents` — blocked by tool-level RBAC with a clean error, and every call lands in the session trace.*
 
 ---
 
@@ -245,9 +251,9 @@ Responsible disclosure: **security@arbiterai.dev**
 
 ## License
 
-Arbiter is dual-licensed:
+Arbiter uses an open-core model:
 
-- **[AGPL v3](./LICENSE)** — free for open-source use. If you build on Arbiter, your code must also be AGPL v3.
-- **[Commercial License](./COMMERCIAL_LICENSE.md)** — for closed-source products and SaaS deployments. Contact [jaidensy07@gmail.com](mailto:jaidensy07@gmail.com).
+- **Core gateway — [Apache 2.0](./LICENSE)** — free, permissive, self-hostable. No copyleft obligations. Use it in closed-source products, build SaaS on it, embed it anywhere.
+- **Enterprise modules (SSO, SCIM, KMS) — [Commercial License](./COMMERCIAL_LICENSE.md)** — a commercial license is required only to use the enterprise modules. Contact [jaidensy07@gmail.com](mailto:jaidensy07@gmail.com).
 
 © 2026 Jaiden Sy.
