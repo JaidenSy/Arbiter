@@ -13,7 +13,7 @@
  * we store it and hard-reload so every org-scoped view rehydrates.
  */
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
 import { authClient } from '../api/client'
@@ -32,6 +32,13 @@ interface AcceptResponse {
   access_token?: string
   refresh_token?: string
   detail?: string
+}
+
+interface InvitePreview {
+  org_name: string
+  plan_tier: string
+  role: string
+  email: string
 }
 
 function inputClass(): string {
@@ -62,6 +69,41 @@ function AcceptInvite(): React.ReactElement {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [alreadyMember, setAlreadyMember] = useState(false)
 
+  // Invite preview: fetched once on mount to populate the confirmation modal.
+  const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(null)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  // Pending action to run after the user confirms the modal.
+  const [pendingAction, setPendingAction] = useState<(() => Promise<void>) | null>(null)
+
+  useEffect(() => {
+    if (!token) return
+    authClient
+      .get<InvitePreview>(`/auth/invite-preview?token=${encodeURIComponent(token)}`)
+      .then((res) => setInvitePreview(res.data))
+      .catch(() => {
+        // Preview is best-effort — a failure here doesn't block the flow.
+      })
+  }, [token])
+
+  /**
+   * Wrap an action so it first shows the ownership-disclosure modal.
+   * The wrapped action is stored and executed only when the user confirms.
+   */
+  function withConfirmation(action: () => Promise<void>): () => Promise<void> {
+    return async () => {
+      setPendingAction(() => action)
+      setShowConfirmModal(true)
+    }
+  }
+
+  async function handleConfirm(): Promise<void> {
+    setShowConfirmModal(false)
+    if (pendingAction) {
+      await pendingAction()
+      setPendingAction(null)
+    }
+  }
+
   function storeAndEnter(data: AcceptResponse): void {
     if (data.access_token && data.refresh_token) {
       localStorage.setItem(ACCESS_KEY, data.access_token)
@@ -72,7 +114,7 @@ function AcceptInvite(): React.ReactElement {
 
   // ── Signed-in path: join with the current account ─────────────────────────
 
-  async function handleJoin(): Promise<void> {
+  async function _doJoin(): Promise<void> {
     setError('')
     setIsSubmitting(true)
     try {
@@ -98,21 +140,13 @@ function AcceptInvite(): React.ReactElement {
     }
   }
 
+  /** Public entry-point for the signed-in join button — shows modal first. */
+  const handleJoin = withConfirmation(_doJoin)
+
   // ── No-account path: create the invited account ───────────────────────────
 
-  async function handleCreate(e: React.FormEvent): Promise<void> {
-    e.preventDefault()
+  async function _doCreate(): Promise<void> {
     setError('')
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
-      return
-    }
-    if (password !== confirm) {
-      setError('Passwords do not match.')
-      return
-    }
-
     setIsSubmitting(true)
     try {
       // Raw fetch (no Authorization header): a stale stored token must not
@@ -148,10 +182,21 @@ function AcceptInvite(): React.ReactElement {
     }
   }
 
+  /** Shows modal before creating the account. */
+  async function handleCreate(e: React.FormEvent): Promise<void> {
+    e.preventDefault()
+    // Run validation synchronously so errors appear before the modal.
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
+    if (password !== confirm) { setError('Passwords do not match.'); return }
+    setError('')
+    // pendingAction reads state captured in the closure — no stale event.
+    setPendingAction(() => _doCreate)
+    setShowConfirmModal(true)
+  }
+
   // ── Existing-account path: sign in, then join ─────────────────────────────
 
-  async function handleLoginAndJoin(e: React.FormEvent): Promise<void> {
-    e.preventDefault()
+  async function _doLoginAndJoin(): Promise<void> {
     setError('')
     setIsSubmitting(true)
     try {
@@ -180,6 +225,14 @@ function AcceptInvite(): React.ReactElement {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  /** Shows modal before signing in and joining. */
+  async function handleLoginAndJoin(e: React.FormEvent): Promise<void> {
+    e.preventDefault()
+    setError('')
+    setPendingAction(() => _doLoginAndJoin)
+    setShowConfirmModal(true)
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -384,6 +437,67 @@ function AcceptInvite(): React.ReactElement {
           )}
         </div>
       </div>
+
+      {/* Ownership disclosure modal — shown before any accept action. */}
+      {showConfirmModal && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowConfirmModal(false)}
+        >
+          <div
+            className="bg-surface border border-border-strong rounded-xl p-6 w-full max-w-sm shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-bold text-primary mb-2">Before you join</h2>
+            {invitePreview ? (
+              <div className="mb-4">
+                <p className="text-secondary text-sm mb-3">
+                  Resources you create in{' '}
+                  <span className="text-primary font-semibold">{invitePreview.org_name}</span>{' '}
+                  (agents, secrets, MCP servers) belong to the org. If you leave, they stay with the
+                  org owner.
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-secondary text-xs">This org is on the</span>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${
+                      invitePreview.plan_tier === 'pro'
+                        ? 'bg-accent/15 text-accent-light border-border-accent'
+                        : invitePreview.plan_tier === 'enterprise'
+                          ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                          : 'bg-white/5 text-muted border-border'
+                    }`}
+                  >
+                    {invitePreview.plan_tier}
+                  </span>
+                  <span className="text-secondary text-xs">plan.</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-secondary text-sm mb-4">
+                Resources you create in this organization belong to the org. If you leave, they stay
+                with the org owner.
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 border border-border text-secondary hover:text-primary text-sm font-medium py-2.5 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirm()}
+                className="flex-1 bg-accent hover:bg-accent-light text-white font-semibold text-sm py-2.5 rounded-lg transition-all"
+              >
+                I understand, join
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
