@@ -157,6 +157,38 @@ async def _deactivate_member_agents(
     )
 
 
+async def _reassign_member_resources(
+    db: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID
+) -> None:
+    """
+    Reassign agents the departing user created in this org to the org owner.
+
+    VaultSecret and MCPServer belong to the org by design (no created_by
+    column) — they are unaffected.  Only Agent tracks the creating user, so
+    this function transfers authorship to the current org owner so the
+    resources are not orphaned when the member leaves.
+
+    If no owner membership exists (should not happen in practice) the
+    created_by_user_id is left unchanged.
+    """
+    owner_id: uuid.UUID | None = await db.scalar(
+        select(OrgMembership.user_id).where(
+            OrgMembership.org_id == org_id,
+            OrgMembership.role == "owner",
+        )
+    )
+    if owner_id is None:
+        return
+    await db.execute(
+        update(Agent)
+        .where(
+            Agent.org_id == org_id,
+            Agent.created_by_user_id == user_id,
+        )
+        .values(created_by_user_id=owner_id)
+    )
+
+
 async def _consume_invite(db: AsyncSession, token: str) -> OrgInvite:
     """
     Atomically mark an invite as accepted — prevents TOCTOU race where two
@@ -321,6 +353,7 @@ async def leave_org(
     await db.delete(membership)
     await db.flush()
 
+    await _reassign_member_resources(db, org_id, current_user.id)
     await _deactivate_member_agents(db, org_id, current_user.id)
     await org_service.repoint_active_org(db, current_user)
     await db.commit()
@@ -487,8 +520,10 @@ async def remove_member(
     await db.delete(membership)
     await db.flush()
 
-    # Their account survives — only the membership is removed.  Agents they
-    # created in this org are deactivated so their keys stop working here.
+    # Their account survives — only the membership is removed.  Resources the
+    # member created (agents) are reassigned to the org owner so they are not
+    # orphaned, then deactivated so their keys stop working here.
+    await _reassign_member_resources(db, org_id, member.id)
     await _deactivate_member_agents(db, org_id, member.id)
 
     if member.org_id == org_id:
@@ -628,6 +663,48 @@ async def cancel_invite(
 # ── Accept invite (public; optional auth for existing accounts) ───────────────
 
 _accept_router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+class InvitePreviewResponse(BaseModel):
+    """Lightweight org context shown to the user before they accept an invite."""
+
+    org_name: str
+    plan_tier: str
+    role: str
+    email: str
+
+
+@_accept_router.get(
+    "/invite-preview",
+    response_model=InvitePreviewResponse,
+    summary="Preview org details for a pending invite (does not consume the token)",
+)
+async def invite_preview(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> InvitePreviewResponse:
+    """
+    Return the org name, plan tier, role, and invited email for a valid invite
+    token without consuming it.  Used by the frontend to show a confirmation
+    dialog before the user accepts.
+    """
+    invite = await db.scalar(select(OrgInvite).where(OrgInvite.token == token))
+    if invite is None:
+        raise HTTPException(status_code=400, detail="Invalid invite token")
+    now = datetime.now(tz=UTC)
+    if invite.accepted_at is not None or invite.expires_at.replace(tzinfo=UTC) <= now:
+        raise HTTPException(status_code=400, detail="Invite already used or expired")
+
+    org = await db.get(Organization, invite.org_id)
+    if org is None or not org.is_active:
+        raise HTTPException(status_code=400, detail="Organization not found or suspended")
+
+    return InvitePreviewResponse(
+        org_name=org.name,
+        plan_tier=org.plan_tier,
+        role=invite.role,
+        email=invite.email,
+    )
 
 
 @_accept_router.post(

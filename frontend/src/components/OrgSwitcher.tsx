@@ -190,11 +190,24 @@ function OrgSwitcher(): React.ReactElement | null {
               {org.name[0]?.toUpperCase() ?? '?'}
             </span>
             <span className="flex-1 min-w-0">
-              <span className="block text-xs text-primary truncate">
-                {switchingTo === org.org_id ? 'Switching…' : org.name}
+              <span className="flex items-center gap-1.5 min-w-0">
+                <span className="block text-xs text-primary truncate">
+                  {switchingTo === org.org_id ? 'Switching…' : org.name}
+                </span>
+                <span
+                  className={`flex-shrink-0 inline-flex items-center px-1.5 py-0 rounded text-[9px] font-semibold uppercase tracking-wider border ${
+                    org.plan_tier === 'pro'
+                      ? 'bg-accent/15 text-accent-light border-border-accent'
+                      : org.plan_tier === 'enterprise'
+                        ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                        : 'bg-white/5 text-muted border-border'
+                  }`}
+                >
+                  {org.plan_tier}
+                </span>
               </span>
               <span className="block text-[10px] text-muted capitalize">
-                {org.role} · {org.plan_tier}
+                {org.role}
               </span>
             </span>
             {org.is_current && (

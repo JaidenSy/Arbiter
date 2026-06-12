@@ -196,8 +196,9 @@ class TestLeaveOrg:
         user = _make_user(org_a, role="member")
         membership_a = _make_membership(org_a, "member")
         membership_b = _make_membership(org_b, "admin")
-        # get_membership → a; repoint_active_org remaining-membership → b
-        db = _make_db([membership_a, membership_b])
+        owner_id = uuid.uuid4()
+        # get_membership → a; _reassign owner_id → owner_id; repoint → b
+        db = _make_db([membership_a, owner_id, membership_b])
 
         resp = await _request("POST", "/api/v1/org/leave", db=db, fake_redis=fake_redis, user=user)
 
@@ -302,6 +303,121 @@ class TestAcceptInviteExistingAccount:
 
         assert resp.status_code == 409, resp.text
         db.execute.assert_not_awaited()  # invite not consumed
+
+
+# ── Resource reassignment on leave / removal ─────────────────────────────────
+
+
+class TestResourceReassignmentOnLeave:
+    async def test_leave_triggers_reassignment_then_deactivation(self, fake_redis):
+        """
+        When a member leaves, their agents should be reassigned to the org owner
+        (via UPDATE created_by_user_id) before being deactivated.  We verify that
+        two db.execute calls are issued in the leave path — the reassignment and
+        the deactivation UPDATE.
+        """
+        org_id = uuid.uuid4()
+        user = _make_user(org_id, role="member")
+        membership = _make_membership(org_id, "member")
+        owner_id = uuid.uuid4()
+
+        db = _make_db([membership])
+        # repoint_active_org remaining membership (returns None → creates personal org)
+        db.scalar = AsyncMock(side_effect=[membership, owner_id, None])
+        # slug uniqueness check inside create_org: None means slug is free
+        db.scalar.side_effect = [
+            membership,  # get_membership
+            owner_id,  # _reassign: select owner_id from org_memberships
+            None,  # repoint: no remaining membership → create personal org
+            None,  # create_org: slug uniqueness check
+        ]
+        db.execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+        )
+        db.get = AsyncMock(return_value=None)
+
+        resp = await _request("POST", "/api/v1/org/leave", db=db, fake_redis=fake_redis, user=user)
+
+        assert resp.status_code == 200, resp.text
+        # Two UPDATE statements must have been issued: reassign + deactivate.
+        assert db.execute.await_count >= 2, (
+            f"Expected at least 2 db.execute calls (reassign + deactivate), got {db.execute.await_count}"
+        )
+
+    async def test_owner_cannot_leave_sole_owner(self, fake_redis):
+        """Owner who is the only owner gets 400 before any DB mutation."""
+        org_id = uuid.uuid4()
+        user = _make_user(org_id, role="owner")
+        membership = _make_membership(org_id, "owner")
+        db = _make_db([membership, 0])  # get_membership → owner; count_other_owners → 0
+
+        resp = await _request("POST", "/api/v1/org/leave", db=db, fake_redis=fake_redis, user=user)
+
+        assert resp.status_code == 400, resp.text
+        assert "only owner" in resp.json()["detail"].lower()
+        db.delete.assert_not_awaited()
+        db.execute.assert_not_awaited()
+
+
+# ── GET /auth/invite-preview ──────────────────────────────────────────────────
+
+
+class TestInvitePreview:
+    async def test_returns_org_name_and_plan_tier(self, fake_redis):
+        org_id = uuid.uuid4()
+        invite = _make_invite(org_id, "newuser@example.com")
+        invite.role = "member"
+
+        org = MagicMock()
+        org.id = org_id
+        org.name = "Acme Corp"
+        org.plan_tier = "pro"
+        org.is_active = True
+
+        db = _make_db([invite])
+        db.get = AsyncMock(return_value=org)
+
+        resp = await _request(
+            "GET",
+            "/api/v1/auth/invite-preview?token=tok_preview",
+            db=db,
+            fake_redis=fake_redis,
+        )
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["org_name"] == "Acme Corp"
+        assert body["plan_tier"] == "pro"
+        assert body["role"] == "member"
+        assert body["email"] == "newuser@example.com"
+
+    async def test_invalid_token_returns_400(self, fake_redis):
+        db = _make_db([None])  # invite lookup → None
+
+        resp = await _request(
+            "GET",
+            "/api/v1/auth/invite-preview?token=bad_token",
+            db=db,
+            fake_redis=fake_redis,
+        )
+
+        assert resp.status_code == 400, resp.text
+
+    async def test_expired_invite_returns_400(self, fake_redis):
+        org_id = uuid.uuid4()
+        invite = _make_invite(org_id, "user@example.com")
+        invite.expires_at = datetime.now(tz=UTC) - timedelta(days=1)  # expired
+
+        db = _make_db([invite])
+
+        resp = await _request(
+            "GET",
+            "/api/v1/auth/invite-preview?token=tok_expired",
+            db=db,
+            fake_redis=fake_redis,
+        )
+
+        assert resp.status_code == 400, resp.text
 
 
 # ── Org-verified gate (membership-aware raw SQL) ──────────────────────────────
