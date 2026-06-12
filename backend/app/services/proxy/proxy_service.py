@@ -244,6 +244,7 @@ class ProxyService:
                 tool_name=request.tool_name,
                 input_payload=request.params,
                 org_id=agent.org_id,
+                mcp_server_id=mcp_server.id,
                 semantic=semantic_cache,
             )
 
@@ -469,6 +470,7 @@ class ProxyService:
                     input_payload=request.params,  # original params, not injected
                     response_payload=response_payload,
                     org_id=agent.org_id,
+                    mcp_server_id=mcp_server.id,
                     ttl_override=cache_ttl,
                     semantic=semantic_cache,
                 )
