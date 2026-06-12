@@ -55,6 +55,7 @@ const Security       = lazy(() => import('./pages/Security'))
 const Changelog      = lazy(() => import('./pages/Changelog'))
 const CliAuth        = lazy(() => import('./pages/CliAuth'))
 const Webhooks       = lazy(() => import('./pages/Webhooks'))
+const Pricing        = lazy(() => import('./pages/Pricing'))
 
 // ── 404 page ──────────────────────────────────────────────────────────────────
 
@@ -164,6 +165,7 @@ function App(): React.ReactElement {
         <Route path="/consent"   element={<Consent />} />
         <Route path="/security"  element={<Security />} />
         <Route path="/changelog" element={<Changelog />} />
+        <Route path="/pricing"   element={<Pricing />} />
         <Route path="/cli-auth"  element={<CliAuth />} />
 
         {/* ── Root — smart redirect ────────────────────────────────────────── */}
