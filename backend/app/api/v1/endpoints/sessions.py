@@ -103,15 +103,48 @@ async def list_sessions(
 
     total = await db.scalar(select(func.count(Session.id)).where(*conditions)) or 0
     result = await db.execute(
-        select(Session)
+        select(
+            Session.id,
+            Session.agent_id,
+            Session.parent_session_id,
+            Session.trace_id,
+            Session.started_at,
+            Session.ended_at,
+            Session.metadata_,
+            func.count(SessionEvent.id).label("event_count"),
+            func.bool_or(SessionEvent.error.isnot(None)).label("has_error"),
+        )
+        .outerjoin(SessionEvent, SessionEvent.session_id == Session.id)
         .where(*conditions)
+        .group_by(
+            Session.id,
+            Session.agent_id,
+            Session.parent_session_id,
+            Session.trace_id,
+            Session.started_at,
+            Session.ended_at,
+            Session.metadata_,
+        )
         .order_by(Session.started_at.desc())
         .offset(skip)
         .limit(limit)
     )
-    sessions = result.scalars().all()
+    rows = result.all()
     return Page(
-        items=[SessionListResponse.model_validate(s) for s in sessions],
+        items=[
+            SessionListResponse(
+                id=row.id,
+                agent_id=row.agent_id,
+                parent_session_id=row.parent_session_id,
+                trace_id=row.trace_id,
+                started_at=row.started_at,
+                ended_at=row.ended_at,
+                metadata_=row.metadata_ or {},
+                event_count=row.event_count,
+                has_error=bool(row.has_error),
+            )
+            for row in rows
+        ],
         total=total,
         skip=skip,
         limit=limit,

@@ -1,13 +1,15 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY . .
+ARG VITE_API_BASE_URL=http://localhost:8000/api/v1
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN pnpm run build
 
 # ── Serve with nginx ──────────────────────────────────────────────────────────

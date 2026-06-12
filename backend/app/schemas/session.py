@@ -51,6 +51,8 @@ class SessionListResponse(BaseModel):
     started_at: datetime
     ended_at: datetime | None
     metadata: dict[str, Any] = Field(default_factory=dict, alias="metadata_")
+    event_count: int = 0
+    has_error: bool = False
 
     model_config = {"populate_by_name": True, "from_attributes": True}
 

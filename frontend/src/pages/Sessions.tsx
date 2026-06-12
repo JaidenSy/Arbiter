@@ -250,7 +250,7 @@ function Sessions(): React.ReactElement {
                     {relativeTime(session.started_at)}
                   </td>
                   <td className="py-3 px-4 text-sm font-mono text-secondary tabular-nums">
-                    {session.events?.length ?? 0}
+                    {session.event_count ?? 0}
                   </td>
                 </tr>
               ))
