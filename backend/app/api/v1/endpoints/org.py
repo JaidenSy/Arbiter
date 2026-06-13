@@ -353,8 +353,11 @@ async def leave_org(
     await db.delete(membership)
     await db.flush()
 
-    await _reassign_member_resources(db, org_id, current_user.id)
+    # Deactivate BEFORE reassigning: both helpers filter on created_by_user_id,
+    # so once reassignment rewrites it to the owner, deactivation matches nothing
+    # and the departing member's API keys stay live.
     await _deactivate_member_agents(db, org_id, current_user.id)
+    await _reassign_member_resources(db, org_id, current_user.id)
     await org_service.repoint_active_org(db, current_user)
     await db.commit()
 
@@ -520,11 +523,13 @@ async def remove_member(
     await db.delete(membership)
     await db.flush()
 
-    # Their account survives — only the membership is removed.  Resources the
-    # member created (agents) are reassigned to the org owner so they are not
-    # orphaned, then deactivated so their keys stop working here.
-    await _reassign_member_resources(db, org_id, member.id)
+    # Their account survives — only the membership is removed.  Agents the
+    # member created are deactivated so their keys stop working here, then
+    # reassigned to the org owner so they are not orphaned.  Deactivation must
+    # run first: both helpers filter on created_by_user_id, so reassigning
+    # first would rewrite it to the owner and deactivation would match nothing.
     await _deactivate_member_agents(db, org_id, member.id)
+    await _reassign_member_resources(db, org_id, member.id)
 
     if member.org_id == org_id:
         await org_service.repoint_active_org(db, member)
