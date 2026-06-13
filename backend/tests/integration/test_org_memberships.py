@@ -309,12 +309,14 @@ class TestAcceptInviteExistingAccount:
 
 
 class TestResourceReassignmentOnLeave:
-    async def test_leave_triggers_reassignment_then_deactivation(self, fake_redis):
+    async def test_leave_deactivates_agents_before_reassignment(self, fake_redis):
         """
-        When a member leaves, their agents should be reassigned to the org owner
-        (via UPDATE created_by_user_id) before being deactivated.  We verify that
-        two db.execute calls are issued in the leave path — the reassignment and
-        the deactivation UPDATE.
+        When a member leaves, their agents must be deactivated BEFORE being
+        reassigned to the org owner.  Both helpers filter on created_by_user_id,
+        so reassigning first rewrites the column to the owner and the
+        deactivation UPDATE matches zero rows — the departing member's API keys
+        would keep working.  Counting the UPDATEs is not enough; we assert the
+        order of the two statements.
         """
         org_id = uuid.uuid4()
         user = _make_user(org_id, role="member")
@@ -322,15 +324,14 @@ class TestResourceReassignmentOnLeave:
         owner_id = uuid.uuid4()
 
         db = _make_db([membership])
-        # repoint_active_org remaining membership (returns None → creates personal org)
-        db.scalar = AsyncMock(side_effect=[membership, owner_id, None])
-        # slug uniqueness check inside create_org: None means slug is free
-        db.scalar.side_effect = [
-            membership,  # get_membership
-            owner_id,  # _reassign: select owner_id from org_memberships
-            None,  # repoint: no remaining membership → create personal org
-            None,  # create_org: slug uniqueness check
-        ]
+        db.scalar = AsyncMock(
+            side_effect=[
+                membership,  # get_membership
+                owner_id,  # _reassign: select owner_id from org_memberships
+                None,  # repoint: no remaining membership → create personal org
+                None,  # create_org: slug uniqueness check
+            ]
+        )
         db.execute = AsyncMock(
             return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
         )
@@ -339,9 +340,23 @@ class TestResourceReassignmentOnLeave:
         resp = await _request("POST", "/api/v1/org/leave", db=db, fake_redis=fake_redis, user=user)
 
         assert resp.status_code == 200, resp.text
-        # Two UPDATE statements must have been issued: reassign + deactivate.
-        assert db.execute.await_count >= 2, (
-            f"Expected at least 2 db.execute calls (reassign + deactivate), got {db.execute.await_count}"
+        agent_updates = [
+            str(call.args[0])
+            for call in db.execute.await_args_list
+            if "UPDATE agents" in str(call.args[0])
+        ]
+        deactivate_idx = next(
+            (i for i, sql in enumerate(agent_updates) if "SET is_active" in sql), None
+        )
+        reassign_idx = next(
+            (i for i, sql in enumerate(agent_updates) if "SET created_by_user_id" in sql), None
+        )
+        assert deactivate_idx is not None, "Deactivation UPDATE (SET is_active) never issued"
+        assert reassign_idx is not None, "Reassignment UPDATE (SET created_by_user_id) never issued"
+        assert deactivate_idx < reassign_idx, (
+            "Agents must be deactivated before created_by_user_id is reassigned — "
+            "reassigning first makes the deactivation a no-op and leaves the "
+            "departing member's API keys live"
         )
 
     async def test_owner_cannot_leave_sole_owner(self, fake_redis):
