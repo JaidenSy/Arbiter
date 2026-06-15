@@ -16,10 +16,12 @@ from __future__ import annotations
 
 import re
 import uuid
+from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.models.org_membership import OrgMembership
 from app.db.models.organization import Organization
 from app.db.models.user import User
@@ -148,6 +150,67 @@ async def count_other_owners(
         )
         or 0
     )
+
+
+# ── Org ownership caps (abuse floor) ──────────────────────────────────────────
+
+
+async def count_owned_orgs(db: AsyncSession, user_id: uuid.UUID) -> int:
+    """Count the organizations ``user_id`` owns (role='owner' memberships)."""
+    return (
+        await db.scalar(
+            select(func.count(OrgMembership.id)).where(
+                OrgMembership.user_id == user_id,
+                OrgMembership.role == "owner",
+            )
+        )
+        or 0
+    )
+
+
+async def count_owned_orgs_since(db: AsyncSession, user_id: uuid.UUID, since: datetime) -> int:
+    """
+    Count orgs ``user_id`` came to own since ``since`` (by membership age).
+
+    Used as the fail-closed fallback for the daily create rate-limit when Redis
+    is unavailable, so the limit is never silently lifted.
+    """
+    return (
+        await db.scalar(
+            select(func.count(OrgMembership.id)).where(
+                OrgMembership.user_id == user_id,
+                OrgMembership.role == "owner",
+                OrgMembership.created_at >= since,
+            )
+        )
+        or 0
+    )
+
+
+async def user_owns_paid_org(db: AsyncSession, user_id: uuid.UUID) -> bool:
+    """True if ``user_id`` owns at least one org on a paid plan (pro/enterprise)."""
+    count = await db.scalar(
+        select(func.count(OrgMembership.id))
+        .join(Organization, Organization.id == OrgMembership.org_id)
+        .where(
+            OrgMembership.user_id == user_id,
+            OrgMembership.role == "owner",
+            Organization.plan_tier.in_(("pro", "enterprise")),
+        )
+    )
+    return bool(count)
+
+
+async def owned_org_limit_for_user(db: AsyncSession, user_id: uuid.UUID) -> int:
+    """
+    The lifetime owned-org cap that applies to ``user_id``.
+
+    Tiered: accounts that own any paid org get ``paid_owned_org_limit``;
+    otherwise ``free_owned_org_limit``.
+    """
+    if await user_owns_paid_org(db, user_id):
+        return settings.paid_owned_org_limit
+    return settings.free_owned_org_limit
 
 
 # ── Active-org repointing ─────────────────────────────────────────────────────

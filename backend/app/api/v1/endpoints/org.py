@@ -265,12 +265,41 @@ async def create_org(
     if not name or len(name) > 255:
         raise HTTPException(status_code=422, detail="Name must be 1–255 characters")
 
+    # Lifetime owned-org cap — DB-backed, so it holds even when Redis is down.
+    # Closes the free-tier quota-multiplication vector (minting unbounded free
+    # orgs); tiered so paid owners get a higher ceiling. Only ever blocks the
+    # NEXT org — existing orgs are never touched.
+    owned = await org_service.count_owned_orgs(db, current_user.id)
+    limit = await org_service.owned_org_limit_for_user(db, current_user.id)
+    if owned >= limit:
+        if limit > settings.free_owned_org_limit:
+            detail = (
+                f"You have reached the maximum of {limit} organizations. "
+                "Contact support to raise this limit."
+            )
+        else:
+            detail = (
+                f"Free accounts can own up to {limit} organizations. "
+                "Upgrade an organization to Pro to create more."
+            )
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=detail)
+
+    # Daily create rate-limit. Redis is the fast path; when it is unavailable we
+    # fall back to a DB count so the limit fails CLOSED (never silently lifts).
     if redis is not None:
         create_key = f"org_create:{current_user.id}:{date.today().isoformat()}"
         create_count = await redis.incr(create_key)
         if create_count == 1:
             await redis.expire(create_key, 86400)  # 24-hour window
         if create_count > _ORG_CREATE_DAILY_LIMIT:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many organizations created today. Try again tomorrow.",
+            )
+    else:
+        since = datetime.now(UTC) - timedelta(days=1)
+        recent = await org_service.count_owned_orgs_since(db, current_user.id, since)
+        if recent >= _ORG_CREATE_DAILY_LIMIT:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many organizations created today. Try again tomorrow.",
