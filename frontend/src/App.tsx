@@ -25,6 +25,7 @@ import UpgradeModal from './components/UpgradeModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import CommandPalette from './components/CommandPalette'
 import VerificationBanner from './components/VerificationBanner'
+import RouteMeta from './components/RouteMeta'
 import { PaletteProvider } from './context/PaletteContext'
 import { useAuth } from './context/AuthContext'
 
@@ -146,6 +147,7 @@ function App(): React.ReactElement {
   return (
     <PaletteProvider>
     <ErrorBoundary>
+    <RouteMeta />
     <UpgradeModal />
     <CommandPalette />
     <Suspense fallback={<PageLoader />}>
