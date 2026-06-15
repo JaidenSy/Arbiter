@@ -7,6 +7,8 @@
 
 import React, { useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import PasswordRequirements from '../components/PasswordRequirements'
+import { isPasswordValid } from '../utils/password'
 
 const API_BASE: string =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
@@ -26,8 +28,8 @@ function ResetPassword(): React.ReactElement {
     e.preventDefault()
     setError('')
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
+    if (!isPasswordValid(password)) {
+      setError('Password does not meet all the requirements listed below.')
       return
     }
     if (password !== confirm) {
@@ -79,7 +81,7 @@ function ResetPassword(): React.ReactElement {
             <span className="text-primary font-semibold text-lg tracking-tight">Arbiter</span>
           </div>
           <h1 className="text-xl font-bold text-primary mb-1">Choose a new password</h1>
-          <p className="text-secondary text-sm">Must be at least 8 characters.</p>
+          <p className="text-secondary text-sm">Choose a strong password you haven't used before.</p>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-6 shadow-xl">
@@ -98,6 +100,11 @@ function ResetPassword(): React.ReactElement {
                 placeholder="••••••••"
                 className="w-full bg-base border border-border text-primary text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent/60 focus:border-accent/60 transition-all duration-150 placeholder:text-muted"
               />
+              {password.length > 0 && (
+                <div className="mt-2">
+                  <PasswordRequirements password={password} />
+                </div>
+              )}
             </div>
 
             <div>
