@@ -85,6 +85,16 @@ class Settings(BaseSettings):
     # ── Quota ─────────────────────────────────────────────────────────────────
     quota_cache_ttl_seconds: int = 60
 
+    # ── Org ownership caps (abuse floor) ───────────────────────────────────────
+    # Lifetime cap on how many orgs a single account may OWN. Closes the
+    # free-tier quota-multiplication vector (minting unbounded free orgs each
+    # with a fresh quota). Tiered: accounts that own at least one paid org get
+    # the higher ceiling. Purely additive — set above any legitimate usage, and
+    # it only blocks creating the NEXT org, never touches existing ones. Raise
+    # via env (FREE_OWNED_ORG_LIMIT / PAID_OWNED_ORG_LIMIT) without a deploy.
+    free_owned_org_limit: int = 5
+    paid_owned_org_limit: int = 50
+
     # ── OAuth2 Social Login ────────────────────────────────────────────────────
     google_client_id: str = ""
     google_client_secret: str = ""
