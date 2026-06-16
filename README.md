@@ -78,6 +78,8 @@ docker compose up -d
 
 Generate a vault key (64 hex chars = 256-bit AES): `python -c "import secrets; print(secrets.token_hex(32))"`
 
+The container runs `alembic upgrade head` on start, so the schema is always current. The example config enables self-serve signup (`ALLOW_PUBLIC_REGISTRATION=true`) so you can create the first account at the frontend — set an `INVITE_CODE` instead to gate it.
+
 Full env var reference in `.env.example`.
 
 ---
