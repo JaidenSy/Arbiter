@@ -9,7 +9,7 @@ Routes:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
@@ -21,7 +21,7 @@ from app.db.models.organization import Organization
 from app.db.models.session import Session, SessionEvent
 from app.db.models.user import User
 from app.schemas.analytics import AgentAnalyticsResponse, AgentTrendPoint, AgentUsage
-from app.services.plan.plan_limits import PLAN_LIMITS
+from app.services.plan.plan_limits import PAID_TIERS, PLAN_LIMITS
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -45,14 +45,14 @@ async def get_agent_analytics(
     org = await db.get(Organization, current_user.org_id)
     plan_tier = org.plan_tier if org else "free"
 
-    if plan_tier == "free":
+    if plan_tier not in PAID_TIERS:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Upgrade to Pro to access analytics",
         )
 
     org_quota: int | None = PLAN_LIMITS.get(plan_tier, {}).get("max_tool_calls_mo")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     month_start = func.date_trunc("month", func.now())
     trend_cutoff = now - timedelta(days=7)
 

@@ -30,7 +30,7 @@ from app.db.models.organization import Organization
 from app.db.models.session import Session, SessionEvent
 from app.db.models.usage_event import UsageEvent
 from app.db.models.user import User
-from app.services.plan.plan_limits import PLAN_LIMITS
+from app.services.plan.plan_limits import PAID_TIERS, PLAN_LIMITS
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -429,7 +429,7 @@ async def get_cost_stats(
     Requires Pro or Enterprise plan.
     """
     org = await db.get(Organization, current_user.org_id)
-    if not org or org.plan_tier not in ("pro", "enterprise"):
+    if not org or org.plan_tier not in PAID_TIERS:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Cost tracking requires a Pro or Enterprise plan",

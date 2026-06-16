@@ -36,6 +36,7 @@ from app.schemas.agent import (
 from app.schemas.pagination import Page
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.schemas.risk import AgentRiskResponse, AgentRiskSignals
+from app.services.plan.plan_limits import PAID_TIERS
 from app.services.plan.plan_service import check_resource_limit
 from app.services.proxy.proxy_service import ProxyService
 
@@ -470,7 +471,7 @@ async def get_agent_risk(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found"
         )
 
-    if org.plan_tier not in ("pro", "enterprise"):
+    if org.plan_tier not in PAID_TIERS:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Anomaly detection requires a Pro or Enterprise plan",
