@@ -16,6 +16,8 @@
 import React, { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
+import PasswordRequirements from '../components/PasswordRequirements'
+import { isPasswordValid } from '../utils/password'
 import { authClient } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
@@ -186,7 +188,7 @@ function AcceptInvite(): React.ReactElement {
   async function handleCreate(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     // Run validation synchronously so errors appear before the modal.
-    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
+    if (!isPasswordValid(password)) { setError('Password does not meet all the requirements listed below.'); return }
     if (password !== confirm) { setError('Passwords do not match.'); return }
     setError('')
     // pendingAction reads state captured in the closure — no stale event.
@@ -399,6 +401,11 @@ function AcceptInvite(): React.ReactElement {
                   placeholder="••••••••"
                   className={inputClass()}
                 />
+                {password.length > 0 && (
+                  <div className="mt-2">
+                    <PasswordRequirements password={password} />
+                  </div>
+                )}
               </div>
 
               <div>

@@ -43,6 +43,7 @@ from app.core.dependencies import (
     get_redis,
     require_role,
 )
+from app.core.password import validate_password_strength
 from app.db.models.agent import Agent
 from app.db.models.org_invite import OrgInvite
 from app.db.models.org_membership import OrgMembership
@@ -791,8 +792,12 @@ async def accept_invite(
         user = existing
     else:
         # ── No account yet: create one inside the inviting org ───────────────
-        if body.password is None or len(body.password) < 8:
-            raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+        if body.password is None:
+            raise HTTPException(status_code=422, detail="Password is required to create an account")
+        try:
+            validate_password_strength(body.password)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
         invite = await _consume_invite(db, body.token)
         user = User(

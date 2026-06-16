@@ -8,6 +8,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { authClient } from '../api/client'
 import { ArbiterMark } from './ArbiterLogo'
+import PasswordRequirements from './PasswordRequirements'
+import { isPasswordValid } from '../utils/password'
 
 export type AuthMode = 'login' | 'register'
 
@@ -96,7 +98,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
   const validateRegister = (): string | null => {
     if (!orgName.trim())             return 'Organization name is required.'
     if (!regEmail.trim())            return 'Email is required.'
-    if (regPassword.length < 8)      return 'Password must be at least 8 characters.'
+    if (!isPasswordValid(regPassword)) return 'Password does not meet all the requirements listed below.'
     if (regPassword !== confirmPassword) return 'Passwords do not match.'
     if (inviteRequired && !inviteCode.trim()) return 'An invite code is required.'
     if (!tosAccepted)                return 'You must accept the Terms of Service and Privacy Policy.'
@@ -115,6 +117,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
     } catch (err: unknown) {
       const res = (err as { response?: { status?: number; data?: { detail?: string } } })?.response
       if (res?.status === 409) setRegError('An account with that email already exists.')
+      else if (res?.status === 422) setRegError('Please check your details — your password must meet the requirements and your email must be valid.')
       else if (res?.data?.detail) setRegError(res.data.detail)
       else setRegError('Registration failed. Please try again.')
     } finally {
@@ -308,9 +311,14 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
                   autoComplete="new-password"
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
-                  placeholder="min 8 characters"
+                  placeholder="Create a strong password"
                   className={inputClass}
                 />
+                {regPassword.length > 0 && (
+                  <div className="mt-2">
+                    <PasswordRequirements password={regPassword} />
+                  </div>
+                )}
               </div>
               <div>
                 <label htmlFor="reg-confirm" className={labelClass}>Confirm Password</label>
@@ -362,7 +370,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
                   className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded border border-border-strong bg-base accent-accent cursor-pointer"
                 />
                 <label htmlFor="reg-tos-accept" className="text-xs text-secondary leading-relaxed cursor-pointer">
-                  I am 13 or older and agree to the{' '}
+                  I agree to the{' '}
                   <Link to="/terms" className="text-accent-light hover:text-primary transition-colors underline-offset-2 underline" onClick={onClose}>
                     Terms of Service
                   </Link>{' '}
