@@ -73,10 +73,10 @@ Works with Claude Code, Claude Desktop, Cursor, VS Code — anything that speaks
 git clone https://github.com/JaidenSy/Arbiter.git && cd Arbiter
 cp .env.example .env   # set JWT_SECRET_KEY and VAULT_ENCRYPTION_KEY at minimum
 docker compose up -d
-# API on :8000  ·  frontend on :5173
+# API on :8000  ·  frontend on :3000
 ```
 
-Generate a vault key: `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+Generate a vault key (64 hex chars = 256-bit AES): `python -c "import secrets; print(secrets.token_hex(32))"`
 
 Full env var reference in `.env.example`.
 
