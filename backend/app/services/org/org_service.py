@@ -25,6 +25,7 @@ from app.core.config import settings
 from app.db.models.org_membership import OrgMembership
 from app.db.models.organization import Organization
 from app.db.models.user import User
+from app.services.plan.plan_limits import PAID_TIERS
 
 # ── Slug helpers ──────────────────────────────────────────────────────────────
 
@@ -195,7 +196,7 @@ async def user_owns_paid_org(db: AsyncSession, user_id: uuid.UUID) -> bool:
         .where(
             OrgMembership.user_id == user_id,
             OrgMembership.role == "owner",
-            Organization.plan_tier.in_(("pro", "enterprise")),
+            Organization.plan_tier.in_(PAID_TIERS),
         )
     )
     return bool(count)

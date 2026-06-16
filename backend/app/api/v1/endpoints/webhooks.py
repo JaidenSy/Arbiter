@@ -24,6 +24,7 @@ from app.core.dependencies import get_current_user, get_db, require_role
 from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.db.models.webhook import WEBHOOK_EVENTS, Webhook, WebhookDeliveryLog
+from app.services.plan.plan_limits import PAID_TIERS
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -114,7 +115,7 @@ class DeliveryLogResponse(BaseModel):
 
 async def _require_pro(db: AsyncSession, org_id: uuid.UUID) -> None:
     org = await db.get(Organization, org_id)
-    if not org or org.plan_tier not in ("pro", "enterprise"):
+    if not org or org.plan_tier not in PAID_TIERS:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Webhooks require a Pro or Enterprise plan",

@@ -41,6 +41,13 @@ PLAN_LIMITS: dict[str, dict] = {
     },
 }
 
+# Tiers that unlock paid-only features (audit export, analytics, execution
+# traces, webhooks, semantic cache, etc.). Feature gates MUST use the allowlist
+# form ``plan_tier not in PAID_TIERS`` so that any unknown or future tier fails
+# closed (access denied) instead of silently inheriting paid access by virtue of
+# merely not being "free".
+PAID_TIERS: tuple[str, ...] = ("pro", "enterprise")
+
 OVERAGE_GRACE_FACTOR: float = 1.05  # 5% grace on monthly tool_call quota
 
 
