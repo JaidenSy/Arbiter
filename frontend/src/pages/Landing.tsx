@@ -5,7 +5,7 @@
  * No sidebar. Standalone dark layout.
  */
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
 import AuthModal, { type AuthMode } from '../components/AuthModal'
@@ -20,126 +20,60 @@ import { RevealGroup } from '../components/RevealGroup'
 import PricingTiers from '../components/PricingTiers'
 import { SUPPORT_EMAIL } from '../components/pricingData'
 
-// ── Typewriter Terminal ───────────────────────────────────────────────────────
+// ── Hero demo ─────────────────────────────────────────────────────────────────
 
-interface CodeToken { text: string; color: string }
-type CodeLine = CodeToken[]
+const GITHUB_URL = 'https://github.com/JaidenSy/Arbiter'
 
-const C = {
-  primary:   'var(--color-primary)',
-  secondary: 'var(--color-secondary)',
-  muted:     'var(--color-muted)',
-  accent:    'var(--color-accent-light)',
-  teal:      'var(--color-teal-light)',
-  success:   'var(--color-success)',
-  warning:   'var(--color-warning)',
+function GitHubIcon({ size = 15 }: { size?: number }): React.ReactElement {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.01 0c2.29-1.55 3.3-1.23 3.3-1.23.65 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.8 5.62-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.69.83.58A12 12 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/>
+    </svg>
+  )
 }
 
-const CODE: CodeLine[] = [
-  [
-    { text: '$ ',   color: C.secondary },
-    { text: 'curl', color: C.teal },
-    { text: ' -X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \\', color: C.primary },
-  ],
-  [
-    { text: '  -H ',                                      color: C.accent  },
-    { text: '"Authorization: Bearer nxai_abc123..."',    color: C.success },
-  ],
-  [
-    { text: "  -d '", color: C.accent  },
-    { text: '{"server_name":"filesystem","tool_name":"read_file"}', color: C.success },
-    { text: "'",       color: C.success },
-  ],
-  [],
-  [{ text: '# Response',  color: C.secondary }],
-  [{ text: '{',           color: C.teal      }],
-  [
-    { text: '  "cached": ', color: C.accent  },
-    { text: 'false',        color: C.warning },
-    { text: ',',            color: C.primary },
-  ],
-  [
-    { text: '  "agent_id": ', color: C.accent  },
-    { text: '"agt_xyz789"',   color: C.success },
-    { text: ',',              color: C.primary },
-  ],
-  [
-    { text: '  "result": {', color: C.accent  },
-    { text: '...',           color: C.muted   },
-    { text: '}',             color: C.primary },
-  ],
-  [{ text: '}', color: C.teal }],
-]
-
-function lineLen(line: CodeLine): number {
-  return line.reduce((s, t) => s + t.text.length, 0)
-}
-
-const TOTAL_CHARS = CODE.reduce((s, l) => s + lineLen(l), 0)
-const CHAR_DELAY  = 26
-
-function TypewriterTerminal(): React.ReactElement {
+/**
+ * Above-the-fold proof: a real Claude Code session calling tools through Arbiter.
+ * A permitted call is served from the semantic cache, a denied tool is blocked by
+ * per-agent RBAC at call time, and both land in the audit trail.
+ */
+function HeroDemo(): React.ReactElement {
   const prefersReduced =
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const [chars, setChars] = useState(prefersReduced ? TOTAL_CHARS : 0)
-  const done = chars >= TOTAL_CHARS
-
-  useEffect(() => {
-    if (done) return
-    const delay = chars === 0 ? 700 : CHAR_DELAY
-    const t = setTimeout(() => setChars(n => n + 1), delay)
-    return () => clearTimeout(t)
-  }, [chars, done])
-
-  let consumed = 0
-  const lines = CODE.map((line, li) => {
-    const len     = lineLen(line)
-    const show    = Math.max(0, Math.min(len, chars - consumed))
-    const isActive = done
-      ? li === CODE.length - 1
-      : chars > consumed && chars <= consumed + len && len > 0
-    consumed += len
-
-    let rem = show
-    const spans = line.map((tok, ti) => {
-      if (rem <= 0) return null
-      const visible = tok.text.slice(0, rem)
-      rem -= tok.text.length
-      return <span key={ti} style={{ color: tok.color }}>{visible}</span>
-    })
-
-    return (
-      <div key={li} className="whitespace-pre" style={{ minHeight: '1.25em' }}>
-        {spans}
-        {isActive && (
-          <span className="blink-cursor" style={{ color: 'var(--color-accent-light)' }}>▋</span>
-        )}
-      </div>
-    )
-  })
 
   return (
-    <div
-      className="mt-14 rounded-lg p-5 text-left max-w-xl mx-auto animate-fade-in overflow-hidden"
-      style={{
-        animationDelay: '260ms',
-        background: 'rgba(9,9,11,0.55)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.09)',
-        boxShadow: '0 0 0 1px rgba(61,53,206,0.12) inset',
-      }}
+    <figure
+      className="mt-14 max-w-3xl mx-auto animate-fade-in"
+      style={{ animationDelay: '260ms' }}
     >
-      <div className="flex items-center gap-1.5 mb-4">
-        <span className="w-2.5 h-2.5 rounded-full bg-error/70" />
-        <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
-        <span className="w-2.5 h-2.5 rounded-full bg-success/70" />
+      <div
+        className="rounded-lg overflow-hidden"
+        style={{
+          border: '1px solid rgba(255,255,255,0.09)',
+          boxShadow: '0 0 0 1px rgba(61,53,206,0.12) inset, 0 24px 60px rgba(0,0,0,0.45)',
+        }}
+      >
+        {/* Reduced-motion users get a static poster + manual controls, not autoplay. */}
+        <video
+          src="/demo.mp4"
+          poster="/demo-poster.jpg"
+          width={1100}
+          height={652}
+          autoPlay={!prefersReduced}
+          loop={!prefersReduced}
+          muted
+          playsInline
+          controls={prefersReduced}
+          preload={prefersReduced ? 'none' : 'auto'}
+          aria-label="A Claude Code session calling tools through Arbiter: a permitted call is served from the semantic cache, a denied tool is blocked by per-agent RBAC at call time, and both are written to the audit trail."
+          className="block w-full h-auto"
+        />
       </div>
-      <div className="font-mono text-xs leading-relaxed overflow-x-auto">
-        {lines}
-      </div>
-    </div>
+      <figcaption className="mt-3 text-muted text-xs">
+        Real session — a permitted call is served from cache, a denied tool is blocked at call time, both are written to the audit trail.
+      </figcaption>
+    </figure>
   )
 }
 
@@ -171,6 +105,14 @@ function Navbar({ onSignIn, onGetStarted }: NavbarProps): React.ReactElement {
           >
             Docs
           </Link>
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:inline-flex items-center gap-1.5 text-secondary hover:text-primary px-2 py-1.5 text-sm transition-colors duration-150"
+          >
+            <GitHubIcon /> GitHub
+          </a>
           <button
             onClick={onSignIn}
             className="press text-secondary hover:text-primary border border-border-strong hover:border-border-strong px-4 py-2.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
@@ -252,7 +194,8 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         >
           Shared credentials, no audit trail, agents that can call any tool they want.
           Arbiter fixes all of it: cryptographic agent identity, tool-level permissions,
-          an encrypted secrets vault, and full observability through a single MCP gateway.
+          an encrypted secrets vault, and full observability — through a single gateway
+          that sits in front of your MCP servers (the tool APIs your agents call).
         </p>
 
         {/* CTAs */}
@@ -281,8 +224,35 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
           Free plan includes 2 agents · 5,000 tool calls/mo · No credit card required
         </p>
 
-        {/* Terminal demo — typewriter */}
-        <TypewriterTerminal />
+        {/* Trust strip — open source, self-hosted, source link */}
+        <div
+          className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted animate-fade-in"
+          style={{ animationDelay: '200ms' }}
+        >
+          <span>Apache-2.0</span>
+          <span aria-hidden>·</span>
+          <span>Self-hosted — no agent traffic or secret leaves your environment</span>
+          <span aria-hidden>·</span>
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-secondary hover:text-primary transition-colors"
+          >
+            <GitHubIcon size={13} /> View source
+          </a>
+        </div>
+
+        {/* Live product demo (real session) */}
+        <HeroDemo />
+
+        <p
+          className="mt-4 text-muted text-xs max-w-xl mx-auto animate-fade-in"
+          style={{ animationDelay: '280ms' }}
+        >
+          Secrets stay in an AES-256-GCM vault and are injected at the gateway — they are never
+          returned to the agent. Every call, allowed or denied, is written to the audit trail.
+        </p>
       </div>
     </section>
   )
