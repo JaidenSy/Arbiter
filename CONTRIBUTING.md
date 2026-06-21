@@ -67,7 +67,8 @@ GitHub account and you'll never be asked again.
 ## Reporting security issues
 
 Do **not** open a public issue for security vulnerabilities. Email **jaidensy07@gmail.com** with
-details and we'll coordinate a fix and disclosure. See [SECURITY.md](./SECURITY.md) if present.
+details and we'll coordinate a fix and disclosure. See **[SECURITY.md](./SECURITY.md)** for the
+full policy, scope, and what to expect.
 
 ## Questions
 
