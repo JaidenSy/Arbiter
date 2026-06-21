@@ -1,3 +1,5 @@
+# Copyright 2026 Jaiden Sy
+# SPDX-License-Identifier: Apache-2.0
 """
 Arbiter — One-off task: grandfather paid orgs onto owner accounts.
 
