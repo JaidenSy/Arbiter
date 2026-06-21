@@ -1,5 +1,5 @@
-# Copyright (c) 2026 Jaiden Sy. All rights reserved.
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Jaiden Sy
+# SPDX-License-Identifier: Apache-2.0
 """
 Arbiter — Application configuration.
 
@@ -94,6 +94,15 @@ class Settings(BaseSettings):
     # via env (FREE_OWNED_ORG_LIMIT / PAID_OWNED_ORG_LIMIT) without a deploy.
     free_owned_org_limit: int = 5
     paid_owned_org_limit: int = 50
+
+    # ── Account-level billing (org->account billing migration) ──────────────────
+    # Phase-1 read-path flag. When False (default) the effective plan of an org
+    # is exactly its own ``organizations.plan_tier`` — identical to legacy
+    # behaviour. When True, ``effective_plan`` resolves the org's plan from its
+    # owner accounts (account-owned billing). Flip only after Phase-1 has shipped
+    # and the parity backfill has run. One env flip (ACCOUNT_BILLING_ENABLED),
+    # one-flip rollback.
+    account_billing_enabled: bool = False
 
     # ── OAuth2 Social Login ────────────────────────────────────────────────────
     google_client_id: str = ""
