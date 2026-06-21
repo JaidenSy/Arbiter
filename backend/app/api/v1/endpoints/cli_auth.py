@@ -1,5 +1,5 @@
-# Copyright (c) 2026 Jaiden Sy. All rights reserved.
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Jaiden Sy
+# SPDX-License-Identifier: Apache-2.0
 """
 Arbiter — API endpoints: CLI Device Flow Auth.
 
