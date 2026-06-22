@@ -19,7 +19,7 @@ export interface PageMeta {
 
 export const DEFAULT_META: PageMeta = {
   title:
-    'Arbiter — MCP Gateway for AI Agents | Tool Access Control & Observability',
+    'Arbiter: MCP Gateway for AI Agents | Tool Access Control & Observability',
   description:
     'Arbiter is a developer-first MCP gateway for AI agents. Control which tools your agents can call, store secrets, cache responses, and observe every session — all in one place.',
 }
@@ -54,6 +54,45 @@ export const PAGE_META: Record<string, PageMeta> = {
   '/terms': {
     title: 'Terms of Service — Arbiter',
     description: 'The terms that govern your use of Arbiter.',
+  },
+
+  // Authenticated app shell — noindex (see NOINDEX_PATHS), but still titled so
+  // the browser tab, history entries, and screen readers can tell pages apart.
+  '/agents': {
+    title: 'Agents · Arbiter',
+    description: 'Register and manage scoped agent identities and their API keys.',
+  },
+  '/mcp-servers': {
+    title: 'MCP Servers · Arbiter',
+    description: 'Connect and manage the MCP servers Arbiter proxies tool calls to.',
+  },
+  '/sessions': {
+    title: 'Sessions · Arbiter',
+    description: 'Audit log of agent sessions and the tool calls they make.',
+  },
+  '/permissions': {
+    title: 'Permissions · Arbiter',
+    description: 'Grant and revoke per-agent, per-tool access.',
+  },
+  '/vault': {
+    title: 'Vault · Arbiter',
+    description: 'Encrypted per-agent secrets (AES-256-GCM) injected into tool calls.',
+  },
+  '/settings': {
+    title: 'Settings · Arbiter',
+    description: 'Gateway URL, API keys, and workspace settings.',
+  },
+  '/account': {
+    title: 'Account · Arbiter',
+    description: 'Manage your profile, security, and account settings.',
+  },
+  '/organization': {
+    title: 'Organization · Arbiter',
+    description: 'Manage members and roles in your organization.',
+  },
+  '/webhooks': {
+    title: 'Webhooks · Arbiter',
+    description: 'Configure webhook endpoints for Arbiter events.',
   },
 }
 
