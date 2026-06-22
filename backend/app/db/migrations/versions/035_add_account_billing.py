@@ -4,7 +4,7 @@ Adds nullable account-owned billing fields to ``users`` so the paid tier can
 live on the account instead of (only) the organization. Purely additive:
 
     * no column is dropped or renamed
-    * ``plan_tier`` is NULLABLE — NULL means "this account has no account-level
+    * ``plan_tier`` is NULLABLE: NULL means "this account has no account-level
       plan; fall back to the org's plan_tier" (the dual-read rule in
       ``effective_plan``). This guarantees identical behaviour on day one.
 

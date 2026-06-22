@@ -1,16 +1,16 @@
 """
-Arbiter — API endpoints: Vault.
+Arbiter API endpoints: Vault.
 
 Manages encrypted secrets stored in the vault.  Raw secret values are
-accepted on write and returned on read — the gateway handles encryption
+accepted on write and returned on read: the gateway handles encryption
 transparently.  Only admins should have access to these endpoints in
 production (enforce via RBAC or network policy).
 
 Routes:
-    POST   /vault/secrets          — store (or rotate) a secret
-    GET    /vault/secrets          — list secret names (no values)
-    GET    /vault/secrets/{id}     — retrieve and decrypt a secret
-    DELETE /vault/secrets/{id}     — permanently delete a secret
+    POST   /vault/secrets         : store (or rotate) a secret
+    GET    /vault/secrets         : list secret names (no values)
+    GET    /vault/secrets/{id}    : retrieve and decrypt a secret
+    DELETE /vault/secrets/{id}    : permanently delete a secret
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ class SecretCreate(BaseModel):
         ...,
         min_length=1,
         max_length=10000,
-        description="Raw secret value — will be encrypted at rest",
+        description="Raw secret value: will be encrypted at rest",
     )
     agent_id: uuid.UUID | None = Field(None, description="Scope the secret to a specific agent")
 
@@ -77,19 +77,19 @@ class SecretCreate(BaseModel):
 
 
 class SecretResponse(BaseModel):
-    """Response when listing secrets — never exposes the value."""
+    """Response when listing secrets: never exposes the value."""
 
     id: uuid.UUID
     name: str
     agent_id: uuid.UUID | None
     created_at: datetime
-    updated_at: datetime  # #254 — tracks last rotation timestamp
+    updated_at: datetime  # #254: tracks last rotation timestamp
 
     model_config = {"from_attributes": True}
 
 
 class SecretValueResponse(SecretResponse):
-    """Response for GET /vault/secrets/{id} — includes decrypted value."""
+    """Response for GET /vault/secrets/{id}: includes decrypted value."""
 
     value: str = Field(..., description="Decrypted secret value")
 
@@ -254,7 +254,7 @@ async def get_secret(
     )
     await db.commit()
 
-    # SECURITY: value is never logged — only passed to the response serialiser.
+    # SECURITY: value is never logged: only passed to the response serialiser.
     return SecretValueResponse(
         id=secret.id,
         name=secret.name,

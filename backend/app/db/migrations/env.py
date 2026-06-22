@@ -26,7 +26,7 @@ import app.db.models.tool_permission_event  # noqa: F401
 import app.db.models.vault  # noqa: F401
 
 # ── Import application Base and all models so autogenerate sees every table ───
-from app.db.base import Base  # noqa: F401 — registers Base.metadata
+from app.db.base import Base  # noqa: F401  (registers Base.metadata)
 
 # ── Alembic Config object ─────────────────────────────────────────────────────
 config = context.config

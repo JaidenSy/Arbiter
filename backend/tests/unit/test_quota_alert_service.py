@@ -2,7 +2,7 @@
 Unit tests for app.services.quota.quota_alert_service.check_and_send_quota_alerts
 
 Coverage:
-    - Enterprise orgs (None limit) are skipped — no email, no DB flag update
+    - Enterprise orgs (None limit) are skipped: no email, no DB flag update
     - Usage < 80% → no emails sent
     - Usage >= 80% and < 100% → 80% email sent, flag set
     - Usage >= 100% → 100% email sent, flag set
@@ -197,7 +197,7 @@ class TestQuotaAlertService:
                 raise RuntimeError("SMTP timeout")
 
         with patch("app.services.quota.quota_alert_service.send_email", side_effect=flaky_send):
-            # Must not raise — email failure is swallowed with a warning
+            # Must not raise: email failure is swallowed with a warning
             await check_and_send_quota_alerts(db)
 
         # Second org's email was still attempted

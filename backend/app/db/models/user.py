@@ -1,15 +1,15 @@
 """
-Arbiter — SQLAlchemy ORM model: User.
+Arbiter SQLAlchemy ORM model: User.
 
 A User represents a human operator who logs in to the dashboard with an
 email/password and receives a JWT.  Users are NOT the same as Agents;
 agents are programmatic API-key callers, users are human operators.
 
 Role semantics:
-    owner  — full org control: delete org, manage billing, promote/demote admins.
+    owner : full org control: delete org, manage billing, promote/demote admins.
              Minimum one owner per org (enforced at app layer).
-    admin  — create/delete agents, MCP servers, vault secrets, manage members.
-    member — read-only dashboard access; cannot mutate resources.
+    admin : create/delete agents, MCP servers, vault secrets, manage members.
+    member: read-only dashboard access; cannot mutate resources.
 """
 
 from __future__ import annotations

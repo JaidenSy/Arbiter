@@ -1,13 +1,13 @@
 """
-Arbiter — API endpoints: Stats.
+Arbiter API endpoints: Stats.
 
 Dashboard statistics endpoint returning aggregated counts and metrics.
 
 Routes:
-    GET    /stats              — return agents_count, servers_count, tool_calls_today,
+    GET    /stats             : return agents_count, servers_count, tool_calls_today,
                                  cache_hit_rate_today, latency_p50/p95/p99, slowest_tools
-    GET    /stats/usage/summary — monthly tool call usage + plan limit
-    GET    /stats/history      — historical time-series bucketed by hour (24h) or day (7d)
+    GET    /stats/usage/summary: monthly tool call usage + plan limit
+    GET    /stats/history     : historical time-series bucketed by hour (24h) or day (7d)
 
 All endpoints accept optional ?agent_id=<uuid> and ?server_name=<str> filters.
 """
@@ -64,7 +64,7 @@ class StatsResponse(BaseModel):
 class HistoryBucket(BaseModel):
     """A single time bucket of aggregated activity metrics."""
 
-    timestamp: str  # ISO format — hour start for 24h, day start for 7d
+    timestamp: str  # ISO format: hour start for 24h, day start for 7d
     label: str  # "14:00" for 24h, "Mon" / "Tue" etc. for 7d
     tool_calls: int
     cache_hits: int

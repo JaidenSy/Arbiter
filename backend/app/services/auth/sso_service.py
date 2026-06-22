@@ -1,5 +1,5 @@
 """
-Arbiter — SSO service.
+Arbiter SSO service.
 
 Handles the user-provisioning side of OAuth2 social login:
 
@@ -50,7 +50,7 @@ async def get_or_create_user(
 
     Lookup order:
         1. Find existing SocialAccount by (provider, provider_user_id).
-           If found: return the linked user — no writes.
+           If found: return the linked user: no writes.
         2. Find existing User by email (email-linking for accounts that
            registered via email/password first).
            If found: create a new SocialAccount linked to that user.
@@ -92,7 +92,7 @@ async def get_or_create_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Account is deactivated",
             )
-        # OAuth provider has verified this email — mark the user as verified.
+        # OAuth provider has verified this email: mark the user as verified.
         if not existing_user.is_verified:
             existing_user.is_verified = True
         sa = SocialAccount(
@@ -115,10 +115,10 @@ async def get_or_create_user(
     user = User(
         org_id=org.id,
         email=email,
-        hashed_password="",  # SSO-only account — no password login
+        hashed_password="",  # SSO-only account: no password login
         role="owner",
         is_active=True,
-        is_verified=True,  # OAuth provider verified the email — no additional step needed
+        is_verified=True,  # OAuth provider verified the email: no additional step needed
     )
     db.add(user)
     await db.flush()
@@ -153,7 +153,7 @@ async def link_provider(
     Link an OAuth provider to an existing user identified by a Redis nonce.
 
     The nonce was stored by POST /auth/sso/link/initiate and proves the link
-    was initiated by an authenticated user. Single-use — deleted on consumption.
+    was initiated by an authenticated user. Single-use: deleted on consumption.
 
     Raises:
         HTTPException 400: Invalid/expired nonce, provider already linked elsewhere,
@@ -166,7 +166,7 @@ async def link_provider(
     if user_id_bytes is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Link session expired — please try again",
+            detail="Link session expired. Please try again",
         )
     await redis.delete(nonce_key)
 
@@ -192,7 +192,7 @@ async def link_provider(
             detail=f"This {provider} account is already linked to a different user",
         )
     if existing_sa is not None:
-        # Already linked to this user — nothing to do
+        # Already linked to this user: nothing to do
         return
 
     sa = SocialAccount(

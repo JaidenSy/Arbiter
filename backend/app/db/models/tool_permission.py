@@ -1,5 +1,5 @@
 """
-Arbiter — SQLAlchemy ORM model: ToolPermission.
+Arbiter SQLAlchemy ORM model: ToolPermission.
 
 Join table that enforces which agent may call which tool on which MCP server.
 The wildcard tool_name ``"*"`` grants access to all tools on the server.
@@ -29,7 +29,7 @@ class ToolPermission(Base):
         tool_name:           Exact tool name or ``"*"`` wildcard.
         granted_at:          Immutable insert timestamp.
         granted_by:          Free-text approver identifier (legacy field).
-        granted_by_user_id:  FK → users.id — human user who granted permission.
+        granted_by_user_id:  FK → users.id: human user who granted permission.
     """
 
     __tablename__ = "tool_permissions"

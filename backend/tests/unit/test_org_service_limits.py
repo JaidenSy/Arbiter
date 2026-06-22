@@ -1,9 +1,9 @@
 """
 Unit tests for org_service ownership-cap helpers (the abuse floor):
 
-    count_owned_orgs        — coalesces NULL count to 0
-    user_owns_paid_org      — truthiness from the COUNT(*) scalar
-    owned_org_limit_for_user — tiers free vs paid ceiling
+    count_owned_orgs       : coalesces NULL count to 0
+    user_owns_paid_org     : truthiness from the COUNT(*) scalar
+    owned_org_limit_for_user: tiers free vs paid ceiling
 
 These exercise the query helpers directly with a mocked AsyncSession so the
 free/paid tiering logic is covered without a live DB.

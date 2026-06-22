@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — Security utilities.
+Arbiter Security utilities.
 
 Provides deterministic hashing of API keys for storage and constant-time
 comparison for verification.  Raw API keys are NEVER stored in the database;
@@ -46,7 +46,7 @@ def generate_api_key(prefix: str = "nxai") -> str:
         prefix: Short string prepended to the key (default ``nxai``).
 
     Returns:
-        str: The raw API key — shown to the user once, never stored.
+        str: The raw API key: shown to the user once, never stored.
     """
     return f"{prefix}_{secrets.token_hex(32)}"
 
@@ -136,13 +136,13 @@ def create_access_token(
     Issue a signed HS256 access token.
 
     Payload claims:
-        sub     — user UUID (string)
-        org_id  — org UUID (string)
-        role    — RBAC role within the org
-        type    — "access" (distinguishes from future service tokens)
-        jti     — unique token ID enabling Redis-based revocation
-        iat     — issued-at (UTC)
-        exp     — expiry (UTC)
+        sub    : user UUID (string)
+        org_id : org UUID (string)
+        role   : RBAC role within the org
+        type   : "access" (distinguishes from future service tokens)
+        jti    : unique token ID enabling Redis-based revocation
+        iat    : issued-at (UTC)
+        exp    : expiry (UTC)
 
     Args:
         user_id: UUID of the authenticated user.
@@ -252,7 +252,7 @@ def generate_refresh_token() -> str:
     Format: ``rt_<64-char-hex>``
 
     Returns:
-        str: Raw refresh token — shown to the caller, never stored directly.
+        str: Raw refresh token: shown to the caller, never stored directly.
     """
     return f"rt_{secrets.token_hex(32)}"
 

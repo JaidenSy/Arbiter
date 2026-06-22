@@ -1,5 +1,5 @@
 """
-Arbiter — SQLAlchemy ORM model: ToolPermissionEvent.
+Arbiter SQLAlchemy ORM model: ToolPermissionEvent.
 
 Immutable audit log of every grant, revoke, and update action on tool permissions.
 """
@@ -22,7 +22,7 @@ class ToolPermissionEvent(Base):
     Immutable record of a permission lifecycle action.
 
     action values: 'granted', 'revoked', 'updated'
-    changes: present on 'updated' — {"rate_limit_per_minute": [old, new], ...}
+    changes: present on 'updated': {"rate_limit_per_minute": [old, new], ...}
     """
 
     __tablename__ = "tool_permission_events"

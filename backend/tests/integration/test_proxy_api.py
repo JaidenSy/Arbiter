@@ -63,7 +63,7 @@ class TestToolCallBlocked:
 
         from fastapi import HTTPException, status
 
-        # Patch as an unbound method — 'self' is the first arg when called on instance
+        # Patch as an unbound method: 'self' is the first arg when called on instance
         async def mock_forward(self, request, agent):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

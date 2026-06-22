@@ -1,5 +1,5 @@
 """
-Arbiter — SQLAlchemy ORM model: MCPServer.
+Arbiter SQLAlchemy ORM model: MCPServer.
 
 An MCPServer is a registered Model Context Protocol server that the gateway
 can forward tool calls to.  Access is controlled via the tool_permissions

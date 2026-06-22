@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — RBACService.
+Arbiter RBACService.
 
 Role-Based Access Control for tool call permissions.
 
@@ -16,7 +16,7 @@ Permission model:
     but both grant access (OR semantics).
 
 Design decisions:
-    - No role hierarchy in v1 — permissions are flat per (agent, server, tool).
+    - No role hierarchy in v1: permissions are flat per (agent, server, tool).
     - Wildcard support keeps the admin UX simple for development agents.
     - All permission checks hit the DB directly; Redis caching can be layered
       on top in Phase 2 if permission-check latency becomes a bottleneck.
@@ -129,7 +129,7 @@ class RBACService:
         """
         Grant an agent permission to call a tool on an MCP server.
 
-        Idempotent — does nothing if the permission already exists (ON CONFLICT
+        Idempotent: does nothing if the permission already exists (ON CONFLICT
         DO NOTHING via PostgreSQL upsert).
 
         Args:
@@ -275,7 +275,7 @@ class RBACService:
         """
         Return all tools from the upstream server regardless of RBAC permissions.
 
-        Advertising every tool — including ones the agent cannot call — lets the
+        Advertising every tool, including ones the agent cannot call, lets the
         agent attempt the call and receive a clean denial at invocation time
         (HTTP 403 with an explicit message). This makes RBAC enforcement visible
         in traces and audit logs rather than silently hiding tools.

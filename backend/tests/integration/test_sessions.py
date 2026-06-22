@@ -2,10 +2,10 @@
 Integration tests for Session endpoints.
 
 Coverage:
-    GET /api/v1/sessions              — list ordered by started_at DESC
-    GET /api/v1/sessions?agent_id=X  — filters by agent
-    GET /api/v1/sessions/{id}         — includes events array
-    GET /api/v1/sessions/{id}/events  — events ordered by occurred_at ASC
+    GET /api/v1/sessions             : list ordered by started_at DESC
+    GET /api/v1/sessions?agent_id=X : filters by agent
+    GET /api/v1/sessions/{id}        : includes events array
+    GET /api/v1/sessions/{id}/events : events ordered by occurred_at ASC
 
     404 cases:
     - GET /sessions/{non_existent} → 404
@@ -39,7 +39,7 @@ def _make_session_event(
     e.id = event_id or uuid.uuid4()
     e.session_id = session_id or uuid.uuid4()
     e.mcp_server_id = uuid.uuid4()
-    # mcp_server_name is not an ORM column — explicitly set to None so that
+    # mcp_server_name is not an ORM column: explicitly set to None so that
     # Pydantic's from_attributes mode does not pick up a MagicMock sentinel.
     e.mcp_server_name = None
     e.tool_name = tool_name

@@ -27,7 +27,7 @@ class TestUnauthorizedHandler:
         - Status code is 401
         - Response JSON has 'detail' key (custom format)
         - Response is NOT the FastAPI default {"detail": "Not authenticated"}
-          (our handler returns "Unauthorized — valid Bearer API key required")
+          (our handler returns "Unauthorized: valid Bearer API key required")
         """
         resp = await test_client.get("/api/v1/agents")
 
@@ -103,7 +103,7 @@ class TestValidationErrorHandler:
         app.dependency_overrides[get_current_user] = override_get_current_user
 
         try:
-            # POST without 'name' field — required by AgentCreate schema
+            # POST without 'name' field: required by AgentCreate schema
             resp = await test_client.post(
                 "/api/v1/agents",
                 json={},  # missing required 'name'

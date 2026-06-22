@@ -39,7 +39,7 @@ class TestGenerateApiKey:
     def test_uniqueness(self):
         """Each call should produce a different key (cryptographically random)."""
         keys = {generate_api_key() for _ in range(20)}
-        assert len(keys) == 20, "Duplicate keys generated — RNG is not random"
+        assert len(keys) == 20, "Duplicate keys generated: RNG is not random"
 
     def test_custom_prefix(self):
         key = generate_api_key(prefix="test")
@@ -124,7 +124,7 @@ class TestVerifyApiKey:
         median_nomatch = statistics.median(nomatch_times)
         diff_ms = abs(median_match - median_nomatch) * 1000
 
-        # Allow up to 0.5 ms difference — both paths do the same SHA-256 + compare_digest
+        # Allow up to 0.5 ms difference: both paths do the same SHA-256 + compare_digest
         assert diff_ms < 0.5, (
             f"Timing difference too large: {diff_ms:.3f} ms "
             f"(match={median_match*1000:.3f}ms, nomatch={median_nomatch*1000:.3f}ms). "

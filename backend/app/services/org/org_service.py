@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — OrgService: organization + membership lifecycle helpers.
+Arbiter OrgService: organization + membership lifecycle helpers.
 
 Memberships (org_memberships) are the source of truth for which orgs a user
 belongs to and their role in each.  ``users.org_id`` / ``users.role`` are a
@@ -9,7 +9,7 @@ denormalized projection of the user's *active* membership; every mutation
 path in this module keeps the projection in sync.
 
 Billing principle: plans and subscriptions attach to organizations, never to
-memberships — joining or leaving an org has no billing effect.
+memberships: joining or leaving an org has no billing effect.
 """
 
 from __future__ import annotations
@@ -136,7 +136,7 @@ async def count_other_owners(
     Count active owners of ``org_id`` other than ``excluding_user_id``.
 
     Zero means ``excluding_user_id`` is the sole owner (or the org has no
-    owners at all) — the org cannot survive their departure unchanged.
+    owners at all): the org cannot survive their departure unchanged.
     """
     return (
         await db.scalar(
@@ -222,7 +222,7 @@ async def repoint_active_org(db: AsyncSession, user: User) -> OrgMembership:
     Give ``user`` a valid active org after losing their current one.
 
     Picks their most recently joined remaining membership; if none remain,
-    creates a fresh personal free org (so an account is never org-less —
+    creates a fresh personal free org (so an account is never org-less:
     the pre-membership model permanently bricked removed members).
 
     Flushes; does not commit.

@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter Backend — Application entry point.
+Arbiter Backend: Application entry point.
 
 Initialises the FastAPI app, registers all API routers, configures CORS,
 and manages application lifespan (database pool + Redis connection setup
@@ -55,7 +55,7 @@ from app.db.models.cache import CacheEntry
 from app.db.models.cli_device_code import CliDeviceCode
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.session import Session, SessionEvent
-from app.db.models.vault_audit_event import VaultAuditEvent  # noqa: F401 — registers ORM model
+from app.db.models.vault_audit_event import VaultAuditEvent  # noqa: F401  (registers ORM model)
 from app.services.plan.plan_limits import (
     PlanLimitError,
     QuotaExceededError,
@@ -148,7 +148,7 @@ async def _eviction_loop() -> None:
                     delete(RefreshToken).where(RefreshToken.expires_at <= now)
                 )
 
-                # Purge expired CLI device codes — consumed and rejected codes
+                # Purge expired CLI device codes: consumed and rejected codes
                 # older than their TTL have no further utility.
                 await db.execute(delete(CliDeviceCode).where(CliDeviceCode.expires_at <= now))
 
@@ -166,7 +166,7 @@ async def _eviction_loop() -> None:
                     .values(ended_at=now)
                 )
 
-                # Audit log retention — delete sessions (+ events via DB cascade)
+                # Audit log retention: delete sessions (+ events via DB cascade)
                 # older than AUDIT_LOG_RETENTION_DAYS. Skip if set to 0.
                 retention_deleted = 0
                 if settings.audit_log_retention_days > 0:
@@ -222,7 +222,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Warn if public registration is open in production.
     if settings.is_production and settings.allow_public_registration:
         logger.warning(
-            "SECURITY: ALLOW_PUBLIC_REGISTRATION=true in production — "
+            "SECURITY: ALLOW_PUBLIC_REGISTRATION=true in production: "
             "set to false and provide INVITE_CODE to restrict sign-ups."
         )
 
@@ -286,7 +286,7 @@ def create_app() -> FastAPI:
             "semantic caching, RBAC, and audit logging."
         ),
         version="0.1.0",
-        # Disable Swagger/ReDoc/OpenAPI schema in production — a security
+        # Disable Swagger/ReDoc/OpenAPI schema in production: a security
         # gateway with its full API surface publicly browsable is a trust killer.
         docs_url=None if settings.is_production else "/docs",
         redoc_url=None if settings.is_production else "/redoc",
@@ -324,7 +324,7 @@ def create_app() -> FastAPI:
         if exc.status_code == status.HTTP_401_UNAUTHORIZED:
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"detail": "Unauthorized — valid Bearer API key required"},
+                content={"detail": "Unauthorized: valid Bearer API key required"},
                 headers={"WWW-Authenticate": "Bearer"},
             )
         if exc.status_code == status.HTTP_403_FORBIDDEN:
@@ -425,19 +425,19 @@ def create_app() -> FastAPI:
     app.include_router(org.router, prefix=settings.api_prefix)
     app.include_router(org._accept_router, prefix=settings.api_prefix)
     app.include_router(webhooks.router, prefix=settings.api_prefix)
-    # Native MCP endpoint — mounted at the app root (/mcp), not under /api/v1,
+    # Native MCP endpoint: mounted at the app root (/mcp), not under /api/v1,
     # so MCP clients connect to the URL advertised on the landing page.
     app.include_router(mcp.router)
 
     # ── Health checks ─────────────────────────────────────────────────────────
     @app.get("/health", tags=["meta"])
     async def health() -> dict[str, str]:
-        """Liveness probe — returns 200 when the process is up."""
+        """Liveness probe: returns 200 when the process is up."""
         return {"status": "ok"}
 
     @app.get("/health/db", tags=["meta"])
     async def health_db(request: Request) -> dict[str, str]:
-        """Readiness probe — verifies database connectivity.
+        """Readiness probe: verifies database connectivity.
 
         Rate-limited to 10 requests/minute per IP to prevent DB connection
         pool exhaustion from unauthenticated external hammering.
@@ -458,7 +458,7 @@ def create_app() -> FastAPI:
         except HTTPException:
             raise
         except Exception:
-            pass  # Redis unavailable — don't block the health check itself
+            pass  # Redis unavailable: don't block the health check itself
 
         try:
             async with async_session_factory() as session:
@@ -472,7 +472,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health/cache", tags=["meta"])
     async def health_cache(request: Request) -> dict[str, str]:
-        """Readiness probe — verifies Redis connectivity.
+        """Readiness probe: verifies Redis connectivity.
 
         Rate-limited to 10 requests/minute per IP to prevent Redis connection
         exhaustion from unauthenticated external hammering.

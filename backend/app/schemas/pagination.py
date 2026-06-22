@@ -1,4 +1,4 @@
-"""Arbiter — Generic paginated response envelope."""
+"""Arbiter Generic paginated response envelope."""
 
 from __future__ import annotations
 

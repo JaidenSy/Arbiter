@@ -170,7 +170,7 @@ class TestCheckPermission:
         stmt = captured_stmts[0]
         stmt_str = str(stmt.compile(compile_kwargs={"literal_binds": False}))
         assert "org_id" in stmt_str, (
-            "org_id filter missing from check_permission query — "
+            "org_id filter missing from check_permission query: "
             "orphaned permission rows could grant unintended access"
         )
 
@@ -222,7 +222,7 @@ class TestGetAllowedTools:
 class TestFilterToolsList:
     @pytest.mark.asyncio
     async def test_returns_all_tools_regardless_of_permissions(self):
-        """filter_tools_list returns every tool — RBAC is enforced at call time, not manifest time."""
+        """filter_tools_list returns every tool: RBAC is enforced at call time, not manifest time."""
         from app.services.rbac.rbac_service import RBACService
 
         tools = [

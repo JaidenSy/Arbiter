@@ -1,5 +1,5 @@
 """
-Arbiter — API endpoints: Auth.
+Arbiter API endpoints: Auth.
 
 Routes:
     POST   /auth/register           → 201  issue tokens for new org + owner
@@ -122,7 +122,7 @@ async def register(
                 detail="Registration requires a valid invite code",
             )
 
-    # Org creation rate limit — max 3 new orgs per IP per day to prevent
+    # Org creation rate limit: max 3 new orgs per IP per day to prevent
     # free-tier reset abuse (register new email → new org → reset quota).
     if redis is not None:
         client_ip = get_client_ip(request)
@@ -167,7 +167,7 @@ async def login(
     redis=Depends(get_redis),
 ) -> TokenResponse:
     if redis is not None:
-        # Per-email rate limit — 10 attempts per 15 minutes
+        # Per-email rate limit: 10 attempts per 15 minutes
         rate_key = f"login_attempts:{body.email}"
         attempts = await redis.incr(rate_key)
         if attempts == 1:
@@ -178,7 +178,7 @@ async def login(
                 detail="Too many login attempts. Try again in 15 minutes.",
             )
 
-        # Per-IP rate limit — 20 attempts per 10 minutes (credential stuffing defence)
+        # Per-IP rate limit: 20 attempts per 10 minutes (credential stuffing defence)
         client_ip = get_client_ip(request)
         ip_key = f"login_ip:{client_ip}"
         ip_attempts = await redis.incr(ip_key)
@@ -304,7 +304,7 @@ async def update_me(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="That email is already in use",
             )
-        # Don't update email yet — send a confirmation link to the new address
+        # Don't update email yet: send a confirmation link to the new address
         token = _token_serializer.dumps(
             {"uid": str(current_user.id), "email": new_email},
             salt="email-change",
@@ -337,12 +337,12 @@ async def change_password(
     if not current_user.hashed_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This account uses SSO — password change is not available",
+            detail="This account uses SSO. Password change is not available",
         )
 
     current_ok = _sec.verify_password(body.current_password, current_user.hashed_password)
     if not current_ok:
-        # Legacy hash (no SHA-256 pre-hash) — accept and let the re-hash below migrate it.
+        # Legacy hash (no SHA-256 pre-hash): accept and let the re-hash below migrate it.
         current_ok = _sec.verify_password_legacy(
             body.current_password, current_user.hashed_password
         )
@@ -379,7 +379,7 @@ async def change_password(
 @router.delete(
     "/me",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="GDPR-compliant account deletion — anonymize PII and hard-delete related data",
+    summary="GDPR-compliant account deletion: anonymize PII and hard-delete related data",
 )
 async def delete_me(
     authorization: str | None = Header(default=None),
@@ -413,8 +413,8 @@ async def delete_me(
 
     # ── Step 0: Classify every org the user belongs to ────────────────────────
     # An org is deleted with the account only when this user is an owner and
-    # no other active owner remains.  Orgs where the user is a member/admin —
-    # or where other owners exist — survive untouched, including their Stripe
+    # no other active owner remains.  Orgs where the user is a member/admin,
+    # or where other owners exist, survive untouched, including their Stripe
     # subscription (plans attach to orgs, never to people).
     memberships = await org_service.list_memberships(db, user_id)
     doomed_orgs: list[Organization] = []
@@ -432,7 +432,7 @@ async def delete_me(
                 continue
         surviving_org_ids.append(membership.org_id)
 
-    # Capture subscription state BEFORE cancellation clears it — the GDPR
+    # Capture subscription state BEFORE cancellation clears it: the GDPR
     # audit log must record whether a paid plan existed at deletion time.
     doomed_had_sub: dict[_uuid.UUID, bool] = {
         org.id: bool(org.stripe_subscription_id) for org in doomed_orgs
@@ -450,7 +450,7 @@ async def delete_me(
                 org.stripe_subscription_id = None
                 org.plan_tier = "free"
             except stripe.error.InvalidRequestError:
-                # Already cancelled or not found — clear the stale ID and continue.
+                # Already cancelled or not found: clear the stale ID and continue.
                 org.stripe_subscription_id = None
                 org.plan_tier = "free"
             except stripe.error.StripeError as exc:
@@ -571,7 +571,7 @@ async def resend_verification(
             detail="Email service is not configured. Contact support.",
         )
 
-    # Rate limit: max 3 resend attempts per IP per 10 minutes — prevents
+    # Rate limit: max 3 resend attempts per IP per 10 minutes: prevents
     # authenticated-but-unverified users from spamming the resend button.
     if redis is not None:
         client_ip = get_client_ip(request)
@@ -723,7 +723,7 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ) -> Response:
-    # Rate limit: max 3 requests per IP per 10 minutes — prevents email spam
+    # Rate limit: max 3 requests per IP per 10 minutes: prevents email spam
     # abuse that costs money and risks getting the sending domain blacklisted.
     if redis is not None:
         client_ip = get_client_ip(request)
@@ -741,7 +741,7 @@ async def forgot_password(
         select(User).where(User.email == body.email, User.is_active.is_(True))
     )
     user = result.scalar_one_or_none()
-    # Always return 204 — never reveal whether the email exists
+    # Always return 204: never reveal whether the email exists
     if user is not None:
         token = _token_serializer.dumps(str(user.id), salt="pwd-reset")
         reset_url = f"{settings.frontend_url}/reset-password?token={token}"
@@ -775,7 +775,7 @@ async def reset_password(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.hashed_password = _sec.hash_password(body.new_password)
 
-    # Revoke all refresh tokens — the old password is no longer valid so all
+    # Revoke all refresh tokens: the old password is no longer valid so all
     # existing sessions must be terminated.
     await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
 

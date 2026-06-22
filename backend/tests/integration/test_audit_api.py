@@ -238,7 +238,7 @@ class TestAuditExportFormatValidation:
 
     @pytest.mark.asyncio
     async def test_json_format_returns_ndjson(self):
-        """format=json → application/json NDJSON — one JSON object per line."""
+        """format=json → application/json NDJSON: one JSON object per line."""
         import json
 
         from app.core.dependencies import get_current_user, get_db
@@ -392,5 +392,5 @@ class TestAuditExportDateValidation:
         finally:
             app.dependency_overrides.clear()
 
-        # 90 days exactly — should succeed (2026-05-31 - 2026-03-02 = 90 days)
+        # 90 days exactly: should succeed (2026-05-31 - 2026-03-02 = 90 days)
         assert resp.status_code == 200

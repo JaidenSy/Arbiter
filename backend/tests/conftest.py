@@ -1,5 +1,5 @@
 """
-Arbiter — pytest fixtures (conftest.py).
+Arbiter pytest fixtures (conftest.py).
 
 Shared fixtures available to all test modules.  Provides:
     - test_client:  Async HTTPX client wired to the FastAPI app with mocked deps
@@ -26,7 +26,7 @@ import pytest_asyncio
 
 # ── Patch required env vars before any app import ─────────────────────────────
 # Settings are validated at import time, so we must set env vars first.
-_TEST_VAULT_KEY = "b" * 64  # 64 hex chars — valid for pydantic validator
+_TEST_VAULT_KEY = "b" * 64  # 64 hex chars: valid for pydantic validator
 os.environ.setdefault("APP_SECRET_KEY", "arbiter-test-secret-key-12345678")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/arbiter_test")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/15")
@@ -153,7 +153,7 @@ async def authed_client(fake_redis) -> AsyncGenerator:
     Async HTTPX client with a valid mock agent injected via dependency override.
 
     The get_current_agent dependency is replaced with one that always returns
-    a mock agent — no real DB lookup occurs.
+    a mock agent: no real DB lookup occurs.
 
     Yields:
         tuple[AsyncClient, str, MagicMock]: (client, raw_api_key, mock_agent)
