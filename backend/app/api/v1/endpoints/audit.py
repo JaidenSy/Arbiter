@@ -13,7 +13,7 @@ from __future__ import annotations
 import csv
 import io
 import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user, get_db
 from app.db.models.organization import Organization
 from app.db.models.user import User
+from app.services.plan.plan_limits import PAID_TIERS
 
 router = APIRouter(prefix="/audit", tags=["audit"])
 
@@ -58,8 +59,16 @@ async def _iter_csv(db: AsyncSession, org_id, from_dt: datetime, to_dt: datetime
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(
-        ["occurred_at", "agent_name", "mcp_server_name", "tool_name",
-         "cache_hit", "duration_ms", "status", "error"]
+        [
+            "occurred_at",
+            "agent_name",
+            "mcp_server_name",
+            "tool_name",
+            "cache_hit",
+            "duration_ms",
+            "status",
+            "error",
+        ]
     )
     yield buf.getvalue()
 
@@ -71,16 +80,18 @@ async def _iter_csv(db: AsyncSession, org_id, from_dt: datetime, to_dt: datetime
         buf = io.StringIO()
         writer = csv.writer(buf)
         for row in partition:
-            writer.writerow([
-                row.occurred_at.isoformat(),
-                row.agent_name,
-                row.mcp_server_name or "",
-                row.tool_name,
-                row.cache_hit,
-                row.duration_ms,
-                _status(row.error),
-                row.error or "",
-            ])
+            writer.writerow(
+                [
+                    row.occurred_at.isoformat(),
+                    row.agent_name,
+                    row.mcp_server_name or "",
+                    row.tool_name,
+                    row.cache_hit,
+                    row.duration_ms,
+                    _status(row.error),
+                    row.error or "",
+                ]
+            )
         yield buf.getvalue()
 
 
@@ -126,7 +137,7 @@ async def export_audit(
     # ── Plan gate ─────────────────────────────────────────────────────────────
     org = await db.get(Organization, current_user.org_id)
     plan_tier = org.plan_tier if org else "free"
-    if plan_tier == "free":
+    if plan_tier not in PAID_TIERS:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Upgrade to Pro to export audit logs",
@@ -152,8 +163,8 @@ async def export_audit(
             detail="Date range cannot exceed 90 days",
         )
 
-    from_dt = datetime(from_.year, from_.month, from_.day, tzinfo=timezone.utc)
-    to_dt = datetime(to.year, to.month, to.day, tzinfo=timezone.utc)
+    from_dt = datetime(from_.year, from_.month, from_.day, tzinfo=UTC)
+    to_dt = datetime(to.year, to.month, to.day, tzinfo=UTC)
 
     # ── Stream response ───────────────────────────────────────────────────────
     if format == "csv":

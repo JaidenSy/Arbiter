@@ -19,12 +19,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.dependencies import get_current_user, get_db
-from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
-from app.db.models.session import Session, SessionEvent
+from app.db.models.session import Session
 from app.db.models.user import User
 from app.schemas.trace import TraceDetailResponse, TraceListItem, TraceListResponse, TraceStep
+from app.services.plan.plan_limits import PAID_TIERS
 
 router = APIRouter(prefix="/traces", tags=["traces"])
 
@@ -47,7 +47,7 @@ def _duration_ms(started_at, ended_at) -> int | None:
 async def _require_pro(org_id: uuid.UUID, db: AsyncSession) -> None:
     org = await db.get(Organization, org_id)
     plan_tier = org.plan_tier if org else "free"
-    if plan_tier == "free":
+    if plan_tier not in PAID_TIERS:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Upgrade to Pro to access execution traces",
@@ -172,7 +172,9 @@ async def get_trace(
             TraceStep(
                 step=idx,
                 tool_name=event.tool_name,
-                mcp_server_name=server_map.get(event.mcp_server_id) if event.mcp_server_id else None,
+                mcp_server_name=server_map.get(event.mcp_server_id)
+                if event.mcp_server_id
+                else None,
                 occurred_at=event.occurred_at,
                 duration_ms=event.duration_ms,
                 cache_hit=event.cache_hit,

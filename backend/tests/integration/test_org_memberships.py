@@ -151,12 +151,17 @@ class TestSwitchOrg:
 
 
 class TestCreateOrg:
+    # Each create runs two DB scalars before the rate-limit (count_owned_orgs,
+    # user_owns_paid_org), then create_owned_orgs_since only on the Redis-down
+    # fallback path. The mock scalar side-effects below are ordered to match.
+
     async def test_fourth_org_in_a_day_is_rate_limited(self, fake_redis):
         """Org creation mirrors the registration limit — fresh free orgs reset quota."""
         from datetime import date
 
         user = _make_user(uuid.uuid4(), role="owner")
-        db = _make_db([None])
+        # count_owned_orgs=0 (under cap), user_owns_paid_org=0 (free tier)
+        db = _make_db([0, 0])
         # Three orgs already created today (mocked flush can't mint real org
         # rows, so seed the counter instead of driving three real creates).
         await fake_redis.set(f"org_create:{user.id}:{date.today().isoformat()}", 3)
@@ -173,6 +178,45 @@ class TestCreateOrg:
         assert resp.status_code == 429, resp.text
         assert "tomorrow" in resp.json()["detail"].lower()
         db.add.assert_not_called()  # rejected before any DB writes
+
+    async def test_free_account_at_owned_org_cap_is_blocked(self, fake_redis):
+        """A free account at its lifetime owned-org cap gets 402 before any DB write."""
+        user = _make_user(uuid.uuid4(), role="owner")
+        # count_owned_orgs=999 (>= any free cap), user_owns_paid_org=0 (free tier)
+        db = _make_db([999, 0])
+
+        resp = await _request(
+            "POST",
+            "/api/v1/org",
+            db=db,
+            fake_redis=fake_redis,
+            user=user,
+            json={"name": "Org 1000"},
+        )
+
+        assert resp.status_code == 402, resp.text
+        assert "upgrade" in resp.json()["detail"].lower()
+        db.add.assert_not_called()
+
+    async def test_daily_limit_fails_closed_when_redis_unavailable(self):
+        """With Redis down, the daily limit is enforced from the DB — it never silently lifts."""
+        user = _make_user(uuid.uuid4(), role="owner")
+        # count_owned_orgs=1 (under cap), user_owns_paid_org=0 (free),
+        # count_owned_orgs_since=3 (>= the daily limit) → 429
+        db = _make_db([1, 0, 3])
+
+        resp = await _request(
+            "POST",
+            "/api/v1/org",
+            db=db,
+            fake_redis=None,  # get_redis override returns None → fallback path
+            user=user,
+            json={"name": "Burst Org"},
+        )
+
+        assert resp.status_code == 429, resp.text
+        assert "tomorrow" in resp.json()["detail"].lower()
+        db.add.assert_not_called()
 
 
 # ── POST /org/leave ───────────────────────────────────────────────────────────

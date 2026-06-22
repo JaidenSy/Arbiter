@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,6 +41,11 @@ class User(Base):
         hashed_password: bcrypt hash (cost factor 12).  Raw password never stored.
         role:            RBAC role within the org: owner | admin | member.
         is_active:       Soft-delete; inactive users cannot log in.
+        plan_tier:       Account-level paid tier (org->account billing).  NULL =
+                         no account plan; the effective plan falls back to the
+                         org's plan_tier.  When set: free | pro | enterprise.
+        stripe_customer_id:     Stripe customer ID for account-owned billing.
+        stripe_subscription_id: Stripe subscription ID for account-owned billing.
         created_at:      Immutable insert timestamp.
         updated_at:      Auto-updated on every modification.
     """
@@ -50,6 +55,10 @@ class User(Base):
         CheckConstraint(
             "role IN ('owner', 'admin', 'member')",
             name="ck_users_role",
+        ),
+        CheckConstraint(
+            "plan_tier IS NULL OR plan_tier IN ('free', 'pro', 'enterprise')",
+            name="ck_users_plan_tier",
         ),
     )
 
@@ -78,6 +87,12 @@ class User(Base):
     )
     tos_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     tos_version: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
+    # ── Account-level billing (org->account billing migration, phase 1) ───────
+    # NULL plan_tier = no account plan; effective plan inherits from the org.
+    plan_tier: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    stripe_customer_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

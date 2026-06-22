@@ -211,6 +211,31 @@ class TestListTraces:
         assert resp.status_code == 402
 
     @pytest.mark.asyncio
+    async def test_unknown_tier_returns_402(self):
+        """An unrecognised tier (e.g. future 'starter') fails closed → 402, not granted."""
+        from app.core.dependencies import get_current_user, get_db
+        from app.main import app
+
+        user = _make_user()
+        db = _make_list_db(plan_tier="starter")
+
+        async def override_db():
+            yield db
+
+        app.dependency_overrides[get_db] = override_db
+        app.dependency_overrides[get_current_user] = lambda: user
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                resp = await client.get("/api/v1/traces")
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 402
+
+    @pytest.mark.asyncio
     async def test_no_auth_returns_401(self):
         """No auth → 401."""
         from app.main import app
@@ -380,6 +405,31 @@ class TestGetTrace:
 
         user = _make_user()
         db = _make_detail_db(plan_tier="free")
+
+        async def override_db():
+            yield db
+
+        app.dependency_overrides[get_db] = override_db
+        app.dependency_overrides[get_current_user] = lambda: user
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                resp = await client.get(f"/api/v1/traces/{_TRACE_ID}")
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 402
+
+    @pytest.mark.asyncio
+    async def test_unknown_tier_returns_402(self):
+        """An unrecognised tier (e.g. future 'starter') fails closed → 402, not granted."""
+        from app.core.dependencies import get_current_user, get_db
+        from app.main import app
+
+        user = _make_user()
+        db = _make_detail_db(plan_tier="starter")
 
         async def override_db():
             yield db

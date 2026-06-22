@@ -38,10 +38,51 @@
         "name": "Jaiden Sy"
       },
       "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
+        "@type": "AggregateOffer",
+        "priceCurrency": "USD",
+        "lowPrice": "0",
+        "highPrice": "29",
+        "offerCount": "2",
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free",
+            "price": "0",
+            "priceCurrency": "USD",
+            "description": "5,000 tool calls/month, 2 agents, 3 MCP servers, 10 vault secrets."
+          },
+          {
+            "@type": "Offer",
+            "name": "Pro",
+            "price": "29",
+            "priceCurrency": "USD",
+            "description": "100,000 tool calls/month, 25 agents, 50 MCP servers, 100 vault secrets.",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "29",
+              "priceCurrency": "USD",
+              "unitText": "MONTH"
+            }
+          }
+        ]
       }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Arbiter",
+      "alternateName": "ArbiterAI",
+      "url": "https://arbiterai.dev",
+      "logo": "https://arbiterai.dev/favicon.svg",
+      "founder": {
+        "@type": "Person",
+        "name": "Jaiden Sy"
+      },
+      "sameAs": [
+        "https://github.com/JaidenSy/Arbiter"
+      ]
     }
     </script>
 

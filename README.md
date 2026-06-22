@@ -209,7 +209,9 @@ Every account creates one **organization**. All resources (agents, MCP servers, 
 
 ## Contributing
 
-PRs are welcome. For significant changes, open an issue first to discuss scope.
+PRs are welcome. For significant changes, open an issue first to discuss scope. See
+**[CONTRIBUTING.md](./CONTRIBUTING.md)** for the full guide, the open-core boundary, and the
+[CLA](./CLA.md) (a one-click step on your first PR).
 
 ```bash
 git clone https://github.com/JaidenSy/Arbiter.git && cd Arbiter
