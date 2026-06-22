@@ -21,7 +21,7 @@ export const DEFAULT_META: PageMeta = {
   title:
     'Arbiter: MCP Gateway for AI Agents | Tool Access Control & Observability',
   description:
-    'Arbiter is a developer-first MCP gateway for AI agents. Control which tools your agents can call, store secrets, cache responses, and observe every session — all in one place.',
+    'Arbiter is a developer-first MCP gateway for AI agents. From one place, control which tools your agents can call, store secrets, cache responses, and observe every session.',
 }
 
 /** Public, indexable routes with unique metadata. */
@@ -56,8 +56,8 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'The terms that govern your use of Arbiter.',
   },
 
-  // Authenticated app shell — noindex (see NOINDEX_PATHS), but still titled so
-  // the browser tab, history entries, and screen readers can tell pages apart.
+  // Authenticated app shell. These stay noindex (see NOINDEX_PATHS) but are
+  // still titled so the browser tab, history, and screen readers tell them apart.
   '/agents': {
     title: 'Agents · Arbiter',
     description: 'Register and manage scoped agent identities and their API keys.',
