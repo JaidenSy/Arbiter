@@ -11,7 +11,7 @@ interface RevealGroupProps {
 /**
  * Wraps direct children in a reveal container.
  * Each child fades + slides in on scroll with staggered delays.
- * Content is visible by default — animation only applies to off-screen elements.
+ * Content is visible by default: animation only applies to off-screen elements.
  */
 export function RevealGroup({
   children,

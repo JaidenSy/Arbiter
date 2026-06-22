@@ -1,5 +1,5 @@
 /**
- * Arbiter — MCP Servers page.
+ * Arbiter: MCP Servers page.
  *
  * Lists all registered MCP servers (active and inactive).
  * Active servers route tool calls; inactive ones are parked configs.
@@ -132,7 +132,7 @@ function parseHeadersToRows(headers: Record<string, string>): AuthHeaderRow[] {
     }
     const rawMatch = value.match(RAW_VAULT_PATTERN)
     if (rawMatch) return { headerName, scheme: 'none' as AuthScheme, customPrefix: '', secret: rawMatch[1] }
-    // Unrecognised format — surface as custom with secret left blank so user can fix
+    // Unrecognised format: surface as custom with secret left blank so user can fix
     return { headerName, scheme: 'custom' as AuthScheme, customPrefix: value, secret: '' }
   })
 }
@@ -287,7 +287,7 @@ function ServerFormModal({
             </button>
           </div>
           {authHeaders.length === 0 && (
-            <p className="text-xs text-muted italic">No auth headers — click &quot;+ Add header&quot; to configure one.</p>
+            <p className="text-xs text-muted italic">No auth headers. Click &quot;+ Add header&quot; to configure one.</p>
           )}
           <div className="space-y-3">
             {authHeaders.map((h, i) => (
@@ -361,7 +361,7 @@ function ServerFormModal({
             ))}
           </div>
           <p className="text-[11px] text-muted mt-2 leading-relaxed">
-            Secrets are resolved from your <span className="text-secondary">Vault</span> at proxy time — never stored in plaintext here.
+            Secrets are resolved from your <span className="text-secondary">Vault</span> at proxy time, never stored in plaintext here.
           </p>
         </div>
 

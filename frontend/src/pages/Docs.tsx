@@ -1,5 +1,5 @@
 /**
- * Arbiter — In-app documentation page.
+ * Arbiter: In-app documentation page.
  *
  * Route: /docs (public, no ProtectedRoute, no app sidebar)
  * Layout: standalone with left sidebar nav + content area
@@ -230,7 +230,7 @@ function DocsContent(): React.ReactElement {
         </p>
 
         <div className="bg-surface border border-border rounded-xl overflow-hidden">
-          <Endpoint method="POST" path="/api/v1/agents" description="Register a new agent. Returns an api_key (shown once — store it immediately)." />
+          <Endpoint method="POST" path="/api/v1/agents" description="Register a new agent. Returns an api_key (shown once, store it immediately)." />
           <Endpoint method="GET" path="/api/v1/agents" description="List all agents for the authenticated user." />
           <Endpoint method="DELETE" path="/api/v1/agents/:id" description="Deactivate an agent. All its permissions are revoked." />
         </div>

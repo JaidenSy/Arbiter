@@ -1,5 +1,5 @@
 /**
- * Arbiter — Changelog page.
+ * Arbiter: Changelog page.
  *
  * Route: /changelog (public, no auth required)
  * Reverse-chronological list of releases and notable changes.

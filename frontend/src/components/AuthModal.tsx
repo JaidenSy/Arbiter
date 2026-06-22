@@ -1,5 +1,5 @@
 /**
- * AuthModal — login + register forms rendered as a blurred overlay on Landing.
+ * AuthModal: login + register forms rendered as a blurred overlay on Landing.
  * Replaces the standalone /login and /register full-page routes.
  */
 
@@ -117,7 +117,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
     } catch (err: unknown) {
       const res = (err as { response?: { status?: number; data?: { detail?: string } } })?.response
       if (res?.status === 409) setRegError('An account with that email already exists.')
-      else if (res?.status === 422) setRegError('Please check your details — your password must meet the requirements and your email must be valid.')
+      else if (res?.status === 422) setRegError('Please check your details. Your password must meet the requirements and your email must be valid.')
       else if (res?.data?.detail) setRegError(res.data.detail)
       else setRegError('Registration failed. Please try again.')
     } finally {
@@ -171,7 +171,7 @@ export default function AuthModal({ initialMode, onClose }: Props): React.ReactE
       aria-modal="true"
       aria-labelledby="auth-modal-title"
     >
-      {/* Blurred backdrop — click to close */}
+      {/* Blurred backdrop: click to close */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}

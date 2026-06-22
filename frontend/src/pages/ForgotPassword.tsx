@@ -1,5 +1,5 @@
 /**
- * Arbiter — Forgot Password page.
+ * Arbiter: Forgot Password page.
  *
  * Route: /forgot-password (public, no sidebar)
  * Submits email to POST /auth/forgot-password; always shows success to avoid email enumeration.

@@ -1,12 +1,12 @@
 /**
- * Arbiter — Auth context.
+ * Arbiter: Auth context.
  *
  * Provides JWT-based authentication state for the dashboard UI.
  * Agent API key auth remains separate (apiClient in api/client.ts).
  *
  * Storage keys:
- *   arbiter_access_token  — JWT (24h)
- *   arbiter_refresh_token — opaque rt_<64hex> (30d)
+ *   arbiter_access_token : JWT (24h)
+ *   arbiter_refresh_token: opaque rt_<64hex> (30d)
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
         setAccessToken(stored)
       })
       .catch(async () => {
-        // Access token failed — attempt refresh
+        // Access token failed: attempt refresh
         const refresh = localStorage.getItem(REFRESH_KEY)
         if (!refresh) {
           clearTokens()
@@ -161,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     try {
       await authClient.post('/auth/logout')
     } catch {
-      // Best-effort — clear locally regardless
+      // Best-effort: clear locally regardless
     }
     clearTokens()
     setUser(null)

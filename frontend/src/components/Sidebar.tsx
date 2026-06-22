@@ -168,7 +168,7 @@ function NavItem({ to, icon, title, end, id }: NavItemProps): React.ReactElement
       >
         {({ isActive }) => (
           <>
-            {/* Active marker — precise 2px amber bar, no glow */}
+            {/* Active marker: precise 2px amber bar, no glow */}
             {isActive && (
               <span
                 aria-hidden="true"
@@ -202,7 +202,7 @@ function UserAvatar(): React.ReactElement | null {
   useEffect(() => {
     if (!open) return
     function handler(e: MouseEvent): void {
-      // Clicks inside the portaled create-org modal are not "outside" —
+      // Clicks inside the portaled create-org modal are not "outside":
       // closing the popover would unmount the modal mid-interaction.
       if ((e.target as Element).closest?.('[data-org-modal]')) return
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -248,7 +248,7 @@ function UserAvatar(): React.ReactElement | null {
               {planLabel}
             </span>
           </div>
-          {/* Org switcher — mounted only while the popover is open (lazy fetch) */}
+          {/* Org switcher: mounted only while the popover is open (lazy fetch) */}
           <OrgSwitcher />
           <div className="border-t border-border mt-1 pt-1">
             <a

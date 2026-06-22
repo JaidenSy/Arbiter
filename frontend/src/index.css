@@ -6,24 +6,24 @@
 @tailwind utilities;
 
 [data-theme="dark"] {
-  /* Base surfaces — neutral near-black, no tint */
+  /* Base surfaces: neutral near-black, no tint */
   --color-base: #09090B;
   --color-surface: #0F0F12;
   --color-elevated: #17171D;
   --color-highlight: #232330;
   --color-overlay: #0C0C12;
 
-  /* Accent — deep indigo (not blue-600) */
+  /* Accent: deep indigo (not blue-600) */
   --color-accent: #3D35CE;
   --color-accent-light: #5249D9;
   --color-accent-dim: #2A2499;
   --color-accent-wash: #0A0916;
 
-  /* Cyan — data/signal secondary */
+  /* Cyan: data/signal secondary */
   --color-teal: #06B6D4;
   --color-teal-light: #22D3EE;
 
-  /* Typography — zinc scale */
+  /* Typography: zinc scale */
   --color-primary: #FAFAFA;
   --color-secondary: #A1A1AA;
   --color-muted: #52525B;
@@ -81,7 +81,7 @@
   --color-highlight: #E4E4E7;
   --color-overlay: #FFFFFF;
 
-  --color-accent: #3D35CE;        /* deep indigo — primary CTA in light */
+  --color-accent: #3D35CE;        /* deep indigo: primary CTA in light */
   --color-accent-light: #5249D9;  /* indigo hover/lift */
   --color-accent-dim: #2A2499;    /* deeper indigo foreground */
   --color-accent-wash: #EEEEFF;   /* pale indigo tint */
@@ -136,7 +136,7 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 
-  /* Glow ladder — electric blue luminance */
+  /* Glow ladder: electric blue luminance */
   --glow-none:     none;
   --glow-subtle:   0 0 12px rgba(61,53,206,0.18);
   --glow-standard: 0 0 20px rgba(61,53,206,0.32);
@@ -162,7 +162,7 @@
 
 * { box-sizing: border-box; }
 
-/* In light mode, white-opacity borders used for inputs are invisible — override them */
+/* In light mode, white-opacity borders used for inputs are invisible: override them */
 [data-theme="light"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="submit"]),
 [data-theme="light"] select,
 [data-theme="light"] textarea {
@@ -204,7 +204,7 @@ h1, h2, h3, h4, h5, h6 {
 .glow-hero     { box-shadow: var(--glow-hero); }
 .glow-teal     { box-shadow: 0 0 20px rgba(6,182,212,0.18); }
 
-/* Aliases for backwards compatibility — will be removed after migration */
+/* Aliases for backwards compatibility: will be removed after migration */
 .glow-accent        { box-shadow: var(--glow-standard); }
 .glow-accent-strong { box-shadow: var(--glow-hero); }
 
@@ -213,7 +213,7 @@ h1, h2, h3, h4, h5, h6 {
 .hover-glow-standard:hover { box-shadow: var(--glow-standard); }
 .hover-glow-hero:hover     { box-shadow: var(--glow-hero); }
 
-/* ── Typography — kicker and display scale ──────────────────────────────── */
+/* ── Typography: kicker and display scale ──────────────────────────────── */
 .kicker {
   font-family: 'Inter', sans-serif;
   font-size: 0.6875rem;
@@ -273,7 +273,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Animations */
-/* fadeIn starts from visible state — no fill-mode:both to avoid content gating */
+/* fadeIn starts from visible state: no fill-mode:both to avoid content gating */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -297,7 +297,7 @@ h1, h2, h3, h4, h5, h6 {
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
-/* Gradient border cards — blue + cyan */
+/* Gradient border cards: blue + cyan */
 .card-gradient-border {
   position: relative;
   border: 1px solid rgba(37,99,235,0.20);
@@ -316,7 +316,7 @@ h1, h2, h3, h4, h5, h6 {
   pointer-events: none;
 }
 
-/* ── Driver.js tour — themed via tokens (works in dark + light) ───────────── */
+/* ── Driver.js tour: themed via tokens (works in dark + light) ───────────── */
 
 .arbiter-tour-popover.driver-popover {
   background: var(--color-elevated);
@@ -346,7 +346,7 @@ h1, h2, h3, h4, h5, h6 {
   transition: background 150ms var(--ease-out-expo), border-color 150ms var(--ease-out-expo), transform 150ms var(--ease-out-expo);
 }
 
-/* Previous — neutral ghost */
+/* Previous: neutral ghost */
 .arbiter-tour-popover .driver-popover-navigation-btns .driver-popover-prev-btn {
   background: var(--color-elevated);
   border: 1px solid var(--color-border-strong);
@@ -358,7 +358,7 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-primary);
 }
 
-/* Next — solid blue, white text */
+/* Next: solid blue, white text */
 .arbiter-tour-popover .driver-popover-navigation-btns .driver-popover-next-btn {
   background: var(--color-accent);
   border: 1px solid var(--color-accent);

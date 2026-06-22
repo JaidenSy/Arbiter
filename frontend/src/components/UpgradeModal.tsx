@@ -1,5 +1,5 @@
 /**
- * Arbiter — UpgradeModal.
+ * Arbiter: UpgradeModal.
  *
  * Listens for the global `arbiter:plan_limit` CustomEvent (dispatched by
  * the Axios interceptors in api/client.ts whenever the backend returns 402)

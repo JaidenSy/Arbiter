@@ -1,5 +1,5 @@
 /**
- * Arbiter — Settings page.
+ * Arbiter: Settings page.
  *
  * Sections:
  *   - Gateway API Key (stored in localStorage)
@@ -261,7 +261,7 @@ function BillingSection(): React.ReactElement {
 
           {data.plan === 'enterprise' && (
             <p className="text-secondary text-sm">
-              Enterprise plan —{' '}
+              Enterprise plan:{' '}
               <a
                 href={`mailto:${SUPPORT_EMAIL}?subject=Arbiter Enterprise Subscription`}
                 className="text-accent-light hover:text-white transition-colors"
@@ -397,7 +397,7 @@ function GatewayUrlSection(): React.ReactElement {
           </label>
           <p className="text-secondary text-xs mb-2.5">
             The base URL your agents (e.g. Claude Code) use to route tool calls through Arbiter.
-            Paste this into your MCP client config. Also controls where this dashboard sends API requests — saving will reload the page.
+            Paste this into your MCP client config. Also controls where this dashboard sends API requests. Saving will reload the page.
           </p>
           <input
             id="gateway-url-input"

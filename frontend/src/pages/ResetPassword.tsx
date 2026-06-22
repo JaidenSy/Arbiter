@@ -1,5 +1,5 @@
 /**
- * Arbiter — Reset Password page.
+ * Arbiter: Reset Password page.
  *
  * Route: /reset-password?token=<token> (public, no sidebar)
  * Submits new password to POST /auth/reset-password.

@@ -1,5 +1,5 @@
 /**
- * Arbiter — Login page.
+ * Arbiter: Login page.
  *
  * Route: /login (public, no sidebar)
  * On success: navigates to / or /onboarding (if onboarding incomplete).

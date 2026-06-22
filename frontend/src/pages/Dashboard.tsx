@@ -313,7 +313,7 @@ function Dashboard(): React.ReactElement {
         {/* ── Bento Row 1: Activity Chart + right-column metric tiles ── */}
         <div className="grid grid-cols-[3fr_1fr] gap-3 mb-3">
 
-          {/* Activity Chart — left column */}
+          {/* Activity Chart: left column */}
           <div className="border border-border rounded-xl p-6 bg-surface tile-mount stagger-1">
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -426,7 +426,7 @@ function Dashboard(): React.ReactElement {
             )}
           </div>
 
-          {/* Right column — stacked metric tiles */}
+          {/* Right column: stacked metric tiles */}
           <div className="flex flex-col gap-3">
             <Tile
               variant="teal"
@@ -586,7 +586,7 @@ function Dashboard(): React.ReactElement {
           </div>
           {isNearLimit && !isOverLimit && (
             <p className="text-warning text-xs mt-2 font-mono">
-              Approaching monthly limit — consider{" "}
+              Approaching monthly limit, consider{" "}
               <Link to="/settings?tab=billing" className="underline hover:text-primary transition-colors">
                 upgrading to Pro
               </Link>
@@ -595,7 +595,7 @@ function Dashboard(): React.ReactElement {
           )}
           {isOverLimit && (
             <p className="text-error text-xs mt-2 font-mono">
-              Monthly quota exceeded — tool calls are paused until {resetDate}.
+              Monthly quota exceeded. Tool calls are paused until {resetDate}.
             </p>
           )}
         </div>
