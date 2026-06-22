@@ -22,7 +22,7 @@ from datetime import UTC, date, datetime
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -30,6 +30,7 @@ from sqlalchemy.orm import selectinload
 from app.core import security as _sec
 from app.core.config import settings
 from app.core.dependencies import get_current_user, get_db, get_redis
+from app.core.password import validate_password_strength
 from app.core.request_utils import get_client_ip
 from app.db.models.organization import Organization
 from app.db.models.refresh_token import RefreshToken
@@ -704,6 +705,11 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+    @field_validator("new_password")
+    @classmethod
+    def new_password_strength(cls, value: str) -> str:
+        return validate_password_strength(value)
+
 
 @router.post(
     "/forgot-password",
@@ -764,11 +770,6 @@ async def reset_password(
         )
     except BadSignature:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token")
-    if len(body.new_password) < 8:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Password must be at least 8 characters",
-        )
     user = await db.get(User, user_id)
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
