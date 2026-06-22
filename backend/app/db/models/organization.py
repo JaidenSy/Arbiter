@@ -1,5 +1,5 @@
 """
-Arbiter — SQLAlchemy ORM model: Organization.
+Arbiter SQLAlchemy ORM model: Organization.
 
 An Organization is the top-level multi-tenancy boundary.  All resources
 (agents, MCP servers, vault secrets, sessions) belong to exactly one org.
@@ -34,8 +34,8 @@ class Organization(Base):
         slug:                  URL-safe unique identifier (e.g. "acme-corp").
         plan_tier:             Determines resource limits: free | pro | enterprise.
         is_active:             Soft-delete / suspension flag.
-        stripe_customer_id:    Stripe customer ID — NULL until billing is activated.
-        stripe_subscription_id: Stripe subscription ID — NULL until billing is activated.
+        stripe_customer_id:    Stripe customer ID: NULL until billing is activated.
+        stripe_subscription_id: Stripe subscription ID: NULL until billing is activated.
         created_at:            Immutable insert timestamp.
         updated_at:            Auto-updated on every modification.
     """

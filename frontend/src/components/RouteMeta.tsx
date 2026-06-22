@@ -30,7 +30,7 @@ export default function RouteMeta(): React.ReactElement {
 
   const meta = PAGE_META[path] ?? DEFAULT_META
 
-  // /login and /register render the marketing Landing — canonicalize to home.
+  // /login and /register render the marketing Landing: canonicalize to home.
   const canonicalPath = path === '/login' || path === '/register' ? '/' : path
   const canonical = `${SITE_URL}${canonicalPath}`
 

@@ -1,10 +1,10 @@
 /**
- * Arbiter — Org switcher.
+ * Arbiter: Org switcher.
  *
  * Rendered inside the sidebar user popover.  Lists every organization the
  * user belongs to (GET /me/orgs), switches the active one (POST /org/switch
  * → fresh token pair → hard reload so all org-scoped views rehydrate), and
- * offers a "New organization" modal (POST /org — the backend switches the
+ * offers a "New organization" modal (POST /org: the backend switches the
  * active org on creation, so a reload is enough).
  *
  * Mounted only while the popover is open, so the list is fetched lazily.
@@ -43,7 +43,7 @@ function CreateOrgModal({ onClose }: { onClose: () => void }): React.ReactElemen
     setSubmitting(true)
     try {
       // The backend creates the org, adds an owner membership, and switches
-      // the active org — the current JWT stays valid, so reload is enough.
+      // the active org: the current JWT stays valid, so reload is enough.
       await authClient.post('/org', { name: name.trim() })
       window.location.href = '/'
     } catch (err: unknown) {
@@ -149,7 +149,7 @@ function OrgSwitcher(): React.ReactElement | null {
       )
       localStorage.setItem(ACCESS_KEY, res.data.access_token)
       localStorage.setItem(REFRESH_KEY, res.data.refresh_token)
-      // Hard reload — every org-scoped view must rehydrate for the new org.
+      // Hard reload: every org-scoped view must rehydrate for the new org.
       window.location.href = '/'
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail

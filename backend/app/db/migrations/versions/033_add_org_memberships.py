@@ -1,4 +1,4 @@
-"""Add org_memberships — users can belong to multiple organizations
+"""Add org_memberships: users can belong to multiple organizations
 
 Memberships become the source of truth for org access and per-org roles.
 users.org_id / users.role remain as the active-org projection (the org the
@@ -6,7 +6,7 @@ user currently has selected); they are kept in sync at the app layer.
 
 Backfill: one membership per *active* user from their current org_id/role.
 Soft-deleted users (removed members, GDPR-anonymized accounts) do not get a
-membership — they no longer belong to any org.
+membership: they no longer belong to any org.
 
 Revision ID: 033
 Revises: 032

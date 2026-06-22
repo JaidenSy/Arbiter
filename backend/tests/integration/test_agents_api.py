@@ -5,7 +5,7 @@ Uses httpx AsyncClient against the FastAPI app with mocked DB and Redis.
 
 Coverage:
     - POST /api/v1/agents creates agent, returns API key starting with "nxai_"
-    - API key only returned once — GET /api/v1/agents does not include key
+    - API key only returned once: GET /api/v1/agents does not include key
     - DELETE /api/v1/agents/{id} sets is_active=False
     - Request without X-Arbiter-Key header returns 401
     - Request with invalid key returns 401
@@ -165,7 +165,7 @@ class TestCreateAgent:
 class TestGetAgents:
     @pytest.mark.asyncio
     async def test_list_agents_does_not_include_api_key(self, authed_client):
-        """GET /api/v1/agents — response objects must NOT contain api_key field."""
+        """GET /api/v1/agents: response objects must NOT contain api_key field."""
         client, raw_key, mock_agent = authed_client
 
         # Override get_db to return list of agents

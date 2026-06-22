@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — FastAPI dependency injection.
+Arbiter FastAPI dependency injection.
 
 Each function here is a FastAPI Depends provider.  They are consumed by
 endpoint functions via:
@@ -181,12 +181,12 @@ async def get_current_user(
         except Exception:
             if settings.jwt_blocklist_fail_open:
                 _logger.warning(
-                    "Redis unavailable for JWT blocklist check — failing open (JWT_BLOCKLIST_FAIL_OPEN=true)"
+                    "Redis unavailable for JWT blocklist check: failing open (JWT_BLOCKLIST_FAIL_OPEN=true)"
                 )
                 is_blocked = False
             else:
                 _logger.error(
-                    "Redis unavailable for JWT blocklist check — failing closed (set JWT_BLOCKLIST_FAIL_OPEN=true to allow)"
+                    "Redis unavailable for JWT blocklist check: failing closed (set JWT_BLOCKLIST_FAIL_OPEN=true to allow)"
                 )
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -221,7 +221,7 @@ async def get_current_user_optional(
     Like :func:`get_current_user`, but returns None when no Authorization
     header is present instead of raising 401.
 
-    A header that IS present but invalid still raises — silently ignoring a
+    A header that IS present but invalid still raises: silently ignoring a
     bad token would let callers think they are anonymous when they meant to
     authenticate.  Used by endpoints that behave differently for logged-in
     users (e.g. accepting an org invite with an existing account).

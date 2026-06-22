@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — AgentService: agent lookup helpers.
+Arbiter AgentService: agent lookup helpers.
 
 Provides query helpers for the agents table used by other services and
 endpoints.  Authentication / API-key validation lives in dependencies.py;
@@ -27,12 +27,12 @@ async def get_agent_ids_by_owner(
     Return the UUIDs of all agents in ``org_id`` that were created by ``user_id``.
 
     Used by the vault list endpoint to scope secret enumeration for
-    ``member``-role users — they may only see secrets scoped to agents they
+    ``member``-role users: they may only see secrets scoped to agents they
     own (Issue #264).
 
     Args:
         db:      Async SQLAlchemy session.
-        org_id:  Organization UUID — ensures cross-org isolation.
+        org_id:  Organization UUID: ensures cross-org isolation.
         user_id: The creating user's UUID.
 
     Returns:

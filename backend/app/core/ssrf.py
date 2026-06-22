@@ -1,6 +1,6 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
-"""SSRF guard — shared async DNS validation for MCP server URLs.
+"""SSRF guard: shared async DNS validation for MCP server URLs.
 
 Called at registration time (mcp_servers.py) AND at proxy request time
 (proxy_service.py) to guard against DNS rebinding attacks where a hostname
@@ -60,7 +60,7 @@ async def assert_ssrf_safe(
             raise HTTPException(
                 status_code=error_status,
                 detail=(
-                    f"MCP server URL resolves to a private/reserved address ({addr}) — "
+                    f"MCP server URL resolves to a private/reserved address ({addr}): "
                     "requests to internal hosts are not allowed"
                 ),
             )

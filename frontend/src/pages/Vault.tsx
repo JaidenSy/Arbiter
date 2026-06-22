@@ -1,5 +1,5 @@
 /**
- * Arbiter — Vault page.
+ * Arbiter: Vault page.
  *
  * Two-panel layout:
  *   Left:  Agent selector list
@@ -34,7 +34,7 @@ const fetchSecrets = (agentId: string): Promise<Page<VaultSecret>> =>
     .then((r) => r.data)
 
 /** Fetch all secrets for the org (no agent_id filter). Returns all secrets the
- *  current user can see — for admins/owners this includes org-level secrets. */
+ *  current user can see: for admins/owners this includes org-level secrets. */
 const fetchAllSecrets = (): Promise<Page<VaultSecret>> =>
   authClient.get<Page<VaultSecret>>('/vault/secrets').then((r) => r.data)
 
@@ -628,7 +628,7 @@ function AgentSecretsSection({ agentId, agentName }: AgentSectionProps): React.R
       <div className="flex items-center justify-between mb-5">
         <div>
           <p className="text-primary text-sm font-semibold">
-            Agent Secrets — <span className="text-accent-light">{agentName}</span>
+            Agent Secrets: <span className="text-accent-light">{agentName}</span>
           </p>
           <p className="text-secondary text-xs mt-0.5">Scoped to this agent only.</p>
         </div>
@@ -732,7 +732,7 @@ function Vault(): React.ReactElement {
         <p className="text-secondary text-sm mt-1">AES-256-GCM encrypted secrets per agent</p>
       </div>
 
-      {/* Organization Secrets — owners and admins only */}
+      {/* Organization Secrets: owners and admins only */}
       {isPrivileged && <OrgSecretsSection />}
 
       {/* Divider between org and agent sections */}
@@ -745,7 +745,7 @@ function Vault(): React.ReactElement {
       )}
 
       <div className="grid grid-cols-[240px_1fr] gap-6">
-        {/* Left panel — agent selector */}
+        {/* Left panel: agent selector */}
         <div>
           <p className="text-muted text-xs font-semibold uppercase tracking-widest mb-3">
             Agents
@@ -799,7 +799,7 @@ function Vault(): React.ReactElement {
           </div>
         </div>
 
-        {/* Right panel — agent secrets */}
+        {/* Right panel: agent secrets */}
         {selectedAgent ? (
           <AgentSecretsSection agentId={selectedAgent.id} agentName={selectedAgent.name} />
         ) : (

@@ -1,12 +1,12 @@
 """
-Arbiter — API endpoints: Webhooks.
+Arbiter API endpoints: Webhooks.
 
 Routes:
-    POST   /webhooks          — create a webhook (Pro+)
-    GET    /webhooks          — list webhooks
-    PATCH  /webhooks/{id}     — update webhook
-    DELETE /webhooks/{id}     — delete webhook
-    GET    /webhooks/{id}/logs — delivery log for a webhook
+    POST   /webhooks         : create a webhook (Pro+)
+    GET    /webhooks         : list webhooks
+    PATCH  /webhooks/{id}    : update webhook
+    DELETE /webhooks/{id}    : delete webhook
+    GET    /webhooks/{id}/logs: delivery log for a webhook
 """
 
 from __future__ import annotations

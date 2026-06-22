@@ -1,5 +1,5 @@
 """
-Arbiter — API endpoints: Proxy (Tool Call Gateway).
+Arbiter API endpoints: Proxy (Tool Call Gateway).
 
 This is the primary endpoint that agents call.  Every MCP tool invocation
 passes through here, triggering the full pipeline:
@@ -7,8 +7,8 @@ passes through here, triggering the full pipeline:
     Auth → RBAC → Cache → Vault injection → MCP forward → Cache store → Audit log
 
 Routes:
-    POST   /proxy/tool-call    — invoke a tool through the gateway
-    POST   /proxy/tools-list   — retrieve filtered tools list (RBAC-filtered)
+    POST   /proxy/tool-call   : invoke a tool through the gateway
+    POST   /proxy/tools-list  : retrieve filtered tools list (RBAC-filtered)
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ async def tool_call(
     x_arbiter_parent_session_id: str | None = Header(
         None,
         alias="X-Arbiter-Parent-Session-Id",
-        description="Calling session UUID — links this call into a multi-hop agent chain.",
+        description="Calling session UUID: links this call into a multi-hop agent chain.",
     ),
 ) -> ToolCallResponse:
     """
@@ -104,7 +104,7 @@ async def tools_list(
     """
     service = ProxyService(db=db, redis=redis)
 
-    # Resolve server once (org-scoped) — pass to filter_tools_list to avoid second DB round-trip.
+    # Resolve server once (org-scoped): pass to filter_tools_list to avoid second DB round-trip.
     mcp_server = await service.resolve_server(body.server_name, agent.org_id)
 
     tools = await service.fetch_tools_list(mcp_server)

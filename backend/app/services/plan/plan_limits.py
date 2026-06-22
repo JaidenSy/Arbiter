@@ -1,5 +1,5 @@
 """
-Arbiter — Plan limit constants and quota-related exceptions.
+Arbiter Plan limit constants and quota-related exceptions.
 
 PLAN_LIMITS is the single source of truth for per-tier resource caps.
 None means unlimited (Enterprise tier).
@@ -21,7 +21,7 @@ PLAN_LIMITS: dict[str, dict] = {
         "max_tool_calls_mo": 5_000,
         "max_vault_secrets": 10,
         "max_members": 3,
-        "semantic_cache": False,  # exact-match only — keeps embedding model off RAM for free orgs
+        "semantic_cache": False,  # exact-match only: keeps embedding model off RAM for free orgs
     },
     "pro": {
         "max_agents": 25,

@@ -1,5 +1,5 @@
 """
-Arbiter — Pydantic schemas for Execution Trace resources.
+Arbiter Pydantic schemas for Execution Trace resources.
 
 A "trace" maps 1-to-1 with a Session.  Exposing them as traces gives the
 frontend a purpose-built shape for waterfall timeline rendering.

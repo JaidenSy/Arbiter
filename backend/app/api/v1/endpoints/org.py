@@ -1,26 +1,26 @@
 """
-Arbiter — API endpoints: Orgs, Members & Invites.
+Arbiter API endpoints: Orgs, Members & Invites.
 
 Membership model: users may belong to multiple organizations via
 org_memberships (source of truth for access + per-org role).  The
-``users.org_id`` / ``users.role`` columns are the *active-org projection* —
-the org the user currently operates in — and every mutation here keeps the
+``users.org_id`` / ``users.role`` columns are the *active-org projection*,
+the org the user currently operates in, and every mutation here keeps the
 projection in sync.  Plans and billing attach to orgs, never to members.
 
 Routes:
-    GET    /org                      — get active organization info
-    PATCH  /org                      — rename organization (owner only)
-    POST   /org                      — create a new organization and switch to it
-    POST   /org/switch               — switch the active organization
-    POST   /org/leave                — leave the active organization
-    GET    /me/orgs                  — list the caller's organizations
-    GET    /org/members              — list all members
-    PATCH  /org/members/{id}         — change a member's role
-    DELETE /org/members/{id}         — remove a member
-    GET    /org/invites              — list pending invites
-    POST   /org/invites              — send an invite email
-    DELETE /org/invites/{id}         — cancel an invite
-    POST   /auth/accept-invite       — accept an invite (new or existing account)
+    GET    /org                     : get active organization info
+    PATCH  /org                     : rename organization (owner only)
+    POST   /org                     : create a new organization and switch to it
+    POST   /org/switch              : switch the active organization
+    POST   /org/leave               : leave the active organization
+    GET    /me/orgs                 : list the caller's organizations
+    GET    /org/members             : list all members
+    PATCH  /org/members/{id}        : change a member's role
+    DELETE /org/members/{id}        : remove a member
+    GET    /org/invites             : list pending invites
+    POST   /org/invites             : send an invite email
+    DELETE /org/invites/{id}        : cancel an invite
+    POST   /auth/accept-invite      : accept an invite (new or existing account)
 """
 
 from __future__ import annotations
@@ -165,7 +165,7 @@ async def _reassign_member_resources(
     Reassign agents the departing user created in this org to the org owner.
 
     VaultSecret and MCPServer belong to the org by design (no created_by
-    column) — they are unaffected.  Only Agent tracks the creating user, so
+    column): they are unaffected.  Only Agent tracks the creating user, so
     this function transfers authorship to the current org owner so the
     resources are not orphaned when the member leaves.
 
@@ -192,7 +192,7 @@ async def _reassign_member_resources(
 
 async def _consume_invite(db: AsyncSession, token: str) -> OrgInvite:
     """
-    Atomically mark an invite as accepted — prevents TOCTOU race where two
+    Atomically mark an invite as accepted: prevents TOCTOU race where two
     simultaneous requests both pass an accepted_at IS NULL check.  Only the
     first UPDATE to win finds a matching row.
 
@@ -266,10 +266,10 @@ async def create_org(
     if not name or len(name) > 255:
         raise HTTPException(status_code=422, detail="Name must be 1–255 characters")
 
-    # Lifetime owned-org cap — DB-backed, so it holds even when Redis is down.
+    # Lifetime owned-org cap: DB-backed, so it holds even when Redis is down.
     # Closes the free-tier quota-multiplication vector (minting unbounded free
     # orgs); tiered so paid owners get a higher ceiling. Only ever blocks the
-    # NEXT org — existing orgs are never touched.
+    # NEXT org: existing orgs are never touched.
     owned = await org_service.count_owned_orgs(db, current_user.id)
     limit = await org_service.owned_org_limit_for_user(db, current_user.id)
     if owned >= limit:
@@ -535,7 +535,7 @@ async def remove_member(
     current_user: User = Depends(require_role("owner", "admin")),
 ) -> Response:
     if member_id == current_user.id:
-        raise HTTPException(status_code=400, detail="Cannot remove yourself — use leave instead")
+        raise HTTPException(status_code=400, detail="Cannot remove yourself. Use leave instead")
 
     membership = await org_service.get_membership(db, member_id, current_user.org_id)
     member = await db.get(User, member_id)
@@ -553,7 +553,7 @@ async def remove_member(
     await db.delete(membership)
     await db.flush()
 
-    # Their account survives — only the membership is removed.  Agents the
+    # Their account survives: only the membership is removed.  Agents the
     # member created are deactivated so their keys stop working here, then
     # reassigned to the org owner so they are not orphaned.  Deactivation must
     # run first: both helpers filter on created_by_user_id, so reassigning
@@ -746,7 +746,7 @@ async def invite_preview(
     "/accept-invite",
     response_model=TokenResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Accept an org invite — creates an account, or joins with an existing one",
+    summary="Accept an org invite: creates an account, or joins with an existing one",
 )
 async def accept_invite(
     body: AcceptInviteRequest,

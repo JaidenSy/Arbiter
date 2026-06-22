@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — API endpoints: CLI Device Flow Auth.
+Arbiter API endpoints: CLI Device Flow Auth.
 
 Implements the OAuth2 device authorization grant (RFC 8628) so the Arbiter
 CLI can authenticate without a browser redirect.  The three-step flow is:
@@ -157,7 +157,7 @@ class MessageResponse(BaseModel):
 
 def _generate_user_code() -> str:
     """Return a random user code in the format WORD-NNNN."""
-    word = random.choice(_USER_CODE_WORDS)  # noqa: S311 — not cryptographic
+    word = random.choice(_USER_CODE_WORDS)  # noqa: S311  (not cryptographic)
     digits = random.randint(1000, 9999)  # noqa: S311
     return f"{word}-{digits}"
 
@@ -217,7 +217,7 @@ async def initiate_device_flow(
         db.add(record)
         try:
             await db.commit()
-            break  # success — exit retry loop
+            break  # success: exit retry loop
         except IntegrityError as exc:
             await db.rollback()
             if attempt == _USER_CODE_MAX_RETRIES - 1:
@@ -253,10 +253,10 @@ async def poll_for_token(
     Rate-limited to 20 requests/minute per IP.
 
     Response codes:
-        200 — authorization approved; JWT returned.
-        404 — device_code not found.
-        410 — code expired or rejected.
-        428 — authorization still pending; caller should retry.
+        200: authorization approved; JWT returned.
+        404: device_code not found.
+        410: code expired or rejected.
+        428: authorization still pending; caller should retry.
     """
     # ── Rate limiting (20 req/min per IP) ─────────────────────────────────────
     if redis is not None:
@@ -283,7 +283,7 @@ async def poll_for_token(
 
     now = datetime.now(tz=UTC)
 
-    # Treat rejected codes as expired — do not reveal the distinction to the CLI.
+    # Treat rejected codes as expired: do not reveal the distinction to the CLI.
     if record.status == "rejected":
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
@@ -308,17 +308,17 @@ async def poll_for_token(
         )
 
     if record.status == "consumed":
-        # Already issued — treat as expired to prevent replay.
+        # Already issued: treat as expired to prevent replay.
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
             detail="code_expired_or_rejected",
         )
 
-    # status == "approved" — issue token and consume the record.
+    # status == "approved": issue token and consume the record.
     if record.user_id is None or record.org_id is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="approved device code is missing user or org — data integrity error",
+            detail="approved device code is missing user or org: data integrity error",
         )
 
     user = await db.get(User, record.user_id)
@@ -426,7 +426,7 @@ async def deny_device(
     Reject a CLI device code.  The next CLI poll will receive 410 Gone.
 
     The current_user dependency is required to ensure only authenticated users
-    can trigger a denial — prevents unauthenticated code invalidation.
+    can trigger a denial: prevents unauthenticated code invalidation.
     """
     record = await db.scalar(select(CliDeviceCode).where(CliDeviceCode.user_code == user_code))
 

@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — Request utility helpers.
+Arbiter Request utility helpers.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ def get_client_ip(request: Request) -> str:
     """Return the real client IP, accounting for trusted reverse proxies.
 
     Takes the Nth-from-right value in X-Forwarded-For (where N =
-    TRUSTED_PROXY_COUNT) — the IP appended by the last trusted proxy and
+    TRUSTED_PROXY_COUNT): the IP appended by the last trusted proxy and
     therefore not spoofable by the client.  Falls back to request.client.host
     when the header is absent.
     """

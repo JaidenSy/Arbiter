@@ -8,12 +8,12 @@ Coverage:
 
     effective_plan:
         - Flag OFF: returns org.plan_tier verbatim and never touches the DB
-          (the phase-1 parity guarantee — drop-in for legacy org.plan_tier reads)
+          (the phase-1 parity guarantee: drop-in for legacy org.plan_tier reads)
         - Flag ON, no owner carries an account plan: falls back to org.plan_tier
         - Flag ON, an owner account is Pro while the org is free: returns "pro"
         - Flag ON, multiple owners: returns the most generous (max) account plan
         - Flag ON, owner account is free but org is Pro: returns "pro"
-          (never-downgrade — the org's legacy tier is included in the max)
+          (never-downgrade: the org's legacy tier is included in the max)
 
     backfill_account_plans:
         - Grandfathers a paid org's plan + Stripe linkage onto its owner account
@@ -50,7 +50,7 @@ def _make_user(plan_tier=None, stripe_customer_id=None, stripe_subscription_id=N
 
 
 def _scalars(items):
-    """Mock the object returned by ``await db.scalars(...)`` — has a sync .all()."""
+    """Mock the object returned by ``await db.scalars(...)``: has a sync .all()."""
     res = MagicMock()
     res.all = MagicMock(return_value=items)
     return res
@@ -200,7 +200,7 @@ class TestBackfill:
             stripe_customer_id="cus_123",
             stripe_subscription_id="sub_123",
         )
-        # Owner already Pro with Stripe linkage — a second run must be a no-op.
+        # Owner already Pro with Stripe linkage: a second run must be a no-op.
         owner = _make_user(
             plan_tier="pro",
             stripe_customer_id="cus_123",

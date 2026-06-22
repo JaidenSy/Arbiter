@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — Auth service.
+Arbiter Auth service.
 
 Handles user registration, login, token refresh, and logout.  Business
 logic lives here; HTTP concerns stay in the endpoint layer.
@@ -142,13 +142,13 @@ async def login(
     """
     user = await db.scalar(select(User).where(User.email == email))
 
-    # Always run bcrypt regardless of whether the user exists — prevents
+    # Always run bcrypt regardless of whether the user exists: prevents
     # timing-based email enumeration (short-circuit would skip the ~100ms hash).
     candidate_hash = user.hashed_password if user is not None else _DUMMY_HASH
     password_ok = _verify_password(password, candidate_hash)
 
     if not password_ok and user is not None:
-        # Legacy hash (no SHA-256 pre-hash) — verify and silently re-hash on success.
+        # Legacy hash (no SHA-256 pre-hash): verify and silently re-hash on success.
         if _pwd_context.verify(password, candidate_hash):
             password_ok = True
             user.hashed_password = _hash_password(password)
@@ -197,7 +197,7 @@ async def refresh_tokens(
 
     Args:
         db:        Async database session.
-        redis:     Redis client (for jti blocklist — not used here directly
+        redis:     Redis client (for jti blocklist: not used here directly
                    but available for future expansion).
         raw_token: Raw ``rt_<64-hex>`` token from the client.
 

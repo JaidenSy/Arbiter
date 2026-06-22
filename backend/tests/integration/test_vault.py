@@ -2,10 +2,10 @@
 Integration tests for Vault endpoints.
 
 Coverage:
-    POST   /api/v1/vault/secrets          — 201, no value in response
-    GET    /api/v1/vault/secrets          — list scoped to current agent
-    GET    /api/v1/vault/secrets/{id}     — returns decrypted value
-    DELETE /api/v1/vault/secrets/{id}     — 204
+    POST   /api/v1/vault/secrets         : 201, no value in response
+    GET    /api/v1/vault/secrets         : list scoped to current agent
+    GET    /api/v1/vault/secrets/{id}    : returns decrypted value
+    DELETE /api/v1/vault/secrets/{id}    : 204
 
     404 cases: non-existent secret on GET and DELETE
     Security: cross-agent isolation (Agent B cannot see Agent A's secrets)
@@ -356,7 +356,7 @@ class TestDeleteSecret:
 class TestGetSecretRateLimit:
     @pytest.mark.asyncio
     async def test_11th_request_gets_429(self, fake_redis):
-        """GET /vault/secrets/{id} — 11th request within the same minute returns 429."""
+        """GET /vault/secrets/{id}: 11th request within the same minute returns 429."""
         from app.core.dependencies import get_current_user, get_db, get_redis
         from app.main import app
         from app.services.vault.vault_service import VaultService
@@ -409,7 +409,7 @@ class TestGetSecretRateLimit:
 
     @pytest.mark.asyncio
     async def test_first_request_under_limit_gets_200(self, fake_redis):
-        """GET /vault/secrets/{id} — first request is under limit and succeeds."""
+        """GET /vault/secrets/{id}: first request is under limit and succeeds."""
         from app.core.dependencies import get_current_user, get_db, get_redis
         from app.main import app
         from app.services.vault.vault_service import VaultService
@@ -459,7 +459,7 @@ class TestCrossAgentIsolation:
         Agent B's GET /vault/secrets returns [] even though Agent A has secrets.
 
         The endpoint filters by current_agent.id so Agent B's call should never
-        see Agent A's secrets — DB mock returns empty list when Agent B is the caller.
+        see Agent A's secrets: DB mock returns empty list when Agent B is the caller.
         """
         from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
@@ -537,7 +537,7 @@ class TestCrossAgentIsolation:
 
         agent_a_secret_id = uuid.uuid4()
 
-        # DB returns None — the WHERE agent_id=B filter excludes Agent A's secret
+        # DB returns None: the WHERE agent_id=B filter excludes Agent A's secret
         db = _make_authed_db(secret_obj=None)
 
         async def override_get_db():
@@ -567,7 +567,7 @@ class TestCrossAgentIsolation:
         finally:
             app.dependency_overrides.clear()
 
-        # Must be 404, not 403 — don't reveal existence of other agents' secrets
+        # Must be 404, not 403: don't reveal existence of other agents' secrets
         assert resp.status_code == 404, (
             f"Expected 404 (not 403), got {resp.status_code}. "
             "Cross-agent access must not reveal secret existence."
@@ -592,7 +592,7 @@ class TestRoleBasedSecretEnumeration:
     @pytest.mark.asyncio
     async def test_admin_sees_all_org_secrets(self, fake_redis):
         """
-        GET /vault/secrets — admin role returns all secrets in the org
+        GET /vault/secrets: admin role returns all secrets in the org
         regardless of which agent owns them.
         """
         from app.core.dependencies import get_current_user, get_db, get_redis
@@ -660,7 +660,7 @@ class TestRoleBasedSecretEnumeration:
     @pytest.mark.asyncio
     async def test_member_sees_only_own_agent_secrets(self, fake_redis):
         """
-        GET /vault/secrets — member role returns only secrets belonging
+        GET /vault/secrets: member role returns only secrets belonging
         to agents that the member created; other agents' secrets are hidden.
         """
         from app.core.dependencies import get_current_user, get_db, get_redis
@@ -676,7 +676,7 @@ class TestRoleBasedSecretEnumeration:
         member_agent_id = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")
         other_agent_id = uuid.UUID("bbbbbbbb-0000-0000-0000-000000000002")
         member_secret = _make_vault_secret(uuid.uuid4(), "MY_OWN_TOKEN", member_agent_id)
-        # other_secret is NOT returned — filtered out by vault_service
+        # other_secret is NOT returned: filtered out by vault_service
 
         member_membership = self._make_membership("member")
 

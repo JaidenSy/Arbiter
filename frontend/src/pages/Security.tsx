@@ -1,5 +1,5 @@
 /**
- * Arbiter — Security page.
+ * Arbiter: Security page.
  *
  * Route: /security (public, no auth required)
  * Covers: Responsible Disclosure Policy, Security Practices, SLA/Uptime
@@ -166,7 +166,7 @@ export default function Security(): React.ReactElement {
             <LI>
               <strong className="text-primary">Agent API keys:</strong> Each agent is issued a unique API key
               with an <code className="text-teal-light font-mono text-xs">nxai_</code> prefix. We store only
-              a SHA-256 hash of the key — the full value is shown once at creation and never retrievable again.
+              a SHA-256 hash of the key. The full value is shown once at creation and never retrievable again.
               Keys are never shared across agents or organizations.
             </LI>
             <LI>
@@ -257,7 +257,7 @@ export default function Security(): React.ReactElement {
             <LI>
               <strong className="text-primary">Pro tier:</strong> Commercially reasonable uptime efforts
               apply. No financial SLA credits are offered at this time. Enterprise customers may negotiate
-              a custom SLA — contact{' '}
+              a custom SLA, contact{' '}
               <a href="mailto:support@arbiterai.dev" className="text-accent-light hover:text-primary transition-colors">
                 support@arbiterai.dev
               </a>

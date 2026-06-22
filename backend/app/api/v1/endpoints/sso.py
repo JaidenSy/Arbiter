@@ -1,5 +1,5 @@
 """
-Arbiter — API endpoints: SSO (Social Login).
+Arbiter API endpoints: SSO (Social Login).
 
 Implements Google (OIDC) and GitHub (OAuth2) social login via Authlib.
 The full OAuth2 dance is handled server-side; the React frontend only
@@ -45,7 +45,7 @@ router = APIRouter(prefix="/auth", tags=["sso"])
 
 oauth = OAuth()
 
-# Google — OIDC, discovery-based
+# Google: OIDC, discovery-based
 oauth.register(
     name="google",
     client_id=settings.google_client_id or None,
@@ -56,7 +56,7 @@ oauth.register(
     },
 )
 
-# GitHub — plain OAuth2, no OIDC discovery
+# GitHub: plain OAuth2, no OIDC discovery
 oauth.register(
     name="github",
     client_id=settings.github_client_id or None,
@@ -379,7 +379,7 @@ async def exchange_ott(
 
     The OTT is single-use and expires after 60 seconds. On success, returns
     a JWT access token + refresh token pair. If the user has never accepted the
-    ToS, requires_consent=True is set — the frontend redirects to /consent.
+    ToS, requires_consent=True is set: the frontend redirects to /consent.
 
     Raises:
         HTTPException 400: If the token is invalid or expired.
@@ -514,7 +514,7 @@ async def link_delete(
     if not has_password and not other_socials_count:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot unlink your only sign-in method — set a password first",
+            detail="Cannot unlink your only sign-in method. Set a password first",
         )
 
     await db.delete(sa)

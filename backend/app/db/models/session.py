@@ -1,5 +1,5 @@
 """
-Arbiter — SQLAlchemy ORM models: Session and SessionEvent.
+Arbiter SQLAlchemy ORM models: Session and SessionEvent.
 
 A Session groups related tool calls made by a single agent within one
 context window.  Each proxied tool call is recorded as an immutable
@@ -32,7 +32,7 @@ class Session(Base):
         id:                Auto-generated UUID primary key.
         org_id:            FK → organizations.id (denormalized for fast org-scoped queries).
         agent_id:          FK → agents.id.
-        parent_session_id: FK → sessions.id — set when this session was spawned by another
+        parent_session_id: FK → sessions.id: set when this session was spawned by another
                            agent's tool call (multi-hop agent chain).
         trace_id:          UUID shared by all sessions in the same call chain.
                            Root sessions have trace_id == id.
@@ -121,7 +121,7 @@ class SessionEvent(Base):
         id:               UUID primary key.
         org_id:           FK → organizations.id (denormalized for fast org audit queries).
         session_id:       FK → sessions.id.
-        mcp_server_id:    FK → mcp_servers.id (nullable — server may be deleted).
+        mcp_server_id:    FK → mcp_servers.id (nullable: server may be deleted).
         tool_name:        Name of the tool that was called.
         request_payload:  Full JSON body sent to the MCP server.
         response_payload: Full JSON body received back (NULL on error).

@@ -1,5 +1,5 @@
 /**
- * Arbiter — ToS/Privacy consent page for SSO sign-ups.
+ * Arbiter: ToS/Privacy consent page for SSO sign-ups.
  *
  * Route: /consent (public, requires valid JWT in localStorage)
  *
@@ -99,7 +99,7 @@ function Consent(): React.ReactElement {
             disabled={isSubmitting}
             className="press w-full bg-accent hover:bg-accent-light disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm py-2.5 rounded-lg transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] hover-glow-standard"
           >
-            {isSubmitting ? 'Saving…' : 'I agree — continue to Arbiter'}
+            {isSubmitting ? 'Saving…' : 'Agree and continue to Arbiter'}
           </button>
 
           <p className="text-center text-[11px] text-muted mt-4 leading-relaxed">

@@ -1,5 +1,5 @@
 /**
- * Arbiter Frontend — Root application component.
+ * Arbiter Frontend: Root application component.
  *
  * Routes:
  *   /            → Dashboard    (stats, cache hit rate, recent sessions)
@@ -29,7 +29,7 @@ import RouteMeta from './components/RouteMeta'
 import { PaletteProvider } from './context/PaletteContext'
 import { useAuth } from './context/AuthContext'
 
-// ── Lazy page imports — each page becomes its own chunk ───────────────────────
+// ── Lazy page imports: each page becomes its own chunk ───────────────────────
 
 const Dashboard    = lazy(() => import('./pages/Dashboard'))
 const Agents       = lazy(() => import('./pages/Agents'))
@@ -113,7 +113,7 @@ function AppLayout({ children }: { children: React.ReactNode }): React.ReactElem
       <Sidebar />
       <main id="main-content" className="flex-1 ml-[52px] min-h-screen flex flex-col">
         <VerificationBanner />
-        {/* Per-page boundary — keeps the sidebar alive if one page crashes */}
+        {/* Per-page boundary: keeps the sidebar alive if one page crashes */}
         <ErrorBoundary>
           {/* Key on pathname re-triggers page-enter animation on every route change */}
           <div key={pathname} className="page-enter flex-1">
@@ -125,7 +125,7 @@ function AppLayout({ children }: { children: React.ReactNode }): React.ReactElem
   )
 }
 
-// ── Root redirect — send unauthenticated users to /login ──────────────────────
+// ── Root redirect: send unauthenticated users to /login ──────────────────────
 
 function RootRedirect(): React.ReactElement {
   const { user, isLoading } = useAuth()
@@ -170,7 +170,7 @@ function App(): React.ReactElement {
         <Route path="/pricing"   element={<Pricing />} />
         <Route path="/cli-auth"  element={<CliAuth />} />
 
-        {/* ── Root — smart redirect ────────────────────────────────────────── */}
+        {/* ── Root: smart redirect ────────────────────────────────────────── */}
         <Route path="/" element={<RootRedirect />} />
 
         {/* ── Protected app routes (with sidebar) ─────────────────────────── */}

@@ -1,10 +1,10 @@
 /**
- * Arbiter — Pricing page.
+ * Arbiter: Pricing page.
  *
  * Route: /pricing (public, no auth required)
  * Tier cards (shared with the landing page), a full feature comparison
  * table, and billing FAQ.  Every row in the comparison table corresponds
- * to a limit or plan gate enforced in the backend — keep it in sync with
+ * to a limit or plan gate enforced in the backend: keep it in sync with
  * PLAN_LIMITS and the endpoint-level plan checks.
  */
 
@@ -180,22 +180,22 @@ const faqItems: FAQItem[] = [
   {
     question: 'What happens when I hit my monthly tool-call limit?',
     answer:
-      'Further tool calls return HTTP 429 until the quota resets on the first of the month (UTC). There is a 5% grace buffer past the limit, and the org owner gets an email alert at 80% and 100% of quota — so agents don’t fail silently.',
+      'Further tool calls return HTTP 429 until the quota resets on the first of the month (UTC). There is a 5% grace buffer past the limit, and the org owner gets an email alert at 80% and 100% of quota, so agents don’t fail silently.',
   },
   {
     question: 'Do cached responses count against my quota?',
     answer:
-      'No. Cache hits skip the quota check entirely — repeated identical calls from your agents are free. The dashboard shows how much upstream cost the cache saved you each month.',
+      'No. Cache hits skip the quota check entirely. Repeated identical calls from your agents are free. The dashboard shows how much upstream cost the cache saved you each month.',
   },
   {
     question: 'How do I upgrade, downgrade, or cancel?',
     answer:
-      'Upgrade from Settings → Billing — checkout is handled by Stripe. Cancel any time from the billing portal; your org returns to the Free plan when the subscription ends. Your agents, servers, and audit history stay intact.',
+      'Upgrade from Settings → Billing. Checkout is handled by Stripe. Cancel any time from the billing portal; your org returns to the Free plan when the subscription ends. Your agents, servers, and audit history stay intact.',
   },
   {
     question: 'Can I self-host Arbiter instead of paying?',
     answer:
-      'Yes. The Arbiter core gateway is open source (Apache 2.0) — clone the repo and run docker compose up. The paid tiers are for the hosted gateway; Enterprise adds SSO, dedicated deployment support, and a custom SLA.',
+      'Yes. The Arbiter core gateway is open source (Apache 2.0). Clone the repo and run docker compose up. The paid tiers are for the hosted gateway; Enterprise adds SSO, dedicated deployment support, and a custom SLA.',
   },
   {
     question: 'What counts as a tool call?',

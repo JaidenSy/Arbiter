@@ -1,5 +1,5 @@
 /**
- * Arbiter — VerificationBanner component.
+ * Arbiter: VerificationBanner component.
  *
  * Renders a sticky amber warning banner when the authenticated user has not
  * verified their email address.  The banner:

@@ -1,5 +1,5 @@
 /**
- * Arbiter — Organization page.
+ * Arbiter: Organization page.
  *
  * Route: /organization (protected, with sidebar)
  * Shows org info with rename (owner only), member list, and invite management.
@@ -206,7 +206,7 @@ function Organization(): React.ReactElement {
       )
       localStorage.setItem(ACCESS_KEY, res.data.access_token)
       localStorage.setItem(REFRESH_KEY, res.data.refresh_token)
-      // Hard reload — every org-scoped view must rehydrate for the new org.
+      // Hard reload: every org-scoped view must rehydrate for the new org.
       window.location.href = '/'
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail

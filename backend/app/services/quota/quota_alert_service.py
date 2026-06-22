@@ -1,9 +1,9 @@
 """
-Arbiter — Quota alert service.
+Arbiter Quota alert service.
 
 Runs once per hour. For every active org it:
   1. Sums tool_calls for the current billing month from usage_events.
-  2. Compares against the plan limit (skips enterprise — unlimited).
+  2. Compares against the plan limit (skips enterprise: unlimited).
   3. Sends an 80% warning email when usage crosses 80% (once per month).
   4. Sends a 100% exceeded email when usage hits 100% (once per month).
   5. Resets both flags on the first of each month before checking.
@@ -44,19 +44,19 @@ def _make_80_email(org_name: str, used: int, limit: int) -> tuple[str, str]:
     html = f"""
 <p>Hi,</p>
 <p>Your organization <strong>{org_name}</strong> has used <strong>{used:,}</strong>
-of its <strong>{limit:,}</strong> monthly tool calls — that's 80% of your plan quota.</p>
+of its <strong>{limit:,}</strong> monthly tool calls: that's 80% of your plan quota.</p>
 <p>Upgrade to Pro or Enterprise to avoid hitting your limit and keep tool calls running smoothly.</p>
 <p><a href="{billing}" style="
   display:inline-block;padding:10px 20px;background:#f59e0b;color:#fff;
   text-decoration:none;border-radius:6px;font-weight:bold;">Upgrade now</a></p>
-<p>— The Arbiter team</p>
+<p>The Arbiter team</p>
 """
     return subject, html
 
 
 def _make_100_email(org_name: str, used: int, limit: int) -> tuple[str, str]:
     billing = _billing_url()
-    subject = "Arbiter quota reached — tool calls paused"
+    subject = "Arbiter quota reached: tool calls paused"
     html = f"""
 <p>Hi,</p>
 <p>Your organization <strong>{org_name}</strong> has reached its monthly limit of
@@ -66,7 +66,7 @@ on the first of next month.</p>
 <p><a href="{billing}" style="
   display:inline-block;padding:10px 20px;background:#ef4444;color:#fff;
   text-decoration:none;border-radius:6px;font-weight:bold;">Upgrade now</a></p>
-<p>— The Arbiter team</p>
+<p>The Arbiter team</p>
 """
     return subject, html
 
@@ -75,7 +75,7 @@ async def check_and_send_quota_alerts(db: AsyncSession) -> None:
     """
     Run once per hour. Checks quota for every active org in a single DB pass.
 
-    Enterprise orgs (max_tool_calls_mo=None) are skipped — they have no cap.
+    Enterprise orgs (max_tool_calls_mo=None) are skipped: they have no cap.
     If today is the 1st of the month, both alert flags are reset first.
     """
     now = datetime.now(tz=UTC)
@@ -116,7 +116,7 @@ async def check_and_send_quota_alerts(db: AsyncSession) -> None:
             User.email.label("owner_email"),
             func.coalesce(monthly_usage_sq.c.monthly_calls, 0).label("monthly_calls"),
         )
-        # Owners resolved via memberships — users.org_id/role only reflect the
+        # Owners resolved via memberships: users.org_id/role only reflect the
         # org a user currently has active, not every org they own.
         .join(
             OrgMembership,
@@ -133,7 +133,7 @@ async def check_and_send_quota_alerts(db: AsyncSession) -> None:
     for row in rows:
         plan_limit = PLAN_LIMITS.get(row.plan_tier, {}).get("max_tool_calls_mo")
         if plan_limit is None:
-            # Enterprise — unlimited, skip.
+            # Enterprise: unlimited, skip.
             continue
 
         used: int = row.monthly_calls

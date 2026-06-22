@@ -1,12 +1,12 @@
 """
-Arbiter — API endpoints: Execution Traces.
+Arbiter API endpoints: Execution Traces.
 
 A "trace" is a Session with its SessionEvents shaped for waterfall timeline
-rendering.  No new schema is needed — Sessions ARE traces.
+rendering.  No new schema is needed: Sessions ARE traces.
 
 Routes:
-    GET    /traces                — paginated trace list (Pro+ only)
-    GET    /traces/{trace_id}     — trace detail with ordered steps (Pro+ only)
+    GET    /traces               : paginated trace list (Pro+ only)
+    GET    /traces/{trace_id}    : trace detail with ordered steps (Pro+ only)
 """
 
 from __future__ import annotations
@@ -126,7 +126,7 @@ async def get_trace(
     """
     Return a single trace with its ordered steps for waterfall timeline rendering.
 
-    offset_ms on each step is the milliseconds elapsed from trace start — lets
+    offset_ms on each step is the milliseconds elapsed from trace start: lets
     the frontend position bars on a shared time axis.
 
     Requires Pro or Enterprise plan.  Returns 404 if the trace belongs to a

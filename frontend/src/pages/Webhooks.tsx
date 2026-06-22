@@ -1,5 +1,5 @@
 /**
- * Arbiter — Webhooks page (Pro+).
+ * Arbiter: Webhooks page (Pro+).
  *
  * Lists org webhooks. Owners/admins can create, edit, delete, and view
  * delivery logs per webhook. Secret is shown once on creation only.

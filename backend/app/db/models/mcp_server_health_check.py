@@ -1,5 +1,5 @@
 """
-Arbiter — SQLAlchemy ORM model: MCPServerHealthCheck.
+Arbiter SQLAlchemy ORM model: MCPServerHealthCheck.
 
 Records the result of each automated health probe sent to a registered MCP server.
 Used by the circuit breaker to deactivate servers with persistent failures and by

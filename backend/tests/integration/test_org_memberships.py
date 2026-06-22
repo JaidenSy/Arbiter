@@ -1,14 +1,14 @@
 """
 Integration tests for the multi-org membership endpoints:
 
-    POST /api/v1/org/switch        — switch the active organization
-    POST /api/v1/org/leave         — leave the active organization
-    POST /api/v1/auth/accept-invite — existing-account path (join as member)
+    POST /api/v1/org/switch       : switch the active organization
+    POST /api/v1/org/leave        : leave the active organization
+    POST /api/v1/auth/accept-invite: existing-account path (join as member)
 
 Plus the membership-aware org-verified gate used by the proxy.
 
 Uses the FastAPI test client with mocked DB (AsyncMock) and fake Redis,
-following the conftest pattern — no live Postgres required.
+following the conftest pattern: no live Postgres required.
 """
 
 from __future__ import annotations
@@ -156,7 +156,7 @@ class TestCreateOrg:
     # fallback path. The mock scalar side-effects below are ordered to match.
 
     async def test_fourth_org_in_a_day_is_rate_limited(self, fake_redis):
-        """Org creation mirrors the registration limit — fresh free orgs reset quota."""
+        """Org creation mirrors the registration limit: fresh free orgs reset quota."""
         from datetime import date
 
         user = _make_user(uuid.uuid4(), role="owner")
@@ -199,7 +199,7 @@ class TestCreateOrg:
         db.add.assert_not_called()
 
     async def test_daily_limit_fails_closed_when_redis_unavailable(self):
-        """With Redis down, the daily limit is enforced from the DB — it never silently lifts."""
+        """With Redis down, the daily limit is enforced from the DB: it never silently lifts."""
         user = _make_user(uuid.uuid4(), role="owner")
         # count_owned_orgs=1 (under cap), user_owns_paid_org=0 (free),
         # count_owned_orgs_since=3 (>= the daily limit) → 429
@@ -358,7 +358,7 @@ class TestResourceReassignmentOnLeave:
         When a member leaves, their agents must be deactivated BEFORE being
         reassigned to the org owner.  Both helpers filter on created_by_user_id,
         so reassigning first rewrites the column to the owner and the
-        deactivation UPDATE matches zero rows — the departing member's API keys
+        deactivation UPDATE matches zero rows: the departing member's API keys
         would keep working.  Counting the UPDATEs is not enough; we assert the
         order of the two statements.
         """
@@ -398,7 +398,7 @@ class TestResourceReassignmentOnLeave:
         assert deactivate_idx is not None, "Deactivation UPDATE (SET is_active) never issued"
         assert reassign_idx is not None, "Reassignment UPDATE (SET created_by_user_id) never issued"
         assert deactivate_idx < reassign_idx, (
-            "Agents must be deactivated before created_by_user_id is reassigned — "
+            "Agents must be deactivated before created_by_user_id is reassigned: "
             "reassigning first makes the deactivation a no-op and leaves the "
             "departing member's API keys live"
         )

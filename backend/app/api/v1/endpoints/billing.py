@@ -1,14 +1,14 @@
 """
-Arbiter — API endpoints: Billing.
+Arbiter API endpoints: Billing.
 
 Exposes Stripe billing operations for the frontend and handles Stripe webhook
 delivery for subscription lifecycle events.
 
 Routes:
-    GET    /billing/status    — return current plan, usage counts, and limits
-    POST   /billing/checkout  — create a Stripe Checkout Session (upgrade to Pro)
-    POST   /billing/portal    — create a Stripe Customer Portal session (manage subscription)
-    POST   /billing/webhook   — receive and verify Stripe webhook events (no JWT auth)
+    GET    /billing/status   : return current plan, usage counts, and limits
+    POST   /billing/checkout : create a Stripe Checkout Session (upgrade to Pro)
+    POST   /billing/portal   : create a Stripe Customer Portal session (manage subscription)
+    POST   /billing/webhook  : receive and verify Stripe webhook events (no JWT auth)
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ class CheckoutRequest(BaseModel):
 class PortalRequest(BaseModel):
     """Request body for POST /billing/portal."""
 
-    return_url: str  # where Stripe portal sends user back — must be a valid https:// or http://localhost URL
+    return_url: str  # where Stripe portal sends user back: must be a valid https:// or http://localhost URL
 
     @field_validator("return_url")
     @classmethod
@@ -109,7 +109,7 @@ async def get_billing_status(
     if org is None:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found")
 
-    # Monthly tool calls — sum UsageEvent rows for current month
+    # Monthly tool calls: sum UsageEvent rows for current month
     month_start = func.date_trunc("month", func.now())
     tool_calls_month: int = await db.scalar(
         select(func.coalesce(func.sum(UsageEvent.tool_calls), 0)).where(
@@ -118,7 +118,7 @@ async def get_billing_status(
         )
     ) or 0
 
-    # Resource counts — active agents / servers, all vault secrets
+    # Resource counts: active agents / servers, all vault secrets
     agents_count: int = await db.scalar(
         select(func.count(Agent.id)).where(
             Agent.org_id == org.id,
@@ -227,7 +227,7 @@ async def create_checkout(
         logger.error("billing: Stripe error creating checkout session: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Billing provider error — please try again",
+            detail="Billing provider error. Please try again",
         ) from exc
     return {"url": url}
 
@@ -282,19 +282,19 @@ async def create_portal(
         logger.error("billing: Stripe error creating portal session: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Billing provider error — please try again",
+            detail="Billing provider error. Please try again",
         ) from exc
     return {"url": url}
 
 
-_STRIPE_EVENT_DEDUP_TTL = 72 * 3600  # 72 hours — Stripe retries within this window
+_STRIPE_EVENT_DEDUP_TTL = 72 * 3600  # 72 hours: Stripe retries within this window
 
 
 @router.post(
     "/webhook",
     status_code=status.HTTP_200_OK,
     summary="Stripe webhook receiver",
-    include_in_schema=False,  # hide from public docs — unauthenticated endpoint
+    include_in_schema=False,  # hide from public docs: unauthenticated endpoint
 )
 async def stripe_webhook(
     request: Request,
@@ -308,7 +308,7 @@ async def stripe_webhook(
     IMPORTANT: This endpoint does NOT use JWT authentication.
     Authentication is performed via Stripe signature verification.
 
-    The raw request body MUST be read with request.body() — do NOT use a
+    The raw request body MUST be read with request.body(): do NOT use a
     Pydantic body parameter or call request.json(), as either would consume
     the stream and break Stripe's HMAC signature check.
 
@@ -335,7 +335,7 @@ async def stripe_webhook(
     event_id: str = event["id"]
     dedup_key = f"stripe_event:{event_id}"
 
-    # Idempotency check — skip if already processed.
+    # Idempotency check: skip if already processed.
     if redis is not None:
         already_processed = await redis.exists(dedup_key)
         if already_processed:

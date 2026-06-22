@@ -77,7 +77,7 @@ export const TOUR_STEPS: DriveStep[] = [
     element: '#nav-docs',
     popover: {
       title: 'Docs',
-      description: 'Setup guides, API reference, and integration examples — everything you need to connect your first agent.',
+      description: 'Setup guides, API reference, and integration examples. Everything you need to connect your first agent.',
       side: 'right',
       align: 'center',
     },

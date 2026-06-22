@@ -1,5 +1,5 @@
 /**
- * Arbiter — CLI Authorization page.
+ * Arbiter: CLI Authorization page.
  *
  * Route: /cli-auth?code=WORD-NNNN (no sidebar)
  *
@@ -8,11 +8,11 @@
  * verification before the user commits to granting CLI access.
  *
  * States:
- *   loading   — auth context is still hydrating
- *   ready     — show code + Authorize / Deny buttons
- *   success   — approved; user can close the tab
- *   cancelled — user clicked Deny
- *   error     — code not found (404), expired (410), already used (409), or invalid URL
+ *   loading  : auth context is still hydrating
+ *   ready    : show code + Authorize / Deny buttons
+ *   success  : approved; user can close the tab
+ *   cancelled: user clicked Deny
+ *   error    : code not found (404), expired (410), already used (409), or invalid URL
  */
 
 import axios from 'axios'
@@ -99,7 +99,7 @@ function CliAuth(): React.ReactElement {
         `/auth/cli/device/${encodeURIComponent(code)}/deny`,
       )
     } catch {
-      // Best-effort — the code will expire naturally; show cancelled state regardless
+      // Best-effort: the code will expire naturally; show cancelled state regardless
     } finally {
       setIsSubmitting(false)
       setState('cancelled')

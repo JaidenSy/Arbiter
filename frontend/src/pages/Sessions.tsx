@@ -1,9 +1,9 @@
 /**
- * Arbiter — Sessions page.
+ * Arbiter: Sessions page.
  *
  * Audit log of all agent sessions.
  *   - Agent filter dropdown
- *   - Sessions table — rows navigate to /sessions/:id for the full trace view
+ *   - Sessions table: rows navigate to /sessions/:id for the full trace view
  */
 
 import React, { useState, useMemo } from "react";

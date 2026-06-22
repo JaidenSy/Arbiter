@@ -1,30 +1,30 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — Native MCP endpoint (Streamable HTTP transport).
+Arbiter Native MCP endpoint (Streamable HTTP transport).
 
 Exposes the gateway itself as a spec-compliant MCP server so any MCP client
 (Claude Code, Claude Desktop, Cursor, VS Code, ...) can connect with a single
-URL — no custom integration code.
+URL: no custom integration code.
 
 The org's registered MCP servers are aggregated into one virtual server:
 tool names are namespaced as ``{server_name}__{tool_name}``.  Every
 ``tools/call`` runs through the full ProxyService pipeline (RBAC, vault
-injection, semantic cache, quota, budgets, audit log) — identical to the
+injection, semantic cache, quota, budgets, audit log): identical to the
 REST proxy.
 
 Routes (mounted at the application root, NOT under /api/v1):
-    POST   /mcp              — JSON-RPC 2.0 endpoint, Bearer nxai_... auth
-    POST   /mcp/{api_key}    — key-in-URL variant for clients that cannot
+    POST   /mcp             : JSON-RPC 2.0 endpoint, Bearer nxai_... auth
+    POST   /mcp/{api_key}   : key-in-URL variant for clients that cannot
                                set custom headers
 
 JSON-RPC methods handled:
-    initialize                — handshake; assigns an Mcp-Session-Id that maps
+    initialize               : handshake; assigns an Mcp-Session-Id that maps
                                 1:1 to an Arbiter audit Session
-    notifications/*           — acknowledged with HTTP 202, no body
-    ping                      — liveness check
-    tools/list                — aggregated + RBAC-filtered + namespaced
-    tools/call                — routed through ProxyService.forward_tool_call
+    notifications/*          : acknowledged with HTTP 202, no body
+    ping                     : liveness check
+    tools/list               : aggregated + RBAC-filtered + namespaced
+    tools/call               : routed through ProxyService.forward_tool_call
 
 Transport notes:
     - Responses are always application/json (single message). We do not open
@@ -72,7 +72,7 @@ _LATEST_PROTOCOL_VERSION = "2025-06-18"
 _SERVER_INFO = {"name": "arbiter-gateway", "version": "0.4.0"}
 
 # Separator between server name and tool name in aggregated tool names.
-# Split on the FIRST occurrence — MCPServerCreate rejects "__" in server
+# Split on the FIRST occurrence: MCPServerCreate rejects "__" in server
 # names so the split is unambiguous; tool names may contain "__".
 _TOOL_SEPARATOR = "__"
 
@@ -133,7 +133,7 @@ def _session_id_from_header(request: Request) -> _uuid.UUID | None:
 
 @router.post(
     "/mcp",
-    summary="Native MCP endpoint (Streamable HTTP) — Bearer API key auth",
+    summary="Native MCP endpoint (Streamable HTTP): Bearer API key auth",
     dependencies=[Depends(require_org_verified)],
 )
 async def mcp_endpoint(
@@ -150,7 +150,7 @@ async def mcp_endpoint(
 
 @router.post(
     "/mcp/{api_key}",
-    summary="Native MCP endpoint — key-in-URL variant",
+    summary="Native MCP endpoint: key-in-URL variant",
     include_in_schema=False,
 )
 async def mcp_endpoint_keyed(
@@ -223,7 +223,7 @@ async def _handle_mcp_request(
     except HTTPException:
         raise
     except Exception:
-        # Never leak a bare HTTP 500 to an MCP client — surface a JSON-RPC
+        # Never leak a bare HTTP 500 to an MCP client: surface a JSON-RPC
         # internal error so the client can show something actionable.
         logger.exception("mcp: unhandled error processing %r", method)
         return JSONResponse(_rpc_error(req_id, _INTERNAL_ERROR, "Internal error"))
@@ -301,7 +301,7 @@ async def _handle_tools_list(
 
     # Servers are fetched sequentially on purpose: ProxyService shares this
     # request's AsyncSession, and a SQLAlchemy async session must not be used
-    # concurrently. Parallelizing needs a session per task — follow-up.
+    # concurrently. Parallelizing needs a session per task: follow-up.
     aggregated: list[dict] = []
     for server in servers:
         # Any failure (unreachable upstream, RBAC lookup error) skips this one
@@ -325,7 +325,7 @@ async def _handle_tools_list(
         for tool in tools:
             if not tool.get("name"):
                 logger.warning(
-                    "mcp: server %r returned a tool without a name — skipped", server.name
+                    "mcp: server %r returned a tool without a name: skipped", server.name
                 )
                 continue
             namespaced = dict(tool)
@@ -353,7 +353,7 @@ async def _handle_tools_call(
     Gateway-side denials (RBAC 403, rate-limit 429, scope violation, quota
     exceeded, session budget exceeded) are returned as spec-compliant MCP tool
     errors: ``{"result": {"content": [...], "isError": true}}``.  This is the
-    correct MCP representation for tool-level errors — JSON-RPC protocol errors
+    correct MCP representation for tool-level errors: JSON-RPC protocol errors
     (-32xxx) are reserved for transport/envelope problems only.
 
     Upstream 502/504 errors from the MCP server itself still surface as
@@ -422,7 +422,7 @@ async def _handle_tools_call(
             )
         )
 
-    # proxied.result is the upstream's JSON-RPC `result` for tools/call —
+    # proxied.result is the upstream's JSON-RPC `result` for tools/call,
     # already MCP-shaped ({content: [...], isError: ...}). Pass it through and
     # attach gateway observability in _meta (spec-reserved extension point).
     result = dict(proxied.result) if isinstance(proxied.result, dict) else {"content": []}
