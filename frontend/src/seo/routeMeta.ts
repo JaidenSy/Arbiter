@@ -28,31 +28,31 @@ export const DEFAULT_META: PageMeta = {
 export const PAGE_META: Record<string, PageMeta> = {
   '/': DEFAULT_META,
   '/pricing': {
-    title: 'Pricing — Arbiter MCP Gateway',
+    title: 'Pricing: Arbiter MCP Gateway',
     description:
       'Arbiter pricing: a free tier with 5,000 tool calls/month and Pro at $29/mo for 100,000 calls. Per-tool RBAC, an encrypted secrets vault, semantic caching, and full audit logging.',
   },
   '/docs': {
-    title: 'Docs & API Reference — Arbiter',
+    title: 'Docs & API Reference: Arbiter',
     description:
       'Arbiter API documentation: register agents, grant per-tool permissions, store vault secrets, route MCP tool calls through the gateway, and trace every session.',
   },
   '/security': {
-    title: 'Security — Arbiter MCP Gateway',
+    title: 'Security: Arbiter MCP Gateway',
     description:
       'How Arbiter secures AI agent tool access: an AES-256-GCM secrets vault, scoped agent identities, per-tool RBAC, and a complete audit log of every tool call.',
   },
   '/changelog': {
-    title: 'Changelog — Arbiter',
+    title: 'Changelog: Arbiter',
     description:
       'New features, improvements, and fixes in Arbiter, the self-hosted MCP gateway for AI agents.',
   },
   '/privacy': {
-    title: 'Privacy Policy — Arbiter',
+    title: 'Privacy Policy: Arbiter',
     description: 'How Arbiter collects, uses, stores, and protects your data.',
   },
   '/terms': {
-    title: 'Terms of Service — Arbiter',
+    title: 'Terms of Service: Arbiter',
     description: 'The terms that govern your use of Arbiter.',
   },
 
