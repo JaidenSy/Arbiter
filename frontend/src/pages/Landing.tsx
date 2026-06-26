@@ -11,6 +11,7 @@ import { ArbiterMark } from '../components/ArbiterLogo'
 import AuthModal, { type AuthMode } from '../components/AuthModal'
 import HeroBackground from '../components/HeroBackground'
 import HeroArchDiagram from '../components/HeroArchDiagram'
+import HeroDashboardSim from '../components/HeroDashboardSim'
 import DashboardPreview from '../components/DashboardPreview'
 import WorksWith from '../components/WorksWith'
 import FeatureShowcase from '../components/FeatureShowcase'
@@ -33,46 +34,17 @@ function GitHubIcon({ size = 15 }: { size?: number }): React.ReactElement {
 }
 
 /**
- * Above-the-fold proof: a real Claude Code session calling tools through Arbiter.
- * A permitted call is served from the semantic cache, a denied tool is blocked by
- * per-agent RBAC at call time, and both land in the audit trail.
+ * Above-the-fold proof: a simulated, interactive Arbiter dashboard that auto-plays
+ * a real session (open a session -> see the trace -> the RBAC denial) and becomes
+ * clickable on hover. See HeroDashboardSim.
  */
 function HeroDemo(): React.ReactElement {
-  const prefersReduced =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
   return (
     <figure
       className="mt-14 max-w-3xl mx-auto animate-fade-in"
       style={{ animationDelay: '260ms' }}
     >
-      <div
-        className="rounded-lg overflow-hidden"
-        style={{
-          border: '1px solid rgba(255,255,255,0.09)',
-          boxShadow: '0 0 0 1px rgba(61,53,206,0.12) inset, 0 24px 60px rgba(0,0,0,0.45)',
-        }}
-      >
-        {/* Reduced-motion users get a static poster + manual controls, not autoplay. */}
-        <video
-          src="/demo.mp4"
-          poster="/demo-poster.jpg"
-          width={1100}
-          height={652}
-          autoPlay={!prefersReduced}
-          loop={!prefersReduced}
-          muted
-          playsInline
-          controls={prefersReduced}
-          preload={prefersReduced ? 'none' : 'auto'}
-          aria-label="A Claude Code session calling tools through Arbiter: a permitted call is served from the semantic cache, a denied tool is blocked by per-agent RBAC at call time, and both are written to the audit trail."
-          className="block w-full h-auto"
-        />
-      </div>
-      <figcaption className="mt-3 text-muted text-xs">
-        Real session: a permitted call is served from cache, a denied tool is blocked at call time, both are written to the audit trail.
-      </figcaption>
+      <HeroDashboardSim />
     </figure>
   )
 }
@@ -245,14 +217,6 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
 
         {/* Live product demo (real session) */}
         <HeroDemo />
-
-        <p
-          className="mt-4 text-muted text-xs max-w-xl mx-auto animate-fade-in"
-          style={{ animationDelay: '280ms' }}
-        >
-          Secrets stay in an AES-256-GCM vault and are injected at the gateway. They are never
-          returned to the agent. Every call, allowed or denied, is written to the audit trail.
-        </p>
       </div>
     </section>
   )
