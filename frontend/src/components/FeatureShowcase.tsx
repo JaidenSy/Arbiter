@@ -55,7 +55,7 @@ const REGISTER_LINES: CodeLine[] = [
   [{ text: '  "api_key": ', color: T.accent }, { text: '"nxai_k7x2m9p3..."', color: T.success }],
   [{ text: '}', color: T.teal }],
   [],
-  [{ text: '⚠ Copy the key — it will not be shown again.', color: T.warning }],
+  [{ text: '⚠ Copy the key. It will not be shown again.', color: T.warning }],
 ]
 
 const PROXY_LINES: CodeLine[] = [
@@ -134,7 +134,7 @@ function StepTrace(): React.ReactElement {
   return (
     <div className="bg-elevated border border-border rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-        <span className="font-mono text-xs text-muted">Mission Control — latest call</span>
+        <span className="font-mono text-xs text-muted">Mission Control: latest call</span>
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-success" style={{ animation: 'blink-cursor 1.8s step-end infinite' }} />
           <span className="font-mono text-xs text-muted">live</span>
@@ -214,7 +214,7 @@ export default function FeatureShowcase(): React.ReactElement {
     return () => observer.disconnect()
   }, [])
 
-  // Auto-advance — restarts when resetKey changes (manual step click)
+  // Auto-advance: restarts when resetKey changes (manual step click)
   useEffect(() => {
     if (isHovered) return
     const timer = setInterval(() => {

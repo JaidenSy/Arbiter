@@ -1,12 +1,12 @@
 """
-Arbiter — SQLAlchemy ORM model: VaultAuditEvent.
+Arbiter SQLAlchemy ORM model: VaultAuditEvent.
 
 Immutable structured audit trail for vault secret lifecycle operations.
 One row is written per operation (create, read/reveal, delete, rotate).
 
 NOTE: This model requires a corresponding Alembic migration before it can
 be used against a live database.  The migration has not been included in
-this PR — see PR description for details.
+this PR: see PR description for details.
 """
 
 from __future__ import annotations
@@ -38,9 +38,9 @@ class VaultAuditEvent(Base):
     Columns:
         id:         UUID primary key.
         org_id:     FK → organizations.id (denormalized for org-scoped queries).
-        secret_id:  FK → vault_secrets.id (nullable — secret may be deleted).
-        user_id:    FK → users.id — the user who triggered the operation.
-        operation:  Enum — create / read / delete / rotate.
+        secret_id:  FK → vault_secrets.id (nullable: secret may be deleted).
+        user_id:    FK → users.id: the user who triggered the operation.
+        operation:  Enum: create / read / delete / rotate.
         timestamp:  When the operation occurred (server-set, immutable).
     """
 

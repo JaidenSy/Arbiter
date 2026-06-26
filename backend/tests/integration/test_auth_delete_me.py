@@ -3,11 +3,11 @@ Integration tests for DELETE /api/v1/auth/me (GDPR account deletion).
 
 Membership model: the account may belong to several orgs.  An org is deleted
 with the account only when the user is an owner and no other active owner
-remains; every other org survives untouched — including its Stripe
+remains; every other org survives untouched: including its Stripe
 subscription and customer (plans attach to orgs, never to people).
 
 Uses the FastAPI test client with mocked DB (AsyncMock) and fake Redis.
-Stripe SDK calls are mocked via unittest.mock.patch — no real API keys required.
+Stripe SDK calls are mocked via unittest.mock.patch: no real API keys required.
 """
 
 from __future__ import annotations

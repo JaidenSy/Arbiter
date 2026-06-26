@@ -1,10 +1,10 @@
 """
-Arbiter — API endpoints: Analytics.
+Arbiter API endpoints: Analytics.
 
 Per-agent cost attribution with 7-day daily trend data.
 
 Routes:
-    GET    /analytics/agents — monthly tool-call breakdown by agent (Pro+ only)
+    GET    /analytics/agents: monthly tool-call breakdown by agent (Pro+ only)
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ async def get_agent_analytics(
     Return monthly tool-call counts broken down by agent, plus a 7-day daily
     trend for each agent.  Sorted by tool_calls_this_month DESC.
 
-    Requires Pro or Enterprise plan — free orgs receive HTTP 402.
+    Requires Pro or Enterprise plan: free orgs receive HTTP 402.
     """
     org = await db.get(Organization, current_user.org_id)
     plan_tier = org.plan_tier if org else "free"

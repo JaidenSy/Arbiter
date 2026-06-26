@@ -45,7 +45,7 @@ function Modal({
         aria-hidden="true"
       />
 
-      {/* Centering wrapper — min-h-full keeps items-center working even when content overflows */}
+      {/* Centering wrapper: min-h-full keeps items-center working even when content overflows */}
       <div className="flex min-h-full items-center justify-center p-4">
 
       {/* Dialog */}

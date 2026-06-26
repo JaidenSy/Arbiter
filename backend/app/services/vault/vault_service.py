@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — VaultService.
+Arbiter VaultService.
 
 Provides AES-256-GCM encryption/decryption and CRUD operations for secrets
 stored in the vault_secrets table.
@@ -78,7 +78,7 @@ class VaultService:
 
         Loads the encryption key from the environment on every instantiation.
         The key is never stored as an instance attribute beyond the scope of
-        a method call — it exists only transiently in _load_key().
+        a method call: it exists only transiently in _load_key().
 
         Args:
             db: Async SQLAlchemy session bound to the current request.
@@ -139,7 +139,7 @@ class VaultService:
         try:
             plaintext_bytes = aesgcm.decrypt(nonce, ct_with_tag, None)
         except Exception as exc:
-            # Do NOT include ciphertext details in the error — they could leak
+            # Do NOT include ciphertext details in the error: they could leak
             # information about partial decryption state.
             raise ValueError("Decryption failed: ciphertext may be tampered") from exc
 
@@ -162,8 +162,8 @@ class VaultService:
 
         Args:
             name:      Logical key, e.g. "GITHUB_TOKEN".
-            plaintext: Raw secret value — encrypted before storage.
-            org_id:    Required — Organisation UUID. Always included in the DB
+            plaintext: Raw secret value: encrypted before storage.
+            org_id:    Required: Organisation UUID. Always included in the DB
                        filter to enforce org isolation (fix for #251).
             agent_id:  Optional FK to the owning agent (NULL = org-level secret).
         """
@@ -205,11 +205,11 @@ class VaultService:
 
         When ``agent_ids`` is None, all secrets in the org are returned (used for
         owner/admin callers).  When provided, only secrets whose ``agent_id`` is
-        in the list are returned — used for ``member``-role callers who should
+        in the list are returned: used for ``member``-role callers who should
         only see secrets scoped to agents they created (Issue #264).
 
         Args:
-            org_id:    Organization UUID — enforces org isolation.
+            org_id:    Organization UUID: enforces org isolation.
             agent_ids: Optional list of agent UUIDs to filter on.
                        Pass an empty list to return no secrets.
 
@@ -220,7 +220,7 @@ class VaultService:
         query = select(VaultSecret).where(VaultSecret.org_id == org_id)
         if agent_ids is not None:
             if not agent_ids:
-                # Empty list — member has no owned agents; return nothing.
+                # Empty list: member has no owned agents; return nothing.
                 return []
             query = query.where(VaultSecret.agent_id.in_(agent_ids))
         result = await self.db.execute(query)
@@ -233,12 +233,12 @@ class VaultService:
         Retrieve and decrypt a secret by logical name, scoped to the org.
 
         Scoped to org_id (required) to prevent cross-org secret leakage.
-        Further scoped to agent_id when provided — agents cannot read each other's secrets.
+        Further scoped to agent_id when provided: agents cannot read each other's secrets.
         SECURITY: The decrypted value is NEVER logged.
 
         Args:
             name:     Logical key used when storing the secret.
-            org_id:   Organization UUID — required to enforce org isolation.
+            org_id:   Organization UUID: required to enforce org isolation.
             agent_id: Owner agent UUID. If provided, restricts lookup to that agent.
 
         Returns:
@@ -257,5 +257,5 @@ class VaultService:
             raise KeyError(f"Secret not found: {name!r}")
 
         logger.info("vault: accessed secret name=%r", name)
-        # Decrypt — never log the return value.
+        # Decrypt: never log the return value.
         return self.decrypt(secret.ciphertext)

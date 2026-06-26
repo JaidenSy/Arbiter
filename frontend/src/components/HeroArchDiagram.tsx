@@ -61,7 +61,7 @@ export default function HeroArchDiagram(): React.ReactElement {
                 stroke="rgba(6,182,212,0.30)" strokeWidth="1.5" strokeDasharray="5 3" />
 
               {/* ── Traveling packets ── */}
-              {/* Inbound: Agent → Arbiter (indigo — identity-authenticated) */}
+              {/* Inbound: Agent → Arbiter (indigo: identity-authenticated) */}
               <circle r="3.5" fill="#3D35CE">
                 <animateMotion dur="1.8s" repeatCount="indefinite" begin="0s">
                   <mpath href="#p-in" />
@@ -72,7 +72,7 @@ export default function HeroArchDiagram(): React.ReactElement {
                   <mpath href="#p-in" />
                 </animateMotion>
               </circle>
-              {/* Outbound: Arbiter → Servers (cyan — proxied data) */}
+              {/* Outbound: Arbiter → Servers (cyan: proxied data) */}
               <circle r="3" fill="#06B6D4" opacity="0.90">
                 <animateMotion dur="1.2s" repeatCount="indefinite" begin="0.2s">
                   <mpath href="#p-s1" />
@@ -94,7 +94,7 @@ export default function HeroArchDiagram(): React.ReactElement {
                 fill="#0F0F12" stroke="rgba(255,255,255,0.09)" strokeWidth="1" />
               <circle cx="42" cy="108" r="12"
                 fill="rgba(61,53,206,0.10)" stroke="rgba(61,53,206,0.28)" strokeWidth="1" />
-              {/* Simple agent icon — nested diamond */}
+              {/* Simple agent icon: nested diamond */}
               <rect x="36" y="102" width="12" height="12" rx="2"
                 fill="none" stroke="rgba(82,73,217,0.65)" strokeWidth="1.5" />
               <text x="62" y="105" fontSize="11" fontFamily="Geist, Inter, sans-serif"

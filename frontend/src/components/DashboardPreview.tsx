@@ -66,7 +66,7 @@ export default function DashboardPreview(): React.ReactElement {
       if (visibleCount < ROWS.length) {
         setVisibleCount(n => n + 1)
       } else {
-        // Instant reset — new loopKey forces fresh mounts with fresh animations
+        // Instant reset: new loopKey forces fresh mounts with fresh animations
         setVisibleCount(0)
         setLoopKey(k => k + 1)
       }
@@ -110,7 +110,7 @@ export default function DashboardPreview(): React.ReactElement {
               <span className="w-3 h-3 rounded-full" style={{ background: 'rgba(251,191,36,0.50)' }} />
               <span className="w-3 h-3 rounded-full" style={{ background: 'rgba(52,211,153,0.50)' }} />
             </div>
-            <span className="font-mono text-xs text-muted">Mission Control — Arbiter</span>
+            <span className="font-mono text-xs text-muted">Mission Control: Arbiter</span>
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-muted/60" />
               <span className="font-mono text-xs text-muted">sample</span>

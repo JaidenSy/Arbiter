@@ -1,9 +1,9 @@
 /**
- * Arbiter — Plan tier data shared by the landing page pricing section and
+ * Arbiter: Plan tier data shared by the landing page pricing section and
  * the dedicated /pricing page.
  *
  * Tier limits mirror the backend PLAN_LIMITS table
- * (backend/app/services/plan/plan_limits.py) — update both together.
+ * (backend/app/services/plan/plan_limits.py): update both together.
  */
 
 export const SUPPORT_EMAIL: string =

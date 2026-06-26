@@ -1,10 +1,10 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — Application configuration.
+Arbiter Application configuration.
 
 All settings are read from environment variables (or a .env file when
-APP_ENV=development). No secrets are hardcoded here — see .env.example.
+APP_ENV=development). No secrets are hardcoded here: see .env.example.
 
 Uses pydantic-settings so every field is type-validated at startup.
 """
@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     # ── Application ───────────────────────────────────────────────────────────
     app_env: str = "development"
     app_debug: bool = False
-    app_secret_key: str  # required — no default
+    app_secret_key: str  # required: no default
 
     # ── API ───────────────────────────────────────────────────────────────────
     api_host: str = "0.0.0.0"
@@ -46,13 +46,13 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
 
     # ── Database ──────────────────────────────────────────────────────────────
-    database_url: str  # required — asyncpg DSN
+    database_url: str  # required: asyncpg DSN
 
     # ── Redis ─────────────────────────────────────────────────────────────────
-    redis_url: str  # required — redis:// DSN
+    redis_url: str  # required: redis:// DSN
 
     # ── Vault / Encryption ────────────────────────────────────────────────────
-    vault_encryption_key: str  # required — 64-char hex (AES-256)
+    vault_encryption_key: str  # required: 64-char hex (AES-256)
 
     # ── Semantic Cache ────────────────────────────────────────────────────────
     cache_embedding_model: str = "all-MiniLM-L6-v2"
@@ -63,12 +63,12 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "arbiter_dev_jwt_secret_change_in_production"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = (
-        60  # 1 hour — keep short; refresh token handles persistence
+        60  # 1 hour: keep short; refresh token handles persistence
     )
     jwt_refresh_token_expire_days: int = 30
-    cli_token_expire_minutes: int = 10080  # 7 days — CLI sessions are long-lived
+    cli_token_expire_minutes: int = 10080  # 7 days: CLI sessions are long-lived
     # When True, JWT blocklist check allows the token through if Redis is down.
-    # Default False (fail closed) — set True only if uptime > revocation guarantee.
+    # Default False (fail closed): set True only if uptime > revocation guarantee.
     jwt_blocklist_fail_open: bool = False
 
     # ── Registration ──────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ class Settings(BaseSettings):
     # Lifetime cap on how many orgs a single account may OWN. Closes the
     # free-tier quota-multiplication vector (minting unbounded free orgs each
     # with a fresh quota). Tiered: accounts that own at least one paid org get
-    # the higher ceiling. Purely additive — set above any legitimate usage, and
+    # the higher ceiling. Purely additive: set above any legitimate usage, and
     # it only blocks creating the NEXT org, never touches existing ones. Raise
     # via env (FREE_OWNED_ORG_LIMIT / PAID_OWNED_ORG_LIMIT) without a deploy.
     free_owned_org_limit: int = 5
@@ -97,7 +97,7 @@ class Settings(BaseSettings):
 
     # ── Account-level billing (org->account billing migration) ──────────────────
     # Phase-1 read-path flag. When False (default) the effective plan of an org
-    # is exactly its own ``organizations.plan_tier`` — identical to legacy
+    # is exactly its own ``organizations.plan_tier``: identical to legacy
     # behaviour. When True, ``effective_plan`` resolves the org's plan from its
     # owner accounts (account-owned billing). Flip only after Phase-1 has shipped
     # and the parity backfill has run. One env flip (ACCOUNT_BILLING_ENABLED),
@@ -114,9 +114,9 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
 
     # ── Stripe ────────────────────────────────────────────────────────────────
-    stripe_secret_key: str = ""  # required in production — sk_live_... or sk_test_...
-    stripe_webhook_secret: str = ""  # required — whsec_... from Stripe dashboard or CLI
-    stripe_pro_price_id: str = ""  # required — price_... from Stripe product catalog
+    stripe_secret_key: str = ""  # required in production: sk_live_... or sk_test_...
+    stripe_webhook_secret: str = ""  # required: whsec_... from Stripe dashboard or CLI
+    stripe_pro_price_id: str = ""  # required: price_... from Stripe product catalog
 
     # ── Email (Resend HTTP API) ────────────────────────────────────────────────
     resend_api_key: str = ""

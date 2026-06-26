@@ -121,7 +121,7 @@ class TestEnvelope:
     @pytest.mark.asyncio
     async def test_id_bearing_notification_method_gets_method_not_found(self, authed_client):
         # An id-bearing message is a request per JSON-RPC 2.0, even with a
-        # notifications/ method — it must get a reply, not a silent 202.
+        # notifications/ method: it must get a reply, not a silent 202.
         client, _, _ = authed_client
         resp = await client.post(MCP_URL, json=_rpc("notifications/initialized", req_id=7))
         assert resp.status_code == 200

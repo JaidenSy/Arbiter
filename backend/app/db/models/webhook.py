@@ -1,5 +1,5 @@
 """
-Arbiter — SQLAlchemy ORM models: Webhook and WebhookDeliveryLog.
+Arbiter SQLAlchemy ORM models: Webhook and WebhookDeliveryLog.
 """
 
 from __future__ import annotations

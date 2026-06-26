@@ -1,5 +1,5 @@
 /**
- * PasswordRequirements — live checklist of the password policy.
+ * PasswordRequirements: live checklist of the password policy.
  *
  * Pure presentation; the rules live in `utils/password.ts`.
  */

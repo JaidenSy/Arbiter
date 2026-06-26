@@ -1,15 +1,15 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — CacheService.
+Arbiter CacheService.
 
 Implements a two-phase semantic cache for MCP tool calls:
 
-    Phase 1 — Exact match:
+    Phase 1: Exact match:
         SHA-256 hash of org id + MCP server id + the canonical (sorted-key)
         JSON of the input.  O(1) lookup in Redis (and Postgres fallback).
 
-    Phase 2 — Semantic match:
+    Phase 2: Semantic match:
         sentence-transformers/all-MiniLM-L6-v2 embedding of the input.
         pgvector cosine-distance ANN search (single SQL query, no Python loop).
         Threshold controlled by CACHE_SIMILARITY_THRESHOLD env var (default 0.95).
@@ -104,7 +104,7 @@ class CacheService:
         self.redis = redis
 
     def compute_embedding(self, text: str) -> list[float]:
-        """Synchronous embedding — call via _compute_embedding_async from async context."""
+        """Synchronous embedding: call via _compute_embedding_async from async context."""
         model = _get_model()
         return model.encode(text).tolist()
 
@@ -125,15 +125,15 @@ class CacheService:
         Attempt to retrieve a cached response for a tool call.
 
         Lookup order:
-            1. Redis L1 cache (exact hash key) — O(1), no DB hit
-            2. Postgres exact-hash match — fallback if Redis miss
-            3. Postgres semantic similarity match (embedding cosine search) — Pro/Enterprise only
+            1. Redis L1 cache (exact hash key): O(1), no DB hit
+            2. Postgres exact-hash match: fallback if Redis miss
+            3. Postgres semantic similarity match (embedding cosine search): Pro/Enterprise only
 
         Args:
             tool_name:     Name of the MCP tool being called.
             input_payload: The tool call arguments dict.
             org_id:        Organization UUID for tenant isolation.
-            mcp_server_id: MCP server UUID — entries never cross server boundaries.
+            mcp_server_id: MCP server UUID: entries never cross server boundaries.
             semantic:      When False, skip embedding and pgvector search (free tier).
         """
         canonical = _canonical(tool_name, input_payload)
@@ -238,7 +238,7 @@ class CacheService:
             input_payload:    The tool call arguments dict.
             response_payload: The response from the MCP server.
             org_id:           Organization UUID for tenant isolation.
-            mcp_server_id:    MCP server UUID — entries never cross server boundaries.
+            mcp_server_id:    MCP server UUID: entries never cross server boundaries.
         """
         canonical = _canonical(tool_name, input_payload)
         input_hash = _exact_hash(org_id, mcp_server_id, canonical)
@@ -246,7 +246,7 @@ class CacheService:
         ttl_seconds = ttl_override if ttl_override is not None else settings.cache_ttl_seconds
         expires_at = datetime.now(tz=UTC) + timedelta(seconds=ttl_seconds)
 
-        # Compute embedding only for Pro/Enterprise — free tier uses exact-match only.
+        # Compute embedding only for Pro/Enterprise: free tier uses exact-match only.
         embedding: list[float] | None = None
         if semantic:
             try:

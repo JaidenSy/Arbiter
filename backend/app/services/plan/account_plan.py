@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — Account-level plan resolution (org->account billing, phase 1).
+Arbiter Account-level plan resolution (org->account billing, phase 1).
 
 Today the paid tier lives on the *organization* (``organizations.plan_tier``).
 The migration plan moves billing to the *account* (``users.plan_tier``) so that
@@ -13,7 +13,7 @@ This module is the **single switch point** for that transition:
     effective_plan(db, org) -> the tier the rest of the app should enforce.
 
 While ``settings.account_billing_enabled`` is False (the default, and the state
-shipped in phase 1) ``effective_plan`` returns ``org.plan_tier`` verbatim — so
+shipped in phase 1) ``effective_plan`` returns ``org.plan_tier`` verbatim: so
 behaviour is byte-for-byte identical to the legacy code path. When the flag is
 flipped, the effective tier becomes the **most generous** plan among the org's
 own legacy ``plan_tier`` and its active owner accounts. Including the org's own
@@ -64,7 +64,7 @@ async def _owner_account_tiers(db: AsyncSession, org_id) -> list[str]:
 
     Mirrors the active-owner query used elsewhere (see
     ``org_service.count_other_owners``): role='owner' memberships joined to a
-    User row that is active. NULL account tiers are filtered out — a user with
+    User row that is active. NULL account tiers are filtered out: a user with
     no account plan contributes nothing to the org's effective plan.
     """
     rows = await db.scalars(
@@ -111,10 +111,10 @@ async def backfill_account_plans(db: AsyncSession) -> int:
 
     For every org on a paid tier:
       * raise each *active owner's* account ``plan_tier`` to the org's tier
-        (``higher_plan`` — never downgrades an account that is already higher);
+        (``higher_plan``: never downgrades an account that is already higher);
       * attach the org's Stripe customer/subscription to its **earliest** active
         owner (the canonical billing owner), but only if that account has no
-        Stripe linkage yet — so re-running never clobbers or duplicates a sub.
+        Stripe linkage yet: so re-running never clobbers or duplicates a sub.
 
     Returns the number of accounts modified. Safe to run repeatedly; at launch
     the paid set is ~empty so this is a no-op, but it must be correct for the
@@ -142,7 +142,7 @@ async def backfill_account_plans(db: AsyncSession) -> int:
 
         if not owners:
             logger.warning(
-                "backfill_account_plans: paid org %s (%s) has no active owner — "
+                "backfill_account_plans: paid org %s (%s) has no active owner: "
                 "skipped; cannot grandfather a plan onto a missing account",
                 org.id,
                 org.plan_tier,

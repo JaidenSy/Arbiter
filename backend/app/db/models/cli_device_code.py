@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — SQLAlchemy ORM model: CliDeviceCode.
+Arbiter SQLAlchemy ORM model: CliDeviceCode.
 
 Stores pending and completed device-flow authorization requests issued when
 a CLI client calls POST /api/v1/auth/cli/device.  The user_code is shown in
@@ -32,11 +32,11 @@ class CliDeviceCode(Base):
 
     Columns:
         id:          Auto-generated UUID primary key.
-        device_code: UUID-formatted string — sent to CLI, used to poll /token.
+        device_code: UUID-formatted string: sent to CLI, used to poll /token.
         user_code:   Short human-readable code (WORD-NNNN) shown in the terminal.
         user_id:     FK → users.id; null until the user approves.
         org_id:      FK → organizations.id; null until the user approves.
-        status:      Lifecycle state — "pending" | "approved" | "rejected" |
+        status:      Lifecycle state: "pending" | "approved" | "rejected" |
                      "expired" | "consumed".
         expires_at:  UTC timestamp when this record becomes invalid (now + 900s).
         created_at:  Immutable insert timestamp.

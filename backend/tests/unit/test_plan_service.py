@@ -286,7 +286,7 @@ class TestCheckResourceLimit:
         db = AsyncMock()
         db.scalar = AsyncMock(return_value=9999)
 
-        # Should not raise — and should not even query the DB
+        # Should not raise: and should not even query the DB
         await check_resource_limit(
             db=db, org=org, resource="agents", model=model, filter_col=filter_col
         )

@@ -1,14 +1,14 @@
 """
-Arbiter — API endpoints: Sessions.
+Arbiter API endpoints: Sessions.
 
 Sessions are created automatically by the proxy when a tool call is
 received without a session_id.  These endpoints expose read-only access
 to session history and per-session event logs for auditing.
 
 Routes:
-    GET    /sessions              — list sessions (filterable by agent_id)
-    GET    /sessions/{id}         — get session with all events
-    GET    /sessions/{id}/events  — get events for a session (paginated)
+    GET    /sessions             : list sessions (filterable by agent_id)
+    GET    /sessions/{id}        : get session with all events
+    GET    /sessions/{id}/events : get events for a session (paginated)
 """
 
 from __future__ import annotations

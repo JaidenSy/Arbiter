@@ -1,5 +1,5 @@
 /**
- * Arbiter — Confirm Email Change page.
+ * Arbiter: Confirm Email Change page.
  *
  * Route: /confirm-email-change?token=<token> (public, no sidebar)
  * Hits GET /auth/confirm-email-change?token=<token> on mount.
@@ -33,7 +33,7 @@ function ConfirmEmailChange(): React.ReactElement {
       .then(async (res) => {
         if (res.ok) {
           setStatus('success')
-          // Refresh user context if they're logged in — email changed
+          // Refresh user context if they're logged in: email changed
           void refreshUser()
         } else {
           const data = await res.json().catch(() => ({}))

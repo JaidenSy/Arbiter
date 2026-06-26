@@ -2,7 +2,7 @@ import React from 'react'
 
 interface Props {
   children: React.ReactNode
-  /** Compact inline fallback instead of full-screen — for isolated sections */
+  /** Compact inline fallback instead of full-screen: for isolated sections */
   inline?: boolean
   /** Custom fallback to render instead of the default UI */
   fallback?: React.ReactNode

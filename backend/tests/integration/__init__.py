@@ -1,1 +1,1 @@
-# Arbiter — integration test package
+# Arbiter integration test package

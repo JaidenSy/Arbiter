@@ -1,8 +1,8 @@
 /**
- * Arbiter — Terms of Service page.
+ * Arbiter: Terms of Service page.
  *
  * Route: /terms (public, no auth required)
- * Content sourced from legal research (research-legal.md) — May 28, 2026.
+ * Content sourced from legal research (research-legal.md): May 28, 2026.
  */
 
 import React from 'react'
@@ -171,7 +171,7 @@ export default function TermsOfService(): React.ReactElement {
             <strong className="text-primary">Arbiter's IP:</strong> The Service, including all software, design, UI, algorithms, and infrastructure, is owned by Arbiter and protected by intellectual property laws. You receive a limited, non-exclusive, non-transferable license to use the Service for your internal business purposes.
           </P>
           <P>
-            <strong className="text-primary">Your Data:</strong> You retain all rights to your data — including vault secrets, MCP server configurations, agent records, and tool call content. You grant Arbiter a limited license to process your data solely as necessary to provide the Service.
+            <strong className="text-primary">Your Data:</strong> You retain all rights to your data, including vault secrets, MCP server configurations, agent records, and tool call content. You grant Arbiter a limited license to process your data solely as necessary to provide the Service.
           </P>
           <P>
             <strong className="text-primary">Feedback:</strong> If you provide feedback or suggestions about the Service, you grant us an irrevocable, royalty-free license to use that feedback without restriction.

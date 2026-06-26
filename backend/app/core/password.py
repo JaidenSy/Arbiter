@@ -1,11 +1,11 @@
 """
-Arbiter — shared password-strength policy.
+Arbiter shared password-strength policy.
 
 Single source of truth for the password rules. Every flow that sets a
 password (register, change-password, reset-password, accept-invite) runs
 through here so the requirements stay consistent across the app. The
-frontend mirrors these rules in ``components/PasswordRequirements.tsx`` —
-keep the two in sync.
+frontend mirrors these rules in ``components/PasswordRequirements.tsx``.
+Keep the two in sync.
 """
 
 from __future__ import annotations

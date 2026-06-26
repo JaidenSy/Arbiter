@@ -1,4 +1,4 @@
-"""Add vault_audit_events — structured audit trail for vault secret operations
+"""Add vault_audit_events: structured audit trail for vault secret operations
 
 One row per operation (create, read/reveal, delete, rotate).  The secret_id
 FK is SET NULL on secret deletion so the audit row survives the secret being

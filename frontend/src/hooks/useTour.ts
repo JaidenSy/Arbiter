@@ -9,7 +9,7 @@ export function useTour(): { startTour: () => void } {
   const driverRef = useRef<ReturnType<typeof driver> | null>(null)
 
   const startTour = useCallback(() => {
-    // Mark seen immediately — onDestroyStarted doesn't fire on navigation/refresh
+    // Mark seen immediately: onDestroyStarted doesn't fire on navigation/refresh
     localStorage.setItem(TOUR_SEEN_KEY, '1')
     if (!driverRef.current) {
       driverRef.current = driver({

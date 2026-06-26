@@ -1,11 +1,11 @@
 """
-Arbiter — API endpoints: Audit Log Export.
+Arbiter API endpoints: Audit Log Export.
 
 Streams all SessionEvent rows for an org as CSV or newline-delimited JSON,
 filtered by date range.  Pro+ gated.
 
 Routes:
-    GET /audit/export — stream audit events in csv or json format
+    GET /audit/export: stream audit events in csv or json format
 """
 
 from __future__ import annotations

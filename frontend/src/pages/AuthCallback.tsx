@@ -1,5 +1,5 @@
 /**
- * Arbiter — SSO Callback page.
+ * Arbiter: SSO Callback page.
  *
  * Route: /auth/callback (public)
  *
@@ -36,7 +36,7 @@ function AuthCallback(): React.ReactElement {
   const didRun = useRef(false)
 
   useEffect(() => {
-    // Strict-mode safe — only run the exchange once.
+    // Strict-mode safe: only run the exchange once.
     if (didRun.current) return
     didRun.current = true
 

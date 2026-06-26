@@ -1,5 +1,5 @@
 /**
- * Arbiter Frontend — shared TypeScript types for API responses.
+ * Arbiter Frontend: shared TypeScript types for API responses.
  *
  * These types mirror the Pydantic schemas exposed by the Arbiter backend.
  * Keep in sync with CODER-A's backend contracts.
@@ -25,7 +25,7 @@ export interface Agent {
   created_at: string;
 }
 
-/** Only returned from POST /agents — the api_key is never shown again. */
+/** Only returned from POST /agents: the api_key is never shown again. */
 export interface AgentCreateResponse extends Agent {
   api_key: string;
 }
@@ -161,7 +161,7 @@ export interface VaultSecret {
   name: string;
   agent_id: string | null;
   created_at: string;
-  updated_at: string;  // #254 — last rotation timestamp
+  updated_at: string;  // #254: last rotation timestamp
 }
 
 export interface VaultSecretWithValue extends VaultSecret {

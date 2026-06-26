@@ -1,5 +1,5 @@
 """
-Arbiter — SQLAlchemy ORM model: OrgMembership.
+Arbiter SQLAlchemy ORM model: OrgMembership.
 
 Source of truth for which organizations a user belongs to and the role they
 hold in each.  A user may belong to many orgs.
@@ -7,7 +7,7 @@ hold in each.  A user may belong to many orgs.
 ``users.org_id`` and ``users.role`` remain as a denormalized projection of
 the membership the user currently has *active* (their selected org).  The
 projection is updated whenever the user switches org, joins, leaves, or is
-removed — it is never consulted to decide whether a membership exists.
+removed: it is never consulted to decide whether a membership exists.
 
 Plans, quotas, and billing attach to organizations, never to memberships:
 adding or removing members has no billing effect.

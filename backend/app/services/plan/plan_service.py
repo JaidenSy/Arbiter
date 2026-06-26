@@ -1,12 +1,12 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — Plan enforcement service.
+Arbiter Plan enforcement service.
 
 Provides two check functions called from the service/endpoint layer:
 
-    check_resource_limit  — count-based caps (agents, mcp_servers, vault_secrets)
-    check_tool_call_quota — monthly rolling quota, Redis-cached
+    check_resource_limit : count-based caps (agents, mcp_servers, vault_secrets)
+    check_tool_call_quota: monthly rolling quota, Redis-cached
 
 Both raise custom exceptions (plan_limits.PlanLimitError /
 plan_limits.QuotaExceededError) that main.py converts to 402 / 429

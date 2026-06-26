@@ -1,4 +1,4 @@
-"""Add mcp_server_id to cache_entries — scope cache hits per MCP server
+"""Add mcp_server_id to cache_entries: scope cache hits per MCP server
 
 Two MCP servers in the same org can expose tools with identical names
 ("search", "query", ...).  Cache keys previously spanned only
@@ -7,7 +7,7 @@ served for another server's call.  Entries are now scoped per server and the
 exact-match hash folds in org id + server id.
 
 All existing rows are purged: the hash scheme changed, so no old entry can
-ever match a new lookup — leaving them would only accumulate dead rows.
+ever match a new lookup: leaving them would only accumulate dead rows.
 
 Revision ID: 032
 Revises: 031

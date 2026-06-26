@@ -1,10 +1,10 @@
 /**
- * Arbiter — Shared pricing tier cards.
+ * Arbiter: Shared pricing tier cards.
  *
  * Single source of truth for the plan tiers, rendered on both the landing
  * page (#pricing section) and the dedicated /pricing page.  Tier limits
  * mirror the backend PLAN_LIMITS table
- * (backend/app/services/plan/plan_limits.py) — update both together.
+ * (backend/app/services/plan/plan_limits.py): update both together.
  */
 
 import React from 'react'

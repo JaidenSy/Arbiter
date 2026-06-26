@@ -1,5 +1,5 @@
 """
-Arbiter — Pydantic schemas for the auth endpoints.
+Arbiter Pydantic schemas for the auth endpoints.
 
 All request/response bodies for /auth/* routes are defined here.
 """
@@ -57,7 +57,7 @@ class TokenResponse(BaseModel):
 
 
 class SSOTokenResponse(TokenResponse):
-    """Extended response for SSO exchange — signals when consent is still needed."""
+    """Extended response for SSO exchange: signals when consent is still needed."""
 
     requires_consent: bool = False
 

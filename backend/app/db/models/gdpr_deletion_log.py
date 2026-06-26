@@ -1,8 +1,8 @@
 """
-Arbiter — SQLAlchemy ORM model: GdprDeletionLog.
+Arbiter SQLAlchemy ORM model: GdprDeletionLog.
 
 Records a non-PII audit entry every time a user exercises their GDPR
-Art.17 right to erasure.  No personal data is stored here — the sole
+Art.17 right to erasure.  No personal data is stored here: the sole
 purpose is to provide an internal audit trail that an erasure was
 processed and whether it involved a sole owner or an active Stripe
 subscription.
@@ -27,7 +27,7 @@ class GdprDeletionLog(Base):
     Columns:
         id:                       UUID primary key.
         deleted_at:               When the deletion was processed (indexed).
-        org_id:                   UUID of the org at deletion time — nullable
+        org_id:                   UUID of the org at deletion time: nullable
                                   because the org itself may have been deleted.
                                   Stored for internal auditing only; no PII.
         was_sole_owner:           True when the deleting user was the last owner,

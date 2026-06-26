@@ -1,12 +1,12 @@
 """
-Arbiter — Email service.
+Arbiter Email service.
 
 Sends transactional emails via the Resend HTTP API (https://resend.com).
 Using HTTP instead of SMTP avoids port-blocking issues on cloud platforms
 (Railway, Render, etc.) that restrict outbound SMTP connections.
 
-When RESEND_API_KEY is not set all send calls are no-ops that log a warning —
-the application continues to work without email in development.
+When RESEND_API_KEY is not set all send calls are no-ops that log a warning.
+The application continues to work without email in development.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ _RESEND_URL = "https://api.resend.com/emails"
 async def send_email(to: str, subject: str, html: str, text: str = "") -> None:
     if not settings.email_enabled:
         logger.warning(
-            "email: RESEND_API_KEY not set — skipping send to %s (subject: %s)", to, subject
+            "email: RESEND_API_KEY not set: skipping send to %s (subject: %s)", to, subject
         )
         return
 
@@ -46,7 +46,7 @@ async def send_email(to: str, subject: str, html: str, text: str = "") -> None:
         )
 
     if response.status_code not in (200, 201):
-        logger.error("email: Resend API error %s — %s", response.status_code, response.text)
+        logger.error("email: Resend API error %s: %s", response.status_code, response.text)
         response.raise_for_status()
 
 
@@ -87,10 +87,10 @@ async def send_email_change_confirmation(to: str, confirm_url: str) -> None:
     html = f"""
 <p>You requested to change your Arbiter email address.</p>
 <p><a href="{confirm_url}">Confirm your new email address</a></p>
-<p>This link expires in {expires}. If you didn't request this, ignore this email — your current address remains active.</p>
+<p>This link expires in {expires}. If you didn't request this, ignore this email: your current address remains active.</p>
 """
     text = f"Confirm your new Arbiter email: {confirm_url}\n\nExpires in {expires}."
-    await send_email(to, "Confirm your new email address — Arbiter", html, text)
+    await send_email(to, "Confirm your new email address: Arbiter", html, text)
 
 
 async def send_payment_failed(to: str, org_name: str, portal_url: str) -> None:

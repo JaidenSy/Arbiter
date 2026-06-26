@@ -1,5 +1,5 @@
 /**
- * Arbiter — Marketing landing page.
+ * Arbiter: Marketing landing page.
  *
  * Shown to unauthenticated users at /.
  * No sidebar. Standalone dark layout.
@@ -11,6 +11,7 @@ import { ArbiterMark } from '../components/ArbiterLogo'
 import AuthModal, { type AuthMode } from '../components/AuthModal'
 import HeroBackground from '../components/HeroBackground'
 import HeroArchDiagram from '../components/HeroArchDiagram'
+import HeroDashboardSim from '../components/HeroDashboardSim'
 import DashboardPreview from '../components/DashboardPreview'
 import WorksWith from '../components/WorksWith'
 import FeatureShowcase from '../components/FeatureShowcase'
@@ -33,46 +34,17 @@ function GitHubIcon({ size = 15 }: { size?: number }): React.ReactElement {
 }
 
 /**
- * Above-the-fold proof: a real Claude Code session calling tools through Arbiter.
- * A permitted call is served from the semantic cache, a denied tool is blocked by
- * per-agent RBAC at call time, and both land in the audit trail.
+ * Above-the-fold proof: a simulated, interactive Arbiter dashboard that auto-plays
+ * a real session (open a session -> see the trace -> the RBAC denial) and becomes
+ * clickable on hover. See HeroDashboardSim.
  */
 function HeroDemo(): React.ReactElement {
-  const prefersReduced =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
   return (
     <figure
       className="mt-14 max-w-3xl mx-auto animate-fade-in"
       style={{ animationDelay: '260ms' }}
     >
-      <div
-        className="rounded-lg overflow-hidden"
-        style={{
-          border: '1px solid rgba(255,255,255,0.09)',
-          boxShadow: '0 0 0 1px rgba(61,53,206,0.12) inset, 0 24px 60px rgba(0,0,0,0.45)',
-        }}
-      >
-        {/* Reduced-motion users get a static poster + manual controls, not autoplay. */}
-        <video
-          src="/demo.mp4"
-          poster="/demo-poster.jpg"
-          width={1100}
-          height={652}
-          autoPlay={!prefersReduced}
-          loop={!prefersReduced}
-          muted
-          playsInline
-          controls={prefersReduced}
-          preload={prefersReduced ? 'none' : 'auto'}
-          aria-label="A Claude Code session calling tools through Arbiter: a permitted call is served from the semantic cache, a denied tool is blocked by per-agent RBAC at call time, and both are written to the audit trail."
-          className="block w-full h-auto"
-        />
-      </div>
-      <figcaption className="mt-3 text-muted text-xs">
-        Real session — a permitted call is served from cache, a denied tool is blocked at call time, both are written to the audit trail.
-      </figcaption>
+      <HeroDashboardSim />
     </figure>
   )
 }
@@ -154,10 +126,10 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      {/* Background — dot grid + ambient glow */}
+      {/* Background: dot grid + ambient glow */}
       <HeroBackground />
 
-      {/* Mouse spotlight — illuminates dot grid on hover */}
+      {/* Mouse spotlight: illuminates dot grid on hover */}
       <div
         className="absolute inset-0 pointer-events-none"
         aria-hidden
@@ -169,7 +141,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         }}
       />
 
-      {/* Bottom fade — blends hero into sections below */}
+      {/* Bottom fade: blends hero into sections below */}
       <div
         className="absolute bottom-0 left-0 right-0 h-52 pointer-events-none"
         style={{ background: 'linear-gradient(to bottom, transparent, var(--color-base))' }}
@@ -194,7 +166,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         >
           Shared credentials, no audit trail, agents that can call any tool they want.
           Arbiter fixes all of it: cryptographic agent identity, tool-level permissions,
-          an encrypted secrets vault, and full observability — through a single gateway
+          an encrypted secrets vault, and full observability, through a single gateway
           that sits in front of your MCP servers (the tool APIs your agents call).
         </p>
 
@@ -224,14 +196,14 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
           Free plan includes 2 agents · 5,000 tool calls/mo · No credit card required
         </p>
 
-        {/* Trust strip — open source, self-hosted, source link */}
+        {/* Trust strip: open source, self-hosted, source link */}
         <div
           className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted animate-fade-in"
           style={{ animationDelay: '200ms' }}
         >
           <span>Apache-2.0</span>
           <span aria-hidden>·</span>
-          <span>Self-hosted — no agent traffic or secret leaves your environment</span>
+          <span>Self-hosted: no agent traffic or secret leaves your environment</span>
           <span aria-hidden>·</span>
           <a
             href={GITHUB_URL}
@@ -245,14 +217,6 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
 
         {/* Live product demo (real session) */}
         <HeroDemo />
-
-        <p
-          className="mt-4 text-muted text-xs max-w-xl mx-auto animate-fade-in"
-          style={{ animationDelay: '280ms' }}
-        >
-          Secrets stay in an AES-256-GCM vault and are injected at the gateway — they are never
-          returned to the agent. Every call, allowed or denied, is written to the audit trail.
-        </p>
       </div>
     </section>
   )
@@ -341,7 +305,7 @@ function Features(): React.ReactElement {
           </h2>
         </div>
 
-        {/* Grid — RevealGroup staggers cards on scroll entry */}
+        {/* Grid: RevealGroup staggers cards on scroll entry */}
         <RevealGroup className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" stagger={60}>
           {features.map((f, i) => {
             const isWide = i === 0 || i === 4
@@ -503,7 +467,7 @@ const faqItems: FAQItem[] = [
   {
     question: 'Can I self-host?',
     answer:
-      'Yes. The Arbiter core gateway is open source (Apache 2.0) — clone the repo and run docker compose up. Enterprise adds SSO, SCIM, KMS, dedicated deployment support, and a custom SLA on top of that.',
+      'Yes. The Arbiter core gateway is open source (Apache 2.0). Clone the repo and run docker compose up. Enterprise adds SSO, SCIM, KMS, dedicated deployment support, and a custom SLA on top of that.',
   },
   {
     question: 'What MCP clients are supported?',
@@ -569,14 +533,14 @@ function Footer(): React.ReactElement {
   return (
     <footer className="bg-surface border-t border-border px-6 py-8">
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Left — logo + copyright */}
+        {/* Left: logo + copyright */}
         <div className="flex items-center gap-2.5">
           <ArbiterMark size={22} />
           <span className="font-display text-primary font-semibold text-sm tracking-tight">Arbiter</span>
           <span className="text-muted text-xs ml-2">© 2026 Arbiter. All rights reserved.</span>
         </div>
 
-        {/* Right — nav */}
+        {/* Right: nav */}
         <div className="flex items-center gap-5">
           <Link to="/" className="text-secondary hover:text-primary text-xs transition-colors">
             Dashboard

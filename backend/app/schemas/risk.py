@@ -1,5 +1,5 @@
 """
-Arbiter — Pydantic schemas for agent risk / anomaly detection.
+Arbiter Pydantic schemas for agent risk / anomaly detection.
 
 GET /agents/{id}/risk returns an AgentRiskResponse with a weighted risk score
 computed from 5 anomaly-detection signals over the last 7 days of session data.

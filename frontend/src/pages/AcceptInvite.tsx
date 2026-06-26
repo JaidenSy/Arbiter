@@ -1,5 +1,5 @@
 /**
- * Arbiter — Accept Invite page.
+ * Arbiter: Accept Invite page.
  *
  * Route: /accept-invite?token=<token> (public, no sidebar)
  *
@@ -83,7 +83,7 @@ function AcceptInvite(): React.ReactElement {
       .get<InvitePreview>(`/auth/invite-preview?token=${encodeURIComponent(token)}`)
       .then((res) => setInvitePreview(res.data))
       .catch(() => {
-        // Preview is best-effort — a failure here doesn't block the flow.
+        // Preview is best-effort: a failure here doesn't block the flow.
       })
   }, [token])
 
@@ -129,7 +129,7 @@ function AcceptInvite(): React.ReactElement {
       if (response?.status === 409 && detail.includes('already a member')) {
         setAlreadyMember(true)
       } else if (response?.status === 422) {
-        // The invite is addressed to an email with no account — it can't be
+        // The invite is addressed to an email with no account: it can't be
         // accepted by this session; the recipient must create that account.
         setError(
           'This invite was sent to a different email address. Sign out and open the link as its recipient.'
@@ -142,7 +142,7 @@ function AcceptInvite(): React.ReactElement {
     }
   }
 
-  /** Public entry-point for the signed-in join button — shows modal first. */
+  /** Public entry-point for the signed-in join button: shows modal first. */
   const handleJoin = withConfirmation(_doJoin)
 
   // ── No-account path: create the invited account ───────────────────────────
@@ -167,7 +167,7 @@ function AcceptInvite(): React.ReactElement {
       if (!res.ok) {
         const detail = data.detail ?? 'Failed to accept invite.'
         if (res.status === 409 && detail.includes('already exists')) {
-          // The invited email already has an account — sign in to join.
+          // The invited email already has an account: sign in to join.
           setMode('login')
           setError('')
           return
@@ -191,7 +191,7 @@ function AcceptInvite(): React.ReactElement {
     if (!isPasswordValid(password)) { setError('Password does not meet all the requirements listed below.'); return }
     if (password !== confirm) { setError('Passwords do not match.'); return }
     setError('')
-    // pendingAction reads state captured in the closure — no stale event.
+    // pendingAction reads state captured in the closure: no stale event.
     setPendingAction(() => _doCreate)
     setShowConfirmModal(true)
   }
@@ -219,7 +219,7 @@ function AcceptInvite(): React.ReactElement {
         setAlreadyMember(true)
       } else if (response?.status === 422) {
         setError(
-          'This invite was sent to an email without an account — it must be accepted by its recipient.'
+          'This invite was sent to an email without an account. It must be accepted by its recipient.'
         )
       } else {
         setError(detail)
@@ -445,7 +445,7 @@ function AcceptInvite(): React.ReactElement {
         </div>
       </div>
 
-      {/* Ownership disclosure modal — shown before any accept action. */}
+      {/* Ownership disclosure modal: shown before any accept action. */}
       {showConfirmModal && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"

@@ -1,7 +1,7 @@
 # Copyright 2026 Jaiden Sy
 # SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — One-off task: grandfather paid orgs onto owner accounts.
+Arbiter One-off task: grandfather paid orgs onto owner accounts.
 
 Run this once, immediately after ``alembic upgrade head`` brings in migration
 035 (account-level billing columns) and **before** flipping
@@ -9,7 +9,7 @@ Run this once, immediately after ``alembic upgrade head`` brings in migration
 up onto its owner account so the account-derived effective plan matches the
 legacy org plan (parity), with a never-downgrade guarantee.
 
-Idempotent — safe to re-run. At launch the paid set is ~empty so it is a no-op,
+Idempotent: safe to re-run. At launch the paid set is ~empty so it is a no-op,
 but running it is the documented, auditable step that keeps an early paying
 customer whole if a subscription lands before the cutover.
 
