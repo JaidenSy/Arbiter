@@ -170,7 +170,7 @@ Content-Type: application/json
 
 The call is also logged as a `SessionEvent` with `outcome: "permission_denied"`. Permission-denied events appear in the audit log alongside successful calls. Gaps in the audit log are not possible.
 
-The agent is also not told the tool exists. When calling `tools/list`, only permitted tools are returned. An agent cannot enumerate what it cannot call.
+`tools/list` advertises every tool from the agent's registered servers, including ones it is not permitted to call. Permission is enforced at call time rather than by hiding tools: an unpermitted call is denied with a 403 and recorded in the audit log. This keeps enforcement visible in traces instead of silently omitting tools, and the denied attempt itself becomes an audit signal.
 
 ## Example: locking down a read-only research agent
 

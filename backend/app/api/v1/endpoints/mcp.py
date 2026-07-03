@@ -23,7 +23,7 @@ JSON-RPC methods handled:
                                 1:1 to an Arbiter audit Session
     notifications/*          : acknowledged with HTTP 202, no body
     ping                     : liveness check
-    tools/list               : aggregated + RBAC-filtered + namespaced
+    tools/list               : aggregated + namespaced (all advertised; RBAC enforced at call time)
     tools/call               : routed through ProxyService.forward_tool_call
 
 Transport notes:
@@ -77,9 +77,10 @@ _SERVER_INFO = {"name": "arbiter-gateway", "version": "0.4.0"}
 _TOOL_SEPARATOR = "__"
 
 # Aggregated tools/list hits every upstream server in the org; MCP clients
-# call it on every connect. Cached per-agent in Redis so reconnect storms
-# don't fan out upstream. 60 s is short enough that permission changes
-# propagate quickly.
+# call it on every connect. Cached in Redis so reconnect storms don't fan
+# out upstream. The listing no longer depends on the agent's permissions
+# (every tool is advertised; RBAC is enforced at call time), so the cache
+# could be keyed per-org; it is currently keyed per-agent.
 _TOOLS_LIST_CACHE_TTL = 60
 
 # JSON-RPC 2.0 error codes (spec) + -32000 for gateway/server errors.
