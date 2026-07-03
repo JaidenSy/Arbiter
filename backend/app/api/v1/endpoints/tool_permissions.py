@@ -1,16 +1,16 @@
 """
-Arbiter — API endpoints: Tool Permissions.
+Arbiter API endpoints: Tool Permissions.
 
 Manages RBAC permission records that control which agents may call which
 tools on which MCP servers.  Permissions are agent-scoped sub-resources.
 
 Routes:
-    POST   /agents/{agent_id}/permissions                  — grant a permission
-    POST   /agents/{agent_id}/permissions/batch            — grant multiple permissions at once
-    GET    /agents/{agent_id}/permissions                  — list permissions for an agent
-    PATCH  /agents/{agent_id}/permissions/{permission_id}  — update rate limits
-    DELETE /agents/{agent_id}/permissions/{permission_id}  — revoke a permission
-    GET    /agents/{agent_id}/permissions/history          — audit log
+    POST   /agents/{agent_id}/permissions                 : grant a permission
+    POST   /agents/{agent_id}/permissions/batch           : grant multiple permissions at once
+    GET    /agents/{agent_id}/permissions                 : list permissions for an agent
+    PATCH  /agents/{agent_id}/permissions/{permission_id} : update rate limits
+    DELETE /agents/{agent_id}/permissions/{permission_id} : revoke a permission
+    GET    /agents/{agent_id}/permissions/history         : audit log
 """
 
 from __future__ import annotations

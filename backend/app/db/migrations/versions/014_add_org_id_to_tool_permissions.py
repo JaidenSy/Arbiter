@@ -5,7 +5,7 @@ Revises: 013
 Create Date: 2026-05-19
 
 tool_permissions.org_id exists in the ORM model but was never added by any
-migration — it was only included in the squashed baseline (013) which existing
+migration: it was only included in the squashed baseline (013) which existing
 deployments skipped because their alembic_version was already at 013.
 
 Uses IF NOT EXISTS so it is safe to re-run against any DB state.

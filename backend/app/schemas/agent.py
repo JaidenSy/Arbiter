@@ -1,5 +1,5 @@
 """
-Arbiter — Pydantic schemas for Agent resources.
+Arbiter Pydantic schemas for Agent resources.
 
 Separating request/response schemas from ORM models keeps the API contract
 stable even when internal DB columns change.  Raw api_key_hash is never
@@ -63,7 +63,7 @@ class AgentResponse(BaseModel):
 
 
 class AgentUpdate(BaseModel):
-    """Request body for PATCH /agents/{id} — all fields optional."""
+    """Request body for PATCH /agents/{id}: all fields optional."""
 
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = Field(None, max_length=1000)
@@ -80,5 +80,5 @@ class AgentCreateResponse(AgentResponse):
     """
 
     api_key: str = Field(
-        ..., description="Raw API key — store this now, it will not be shown again"
+        ..., description="Raw API key. Store it now, it will not be shown again"
     )

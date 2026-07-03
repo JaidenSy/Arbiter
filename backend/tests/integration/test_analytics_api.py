@@ -134,6 +134,31 @@ class TestAnalyticsAgentsPlanGate:
         assert "Pro" in resp.json()["detail"] or "upgrade" in resp.json()["detail"].lower()
 
     @pytest.mark.asyncio
+    async def test_unknown_tier_returns_402(self):
+        """An unrecognised tier (e.g. future 'starter') fails closed → 402, not granted."""
+        from app.core.dependencies import get_current_user, get_db
+        from app.main import app
+
+        user = _make_user()
+        db = _make_analytics_db(plan_tier="starter")
+
+        async def override_db():
+            yield db
+
+        app.dependency_overrides[get_db] = override_db
+        app.dependency_overrides[get_current_user] = lambda: user
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                resp = await client.get("/api/v1/analytics/agents")
+        finally:
+            app.dependency_overrides.clear()
+
+        assert resp.status_code == 402
+
+    @pytest.mark.asyncio
     async def test_no_auth_returns_401(self):
         """Request without auth token → 401."""
         from app.main import app
@@ -183,7 +208,7 @@ class TestAnalyticsAgentsPlanGate:
         assert "org_total_this_month" in data
         assert data["org_total_this_month"] == 7000
         assert len(data["agents"]) == 2
-        # Sorted DESC — alpha first
+        # Sorted DESC: alpha first
         assert data["agents"][0]["agent_name"] == "agent-alpha"
         assert data["agents"][0]["tool_calls_this_month"] == 5000
 
@@ -195,7 +220,7 @@ class TestAnalyticsAgentsPlanGate:
 
         user = _make_user()
         monthly = [_make_monthly_row(_AGENT_A_ID, "agent-alpha", 100)]
-        # Only one trend row — remaining 6 days should be zero-filled
+        # Only one trend row: remaining 6 days should be zero-filled
         today = datetime.now(UTC).date()
         trend = [_make_trend_row(_AGENT_A_ID, today, 100)]
         db = _make_analytics_db(plan_tier="pro", monthly_rows=monthly, trend_rows=trend)

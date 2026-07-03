@@ -1,16 +1,16 @@
 """
-Arbiter — API endpoints: Agents.
+Arbiter API endpoints: Agents.
 
 Manages agent registration and lifecycle.  API keys are generated on
 creation and returned ONCE; the hash is stored, never the raw key.
 
 Routes:
-    POST   /agents               — register a new agent, returns raw API key once
-    GET    /agents               — list all active agents (paginated)
-    GET    /agents/{id}          — get a single agent by UUID
-    DELETE /agents/{id}          — soft-delete (sets is_active=False); does not count against plan cap
-    POST   /agents/{id}/rotate-key — invalidate old key, issue new one (returned once)
-    GET    /agents/{id}/risk     — anomaly risk score (Pro+ only)
+    POST   /agents              : register a new agent, returns raw API key once
+    GET    /agents              : list all active agents (paginated)
+    GET    /agents/{id}         : get a single agent by UUID
+    DELETE /agents/{id}         : soft-delete (sets is_active=False); does not count against plan cap
+    POST   /agents/{id}/rotate-key: invalidate old key, issue new one (returned once)
+    GET    /agents/{id}/risk    : anomaly risk score (Pro+ only)
 """
 
 from __future__ import annotations
@@ -36,6 +36,7 @@ from app.schemas.agent import (
 from app.schemas.pagination import Page
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.schemas.risk import AgentRiskResponse, AgentRiskSignals
+from app.services.plan.plan_limits import PAID_TIERS
 from app.services.plan.plan_service import check_resource_limit
 from app.services.proxy.proxy_service import ProxyService
 
@@ -251,7 +252,7 @@ async def delete_agent(
     "/{agent_id}/rotate-key",
     response_model=AgentCreateResponse,
     status_code=status.HTTP_200_OK,
-    summary="Rotate API key — old key is immediately invalidated",
+    summary="Rotate API key: old key is immediately invalidated",
 )
 async def rotate_api_key(
     agent_id: uuid.UUID,
@@ -324,7 +325,7 @@ async def test_tool_call(
 # ── Risk / anomaly detection helpers ─────────────────────────────────────────
 
 _HOURS_IN_7_DAYS = 168
-_RISK_CACHE_TTL = 60  # seconds — risk scores are recomputed at most once per minute
+_RISK_CACHE_TTL = 60  # seconds: risk scores are recomputed at most once per minute
 
 _RISK_WEIGHTS = {
     "error_rate_spike": 0.35,
@@ -470,7 +471,7 @@ async def get_agent_risk(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found"
         )
 
-    if org.plan_tier not in ("pro", "enterprise"):
+    if org.plan_tier not in PAID_TIERS:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Anomaly detection requires a Pro or Enterprise plan",

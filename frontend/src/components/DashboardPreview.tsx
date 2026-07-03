@@ -66,7 +66,7 @@ export default function DashboardPreview(): React.ReactElement {
       if (visibleCount < ROWS.length) {
         setVisibleCount(n => n + 1)
       } else {
-        // Instant reset — new loopKey forces fresh mounts with fresh animations
+        // Instant reset: new loopKey forces fresh mounts with fresh animations
         setVisibleCount(0)
         setLoopKey(k => k + 1)
       }
@@ -84,7 +84,7 @@ export default function DashboardPreview(): React.ReactElement {
           </h2>
           <p ref={subheadRef} className="text-secondary text-base max-w-lg mx-auto leading-relaxed">
             Every tool call surfaces in Mission Control: the agent, the tool, the server, the result,
-            and whether it was served from cache or blocked by a permission rule.
+            and whether it was served from cache or blocked by a permission rule. Sample data shown.
           </p>
         </div>
 
@@ -110,10 +110,10 @@ export default function DashboardPreview(): React.ReactElement {
               <span className="w-3 h-3 rounded-full" style={{ background: 'rgba(251,191,36,0.50)' }} />
               <span className="w-3 h-3 rounded-full" style={{ background: 'rgba(52,211,153,0.50)' }} />
             </div>
-            <span className="font-mono text-xs text-muted">Mission Control — Arbiter</span>
+            <span className="font-mono text-xs text-muted">Mission Control: Arbiter</span>
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-success" style={{ animation: 'blink-cursor 1.8s step-end infinite' }} />
-              <span className="font-mono text-xs text-muted">live</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-muted/60" />
+              <span className="font-mono text-xs text-muted">sample</span>
             </div>
           </div>
 

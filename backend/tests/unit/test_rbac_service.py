@@ -169,7 +169,7 @@ class TestCheckPermission:
         stmt = captured_stmts[0]
         stmt_str = str(stmt.compile(compile_kwargs={"literal_binds": False}))
         assert "org_id" in stmt_str, (
-            "org_id filter missing from check_permission query — "
+            "org_id filter missing from check_permission query: "
             "orphaned permission rows could grant unintended access"
         )
 
@@ -177,7 +177,7 @@ class TestCheckPermission:
 class TestFilterToolsList:
     @pytest.mark.asyncio
     async def test_returns_all_tools_regardless_of_permissions(self):
-        """filter_tools_list returns every tool — RBAC is enforced at call time, not manifest time."""
+        """filter_tools_list returns every tool: RBAC is enforced at call time, not manifest time."""
         from app.services.rbac.rbac_service import RBACService
 
         tools = [
@@ -195,8 +195,8 @@ class TestFilterToolsList:
         assert result == tools
 
     @pytest.mark.asyncio
-    async def test_wildcard_returns_all_tools(self):
-        """filter_tools_list returns all tools when "*" is in allowed set."""
+    async def test_returns_all_tools_with_wildcard(self):
+        """filter_tools_list returns all tools when agent has wildcard permission."""
         from app.services.rbac.rbac_service import RBACService
 
         tools = [
@@ -215,7 +215,7 @@ class TestFilterToolsList:
 
     @pytest.mark.asyncio
     async def test_returns_all_tools_with_no_permissions(self):
-        """filter_tools_list returns all tools even when the agent has no permissions."""
+        """filter_tools_list returns all tools even when agent has no permissions."""
         from app.services.rbac.rbac_service import RBACService
 
         tools = [{"name": "read_file"}, {"name": "write_file"}]

@@ -1,5 +1,5 @@
 """
-Arbiter — Background task: MCP server health monitoring (#208).
+Arbiter Background task: MCP server health monitoring (#208).
 
 Runs every HEALTH_CHECK_INTERVAL seconds (default 3600 = 1 hour).
 
@@ -142,7 +142,7 @@ async def run_health_checks(redis: object | None = None) -> None:
                                 .values(is_active=False)
                             )
                             logger.warning(
-                                "health: circuit breaker tripped for server %s (%s) — "
+                                "health: circuit breaker tripped for server %s (%s): "
                                 "%d consecutive failures, deactivating",
                                 server.name,
                                 server.id,
@@ -160,7 +160,7 @@ async def run_health_checks(redis: object | None = None) -> None:
 
                 log_fn = logger.debug if is_healthy else logger.warning
                 log_fn(
-                    "health: server %s (%s) — healthy=%s latency=%sms",
+                    "health: server %s (%s): healthy=%s latency=%sms",
                     server.name,
                     server.id,
                     is_healthy,

@@ -2,10 +2,10 @@
 Integration tests for Tool Permissions endpoints.
 
 Coverage:
-    POST   /api/v1/agents/{id}/permissions          — 201
-    POST   with tool_name="*"                       — 201 (wildcard)
-    GET    /api/v1/agents/{id}/permissions          — list
-    DELETE /api/v1/agents/{id}/permissions/{perm}  — 204
+    POST   /api/v1/agents/{id}/permissions         : 201
+    POST   with tool_name="*"                      : 201 (wildcard)
+    GET    /api/v1/agents/{id}/permissions         : list
+    DELETE /api/v1/agents/{id}/permissions/{perm} : 204
 
     Error cases:
     - POST duplicate (same agent+server+tool) → 409

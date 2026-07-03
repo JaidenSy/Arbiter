@@ -1,7 +1,7 @@
-# Copyright (c) 2026 Jaiden Sy. All rights reserved.
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Jaiden Sy
+# SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — FastAPI dependency injection.
+Arbiter FastAPI dependency injection.
 
 Each function here is a FastAPI Depends provider.  They are consumed by
 endpoint functions via:
@@ -181,12 +181,12 @@ async def get_current_user(
         except Exception:
             if settings.jwt_blocklist_fail_open:
                 _logger.warning(
-                    "Redis unavailable for JWT blocklist check — failing open (JWT_BLOCKLIST_FAIL_OPEN=true)"
+                    "Redis unavailable for JWT blocklist check: failing open (JWT_BLOCKLIST_FAIL_OPEN=true)"
                 )
                 is_blocked = False
             else:
                 _logger.error(
-                    "Redis unavailable for JWT blocklist check — failing closed (set JWT_BLOCKLIST_FAIL_OPEN=true to allow)"
+                    "Redis unavailable for JWT blocklist check: failing closed (set JWT_BLOCKLIST_FAIL_OPEN=true to allow)"
                 )
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -210,6 +210,25 @@ async def get_current_user(
         )
 
     return user
+
+
+async def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Security(_oauth2_bearer),
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+) -> User | None:
+    """
+    Like :func:`get_current_user`, but returns None when no Authorization
+    header is present instead of raising 401.
+
+    A header that IS present but invalid still raises: silently ignoring a
+    bad token would let callers think they are anonymous when they meant to
+    authenticate.  Used by endpoints that behave differently for logged-in
+    users (e.g. accepting an org invite with an existing account).
+    """
+    if credentials is None:
+        return None
+    return await get_current_user(credentials=credentials, db=db, redis=redis)
 
 
 async def get_current_principal(
@@ -327,8 +346,16 @@ async def ensure_org_verified(agent: Agent, db: AsyncSession, redis) -> None:
                 },
             )
 
+    # Membership-based: a verified user counts for every org they belong to,
+    # not just the one they currently have active (users.org_id is only the
+    # active-org projection).
     result = await db.execute(
-        text("SELECT EXISTS(  SELECT 1 FROM users  WHERE org_id = :org_id AND is_verified = true)"),
+        text(
+            "SELECT EXISTS("
+            "  SELECT 1 FROM users u"
+            "  JOIN org_memberships m ON m.user_id = u.id"
+            "  WHERE m.org_id = :org_id AND u.is_verified = true AND u.is_active = true)"
+        ),
         {"org_id": str(agent.org_id)},
     )
     is_verified: bool = result.scalar_one()

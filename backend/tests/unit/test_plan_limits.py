@@ -3,7 +3,7 @@ Unit tests for app.services.plan.plan_limits
 
 Coverage:
     - All three plan tiers (free, pro, enterprise) have correct limit values
-    - Pro vault_secrets limit is 100 (fixed from 500 — coder-output deviation #1)
+    - Pro vault_secrets limit is 100 (fixed from 500: coder-output deviation #1)
     - Enterprise limits are all None (unlimited)
     - PlanLimitError stores resource, current, limit, plan attributes
     - QuotaExceededError stores resource, used, limit, resets_at attributes

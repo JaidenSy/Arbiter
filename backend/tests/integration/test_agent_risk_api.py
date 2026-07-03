@@ -2,7 +2,7 @@
 Integration tests for GET /api/v1/agents/{id}/risk.
 
 Uses httpx AsyncClient against the FastAPI app with mocked DB and fake Redis
-(same pattern as test_billing_api.py — no live Postgres or Redis required).
+(same pattern as test_billing_api.py: no live Postgres or Redis required).
 
 Coverage:
     - 200 for a pro-plan org with zero activity → score=0.0, level="low"

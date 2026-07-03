@@ -2,11 +2,11 @@
 Integration tests for MCP Server endpoints.
 
 Coverage:
-    POST   /api/v1/mcp-servers          — 201, cache_enabled defaults to True
-    GET    /api/v1/mcp-servers          — list (only active)
-    GET    /api/v1/mcp-servers/{id}     — 200
-    PATCH  /api/v1/mcp-servers/{id}     — partial update, non-None fields only
-    DELETE /api/v1/mcp-servers/{id}     — 204, soft-delete
+    POST   /api/v1/mcp-servers         : 201, cache_enabled defaults to True
+    GET    /api/v1/mcp-servers         : list (only active)
+    GET    /api/v1/mcp-servers/{id}    : 200
+    PATCH  /api/v1/mcp-servers/{id}    : partial update, non-None fields only
+    DELETE /api/v1/mcp-servers/{id}    : 204, soft-delete
 
     Error cases:
     - POST duplicate name → 409
@@ -247,7 +247,7 @@ class TestCreateMCPServer:
 
     @pytest.mark.asyncio
     async def test_create_name_with_double_underscore_returns_422(self, fake_redis):
-        """'__' is the MCP endpoint's server__tool separator — reject it in names."""
+        """'__' is the MCP endpoint's server__tool separator: reject it in names."""
         from app.main import app
         from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
         from tests.conftest import _make_mock_agent, _make_mock_user
@@ -497,7 +497,7 @@ class TestDeleteMCPServer:
             app.dependency_overrides.pop(get_db, None)
 
         assert resp.status_code == 204, resp.text
-        # Soft delete — is_active set to False on the ORM object
+        # Soft delete: is_active set to False on the ORM object
         assert server.is_active is False, "Soft delete must set is_active=False"
 
     @pytest.mark.asyncio

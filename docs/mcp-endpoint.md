@@ -51,7 +51,7 @@ filesystem__read_file
 slack__post_message
 ```
 
-`tools/list` advertises every tool from your registered servers, including ones the calling agent is not permitted to call. RBAC is enforced at call time: an unpermitted call is denied with a 403 and logged, so enforcement stays visible in traces instead of hiding tools. The aggregated upstream listing is cached ~60 seconds.
+`tools/list` advertises every tool from your registered servers, including ones the calling agent has no permission for. RBAC is enforced exclusively at call time: a denied `tools/call` returns a spec-compliant `isError` result with an explicit denial message, and the denial is recorded as a session event in the audit log — visible enforcement in traces rather than silently hidden tools. The aggregated list is cached per-agent for 60 seconds.
 
 Server names cannot contain `__` (rejected at registration) so the split is unambiguous; tool names may contain `__`.
 
@@ -68,26 +68,32 @@ Server names cannot contain `__` (rejected at registration) so the split is unam
 
 ## Errors
 
-Gateway denials are returned as JSON-RPC errors with the underlying HTTP status in `error.data.http_status`, so clients surface a meaningful message instead of a transport failure:
+Failures during `tools/call` are returned as spec-compliant MCP tool errors — a `result` with `isError: true` and an explicit message — not as JSON-RPC protocol errors. This covers all gateway-side denials and upstream failures:
 
-| Condition | `error.data.http_status` |
+| Condition | Returned as |
 |---|---|
-| RBAC denied | 403 |
-| MCP server not found / inactive | 404 |
-| Per-session budget exhausted | 402 |
-| Rate limit or monthly quota exceeded | 429 |
-| Upstream MCP server error/unreachable | 502 |
+| RBAC denied / scope violation | `isError: true` tool result |
+| MCP server not found / inactive | `isError: true` tool result |
+| Per-session budget exhausted | `isError: true` tool result |
+| Rate limit or monthly quota exceeded | `isError: true` tool result |
+| Upstream MCP server error/unreachable | `isError: true` tool result |
 
-Example:
+JSON-RPC protocol errors (`-32600`, `-32602`, …) are reserved for envelope problems: malformed JSON, invalid params, a tool name that isn't `server__tool`-namespaced, or an unknown method.
+
+Example denial:
 
 ```json
 {
   "jsonrpc": "2.0",
   "id": 4,
-  "error": {
-    "code": -32000,
-    "message": "Agent 'research-agent' does not have permission to call tool 'delete_file' on server 'filesystem'",
-    "data": { "http_status": 403 }
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Agent 'research-agent' does not have permission to call tool 'delete_file' on server 'filesystem'"
+      }
+    ],
+    "isError": true
   }
 }
 ```

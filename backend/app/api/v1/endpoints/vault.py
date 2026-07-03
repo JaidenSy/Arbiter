@@ -1,16 +1,16 @@
 """
-Arbiter — API endpoints: Vault.
+Arbiter API endpoints: Vault.
 
 Manages encrypted secrets stored in the vault.  Raw secret values are
-accepted on write and returned on read — the gateway handles encryption
+accepted on write and returned on read: the gateway handles encryption
 transparently.  Only admins should have access to these endpoints in
 production (enforce via RBAC or network policy).
 
 Routes:
-    POST   /vault/secrets          — store (or rotate) a secret
-    GET    /vault/secrets          — list secret names (no values)
-    GET    /vault/secrets/{id}     — retrieve and decrypt a secret
-    DELETE /vault/secrets/{id}     — permanently delete a secret
+    POST   /vault/secrets         : store (or rotate) a secret
+    GET    /vault/secrets         : list secret names (no values)
+    GET    /vault/secrets/{id}    : retrieve and decrypt a secret
+    DELETE /vault/secrets/{id}    : permanently delete a secret
 """
 
 from __future__ import annotations
@@ -23,15 +23,18 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db, get_redis, require_role
-from app.schemas.pagination import Page
 from app.db.models.agent import Agent
 from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.db.models.vault import VaultSecret
+from app.db.models.vault_audit_event import VaultAuditEvent, VaultOperation
+from app.schemas.pagination import Page
+from app.services.agent.agent_service import get_agent_ids_by_owner
+from app.services.org.org_service import get_membership
 from app.services.plan.plan_service import check_resource_limit
 from app.services.vault.vault_service import VaultService
 
@@ -51,8 +54,15 @@ _SECRET_NAME_RE = re.compile(r"^[A-Za-z0-9_]+$")
 class SecretCreate(BaseModel):
     """Request body for storing a secret."""
 
-    name: str = Field(..., min_length=1, max_length=128, description="Logical key, e.g. GITHUB_TOKEN")
-    value: str = Field(..., min_length=1, max_length=10000, description="Raw secret value — will be encrypted at rest")
+    name: str = Field(
+        ..., min_length=1, max_length=128, description="Logical key, e.g. GITHUB_TOKEN"
+    )
+    value: str = Field(
+        ...,
+        min_length=1,
+        max_length=10000,
+        description="Raw secret value: will be encrypted at rest",
+    )
     agent_id: uuid.UUID | None = Field(None, description="Scope the secret to a specific agent")
 
     @field_validator("name")
@@ -67,18 +77,19 @@ class SecretCreate(BaseModel):
 
 
 class SecretResponse(BaseModel):
-    """Response when listing secrets — never exposes the value."""
+    """Response when listing secrets: never exposes the value."""
 
     id: uuid.UUID
     name: str
     agent_id: uuid.UUID | None
     created_at: datetime
+    updated_at: datetime  # #254: tracks last rotation timestamp
 
     model_config = {"from_attributes": True}
 
 
 class SecretValueResponse(SecretResponse):
-    """Response for GET /vault/secrets/{id} — includes decrypted value."""
+    """Response for GET /vault/secrets/{id}: includes decrypted value."""
 
     value: str = Field(..., description="Decrypted secret value")
 
@@ -128,7 +139,22 @@ async def create_secret(
         count_active_only=False,
     )
     service = VaultService(db)
-    secret = await service.store_secret(body.name, body.value, agent_id, current_user.org_id)
+    secret = await service.store_secret(body.name, body.value, current_user.org_id, agent_id)
+
+    # Determine if this is an initial create or a rotation (upsert) by checking
+    # whether created_at == updated_at (within 1 s tolerance).
+    delta = abs((secret.updated_at - secret.created_at).total_seconds())
+    operation = VaultOperation.create if delta < 1 else VaultOperation.rotate
+    db.add(
+        VaultAuditEvent(
+            org_id=current_user.org_id,
+            secret_id=secret.id,
+            user_id=current_user.id,
+            operation=operation,
+        )
+    )
+    await db.commit()
+
     return SecretResponse.model_validate(secret)
 
 
@@ -138,19 +164,39 @@ async def create_secret(
     summary="List secret names",
 )
 async def list_secrets(
-    agent_id: uuid.UUID | None = None,
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Page[SecretResponse]:
-    filters = [VaultSecret.org_id == current_user.org_id]
-    if agent_id is not None:
-        filters.append(VaultSecret.agent_id == agent_id)
-    total = await db.scalar(select(func.count(VaultSecret.id)).where(*filters)) or 0
-    result = await db.execute(select(VaultSecret).where(*filters).offset(skip).limit(limit))
-    secrets = result.scalars().all()
-    return Page(items=[SecretResponse.model_validate(s) for s in secrets], total=total, skip=skip, limit=limit)
+    """
+    Return secret names (no values) for the current user's org.
+
+    Role-based visibility (Issue #264):
+      - **owner / admin**: sees all secrets in the org.
+      - **member**: sees only secrets scoped to agents they created.
+    """
+    membership = await get_membership(db, current_user.id, current_user.org_id)
+    is_privileged = membership is not None and membership.role in ("owner", "admin")
+
+    service = VaultService(db)
+    if is_privileged:
+        secrets = await service.list_secrets(org_id=current_user.org_id)
+    else:
+        owned_agent_ids = await get_agent_ids_by_owner(
+            db, org_id=current_user.org_id, user_id=current_user.id
+        )
+        secrets = await service.list_secrets(org_id=current_user.org_id, agent_ids=owned_agent_ids)
+
+    items = [SecretResponse.model_validate(s) for s in secrets]
+    # Apply pagination over the already-filtered list.
+    page_items = items[skip : skip + limit]
+    return Page(
+        items=page_items,
+        total=len(items),
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get(
@@ -197,12 +243,24 @@ async def get_secret(
         current_user.id,
         current_user.org_id,
     )
-    # SECURITY: value is never logged — only passed to the response serialiser.
+
+    db.add(
+        VaultAuditEvent(
+            org_id=current_user.org_id,
+            secret_id=secret.id,
+            user_id=current_user.id,
+            operation=VaultOperation.read,
+        )
+    )
+    await db.commit()
+
+    # SECURITY: value is never logged: only passed to the response serialiser.
     return SecretValueResponse(
         id=secret.id,
         name=secret.name,
         agent_id=secret.agent_id,
         created_at=secret.created_at,
+        updated_at=secret.updated_at,
         value=value,
     )
 
@@ -230,6 +288,16 @@ async def delete_secret(
             detail=f"Secret {secret_id} not found",
         )
 
+    secret_id_for_audit = secret.id
     await db.delete(secret)
+
+    db.add(
+        VaultAuditEvent(
+            org_id=current_user.org_id,
+            secret_id=secret_id_for_audit,
+            user_id=current_user.id,
+            operation=VaultOperation.delete,
+        )
+    )
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

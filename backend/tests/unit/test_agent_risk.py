@@ -1,12 +1,12 @@
 """
-Unit tests for GET /agents/{id}/risk — anomaly detection endpoint.
+Unit tests for GET /agents/{id}/risk: anomaly detection endpoint.
 
 Five test classes:
-    TestRiskScoreMath       — _build_signals() produces correct signal values
-    TestRiskLevelThresholds — _score_to_level() maps scores to correct levels
-    TestRiskPlanGate        — endpoint raises 402 for free-plan orgs / 500 for missing org
-    TestRiskSignalBoundaries — edge cases: exact-2× thresholds, zero-baseline burst, full off-hours
-    TestRiskEndpointHappyPath — full endpoint pipeline with mocked DB, verifies response shape+score
+    TestRiskScoreMath      : _build_signals() produces correct signal values
+    TestRiskLevelThresholds: _score_to_level() maps scores to correct levels
+    TestRiskPlanGate       : endpoint raises 402 for free-plan orgs / 500 for missing org
+    TestRiskSignalBoundaries: edge cases: exact-2× thresholds, zero-baseline burst, full off-hours
+    TestRiskEndpointHappyPath: full endpoint pipeline with mocked DB, verifies response shape+score
 """
 
 from __future__ import annotations
@@ -333,7 +333,7 @@ class TestRiskPlanGate:
                 agent_id=agent_id, db=mock_db, redis=_make_mock_redis(), current_user=mock_user
             )
 
-        # 404 means we passed the plan gate — a 402 would mean we didn't
+        # 404 means we passed the plan gate: a 402 would mean we didn't
         assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
@@ -408,7 +408,7 @@ class TestRiskSignalBoundaries:
         assert s.error_rate_spike == 0.0
 
     def test_latency_spike_exactly_2x_baseline_does_not_fire(self):
-        # avg_dur_24h == 2.0 * avg_dur_7d — strictly not greater, so no spike.
+        # avg_dur_24h == 2.0 * avg_dur_7d: strictly not greater, so no spike.
         s = _signals(avg_dur_7d=100.0, avg_dur_24h=200.0)
         assert s.latency_spike_ratio == 0.0
 
@@ -444,7 +444,7 @@ class TestRiskSignalBoundaries:
 
 
 class TestRiskEndpointHappyPath:
-    """Full endpoint pipeline with mocked DB — verifies response shape and score."""
+    """Full endpoint pipeline with mocked DB: verifies response shape and score."""
 
     @staticmethod
     def _make_stats_mock(data: dict) -> MagicMock:

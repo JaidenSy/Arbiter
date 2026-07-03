@@ -39,7 +39,7 @@ def _make_vault_service(key: str | None = None):
     with patch.dict(os.environ, {"VAULT_ENCRYPTION_KEY": env_key}):
         svc = VaultService(db=db)
 
-    # Keep env patched for method calls too — we return a context manager.
+    # Keep env patched for method calls too: we return a context manager.
     return svc, db, env_key
 
 
@@ -84,7 +84,7 @@ class TestEncryptDecrypt:
             svc = VaultService(db=AsyncMock())
             ct1 = svc.encrypt(plaintext)
             ct2 = svc.encrypt(plaintext)
-        assert ct1 != ct2, "Two encryptions of the same plaintext produced identical ciphertext — nonce is not random"
+        assert ct1 != ct2, "Two encryptions of the same plaintext produced identical ciphertext: nonce is not random"
 
     def test_decrypt_with_wrong_key_raises(self):
         """Decryption with a different key must raise ValueError (GCM auth tag failure)."""

@@ -1,16 +1,16 @@
 """
-Arbiter — API endpoints: MCP Servers.
+Arbiter API endpoints: MCP Servers.
 
 CRUD management of MCP server registrations.
 
 Routes:
-    POST   /mcp-servers               — register a new MCP server
-    GET    /mcp-servers               — list all active MCP servers
-    GET    /mcp-servers/{id}          — get a single server
-    PATCH  /mcp-servers/{id}          — update name, url, description, or cache_enabled
-    DELETE /mcp-servers/{id}          — soft-delete
-    POST   /mcp-servers/{id}/test     — test connectivity
-    GET    /mcp-servers/{id}/tools    — discover available tools
+    POST   /mcp-servers              : register a new MCP server
+    GET    /mcp-servers              : list all active MCP servers
+    GET    /mcp-servers/{id}         : get a single server
+    PATCH  /mcp-servers/{id}         : update name, url, description, or cache_enabled
+    DELETE /mcp-servers/{id}         : soft-delete
+    POST   /mcp-servers/{id}/test    : test connectivity
+    GET    /mcp-servers/{id}/tools   : discover available tools
 """
 
 from __future__ import annotations
@@ -136,7 +136,7 @@ class MCPServerCreate(BaseModel):
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, v: str) -> str:
-        """Ensure base_url is a valid HTTP(S) URL — SSRF/DNS check happens async in the endpoint."""
+        """Ensure base_url is a valid HTTP(S) URL: SSRF/DNS check happens async in the endpoint."""
         stripped = v.strip()
         lower = stripped.lower()
         if not (lower.startswith("http://") or lower.startswith("https://")):
@@ -146,7 +146,7 @@ class MCPServerCreate(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
-        """Reject '__' — it is the server/tool separator in the MCP endpoint's namespaced tool names."""
+        """Reject '__': it is the server/tool separator in the MCP endpoint's namespaced tool names."""
         if "__" in v:
             raise ValueError(
                 "server name must not contain '__' (reserved as the server__tool separator)"
@@ -155,7 +155,7 @@ class MCPServerCreate(BaseModel):
 
 
 class MCPServerUpdate(BaseModel):
-    """Partial update body — all fields optional."""
+    """Partial update body: all fields optional."""
 
     name: str | None = None
     base_url: str | None = None
@@ -168,7 +168,7 @@ class MCPServerUpdate(BaseModel):
     @field_validator("base_url")
     @classmethod
     def validate_base_url(cls, v: str | None) -> str | None:
-        """Ensure base_url is a valid HTTP(S) URL when provided — SSRF/DNS check happens async in the endpoint."""
+        """Ensure base_url is a valid HTTP(S) URL when provided: SSRF/DNS check happens async in the endpoint."""
         if v is None:
             return v
         stripped = v.strip()
@@ -180,7 +180,7 @@ class MCPServerUpdate(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_name(cls, v: str | None) -> str | None:
-        """Reject '__' — it is the server/tool separator in the MCP endpoint's namespaced tool names."""
+        """Reject '__': it is the server/tool separator in the MCP endpoint's namespaced tool names."""
         if v is not None and "__" in v:
             raise ValueError(
                 "server name must not contain '__' (reserved as the server__tool separator)"
@@ -201,7 +201,7 @@ _VAULT_REF = re.compile(r"^\{\{(?:vault:)?[A-Za-z0-9_]+\}\}$")
 def _mask_header_value(value: str) -> str:
     """Return value as-is if it's a vault reference; mask otherwise.
 
-    Any raw value stored in the DB is a potential secret — users should be
+    Any raw value stored in the DB is a potential secret: users should be
     using {{vault:SECRET_NAME}} placeholders, not pasting keys directly.
     """
     return value if _VAULT_REF.match(value) else "***"

@@ -307,7 +307,7 @@ class TestStatsWithData:
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
         mock_user = _make_mock_user()
-        # tool_calls_today=4 means DB returned 4 — yesterday's event is excluded
+        # tool_calls_today=4 means DB returned 4: yesterday's event is excluded
         # by the SQL filter DATE_TRUNC('day', NOW()). Mock simulates post-filter result.
         db = _make_stats_db(tool_calls_today=4, cache_hits_today=2)
 
@@ -339,7 +339,7 @@ class TestStatsWithData:
             app.dependency_overrides.clear()
 
         assert resp.status_code == 200, resp.text
-        # Still 4, not 5 — yesterday's event is not included
+        # Still 4, not 5: yesterday's event is not included
         assert resp.json()["tool_calls_today"] == 4
 
     @pytest.mark.asyncio
@@ -357,7 +357,7 @@ def _make_history_db(rows: list[dict]) -> AsyncMock:
     Build a mock DB that returns pre-built rows for the history aggregate query.
 
     Each dict in ``rows`` should have: bucket (datetime), total, hits, errors.
-    The mock is called once — returning all rows as a result set.
+    The mock is called once: returning all rows as a result set.
     """
     db = AsyncMock()
 
@@ -393,7 +393,7 @@ class TestStatsHistory:
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
         mock_user = _make_mock_user()
-        # No rows — all buckets should be zeros
+        # No rows: all buckets should be zeros
         db = _make_history_db([])
 
         async def override_get_db():

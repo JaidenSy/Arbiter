@@ -1,5 +1,5 @@
 """
-Arbiter — SSO service.
+Arbiter SSO service.
 
 Handles the user-provisioning side of OAuth2 social login:
 
@@ -16,7 +16,6 @@ URL (which would appear in server logs and browser history).
 
 from __future__ import annotations
 
-import re
 import secrets
 
 from fastapi import HTTPException, status
@@ -24,26 +23,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
-from app.db.models.organization import Organization
 from app.db.models.social_account import SocialAccount
 from app.db.models.user import User
 from app.services.auth.auth_service import _store_refresh_token
+from app.services.org import org_service
 
 # Redis key prefix for one-time tokens
 _OTT_PREFIX = "ott:"
 # TTL in seconds
 _OTT_TTL = 60
-
-
-# ── Internal helpers ──────────────────────────────────────────────────────────
-
-
-def _slugify(text: str) -> str:
-    """Convert a human-readable name to a URL-safe slug."""
-    slug = text.lower().strip()
-    slug = re.sub(r"[^a-z0-9]+", "-", slug)
-    slug = slug.strip("-")
-    return slug or "org"
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -62,7 +50,7 @@ async def get_or_create_user(
 
     Lookup order:
         1. Find existing SocialAccount by (provider, provider_user_id).
-           If found: return the linked user — no writes.
+           If found: return the linked user: no writes.
         2. Find existing User by email (email-linking for accounts that
            registered via email/password first).
            If found: create a new SocialAccount linked to that user.
@@ -104,7 +92,7 @@ async def get_or_create_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Account is deactivated",
             )
-        # OAuth provider has verified this email — mark the user as verified.
+        # OAuth provider has verified this email: mark the user as verified.
         if not existing_user.is_verified:
             existing_user.is_verified = True
         sa = SocialAccount(
@@ -120,29 +108,21 @@ async def get_or_create_user(
         await db.commit()
         return existing_user
 
-    # 3. Brand-new user: create org + user + social account.
+    # 3. Brand-new user: create org + user + membership + social account.
     display_name = name or email.split("@")[0]
-    slug = _slugify(display_name)
-    base_slug = slug
-    counter = 1
-    while await db.scalar(select(Organization).where(Organization.slug == slug)):
-        slug = f"{base_slug}-{counter}"
-        counter += 1
-
-    org = Organization(name=display_name, slug=slug, plan_tier="free", is_active=True)
-    db.add(org)
-    await db.flush()
+    org = await org_service.create_org(db, display_name)
 
     user = User(
         org_id=org.id,
         email=email,
-        hashed_password="",  # SSO-only account — no password login
+        hashed_password="",  # SSO-only account: no password login
         role="owner",
         is_active=True,
-        is_verified=True,  # OAuth provider verified the email — no additional step needed
+        is_verified=True,  # OAuth provider verified the email: no additional step needed
     )
     db.add(user)
     await db.flush()
+    await org_service.add_membership(db, user=user, org_id=org.id, role="owner")
 
     sa = SocialAccount(
         user_id=user.id,
@@ -173,7 +153,7 @@ async def link_provider(
     Link an OAuth provider to an existing user identified by a Redis nonce.
 
     The nonce was stored by POST /auth/sso/link/initiate and proves the link
-    was initiated by an authenticated user. Single-use — deleted on consumption.
+    was initiated by an authenticated user. Single-use: deleted on consumption.
 
     Raises:
         HTTPException 400: Invalid/expired nonce, provider already linked elsewhere,
@@ -186,12 +166,15 @@ async def link_provider(
     if user_id_bytes is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Link session expired — please try again",
+            detail="Link session expired. Please try again",
         )
     await redis.delete(nonce_key)
 
-    user_id_str = user_id_bytes.decode("utf-8") if isinstance(user_id_bytes, bytes) else user_id_bytes
+    user_id_str = (
+        user_id_bytes.decode("utf-8") if isinstance(user_id_bytes, bytes) else user_id_bytes
+    )
     import uuid as _uuid
+
     user = await db.get(User, _uuid.UUID(user_id_str))
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not found")
@@ -209,7 +192,7 @@ async def link_provider(
             detail=f"This {provider} account is already linked to a different user",
         )
     if existing_sa is not None:
-        # Already linked to this user — nothing to do
+        # Already linked to this user: nothing to do
         return
 
     sa = SocialAccount(
@@ -279,9 +262,7 @@ async def exchange_one_time_token(
     await redis.delete(redis_key)
 
     user_id_str = (
-        user_id_bytes.decode("utf-8")
-        if isinstance(user_id_bytes, bytes)
-        else user_id_bytes
+        user_id_bytes.decode("utf-8") if isinstance(user_id_bytes, bytes) else user_id_bytes
     )
 
     import uuid

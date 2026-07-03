@@ -22,7 +22,7 @@ def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
     # ── Migrate input_embedding: JSONB → vector(384) ──────────────────────────
-    # Existing embeddings are intentionally dropped — cache entries are ephemeral
+    # Existing embeddings are intentionally dropped: cache entries are ephemeral
     # and will be re-embedded on next cache write. The exact-hash path is unaffected.
     op.drop_column("cache_entries", "input_embedding")
     op.execute("ALTER TABLE cache_entries ADD COLUMN input_embedding vector(384)")

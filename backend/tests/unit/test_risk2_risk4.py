@@ -28,12 +28,12 @@ class TestJwtTtl:
     def test_config_ttl_is_at_most_60_minutes(self):
         """
         jwt_access_token_expire_minutes must be ≤ 60.
-        Previously this was 1440 (24 h) — the RISK-4 fix reduced it.
+        Previously this was 1440 (24 h): the RISK-4 fix reduced it.
         """
         from app.core.config import settings
 
         assert settings.jwt_access_token_expire_minutes <= 60, (
-            f"RISK-4: JWT TTL is {settings.jwt_access_token_expire_minutes} min — "
+            f"RISK-4: JWT TTL is {settings.jwt_access_token_expire_minutes} min: "
             "must be ≤ 60 (was 1440 before fix)"
         )
 
@@ -61,7 +61,7 @@ class TestJwtTtl:
         delta = exp - before
 
         assert delta <= timedelta(minutes=61), (
-            f"RISK-4: token exp is {delta.total_seconds() / 60:.1f} min from now — "
+            f"RISK-4: token exp is {delta.total_seconds() / 60:.1f} min from now: "
             "must be ≤ 61 min"
         )
         assert delta > timedelta(minutes=0), "Token is already expired"
@@ -126,7 +126,7 @@ class TestPersistEventUsageUpsert:
     async def test_persist_event_executes_usage_upsert_on_tool_call(self):
         """
         After writing a SessionEvent, _persist_event() must execute a
-        pg_insert(UsageEvent) statement — the RISK-2 fix.
+        pg_insert(UsageEvent) statement: the RISK-2 fix.
         """
         db, redis = _make_proxy_service_mocks()
 

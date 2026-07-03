@@ -2,7 +2,7 @@ import React from "react";
 
 export type BadgeVariant = "success" | "neutral" | "error" | "accent" | "warning";
 
-// Tokenized badges — zinc neutrals and amber accent, no green/red literals
+// Tokenized badges: zinc neutrals and amber accent, no green/red literals
 const variantClasses: Record<BadgeVariant, string> = {
   success: "bg-success/10 text-success border border-success/25",
   neutral: "bg-elevated text-secondary border border-border-strong",

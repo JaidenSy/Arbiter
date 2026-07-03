@@ -1,8 +1,8 @@
 """
-Arbiter — Stripe billing service.
+Arbiter Stripe billing service.
 
 Wraps Stripe SDK calls for checkout, customer portal, and webhook handling.
-All Stripe calls are synchronous (stripe-python is not async-native) — wrapped
+All Stripe calls are synchronous (stripe-python is not async-native): wrapped
 in asyncio.to_thread() to avoid blocking the event loop.
 
 Webhook handler verifies signature first, then dispatches on event type.
@@ -23,6 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.db.models.org_membership import OrgMembership
 from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.services.email.email_service import send_payment_failed
@@ -51,7 +52,7 @@ class BillingService:
         If org already has a stripe_customer_id, pass it as customer= so
         Stripe attaches the subscription to the existing customer record.
         Otherwise let Stripe create a new customer (it returns customer ID
-        in the webhook — we store it then).
+        in the webhook: we store it then).
 
         Args:
             org:         The organization initiating the checkout.
@@ -74,9 +75,7 @@ class BillingService:
         if org.stripe_customer_id:
             kwargs["customer"] = org.stripe_customer_id
 
-        session = await asyncio.to_thread(
-            stripe.checkout.Session.create, **kwargs
-        )
+        session = await asyncio.to_thread(stripe.checkout.Session.create, **kwargs)
         return session.url
 
     # ── Portal ────────────────────────────────────────────────────────────────
@@ -89,7 +88,7 @@ class BillingService:
         """
         Create a Stripe Customer Portal session.
 
-        Requires org.stripe_customer_id to be set — caller must guard this.
+        Requires org.stripe_customer_id to be set: caller must guard this.
 
         Args:
             org:        The organization requesting portal access.
@@ -116,11 +115,11 @@ class BillingService:
         """
         Verify Stripe webhook signature and dispatch on event type.
 
-        Raises stripe.error.SignatureVerificationError on bad signature —
-        the endpoint converts this to HTTP 400.
+        Raises stripe.error.SignatureVerificationError on bad signature.
+        The endpoint converts this to HTTP 400.
 
         Args:
-            payload:    Raw request body bytes — must NOT be parsed before calling.
+            payload:    Raw request body bytes: must NOT be parsed before calling.
             sig_header: Value of the stripe-signature header.
             db:         Async database session for persisting org state changes.
 
@@ -182,15 +181,11 @@ class BillingService:
 
     # ── Private helpers ───────────────────────────────────────────────────────
 
-    async def _on_checkout_completed(
-        self, session: dict, db: AsyncSession
-    ) -> None:
-        """Handle checkout.session.completed — upgrade org to pro."""
+    async def _on_checkout_completed(self, session: dict, db: AsyncSession) -> None:
+        """Handle checkout.session.completed: upgrade org to pro."""
         org_id: str | None = (session.get("metadata") or {}).get("org_id")
         if not org_id:
-            logger.warning(
-                "billing: checkout.session.completed missing org_id in metadata"
-            )
+            logger.warning("billing: checkout.session.completed missing org_id in metadata")
             return
 
         customer_id: str | None = session.get("customer")
@@ -201,7 +196,7 @@ class BillingService:
             logger.warning("billing: org %s not found for checkout.session.completed", org_id)
             return
 
-        # Idempotency guard — skip if subscription already matches
+        # Idempotency guard: skip if subscription already matches
         if org.stripe_subscription_id == subscription_id and subscription_id is not None:
             return
 
@@ -211,17 +206,13 @@ class BillingService:
         await db.commit()
         logger.info("billing: org %s upgraded to pro (sub=%s)", org_id, subscription_id)
 
-    async def _on_subscription_updated(
-        self, subscription: dict, db: AsyncSession
-    ) -> None:
-        """Handle customer.subscription.updated — sync plan_tier from status."""
+    async def _on_subscription_updated(self, subscription: dict, db: AsyncSession) -> None:
+        """Handle customer.subscription.updated: sync plan_tier from status."""
         org_id: str | None = (subscription.get("metadata") or {}).get("org_id")
         status: str = subscription.get("status", "")
 
         if not org_id:
-            logger.warning(
-                "billing: customer.subscription.updated missing org_id in metadata"
-            )
+            logger.warning("billing: customer.subscription.updated missing org_id in metadata")
             return
 
         org = await db.get(Organization, org_id)
@@ -237,16 +228,12 @@ class BillingService:
         await db.commit()
         logger.info("billing: org %s subscription.updated status=%s", org_id, status)
 
-    async def _on_subscription_deleted(
-        self, subscription: dict, db: AsyncSession
-    ) -> None:
-        """Handle customer.subscription.deleted — downgrade org to free."""
+    async def _on_subscription_deleted(self, subscription: dict, db: AsyncSession) -> None:
+        """Handle customer.subscription.deleted: downgrade org to free."""
         org_id: str | None = (subscription.get("metadata") or {}).get("org_id")
 
         if not org_id:
-            logger.warning(
-                "billing: customer.subscription.deleted missing org_id in metadata"
-            )
+            logger.warning("billing: customer.subscription.deleted missing org_id in metadata")
             return
 
         org = await db.get(Organization, org_id)
@@ -259,10 +246,8 @@ class BillingService:
         await db.commit()
         logger.info("billing: org %s downgraded to free (subscription deleted)", org_id)
 
-    async def _on_payment_failed(
-        self, invoice: dict, db: AsyncSession
-    ) -> None:
-        """Handle invoice.payment_failed — email org owner with a portal link."""
+    async def _on_payment_failed(self, invoice: dict, db: AsyncSession) -> None:
+        """Handle invoice.payment_failed: email org owner with a portal link."""
         customer_id: str | None = invoice.get("customer")
         if not customer_id:
             logger.warning("billing: invoice.payment_failed missing customer")
@@ -279,8 +264,19 @@ class BillingService:
             )
             return
 
+        # Owner resolved via memberships (users.org_id/role are only the
+        # active-org projection).  limit(1) also fixes a pre-existing crash:
+        # scalar_one_or_none raises MultipleResultsFound for multi-owner orgs.
         owner_result = await db.execute(
-            select(User).where(User.org_id == org.id, User.role == "owner")
+            select(User)
+            .join(OrgMembership, OrgMembership.user_id == User.id)
+            .where(
+                OrgMembership.org_id == org.id,
+                OrgMembership.role == "owner",
+                User.is_active.is_(True),
+            )
+            .order_by(OrgMembership.created_at.asc())
+            .limit(1)
         )
         owner = owner_result.scalar_one_or_none()
         if owner is None:
@@ -299,6 +295,4 @@ class BillingService:
             org_name=org.name,
             portal_url=portal_session.url,
         )
-        logger.info(
-            "billing: payment_failed email sent to %s for org %s", owner.email, org.id
-        )
+        logger.info("billing: payment_failed email sent to %s for org %s", owner.email, org.id)

@@ -1,4 +1,4 @@
-"""Squashed baseline — full schema as of 2026-05-19
+"""Squashed baseline: full schema as of 2026-05-19
 
 Revision ID: 013
 Revises:
@@ -58,7 +58,7 @@ def _create_index_if_missing(name: str, table: str, cols: str, extra: str = "") 
 
 
 # ---------------------------------------------------------------------------
-# Upgrade — idempotent full schema
+# Upgrade: idempotent full schema
 # ---------------------------------------------------------------------------
 
 def upgrade() -> None:
@@ -414,7 +414,7 @@ def upgrade() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Downgrade — not supported for a squashed baseline
+# Downgrade: not supported for a squashed baseline
 # ---------------------------------------------------------------------------
 
 def downgrade() -> None:

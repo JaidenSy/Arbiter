@@ -18,7 +18,7 @@ Free tier available. No credit card required to start.
 
 ## Links
 - Dashboard: https://arbiterai.dev
-- API: https://nexusai-api-production.up.railway.app
+- API: https://api.arbiterai.dev
 - GitHub: https://github.com/JaidenSy/Arbiter
 
 ## MCP Server Authentication

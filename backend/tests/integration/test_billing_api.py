@@ -6,7 +6,7 @@ Integration tests for the billing endpoints:
     POST   /api/v1/billing/webhook
 
 Uses the FastAPI test client with mocked DB (AsyncMock) and fake Redis.
-Stripe SDK calls are mocked via unittest.mock.patch — no real API keys required.
+Stripe SDK calls are mocked via unittest.mock.patch: no real API keys required.
 
 Coverage:
     - GET  /billing/status returns correct plan, counts, limits for a free org
@@ -86,7 +86,7 @@ def _build_db_for_billing_status(
 
     db.scalar = mock_scalar
 
-    # db.get(Organization, org_id) — used in all endpoints
+    # db.get(Organization, org_id): used in all endpoints
     async def mock_get(model_class, pk):
         return org
 
@@ -354,7 +354,7 @@ class TestBillingCheckout:
         """
         Free org with Stripe configured → BillingService creates checkout session,
         endpoint returns {"url": "..."}.
-        Stripe SDK is mocked — no real API key needed.
+        Stripe SDK is mocked: no real API key needed.
         """
         from app.main import app
         from app.core.dependencies import get_db
@@ -634,7 +634,7 @@ class TestBillingWebhook:
         """
         Sending the same checkout.session.completed event twice must only commit once.
         On the second call, the org.stripe_subscription_id already equals the event's
-        subscription ID — the handler should skip without committing.
+        subscription ID: the handler should skip without committing.
         """
         from httpx import AsyncClient, ASGITransport
         from app.main import app

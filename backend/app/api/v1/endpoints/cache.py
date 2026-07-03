@@ -1,11 +1,11 @@
 """
-Arbiter — API endpoints: Cache Management.
+Arbiter API endpoints: Cache Management.
 
 Provides visibility into and control over the semantic cache for an org.
 
 Routes:
-    GET    /cache/stats  — entry count, hit totals, top cached tools
-    DELETE /cache        — flush all cache entries for the org
+    GET    /cache/stats : entry count, hit totals, top cached tools
+    DELETE /cache       : flush all cache entries for the org
 """
 
 from __future__ import annotations

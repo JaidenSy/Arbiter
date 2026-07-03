@@ -1,5 +1,5 @@
 """
-Arbiter — Pydantic schemas for the auth endpoints.
+Arbiter Pydantic schemas for the auth endpoints.
 
 All request/response bodies for /auth/* routes are defined here.
 """
@@ -9,6 +9,8 @@ from __future__ import annotations
 import uuid
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+from app.core.password import validate_password_strength
 
 
 class RegisterRequest(BaseModel):
@@ -28,10 +30,8 @@ class RegisterRequest(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def password_min_length(cls, value: str) -> str:
-        if len(value) < 12:
-            raise ValueError("Password must be at least 12 characters")
-        return value
+    def password_strength(cls, value: str) -> str:
+        return validate_password_strength(value)
 
 
 class LoginRequest(BaseModel):
@@ -57,7 +57,7 @@ class TokenResponse(BaseModel):
 
 
 class SSOTokenResponse(TokenResponse):
-    """Extended response for SSO exchange — signals when consent is still needed."""
+    """Extended response for SSO exchange: signals when consent is still needed."""
 
     requires_consent: bool = False
 
@@ -104,7 +104,5 @@ class ChangePasswordRequest(BaseModel):
 
     @field_validator("new_password")
     @classmethod
-    def new_password_min_length(cls, value: str) -> str:
-        if len(value) < 12:
-            raise ValueError("Password must be at least 12 characters")
-        return value
+    def new_password_strength(cls, value: str) -> str:
+        return validate_password_strength(value)

@@ -1,5 +1,5 @@
 /**
- * Arbiter — Tool Permissions page.
+ * Arbiter: Tool Permissions page.
  *
  * Two-panel layout:
  *   Left:  Agent selector list
@@ -812,7 +812,7 @@ function Permissions(): React.ReactElement {
       </div>
 
       <div className="grid gap-6" style={{ gridTemplateColumns: '240px 1fr' }}>
-        {/* Left panel — agent selector */}
+        {/* Left panel: agent selector */}
         <div>
           <p className="text-muted text-xs font-semibold uppercase tracking-widest mb-3">
             Agents
@@ -867,7 +867,7 @@ function Permissions(): React.ReactElement {
           </div>
         </div>
 
-        {/* Right panel — permissions */}
+        {/* Right panel: permissions */}
         {selectedAgent ? (
           <PermissionsTable
             agentId={selectedAgent.id}

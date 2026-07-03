@@ -1,7 +1,7 @@
-# Copyright (c) 2026 Jaiden Sy. All rights reserved.
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Jaiden Sy
+# SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — VaultService.
+Arbiter VaultService.
 
 Provides AES-256-GCM encryption/decryption and CRUD operations for secrets
 stored in the vault_secrets table.
@@ -23,7 +23,6 @@ import hashlib
 import logging
 import os
 import uuid
-from typing import Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from sqlalchemy import select
@@ -34,6 +33,7 @@ from app.db.models.vault import VaultSecret
 logger = logging.getLogger(__name__)
 
 # ── Key derivation ─────────────────────────────────────────────────────────────
+
 
 def _load_key() -> bytes:
     """
@@ -58,9 +58,7 @@ def _load_key() -> bytes:
     try:
         key_bytes = bytes.fromhex(raw)
     except ValueError as exc:
-        raise RuntimeError(
-            f"VAULT_ENCRYPTION_KEY is not valid hex: {exc}"
-        ) from exc
+        raise RuntimeError(f"VAULT_ENCRYPTION_KEY is not valid hex: {exc}") from exc
     # key_bytes should be 32 bytes; SHA-256 ensures exactly 32 regardless.
     return hashlib.sha256(key_bytes).digest()
 
@@ -80,7 +78,7 @@ class VaultService:
 
         Loads the encryption key from the environment on every instantiation.
         The key is never stored as an instance attribute beyond the scope of
-        a method call — it exists only transiently in _load_key().
+        a method call: it exists only transiently in _load_key().
 
         Args:
             db: Async SQLAlchemy session bound to the current request.
@@ -141,7 +139,7 @@ class VaultService:
         try:
             plaintext_bytes = aesgcm.decrypt(nonce, ct_with_tag, None)
         except Exception as exc:
-            # Do NOT include ciphertext details in the error — they could leak
+            # Do NOT include ciphertext details in the error: they could leak
             # information about partial decryption state.
             raise ValueError("Decryption failed: ciphertext may be tampered") from exc
 
@@ -153,20 +151,29 @@ class VaultService:
         self,
         name: str,
         plaintext: str,
+        org_id: uuid.UUID,
         agent_id: uuid.UUID | None = None,
-        org_id: uuid.UUID | None = None,
     ) -> VaultSecret:
         """
         Encrypt and persist a secret, scoped to (org_id, agent_id, name).
 
         If a secret with the same name already exists for this scope it is
         updated (upsert / key rotation).
+
+        Args:
+            name:      Logical key, e.g. "GITHUB_TOKEN".
+            plaintext: Raw secret value: encrypted before storage.
+            org_id:    Required: Organisation UUID. Always included in the DB
+                       filter to enforce org isolation (fix for #251).
+            agent_id:  Optional FK to the owning agent (NULL = org-level secret).
         """
         ciphertext = self.encrypt(plaintext)
 
-        filters = [VaultSecret.name == name, VaultSecret.agent_id == agent_id]
-        if org_id is not None:
-            filters.append(VaultSecret.org_id == org_id)
+        filters = [
+            VaultSecret.name == name,
+            VaultSecret.agent_id == agent_id,
+            VaultSecret.org_id == org_id,
+        ]
 
         result = await self.db.execute(select(VaultSecret).where(*filters))
         secret = result.scalar_one_or_none()
@@ -188,17 +195,50 @@ class VaultService:
         logger.info("vault: stored secret name=%r agent_id=%s org_id=%s", name, agent_id, org_id)
         return secret
 
-    async def get_secret(self, name: str, org_id: uuid.UUID, agent_id: Optional[uuid.UUID] = None) -> str:
+    async def list_secrets(
+        self,
+        org_id: uuid.UUID,
+        agent_ids: list[uuid.UUID] | None = None,
+    ) -> list[VaultSecret]:
+        """
+        Return vault secrets for an org, optionally filtered to a set of agent IDs.
+
+        When ``agent_ids`` is None, all secrets in the org are returned (used for
+        owner/admin callers).  When provided, only secrets whose ``agent_id`` is
+        in the list are returned: used for ``member``-role callers who should
+        only see secrets scoped to agents they created (Issue #264).
+
+        Args:
+            org_id:    Organization UUID: enforces org isolation.
+            agent_ids: Optional list of agent UUIDs to filter on.
+                       Pass an empty list to return no secrets.
+
+        Returns:
+            list[VaultSecret]: Matching secret rows (values still encrypted).
+        """
+
+        query = select(VaultSecret).where(VaultSecret.org_id == org_id)
+        if agent_ids is not None:
+            if not agent_ids:
+                # Empty list: member has no owned agents; return nothing.
+                return []
+            query = query.where(VaultSecret.agent_id.in_(agent_ids))
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
+    async def get_secret(
+        self, name: str, org_id: uuid.UUID, agent_id: uuid.UUID | None = None
+    ) -> str:
         """
         Retrieve and decrypt a secret by logical name, scoped to the org.
 
         Scoped to org_id (required) to prevent cross-org secret leakage.
-        Further scoped to agent_id when provided — agents cannot read each other's secrets.
+        Further scoped to agent_id when provided: agents cannot read each other's secrets.
         SECURITY: The decrypted value is NEVER logged.
 
         Args:
             name:     Logical key used when storing the secret.
-            org_id:   Organization UUID — required to enforce org isolation.
+            org_id:   Organization UUID: required to enforce org isolation.
             agent_id: Owner agent UUID. If provided, restricts lookup to that agent.
 
         Returns:
@@ -217,5 +257,5 @@ class VaultService:
             raise KeyError(f"Secret not found: {name!r}")
 
         logger.info("vault: accessed secret name=%r", name)
-        # Decrypt — never log the return value.
+        # Decrypt: never log the return value.
         return self.decrypt(secret.ciphertext)

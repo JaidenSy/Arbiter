@@ -1,7 +1,7 @@
-# Copyright (c) 2026 Jaiden Sy. All rights reserved.
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 Jaiden Sy
+# SPDX-License-Identifier: Apache-2.0
 """
-Arbiter — Auth service.
+Arbiter Auth service.
 
 Handles user registration, login, token refresh, and logout.  Business
 logic lives here; HTTP concerns stay in the endpoint layer.
@@ -15,7 +15,6 @@ Token strategy:
 from __future__ import annotations
 
 import hashlib
-import re
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -28,23 +27,12 @@ from app.core import security
 from app.db.models.organization import Organization
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.user import User
+from app.services.org import org_service
 
 _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-
-def _slugify(text: str) -> str:
-    """
-    Convert a human-readable name to a URL-safe slug.
-
-    Example: "Acme Corp!" → "acme-corp"
-    """
-    slug = text.lower().strip()
-    slug = re.sub(r"[^a-z0-9]+", "-", slug)
-    slug = slug.strip("-")
-    return slug or "org"
 
 
 def _pre_hash(plain: str) -> str:
@@ -99,21 +87,13 @@ async def register(
             detail="An account with that email already exists",
         )
 
-    # Slugify org name and check uniqueness.
-    slug = _slugify(org_name)
-    base_slug = slug
-    counter = 1
-    while await db.scalar(select(Organization).where(Organization.slug == slug)):
-        slug = f"{base_slug}-{counter}"
-        counter += 1
-
-    # Create organization.
-    org = Organization(name=org_name, slug=slug, plan_tier="free", is_active=True)
-    db.add(org)
-    await db.flush()  # populate org.id before referencing it
+    # Create organization (unique slug handled by the org service).
+    org = await org_service.create_org(db, org_name)
 
     # Create owner user. tos_accepted_at is set immediately since the registration
     # form requires explicit checkbox acceptance before the form can be submitted.
+    # users.org_id / users.role are the active-org projection; the membership
+    # row below is the source of truth.
     user = User(
         org_id=org.id,
         email=email,
@@ -125,6 +105,7 @@ async def register(
     )
     db.add(user)
     await db.flush()
+    await org_service.add_membership(db, user=user, org_id=org.id, role="owner")
 
     # Issue tokens.
     access_token = security.create_access_token(
@@ -161,13 +142,13 @@ async def login(
     """
     user = await db.scalar(select(User).where(User.email == email))
 
-    # Always run bcrypt regardless of whether the user exists — prevents
+    # Always run bcrypt regardless of whether the user exists: prevents
     # timing-based email enumeration (short-circuit would skip the ~100ms hash).
     candidate_hash = user.hashed_password if user is not None else _DUMMY_HASH
     password_ok = _verify_password(password, candidate_hash)
 
     if not password_ok and user is not None:
-        # Legacy hash (no SHA-256 pre-hash) — verify and silently re-hash on success.
+        # Legacy hash (no SHA-256 pre-hash): verify and silently re-hash on success.
         if _pwd_context.verify(password, candidate_hash):
             password_ok = True
             user.hashed_password = _hash_password(password)
@@ -216,7 +197,7 @@ async def refresh_tokens(
 
     Args:
         db:        Async database session.
-        redis:     Redis client (for jti blocklist — not used here directly
+        redis:     Redis client (for jti blocklist: not used here directly
                    but available for future expansion).
         raw_token: Raw ``rt_<64-hex>`` token from the client.
 

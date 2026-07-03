@@ -124,7 +124,7 @@ export function CommandPalette(): React.ReactElement | null {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
 
-  // ⌘K / Ctrl+K global toggle — always active
+  // ⌘K / Ctrl+K global toggle: always active
   useEffect(() => {
     const handleGlobal = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {

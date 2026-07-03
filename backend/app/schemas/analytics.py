@@ -1,5 +1,5 @@
 """
-Arbiter — Pydantic schemas: Analytics.
+Arbiter Pydantic schemas: Analytics.
 
 Response shapes for the per-agent cost attribution endpoint.
 """

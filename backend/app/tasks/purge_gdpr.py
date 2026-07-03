@@ -1,5 +1,5 @@
 """
-Arbiter — Background task: GDPR 30-day hard purge.
+Arbiter Background task: GDPR 30-day hard purge.
 
 Users who exercised their Art.17 right to erasure are anonymized in place
 (email → deleted-<uuid>@gdpr.invalid, is_active=False) at deletion time.

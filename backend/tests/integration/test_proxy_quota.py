@@ -51,7 +51,7 @@ class TestProxyQuotaEnforcement:
         Strategy:
             - Inject an agent belonging to a free org
             - Pre-load Redis cache with usage = 1050 (free limit = 1000, grace = 1050)
-            - ProxyService.forward_tool_call is mocked — it must NOT be called
+            - ProxyService.forward_tool_call is mocked: it must NOT be called
         """
         from httpx import AsyncClient, ASGITransport
         from app.main import app
@@ -120,7 +120,7 @@ class TestProxyQuotaEnforcement:
         assert resp.status_code == 429, (
             f"Expected HTTP 429 for over-quota org, got {resp.status_code}: {resp.text}"
         )
-        # ProxyService must NOT have been invoked — quota guard fires first
+        # ProxyService must NOT have been invoked: quota guard fires first
         assert len(proxy_called) == 0, (
             "ProxyService.forward_tool_call was called despite org being over quota"
         )
@@ -140,7 +140,7 @@ class TestProxyQuotaEnforcement:
         org = _make_org(plan_tier="enterprise", org_id=org_id)
         mock_agent, raw_key = _make_mock_agent(org_id=org_id)
 
-        # Put absurdly high usage in Redis — enterprise should ignore it
+        # Put absurdly high usage in Redis: enterprise should ignore it
         from datetime import datetime, timezone
         now = datetime.now(tz=timezone.utc)
         month_key = now.strftime("%Y-%m")

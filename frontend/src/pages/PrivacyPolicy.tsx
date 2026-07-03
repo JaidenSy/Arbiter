@@ -1,8 +1,8 @@
 /**
- * Arbiter — Privacy Policy page.
+ * Arbiter: Privacy Policy page.
  *
  * Route: /privacy (public, no auth required)
- * Content sourced from legal research (research-legal.md) — May 28, 2026.
+ * Content sourced from legal research (research-legal.md): May 28, 2026.
  */
 
 import React from 'react'
@@ -144,7 +144,7 @@ export default function PrivacyPolicy(): React.ReactElement {
 
           <H3>Information collected automatically:</H3>
           <UL>
-            <LI><strong className="text-primary">Agent API keys:</strong> when you create an AI agent in Arbiter, we generate a unique API key (<code className="text-teal-light font-mono text-xs">nxai_</code> prefix). We store only a SHA-256 hash of this key — the full key is shown to you once at creation.</LI>
+            <LI><strong className="text-primary">Agent API keys:</strong> when you create an AI agent in Arbiter, we generate a unique API key (<code className="text-teal-light font-mono text-xs">nxai_</code> prefix). We store only a SHA-256 hash of this key, the full key is shown to you once at creation.</LI>
             <LI><strong className="text-primary">Session events and audit logs:</strong> for each tool call routed through Arbiter, we log: the tool name, the MCP server used, the AI agent that made the call, request timestamp, response time, cache hit/miss status, and success/failure outcome. We also log the tool call parameters and response payload for session trace functionality. These logs may contain data you introduce into tool call payloads.</LI>
             <LI><strong className="text-primary">Semantic cache data:</strong> tool call parameters and responses may be stored in our caching layer (Redis and PostgreSQL) to optimize performance. Cache entries expire per the TTL you configure.</LI>
             <LI><strong className="text-primary">Usage metrics:</strong> tool call counts, plan tier usage, quota consumption.</LI>
@@ -169,7 +169,7 @@ export default function PrivacyPolicy(): React.ReactElement {
               ['Route tool calls through the proxy pipeline', 'Contract (Art. 6(1)(b))'],
               ['Store and retrieve vault secrets on your behalf', 'Contract (Art. 6(1)(b))'],
               ['Enforce RBAC permissions', 'Contract (Art. 6(1)(b))'],
-              ['Maintain session audit logs and traces', 'Legitimate interests — security, debugging (Art. 6(1)(f))'],
+              ['Maintain session audit logs and traces', 'Legitimate interests: security, debugging (Art. 6(1)(f))'],
               ['Detect and prevent fraud, abuse, and security threats', 'Legitimate interests (Art. 6(1)(f))'],
               ['Comply with legal obligations', 'Legal obligation (Art. 6(1)(c))'],
               ['Send transactional communications (receipts, alerts)', 'Contract (Art. 6(1)(b))'],

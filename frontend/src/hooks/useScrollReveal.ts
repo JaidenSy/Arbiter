@@ -17,7 +17,7 @@ export function useScrollReveal<T extends HTMLElement = HTMLDivElement>({
     const el = ref.current
     if (!el) return
 
-    // If already in viewport on load, skip animation entirely — no content gating
+    // If already in viewport on load, skip animation entirely: no content gating
     const rect = el.getBoundingClientRect()
     const alreadyVisible = rect.top < window.innerHeight && rect.bottom > 0
     if (alreadyVisible) return

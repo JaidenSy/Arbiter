@@ -1,4 +1,4 @@
--- NexusAI — Canonical database schema (v2 — multi-tenancy)
+-- NexusAI: Canonical database schema (v2, multi-tenancy)
 -- Run once against a fresh PostgreSQL database, OR let Alembic manage it.
 -- Tables are created in dependency order (no forward references).
 

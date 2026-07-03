@@ -6,7 +6,7 @@ Create Date: 2026-05-19
 
 The staging DB was at revision 005 when the duplicate-006 chaos occurred.
 Migrations 006-012 were later re-added as no-op stubs so Alembic could
-navigate the chain — but stubs do nothing, so every column those migrations
+navigate the chain: but stubs do nothing, so every column those migrations
 were supposed to add is absent from the DB.
 
 This migration adds every missing column/index idempotently.
@@ -98,4 +98,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    pass  # not reversible — columns may have data
+    pass  # not reversible: columns may have data

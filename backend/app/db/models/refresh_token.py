@@ -1,12 +1,12 @@
 """
-Arbiter — SQLAlchemy ORM model: RefreshToken.
+Arbiter SQLAlchemy ORM model: RefreshToken.
 
 Opaque 30-day refresh tokens issued alongside JWTs on login/register.
 On use the old token is revoked and a new pair is issued (rotation).
 Revoked tokens are retained for 7 days for audit, then swept by a cron.
 
 Token format: ``rt_<64-hex>``
-Storage:      SHA-256(raw_token) stored in token_hash — raw token never persisted.
+Storage:      SHA-256(raw_token) stored in token_hash: raw token never persisted.
 """
 
 from __future__ import annotations

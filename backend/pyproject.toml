@@ -1,7 +1,7 @@
 [project]
 name = "arbiter-backend"
 version = "0.1.0"
-description = "Arbiter MCP Gateway — backend API"
+description = "Arbiter MCP Gateway: backend API"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Private" }
@@ -27,7 +27,7 @@ select = [
     "UP",  # pyupgrade
 ]
 ignore = [
-    "E501",  # line too long — handled by formatter
+    "E501",  # line too long, handled by formatter
     "B008",  # do not perform function calls in default arguments (FastAPI Depends pattern)
 ]
 

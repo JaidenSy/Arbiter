@@ -1,10 +1,10 @@
 """
-Arbiter — SQLAlchemy ORM model: SocialAccount.
+Arbiter SQLAlchemy ORM model: SocialAccount.
 
 Links a User to an OAuth2 identity from an external provider (Google or GitHub).
 A user may have at most one social account per provider.
 
-The (provider, provider_user_id) pair is globally unique — it is the lookup key
+The (provider, provider_user_id) pair is globally unique: it is the lookup key
 used on every SSO login to identify the user without relying on email alone.
 """
 

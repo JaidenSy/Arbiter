@@ -1,10 +1,10 @@
 /**
- * Arbiter Frontend — Axios HTTP clients.
+ * Arbiter Frontend: Axios HTTP clients.
  *
- * apiClient  — attaches the agent API key (Bearer nxai_<hex>). Used by all
+ * apiClient : attaches the agent API key (Bearer nxai_<hex>). Used by all
  *              existing pages that interact with agent/MCP resource endpoints.
  *
- * authClient — attaches the user JWT (Bearer <jwt>). Used by the dashboard
+ * authClient: attaches the user JWT (Bearer <jwt>). Used by the dashboard
  *              auth UI (Login, Register, AuthContext, UsageStrip).
  *              On 401: attempts one silent token refresh, then redirects to /login.
  *
@@ -33,7 +33,7 @@ function dispatchPlanLimit(payload: PlanLimitPayload): void {
   window.dispatchEvent(new CustomEvent(PLAN_LIMIT_EVENT, { detail: payload }));
 }
 
-// ── apiClient — agent API key ─────────────────────────────────────────────────
+// ── apiClient: agent API key ─────────────────────────────────────────────────
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -68,7 +68,7 @@ apiClient.interceptors.response.use(
   },
 );
 
-// ── authClient — user JWT ─────────────────────────────────────────────────────
+// ── authClient: user JWT ─────────────────────────────────────────────────────
 
 let isRefreshing = false;
 let pendingQueue: Array<{

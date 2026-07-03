@@ -1,7 +1,7 @@
 """
-Arbiter — Pydantic schemas for Session and SessionEvent resources.
+Arbiter Pydantic schemas for Session and SessionEvent resources.
 
-Sessions are read-only from the API perspective — they are opened and
+Sessions are read-only from the API perspective: they are opened and
 closed by the proxy service automatically.  Clients can query them for
 audit and debugging.
 """
@@ -22,8 +22,8 @@ class SessionEventResponse(BaseModel):
     request_payload and response_payload are arbitrary JSON dicts matching
     the MCP protocol.  error is populated only on failed calls.
 
-    mcp_server_name is populated at the endpoint level by joining MCPServer —
-    it is NOT stored on the ORM model and must be set manually after construction.
+    mcp_server_name is populated at the endpoint level by joining MCPServer.
+    It is NOT stored on the ORM model and must be set manually after construction.
     """
 
     id: uuid.UUID
@@ -42,7 +42,7 @@ class SessionEventResponse(BaseModel):
 
 
 class SessionListResponse(BaseModel):
-    """Response schema for a Session in list context — no events loaded."""
+    """Response schema for a Session in list context: no events loaded."""
 
     id: uuid.UUID
     agent_id: uuid.UUID

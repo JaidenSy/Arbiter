@@ -1,5 +1,5 @@
 /**
- * Arbiter — Agents page.
+ * Arbiter: Agents page.
  *
  * Lists registered agents and allows:
  *   - Registering a new agent (form modal → one-time API key modal)
@@ -338,7 +338,7 @@ function TestCallModal({ agent, onClose }: TestCallModalProps): React.ReactEleme
   if (!agent) return null
 
   return (
-    <Modal isOpen onClose={onClose} title={`Test Call — ${agent.name}`}>
+    <Modal isOpen onClose={onClose} title={`Test Call: ${agent.name}`}>
       <div className="space-y-4">
         <div>
           <label className={labelClass}>MCP Server</label>
@@ -459,12 +459,12 @@ function SnippetModal({ agent, onClose }: SnippetModalProps): React.ReactElement
   const [tab, setTab] = useState<"Python" | "curl" | "TypeScript">("Python");
   if (!agent) return null;
 
-  // We don't store raw keys — show placeholder so user fills in their own.
+  // We don't store raw keys: show placeholder so user fills in their own.
   const placeholder = "<YOUR_API_KEY>";
   const snippets = buildSnippets(placeholder);
 
   return (
-    <Modal isOpen onClose={onClose} title={`Code Snippets — ${agent.name}`}>
+    <Modal isOpen onClose={onClose} title={`Code Snippets: ${agent.name}`}>
       <div className="space-y-4">
         <p className="text-secondary text-xs">
           Replace <code className="text-accent-light bg-elevated px-1 rounded">&lt;YOUR_API_KEY&gt;</code> with the key you copied when registering this agent.
@@ -545,7 +545,7 @@ function RenameModal({ agent, onClose, onSuccess }: RenameModalProps): React.Rea
   };
 
   return (
-    <Modal isOpen onClose={onClose} title={`Edit Agent — ${agent.name}`}>
+    <Modal isOpen onClose={onClose} title={`Edit Agent: ${agent.name}`}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-xs font-semibold text-secondary mb-1.5 uppercase tracking-widest">Name</label>
@@ -758,7 +758,7 @@ function Agents(): React.ReactElement {
     },
     onError: (err) => {
       console.error("Failed to rotate key", err);
-      showBanner('Failed to rotate key — please try again.', true);
+      showBanner('Failed to rotate key. Please try again.', true);
     },
   });
 

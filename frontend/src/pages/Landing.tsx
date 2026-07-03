@@ -1,147 +1,51 @@
 /**
- * Arbiter — Marketing landing page.
+ * Arbiter: Marketing landing page.
  *
  * Shown to unauthenticated users at /.
  * No sidebar. Standalone dark layout.
  */
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArbiterMark } from '../components/ArbiterLogo'
-import { useAuth } from '../context/AuthContext'
 import AuthModal, { type AuthMode } from '../components/AuthModal'
 import HeroBackground from '../components/HeroBackground'
 import HeroArchDiagram from '../components/HeroArchDiagram'
+import HeroDashboardSim from '../components/HeroDashboardSim'
 import DashboardPreview from '../components/DashboardPreview'
 import WorksWith from '../components/WorksWith'
 import FeatureShowcase from '../components/FeatureShowcase'
 import GatewayConnectedCTA from '../components/GatewayConnectedCTA'
 import { useScrollReveal } from '../hooks/useScrollReveal'
 import { RevealGroup } from '../components/RevealGroup'
+import PricingTiers from '../components/PricingTiers'
+import { SUPPORT_EMAIL } from '../components/pricingData'
 
-const SUPPORT_EMAIL: string =
-  (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) ?? 'support@arbiterai.dev'
+// ── Hero demo ─────────────────────────────────────────────────────────────────
 
-// ── Typewriter Terminal ───────────────────────────────────────────────────────
+const GITHUB_URL = 'https://github.com/JaidenSy/Arbiter'
 
-interface CodeToken { text: string; color: string }
-type CodeLine = CodeToken[]
-
-const C = {
-  primary:   'var(--color-primary)',
-  secondary: 'var(--color-secondary)',
-  muted:     'var(--color-muted)',
-  accent:    'var(--color-accent-light)',
-  teal:      'var(--color-teal-light)',
-  success:   'var(--color-success)',
-  warning:   'var(--color-warning)',
-}
-
-const CODE: CodeLine[] = [
-  [
-    { text: '$ ',   color: C.secondary },
-    { text: 'curl', color: C.teal },
-    { text: ' -X POST https://api.arbiterai.dev/api/v1/proxy/tool-call \\', color: C.primary },
-  ],
-  [
-    { text: '  -H ',                                      color: C.accent  },
-    { text: '"Authorization: Bearer nxai_abc123..."',    color: C.success },
-  ],
-  [
-    { text: "  -d '", color: C.accent  },
-    { text: '{"server_name":"filesystem","tool_name":"read_file"}', color: C.success },
-    { text: "'",       color: C.success },
-  ],
-  [],
-  [{ text: '# Response',  color: C.secondary }],
-  [{ text: '{',           color: C.teal      }],
-  [
-    { text: '  "cached": ', color: C.accent  },
-    { text: 'false',        color: C.warning },
-    { text: ',',            color: C.primary },
-  ],
-  [
-    { text: '  "agent_id": ', color: C.accent  },
-    { text: '"agt_xyz789"',   color: C.success },
-    { text: ',',              color: C.primary },
-  ],
-  [
-    { text: '  "result": {', color: C.accent  },
-    { text: '...',           color: C.muted   },
-    { text: '}',             color: C.primary },
-  ],
-  [{ text: '}', color: C.teal }],
-]
-
-function lineLen(line: CodeLine): number {
-  return line.reduce((s, t) => s + t.text.length, 0)
-}
-
-const TOTAL_CHARS = CODE.reduce((s, l) => s + lineLen(l), 0)
-const CHAR_DELAY  = 26
-
-function TypewriterTerminal(): React.ReactElement {
-  const prefersReduced =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const [chars, setChars] = useState(prefersReduced ? TOTAL_CHARS : 0)
-  const done = chars >= TOTAL_CHARS
-
-  useEffect(() => {
-    if (done) return
-    const delay = chars === 0 ? 700 : CHAR_DELAY
-    const t = setTimeout(() => setChars(n => n + 1), delay)
-    return () => clearTimeout(t)
-  }, [chars, done])
-
-  let consumed = 0
-  const lines = CODE.map((line, li) => {
-    const len     = lineLen(line)
-    const show    = Math.max(0, Math.min(len, chars - consumed))
-    const isActive = done
-      ? li === CODE.length - 1
-      : chars > consumed && chars <= consumed + len && len > 0
-    consumed += len
-
-    let rem = show
-    const spans = line.map((tok, ti) => {
-      if (rem <= 0) return null
-      const visible = tok.text.slice(0, rem)
-      rem -= tok.text.length
-      return <span key={ti} style={{ color: tok.color }}>{visible}</span>
-    })
-
-    return (
-      <div key={li} className="whitespace-pre" style={{ minHeight: '1.25em' }}>
-        {spans}
-        {isActive && (
-          <span className="blink-cursor" style={{ color: 'var(--color-accent-light)' }}>▋</span>
-        )}
-      </div>
-    )
-  })
-
+function GitHubIcon({ size = 15 }: { size?: number }): React.ReactElement {
   return (
-    <div
-      className="mt-14 rounded-lg p-5 text-left max-w-xl mx-auto animate-fade-in overflow-hidden"
-      style={{
-        animationDelay: '260ms',
-        background: 'rgba(9,9,11,0.55)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.09)',
-        boxShadow: '0 0 0 1px rgba(61,53,206,0.12) inset',
-      }}
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6.01 0c2.29-1.55 3.3-1.23 3.3-1.23.65 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.8 5.62-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.69.83.58A12 12 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/>
+    </svg>
+  )
+}
+
+/**
+ * Above-the-fold proof: a simulated, interactive Arbiter dashboard that auto-plays
+ * a real session (open a session -> see the trace -> the RBAC denial) and becomes
+ * clickable on hover. See HeroDashboardSim.
+ */
+function HeroDemo(): React.ReactElement {
+  return (
+    <figure
+      className="mt-14 max-w-3xl mx-auto animate-fade-in"
+      style={{ animationDelay: '260ms' }}
     >
-      <div className="flex items-center gap-1.5 mb-4">
-        <span className="w-2.5 h-2.5 rounded-full bg-error/70" />
-        <span className="w-2.5 h-2.5 rounded-full bg-warning/70" />
-        <span className="w-2.5 h-2.5 rounded-full bg-success/70" />
-      </div>
-      <div className="font-mono text-xs leading-relaxed overflow-x-auto">
-        {lines}
-      </div>
-    </div>
+      <HeroDashboardSim />
+    </figure>
   )
 }
 
@@ -161,6 +65,26 @@ function Navbar({ onSignIn, onGetStarted }: NavbarProps): React.ReactElement {
 
         {/* Right nav */}
         <div className="flex items-center gap-3">
+          <Link
+            to="/pricing"
+            className="hidden sm:block text-secondary hover:text-primary px-2 py-1.5 text-sm transition-colors duration-150"
+          >
+            Pricing
+          </Link>
+          <Link
+            to="/docs"
+            className="hidden sm:block text-secondary hover:text-primary px-2 py-1.5 text-sm transition-colors duration-150"
+          >
+            Docs
+          </Link>
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:inline-flex items-center gap-1.5 text-secondary hover:text-primary px-2 py-1.5 text-sm transition-colors duration-150"
+          >
+            <GitHubIcon /> GitHub
+          </a>
           <button
             onClick={onSignIn}
             className="press text-secondary hover:text-primary border border-border-strong hover:border-border-strong px-4 py-2.5 rounded-lg text-sm transition-colors duration-150 ease-[var(--ease-out-expo)]"
@@ -202,10 +126,10 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      {/* Background — dot grid + ambient glow */}
+      {/* Background: dot grid + ambient glow */}
       <HeroBackground />
 
-      {/* Mouse spotlight — illuminates dot grid on hover */}
+      {/* Mouse spotlight: illuminates dot grid on hover */}
       <div
         className="absolute inset-0 pointer-events-none"
         aria-hidden
@@ -217,7 +141,7 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         }}
       />
 
-      {/* Bottom fade — blends hero into sections below */}
+      {/* Bottom fade: blends hero into sections below */}
       <div
         className="absolute bottom-0 left-0 right-0 h-52 pointer-events-none"
         style={{ background: 'linear-gradient(to bottom, transparent, var(--color-base))' }}
@@ -242,7 +166,8 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
         >
           Shared credentials, no audit trail, agents that can call any tool they want.
           Arbiter fixes all of it: cryptographic agent identity, tool-level permissions,
-          an encrypted secrets vault, and full observability through a single MCP gateway.
+          an encrypted secrets vault, and full observability, through a single gateway
+          that sits in front of your MCP servers (the tool APIs your agents call).
         </p>
 
         {/* CTAs */}
@@ -271,8 +196,27 @@ function Hero({ onGetStarted, onSignIn }: HeroProps): React.ReactElement {
           Free plan includes 2 agents · 5,000 tool calls/mo · No credit card required
         </p>
 
-        {/* Terminal demo — typewriter */}
-        <TypewriterTerminal />
+        {/* Trust strip: open source, self-hosted, source link */}
+        <div
+          className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted animate-fade-in"
+          style={{ animationDelay: '200ms' }}
+        >
+          <span>Apache-2.0</span>
+          <span aria-hidden>·</span>
+          <span>Self-hosted: no agent traffic or secret leaves your environment</span>
+          <span aria-hidden>·</span>
+          <a
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-secondary hover:text-primary transition-colors"
+          >
+            <GitHubIcon size={13} /> View source
+          </a>
+        </div>
+
+        {/* Live product demo (real session) */}
+        <HeroDemo />
       </div>
     </section>
   )
@@ -361,7 +305,7 @@ function Features(): React.ReactElement {
           </h2>
         </div>
 
-        {/* Grid — RevealGroup staggers cards on scroll entry */}
+        {/* Grid: RevealGroup staggers cards on scroll entry */}
         <RevealGroup className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" stagger={60}>
           {features.map((f, i) => {
             const isWide = i === 0 || i === 4
@@ -482,73 +426,8 @@ function Comparison(): React.ReactElement {
 
 // ── Pricing ────────────────────────────────────────────────────────────────────
 
-interface PricingTier {
-  name: string
-  price: string
-  period?: string
-  features: string[]
-  cta: string
-  ctaHref: string
-  highlighted?: boolean
-}
-
-const pricingTiers: PricingTier[] = [
-  {
-    name: 'Free',
-    price: '$0',
-    period: '/mo',
-    features: [
-      '2 agents',
-      '3 MCP servers',
-      '5,000 tool calls/mo',
-      '10 vault secrets',
-      'Community support',
-    ],
-    cta: 'Get Started Free',
-    ctaHref: '/register',
-  },
-  {
-    name: 'Pro',
-    price: '$29',
-    period: '/mo',
-    features: [
-      '25 agents',
-      '50 MCP servers',
-      '100,000 tool calls/mo',
-      '100 vault secrets',
-      'Priority support',
-    ],
-    cta: 'Upgrade to Pro',
-    ctaHref: '/register',
-    highlighted: true,
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    features: [
-      'Unlimited everything',
-      'Custom SLA',
-      'Dedicated support',
-      'SSO',
-      'Self-hosted deployment support',
-    ],
-    cta: 'Contact Sales',
-    ctaHref: `mailto:${SUPPORT_EMAIL}`,
-  },
-]
-
 function Pricing(): React.ReactElement {
-  const { user } = useAuth()
-  const navigate = useNavigate()
   const headingRef = useScrollReveal<HTMLHeadingElement>()
-
-  function handleProCta(): void {
-    if (user) {
-      navigate('/settings?tab=billing')
-    } else {
-      navigate('/register')
-    }
-  }
 
   return (
     <section className="py-24 px-6" id="pricing">
@@ -556,65 +435,7 @@ function Pricing(): React.ReactElement {
         <div className="text-center mb-16">
           <h2 ref={headingRef} className="font-display text-3xl font-semibold tracking-tight text-primary mb-4">Start free. Scale when you need to.</h2>
         </div>
-
-        <RevealGroup className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch" stagger={80}>
-          {pricingTiers.map((tier) => (
-            <div
-              key={tier.name}
-              className={`flex flex-col rounded-2xl p-7 transition-colors duration-200 ${
-                tier.highlighted
-                  ? 'bg-surface border border-border-accent shadow-[0_0_28px_rgba(61,53,206,0.16)]'
-                  : 'bg-surface border border-border'
-              }`}
-            >
-              {tier.highlighted && (
-                <div className="inline-flex self-start mb-4 px-2.5 py-0.5 rounded-full bg-accent/15 border border-border-accent">
-                  <span className="text-accent-light text-xs font-medium tracking-wide">Most popular</span>
-                </div>
-              )}
-              <p className="font-display text-primary font-semibold text-base tracking-tight mb-1">{tier.name}</p>
-              <div className="flex items-baseline gap-0.5 mb-5">
-                <span className="font-display text-3xl font-semibold tracking-tight text-primary">{tier.price}</span>
-                {tier.period && <span className="text-muted text-sm">{tier.period}</span>}
-              </div>
-
-              <ul className="flex-1 space-y-2.5 mb-7">
-                {tier.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm text-secondary">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-success flex-shrink-0">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              {tier.ctaHref.startsWith('mailto') ? (
-                <a
-                  href={tier.ctaHref}
-                  className="press block text-center border border-border-strong hover:border-border-accent text-secondary hover:text-accent-light px-4 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 ease-[var(--ease-out-expo)]"
-                >
-                  {tier.cta}
-                </a>
-              ) : tier.highlighted ? (
-                <button
-                  type="button"
-                  onClick={handleProCta}
-                  className="press block w-full text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,box-shadow] duration-150 ease-[var(--ease-out-expo)] bg-accent hover:bg-accent-light text-white hover-glow-standard"
-                >
-                  {user ? 'Go to Billing' : tier.cta}
-                </button>
-              ) : (
-                <Link
-                  to={tier.ctaHref}
-                  className="press block text-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-150 ease-[var(--ease-out-expo)] border border-border-strong hover:border-border-accent text-secondary hover:text-accent-light"
-                >
-                  {tier.cta}
-                </Link>
-              )}
-            </div>
-          ))}
-        </RevealGroup>
+        <PricingTiers showCompareLink />
       </div>
     </section>
   )
@@ -646,7 +467,7 @@ const faqItems: FAQItem[] = [
   {
     question: 'Can I self-host?',
     answer:
-      'Yes. The Arbiter core gateway is open source (Apache 2.0) — clone the repo and run docker compose up. Enterprise adds SSO, SCIM, KMS, dedicated deployment support, and a custom SLA on top of that.',
+      'Yes. The Arbiter core gateway is open source (Apache 2.0). Clone the repo and run docker compose up. Enterprise adds SSO, SCIM, KMS, dedicated deployment support, and a custom SLA on top of that.',
   },
   {
     question: 'What MCP clients are supported?',
@@ -712,17 +533,20 @@ function Footer(): React.ReactElement {
   return (
     <footer className="bg-surface border-t border-border px-6 py-8">
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Left — logo + copyright */}
+        {/* Left: logo + copyright */}
         <div className="flex items-center gap-2.5">
           <ArbiterMark size={22} />
           <span className="font-display text-primary font-semibold text-sm tracking-tight">Arbiter</span>
           <span className="text-muted text-xs ml-2">© 2026 Arbiter. All rights reserved.</span>
         </div>
 
-        {/* Right — nav */}
+        {/* Right: nav */}
         <div className="flex items-center gap-5">
           <Link to="/" className="text-secondary hover:text-primary text-xs transition-colors">
             Dashboard
+          </Link>
+          <Link to="/pricing" className="text-secondary hover:text-primary text-xs transition-colors">
+            Pricing
           </Link>
           <Link to="/docs" className="text-secondary hover:text-primary text-xs transition-colors">
             API Docs

@@ -1,5 +1,5 @@
 /**
- * Arbiter — Register page.
+ * Arbiter: Register page.
  *
  * Route: /register (public, no sidebar)
  * On success: auto-logged in (tokens from backend), navigates to /onboarding.

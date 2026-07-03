@@ -1,5 +1,5 @@
 /**
- * Arbiter — Verify Email page.
+ * Arbiter: Verify Email page.
  *
  * Route: /verify-email?status=success|error[&detail=...] (public, no sidebar)
  * The backend handles verification server-side and redirects here with the result.

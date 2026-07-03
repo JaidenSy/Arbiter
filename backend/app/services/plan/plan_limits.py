@@ -1,5 +1,5 @@
 """
-Arbiter — Plan limit constants and quota-related exceptions.
+Arbiter Plan limit constants and quota-related exceptions.
 
 PLAN_LIMITS is the single source of truth for per-tier resource caps.
 None means unlimited (Enterprise tier).
@@ -21,7 +21,7 @@ PLAN_LIMITS: dict[str, dict] = {
         "max_tool_calls_mo": 5_000,
         "max_vault_secrets": 10,
         "max_members": 3,
-        "semantic_cache": False,  # exact-match only — keeps embedding model off RAM for free orgs
+        "semantic_cache": False,  # exact-match only: keeps embedding model off RAM for free orgs
     },
     "pro": {
         "max_agents": 25,
@@ -40,6 +40,13 @@ PLAN_LIMITS: dict[str, dict] = {
         "semantic_cache": True,
     },
 }
+
+# Tiers that unlock paid-only features (audit export, analytics, execution
+# traces, webhooks, semantic cache, etc.). Feature gates MUST use the allowlist
+# form ``plan_tier not in PAID_TIERS`` so that any unknown or future tier fails
+# closed (access denied) instead of silently inheriting paid access by virtue of
+# merely not being "free".
+PAID_TIERS: tuple[str, ...] = ("pro", "enterprise")
 
 OVERAGE_GRACE_FACTOR: float = 1.05  # 5% grace on monthly tool_call quota
 

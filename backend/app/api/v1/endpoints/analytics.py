@@ -1,15 +1,15 @@
 """
-Arbiter — API endpoints: Analytics.
+Arbiter API endpoints: Analytics.
 
 Per-agent cost attribution with 7-day daily trend data.
 
 Routes:
-    GET    /analytics/agents — monthly tool-call breakdown by agent (Pro+ only)
+    GET    /analytics/agents: monthly tool-call breakdown by agent (Pro+ only)
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
@@ -21,7 +21,7 @@ from app.db.models.organization import Organization
 from app.db.models.session import Session, SessionEvent
 from app.db.models.user import User
 from app.schemas.analytics import AgentAnalyticsResponse, AgentTrendPoint, AgentUsage
-from app.services.plan.plan_limits import PLAN_LIMITS
+from app.services.plan.plan_limits import PAID_TIERS, PLAN_LIMITS
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -40,19 +40,19 @@ async def get_agent_analytics(
     Return monthly tool-call counts broken down by agent, plus a 7-day daily
     trend for each agent.  Sorted by tool_calls_this_month DESC.
 
-    Requires Pro or Enterprise plan — free orgs receive HTTP 402.
+    Requires Pro or Enterprise plan: free orgs receive HTTP 402.
     """
     org = await db.get(Organization, current_user.org_id)
     plan_tier = org.plan_tier if org else "free"
 
-    if plan_tier == "free":
+    if plan_tier not in PAID_TIERS:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="Upgrade to Pro to access analytics",
         )
 
     org_quota: int | None = PLAN_LIMITS.get(plan_tier, {}).get("max_tool_calls_mo")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     month_start = func.date_trunc("month", func.now())
     trend_cutoff = now - timedelta(days=7)
 

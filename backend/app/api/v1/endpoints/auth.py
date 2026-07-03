@@ -1,5 +1,5 @@
 """
-Arbiter — API endpoints: Auth.
+Arbiter API endpoints: Auth.
 
 Routes:
     POST   /auth/register           → 201  issue tokens for new org + owner
@@ -22,7 +22,7 @@ from datetime import UTC, date, datetime
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -30,6 +30,7 @@ from sqlalchemy.orm import selectinload
 from app.core import security as _sec
 from app.core.config import settings
 from app.core.dependencies import get_current_user, get_db, get_redis
+from app.core.password import validate_password_strength
 from app.core.request_utils import get_client_ip
 from app.db.models.organization import Organization
 from app.db.models.refresh_token import RefreshToken
@@ -121,7 +122,7 @@ async def register(
                 detail="Registration requires a valid invite code",
             )
 
-    # Org creation rate limit — max 3 new orgs per IP per day to prevent
+    # Org creation rate limit: max 3 new orgs per IP per day to prevent
     # free-tier reset abuse (register new email → new org → reset quota).
     if redis is not None:
         client_ip = get_client_ip(request)
@@ -166,7 +167,7 @@ async def login(
     redis=Depends(get_redis),
 ) -> TokenResponse:
     if redis is not None:
-        # Per-email rate limit — 10 attempts per 15 minutes
+        # Per-email rate limit: 10 attempts per 15 minutes
         rate_key = f"login_attempts:{body.email}"
         attempts = await redis.incr(rate_key)
         if attempts == 1:
@@ -177,7 +178,7 @@ async def login(
                 detail="Too many login attempts. Try again in 15 minutes.",
             )
 
-        # Per-IP rate limit — 20 attempts per 10 minutes (credential stuffing defence)
+        # Per-IP rate limit: 20 attempts per 10 minutes (credential stuffing defence)
         client_ip = get_client_ip(request)
         ip_key = f"login_ip:{client_ip}"
         ip_attempts = await redis.incr(ip_key)
@@ -303,7 +304,7 @@ async def update_me(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="That email is already in use",
             )
-        # Don't update email yet — send a confirmation link to the new address
+        # Don't update email yet: send a confirmation link to the new address
         token = _token_serializer.dumps(
             {"uid": str(current_user.id), "email": new_email},
             salt="email-change",
@@ -336,12 +337,12 @@ async def change_password(
     if not current_user.hashed_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This account uses SSO — password change is not available",
+            detail="This account uses SSO. Password change is not available",
         )
 
     current_ok = _sec.verify_password(body.current_password, current_user.hashed_password)
     if not current_ok:
-        # Legacy hash (no SHA-256 pre-hash) — accept and let the re-hash below migrate it.
+        # Legacy hash (no SHA-256 pre-hash): accept and let the re-hash below migrate it.
         current_ok = _sec.verify_password_legacy(
             body.current_password, current_user.hashed_password
         )
@@ -378,7 +379,7 @@ async def change_password(
 @router.delete(
     "/me",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="GDPR-compliant account deletion — anonymize PII and hard-delete related data",
+    summary="GDPR-compliant account deletion: anonymize PII and hard-delete related data",
 )
 async def delete_me(
     authorization: str | None = Header(default=None),
@@ -393,40 +394,67 @@ async def delete_me(
     import stripe
     import stripe.error
     from sqlalchemy import delete, update
-    from sqlalchemy import func as sqlfunc
 
+    from app.db.models.agent import Agent
     from app.db.models.cache import CacheEntry
     from app.db.models.gdpr_deletion_log import GdprDeletionLog
     from app.db.models.org_invite import OrgInvite
+    from app.db.models.org_membership import OrgMembership
     from app.db.models.session import SessionEvent
     from app.db.models.social_account import SocialAccount
     from app.db.models.vault import VaultSecret
+    from app.services.org import org_service
 
     _log = logging.getLogger(__name__)
 
     # Capture identifiers and original email BEFORE any mutation.
     user_id = current_user.id
-    org_id = current_user.org_id
     original_email = current_user.email
 
-    # ── Step 1: Cancel Stripe subscription (best-effort, before DB changes) ──
-    org = await db.get(Organization, org_id)
-    had_stripe_subscription = bool(org is not None and org.stripe_subscription_id)
-    if org is not None and org.stripe_subscription_id and settings.stripe_secret_key:
-        stripe.api_key = settings.stripe_secret_key
-        try:
-            await asyncio.to_thread(
-                stripe.Subscription.cancel,
-                org.stripe_subscription_id,
+    # ── Step 0: Classify every org the user belongs to ────────────────────────
+    # An org is deleted with the account only when this user is an owner and
+    # no other active owner remains.  Orgs where the user is a member/admin,
+    # or where other owners exist, survive untouched, including their Stripe
+    # subscription (plans attach to orgs, never to people).
+    memberships = await org_service.list_memberships(db, user_id)
+    doomed_orgs: list[Organization] = []
+    surviving_org_ids: list[uuid.UUID] = []
+    for membership in memberships:
+        org = await db.get(Organization, membership.org_id)
+        if org is None:
+            continue
+        if membership.role == "owner":
+            other_owners = await org_service.count_other_owners(
+                db, membership.org_id, excluding_user_id=user_id
             )
-            org.stripe_subscription_id = None
-            org.plan_tier = "free"
-        except stripe.error.InvalidRequestError:
-            # Already cancelled or not found — clear the stale ID and continue.
-            org.stripe_subscription_id = None
-            org.plan_tier = "free"
-        except stripe.error.StripeError as exc:
-            _log.warning("delete_me: Stripe cancellation failed (continuing): %s", exc)
+            if other_owners == 0:
+                doomed_orgs.append(org)
+                continue
+        surviving_org_ids.append(membership.org_id)
+
+    # Capture subscription state BEFORE cancellation clears it: the GDPR
+    # audit log must record whether a paid plan existed at deletion time.
+    doomed_had_sub: dict[_uuid.UUID, bool] = {
+        org.id: bool(org.stripe_subscription_id) for org in doomed_orgs
+    }
+
+    # ── Step 1: Cancel Stripe subscriptions of doomed orgs (best-effort) ─────
+    for org in doomed_orgs:
+        if org.stripe_subscription_id and settings.stripe_secret_key:
+            stripe.api_key = settings.stripe_secret_key
+            try:
+                await asyncio.to_thread(
+                    stripe.Subscription.cancel,
+                    org.stripe_subscription_id,
+                )
+                org.stripe_subscription_id = None
+                org.plan_tier = "free"
+            except stripe.error.InvalidRequestError:
+                # Already cancelled or not found: clear the stale ID and continue.
+                org.stripe_subscription_id = None
+                org.plan_tier = "free"
+            except stripe.error.StripeError as exc:
+                _log.warning("delete_me: Stripe cancellation failed (continuing): %s", exc)
 
     # ── Step 2: Anonymize user PII (FIX-1) ───────────────────────────────────
     current_user.email = f"deleted-{user_id}@gdpr.invalid"
@@ -439,89 +467,71 @@ async def delete_me(
     await db.execute(delete(SocialAccount).where(SocialAccount.user_id == user_id))
 
     # ── Step 4: Delete org_invites for this user's email (FIX-6) ─────────────
-    # Done before org ownership check so invites are cleaned up regardless.
     await db.execute(delete(OrgInvite).where(OrgInvite.email == original_email))
 
     # ── Step 5: Hard delete refresh tokens (FIX-4) ───────────────────────────
     await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
 
-    # ── Step 6: Org ownership check and cleanup (FIX-3) ──────────────────────
-    if org is not None:
-        # Count remaining owners in the org (excluding the deleting user).
-        other_owner_count = await db.scalar(
-            select(sqlfunc.count(User.id)).where(
-                User.org_id == org_id,
-                User.role == "owner",
-                User.id != user_id,
-                User.is_active.is_(True),
+    # ── Step 5b: Anonymize the user's session events everywhere (P2-FIX-6) ───
+    # One pass across all orgs; doomed orgs' events are cascade-deleted later
+    # anyway, surviving orgs keep the (anonymized) audit trail.
+    await db.execute(
+        update(SessionEvent)
+        .where(SessionEvent.user_id == user_id)
+        .values(user_id=None, request_payload=None, response_payload=None)
+    )
+
+    # ── Step 5c: Deactivate agents the user created in surviving orgs ────────
+    # Parity with member removal: a departed human's API keys must stop
+    # working.  Doomed orgs' agents are cascade-deleted with the org.
+    await db.execute(
+        update(Agent)
+        .where(Agent.created_by_user_id == user_id, Agent.is_active.is_(True))
+        .values(is_active=False)
+    )
+
+    # ── Step 6a: Delete doomed orgs (FIX-3) ──────────────────────────────────
+    for org in doomed_orgs:
+        org_id = org.id
+        # Explicit deletes for tables that do NOT cascade directly from org.
+        await db.execute(delete(VaultSecret).where(VaultSecret.org_id == org_id))
+        await db.execute(delete(CacheEntry).where(CacheEntry.org_id == org_id))
+
+        # Sessions, SessionEvents, Agents, ToolPermissions, and memberships
+        # cascade from the org row.  Anonymize billing PII before deletion.
+        org.stripe_customer_id = None
+        org.name = f"deleted-org-{org_id}"
+
+        db.add(
+            GdprDeletionLog(
+                org_id=org_id,
+                was_sole_owner=True,
+                had_stripe_subscription=doomed_had_sub.get(org_id, False),
             )
         )
 
-        if other_owner_count == 0:
-            # This user is the sole owner — delete all org resources, then the org.
-            # Explicit deletes for tables that do NOT cascade directly from org
-            # or that need to be cleared before the org row is removed.
-            await db.execute(delete(VaultSecret).where(VaultSecret.org_id == org_id))
-            await db.execute(delete(CacheEntry).where(CacheEntry.org_id == org_id))
+        # Flush pending mutations so the DELETE doesn't hit FK conflicts.
+        await db.flush()
+        await db.delete(org)
 
-            # Sessions and SessionEvents cascade from org via ON DELETE CASCADE;
-            # Agents and ToolPermissions also cascade. Deleting the org row
-            # triggers the DB-level cascade for all remaining child tables.
-            # Anonymize org before deletion to scrub billing PII.
-            org.stripe_customer_id = None
-            org.name = f"deleted-org-{org_id}"
-
-            # P2-FIX-6: Anonymize session events for this user before org cascade.
-            await db.execute(
-                update(SessionEvent)
-                .where(
-                    SessionEvent.org_id == org_id,
-                    SessionEvent.user_id == user_id,
-                )
-                .values(user_id=None, request_payload=None, response_payload=None)
+    # ── Step 6b: Leave surviving orgs ─────────────────────────────────────────
+    for org_id in surviving_org_ids:
+        org = await db.get(Organization, org_id)
+        db.add(
+            GdprDeletionLog(
+                org_id=org_id,
+                was_sole_owner=False,
+                had_stripe_subscription=bool(org is not None and org.stripe_subscription_id),
             )
+        )
 
-            # ── P2-FIX-7: GDPR deletion audit log (sole owner) ───────────────
-            db.add(
-                GdprDeletionLog(
-                    org_id=org_id,
-                    was_sole_owner=True,
-                    had_stripe_subscription=had_stripe_subscription,
-                )
-            )
-
-            # Flush pending mutations so the DELETE doesn't hit FK conflicts.
-            await db.flush()
-            await db.delete(org)
-        else:
-            # Other owners exist — just remove this user from the org.
-            # The user row itself is anonymized (FIX-1) and will remain with
-            # is_active=False. Stripe PII is cleared on the org (FIX-5).
-            org.stripe_customer_id = None
-
-            # P2-FIX-6: Anonymize this user's session events within the org.
-            await db.execute(
-                update(SessionEvent)
-                .where(
-                    SessionEvent.org_id == org_id,
-                    SessionEvent.user_id == user_id,
-                )
-                .values(user_id=None, request_payload=None, response_payload=None)
-            )
-
-            # ── P2-FIX-7: GDPR deletion audit log (non-sole owner) ───────────
-            db.add(
-                GdprDeletionLog(
-                    org_id=org_id,
-                    was_sole_owner=False,
-                    had_stripe_subscription=had_stripe_subscription,
-                )
-            )
+    # Remove every remaining membership row (doomed orgs already cascaded).
+    await db.execute(delete(OrgMembership).where(OrgMembership.user_id == user_id))
 
     # ── Step 7: Commit entire transaction atomically ──────────────────────────
     await db.commit()
 
-    _log.info("GDPR deletion completed for user_id=%s org_id=%s", user_id, org_id)
+    _log.info("GDPR deletion completed for user_id=%s orgs_deleted=%d", user_id, len(doomed_orgs))
 
     # ── Step 8: Blocklist the current access token (keep existing behaviour) ──
     if authorization:
@@ -561,7 +571,7 @@ async def resend_verification(
             detail="Email service is not configured. Contact support.",
         )
 
-    # Rate limit: max 3 resend attempts per IP per 10 minutes — prevents
+    # Rate limit: max 3 resend attempts per IP per 10 minutes: prevents
     # authenticated-but-unverified users from spamming the resend button.
     if redis is not None:
         client_ip = get_client_ip(request)
@@ -695,6 +705,11 @@ class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
+    @field_validator("new_password")
+    @classmethod
+    def new_password_strength(cls, value: str) -> str:
+        return validate_password_strength(value)
+
 
 @router.post(
     "/forgot-password",
@@ -708,7 +723,7 @@ async def forgot_password(
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ) -> Response:
-    # Rate limit: max 3 requests per IP per 10 minutes — prevents email spam
+    # Rate limit: max 3 requests per IP per 10 minutes: prevents email spam
     # abuse that costs money and risks getting the sending domain blacklisted.
     if redis is not None:
         client_ip = get_client_ip(request)
@@ -726,7 +741,7 @@ async def forgot_password(
         select(User).where(User.email == body.email, User.is_active.is_(True))
     )
     user = result.scalar_one_or_none()
-    # Always return 204 — never reveal whether the email exists
+    # Always return 204: never reveal whether the email exists
     if user is not None:
         token = _token_serializer.dumps(str(user.id), salt="pwd-reset")
         reset_url = f"{settings.frontend_url}/reset-password?token={token}"
@@ -755,17 +770,12 @@ async def reset_password(
         )
     except BadSignature:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token")
-    if len(body.new_password) < 8:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Password must be at least 8 characters",
-        )
     user = await db.get(User, user_id)
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.hashed_password = _sec.hash_password(body.new_password)
 
-    # Revoke all refresh tokens — the old password is no longer valid so all
+    # Revoke all refresh tokens: the old password is no longer valid so all
     # existing sessions must be terminated.
     await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user.id))
 

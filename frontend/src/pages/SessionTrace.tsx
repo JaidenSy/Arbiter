@@ -1,5 +1,5 @@
 /**
- * Arbiter — Session Trace View.
+ * Arbiter: Session Trace View.
  *
  * Full waterfall timeline for a single session.
  * Route: /sessions/:id
@@ -480,7 +480,7 @@ function SessionTrace(): React.ReactElement {
         ← Back to Sessions
       </button>
 
-      {/* Call chain — shown when this session is part of a multi-hop trace */}
+      {/* Call chain: shown when this session is part of a multi-hop trace */}
       {session.trace_id && (
         <CallChainPanel sessionId={session.id} traceId={session.trace_id} />
       )}

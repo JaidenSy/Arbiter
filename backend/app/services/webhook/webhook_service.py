@@ -1,5 +1,5 @@
 """
-Arbiter — Webhook delivery service.
+Arbiter Webhook delivery service.
 
 Dispatches signed payloads to registered webhook URLs with retry/backoff.
 Called from event triggers in proxy, quota, and health-check code paths.
@@ -38,11 +38,11 @@ async def dispatch_event(
     """
     Fire-and-forget: find active webhooks subscribed to event_type and deliver.
 
-    Safe to call without awaiting from background tasks — all errors are caught
+    Safe to call without awaiting from background tasks: all errors are caught
     and logged; no exception propagates to the caller.
 
     Opens its own DB sessions: callers invoke this via asyncio.create_task, so
-    it must never borrow a request-scoped session — the request may roll back
+    it must never borrow a request-scoped session: the request may roll back
     or close it while delivery (with up to ~7s of retry backoff) is in flight.
     """
     try:
@@ -54,7 +54,7 @@ async def dispatch_event(
                 )
             )
             hooks = result.scalars().all()
-            # Capture plain values before the session closes — ORM instances
+            # Capture plain values before the session closes: ORM instances
             # expire with the session.
             matching = [(h.id, h.url, h.secret) for h in hooks if event_type in (h.events or [])]
     except Exception as exc:

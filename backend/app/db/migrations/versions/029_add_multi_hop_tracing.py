@@ -38,7 +38,7 @@ def upgrade() -> None:
         ),
     )
 
-    # Back-fill: existing sessions are roots — trace_id = id
+    # Back-fill: existing sessions are roots: trace_id = id
     op.execute("UPDATE sessions SET trace_id = id WHERE trace_id IS NULL")
 
     # Now make trace_id non-nullable

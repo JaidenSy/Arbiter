@@ -1,5 +1,5 @@
 /**
- * Arbiter Frontend — Root application component.
+ * Arbiter Frontend: Root application component.
  *
  * Routes:
  *   /            → Dashboard    (stats, cache hit rate, recent sessions)
@@ -25,10 +25,11 @@ import UpgradeModal from './components/UpgradeModal'
 import ErrorBoundary from './components/ErrorBoundary'
 import CommandPalette from './components/CommandPalette'
 import VerificationBanner from './components/VerificationBanner'
+import RouteMeta from './components/RouteMeta'
 import { PaletteProvider } from './context/PaletteContext'
 import { useAuth } from './context/AuthContext'
 
-// ── Lazy page imports — each page becomes its own chunk ───────────────────────
+// ── Lazy page imports: each page becomes its own chunk ───────────────────────
 
 const Dashboard    = lazy(() => import('./pages/Dashboard'))
 const Agents       = lazy(() => import('./pages/Agents'))
@@ -55,6 +56,7 @@ const Security       = lazy(() => import('./pages/Security'))
 const Changelog      = lazy(() => import('./pages/Changelog'))
 const CliAuth        = lazy(() => import('./pages/CliAuth'))
 const Webhooks       = lazy(() => import('./pages/Webhooks'))
+const Pricing        = lazy(() => import('./pages/Pricing'))
 
 // ── 404 page ──────────────────────────────────────────────────────────────────
 
@@ -111,7 +113,7 @@ function AppLayout({ children }: { children: React.ReactNode }): React.ReactElem
       <Sidebar />
       <main id="main-content" className="flex-1 ml-[52px] min-h-screen flex flex-col">
         <VerificationBanner />
-        {/* Per-page boundary — keeps the sidebar alive if one page crashes */}
+        {/* Per-page boundary: keeps the sidebar alive if one page crashes */}
         <ErrorBoundary>
           {/* Key on pathname re-triggers page-enter animation on every route change */}
           <div key={pathname} className="page-enter flex-1">
@@ -123,7 +125,7 @@ function AppLayout({ children }: { children: React.ReactNode }): React.ReactElem
   )
 }
 
-// ── Root redirect — send unauthenticated users to /login ──────────────────────
+// ── Root redirect: send unauthenticated users to /login ──────────────────────
 
 function RootRedirect(): React.ReactElement {
   const { user, isLoading } = useAuth()
@@ -145,6 +147,7 @@ function App(): React.ReactElement {
   return (
     <PaletteProvider>
     <ErrorBoundary>
+    <RouteMeta />
     <UpgradeModal />
     <CommandPalette />
     <Suspense fallback={<PageLoader />}>
@@ -164,9 +167,10 @@ function App(): React.ReactElement {
         <Route path="/consent"   element={<Consent />} />
         <Route path="/security"  element={<Security />} />
         <Route path="/changelog" element={<Changelog />} />
+        <Route path="/pricing"   element={<Pricing />} />
         <Route path="/cli-auth"  element={<CliAuth />} />
 
-        {/* ── Root — smart redirect ────────────────────────────────────────── */}
+        {/* ── Root: smart redirect ────────────────────────────────────────── */}
         <Route path="/" element={<RootRedirect />} />
 
         {/* ── Protected app routes (with sidebar) ─────────────────────────── */}

@@ -1,5 +1,5 @@
 /**
- * HeroBackground — Static dark background for the Arbiter landing hero.
+ * HeroBackground: Static dark background for the Arbiter landing hero.
  *
  * Replaces the former WebGL particle network + shader gradient.
  * A subtle radial glow from the top center is sufficient.
@@ -8,10 +8,10 @@
 export default function HeroBackground() {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
-      {/* Layer 1 — Base dark surface */}
+      {/* Layer 1: Base dark surface */}
       <div className="absolute inset-0 bg-[#0A0A0B]" />
 
-      {/* Layer 2 — Dot grid texture, brighter at top, fades out at 75% height */}
+      {/* Layer 2: Dot grid texture, brighter at top, fades out at 75% height */}
       <div
         className="absolute inset-0"
         style={{
@@ -24,7 +24,7 @@ export default function HeroBackground() {
         }}
       />
 
-      {/* Layer 3 — Indigo radial glow, sits above texture */}
+      {/* Layer 3: Indigo radial glow, sits above texture */}
       <div
         className="absolute inset-0"
         style={{
