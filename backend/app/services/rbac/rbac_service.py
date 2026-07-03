@@ -215,32 +215,6 @@ class RBACService:
         row = specific or wildcard
         return row.cache_ttl_seconds if row else None
 
-    async def get_allowed_tools(
-        self,
-        agent_id: uuid.UUID,
-        mcp_server_id: uuid.UUID,
-    ) -> list[str]:
-        """
-        Return all tool names the agent is permitted to call on the MCP server.
-
-        A wildcard ``"*"`` entry is returned as-is; callers must handle it by
-        passing through all tools from tools/list without filtering.
-
-        Args:
-            agent_id:      UUID of the agent.
-            mcp_server_id: UUID of the MCP server.
-
-        Returns:
-            list[str]: Permitted tool names (may include ``"*"``).
-        """
-        result = await self.db.execute(
-            select(ToolPermission.tool_name).where(
-                ToolPermission.agent_id == agent_id,
-                ToolPermission.mcp_server_id == mcp_server_id,
-            )
-        )
-        return list(result.scalars().all())
-
     async def get_rate_limit(
         self,
         agent_id: uuid.UUID,

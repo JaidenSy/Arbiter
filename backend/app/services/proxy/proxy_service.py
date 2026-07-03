@@ -836,7 +836,12 @@ class ProxyService:
         mcp_server: MCPServer | None = None,
     ) -> list[dict]:
         """
-        Filter a tools/list response to only RBAC-permitted tools.
+        Return the tools/list advertised to an agent.
+
+        RBAC no longer filters the manifest — every upstream tool is
+        advertised and enforcement happens at call time in
+        forward_tool_call. This wrapper is retained as the seam where
+        per-grant discovery scoping could be reintroduced later.
 
         Args:
             agent:       Authenticated agent.
@@ -845,7 +850,7 @@ class ProxyService:
             mcp_server:  Pre-resolved MCPServer to avoid a second DB round-trip.
 
         Returns:
-            list[dict]: Filtered tool dicts visible to this agent.
+            list[dict]: All tools advertised to this agent.
         """
         if mcp_server is None:
             mcp_server = await self.resolve_server(server_name, agent.org_id)

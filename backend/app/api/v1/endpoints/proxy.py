@@ -8,7 +8,7 @@ passes through here, triggering the full pipeline:
 
 Routes:
     POST   /proxy/tool-call    — invoke a tool through the gateway
-    POST   /proxy/tools-list   — retrieve filtered tools list (RBAC-filtered)
+    POST   /proxy/tools-list   — list tools on a server (all advertised; RBAC enforced at call time)
 """
 
 from __future__ import annotations
@@ -86,7 +86,7 @@ class ToolsListResponse(BaseModel):
     "/tools-list",
     response_model=ToolsListResponse,
     status_code=status.HTTP_200_OK,
-    summary="List tools available on an MCP server (RBAC-filtered)",
+    summary="List tools available on an MCP server",
     dependencies=[Depends(require_org_verified)],
 )
 async def tools_list(
@@ -96,11 +96,11 @@ async def tools_list(
     agent: Agent = Depends(get_current_agent),
 ) -> ToolsListResponse:
     """
-    Retrieve and RBAC-filter the tools/list from an upstream MCP server.
+    Retrieve the tools/list from an upstream MCP server.
 
-    Calls the upstream server's tools/list endpoint and filters the result
-    so the agent only sees tools they are permitted to call.  This prevents
-    information leakage about tools the agent cannot access.
+    Every tool is advertised. RBAC is enforced at call time in
+    forward_tool_call, so an unpermitted call is denied with a 403 and
+    logged rather than the tool being hidden here.
     """
     service = ProxyService(db=db, redis=redis)
 

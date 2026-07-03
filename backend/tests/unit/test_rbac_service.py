@@ -5,7 +5,6 @@ Coverage:
     - check_permission returns True when exact tool name is allowed
     - check_permission returns True when "*" wildcard is granted
     - check_permission returns False when no permission exists
-    - get_allowed_tools returns correct list for agent
     - filter_tools_list returns all tools regardless of permissions (enforcement is call-time only)
 """
 
@@ -173,50 +172,6 @@ class TestCheckPermission:
             "org_id filter missing from check_permission query — "
             "orphaned permission rows could grant unintended access"
         )
-
-
-class TestGetAllowedTools:
-    @pytest.mark.asyncio
-    async def test_returns_list_of_tool_names(self):
-        """get_allowed_tools returns the exact list from DB."""
-        from app.services.rbac.rbac_service import RBACService
-
-        agent_id = uuid.uuid4()
-        server_id = uuid.uuid4()
-        expected_tools = ["read_file", "write_file", "list_dir"]
-
-        db = _make_db_for_get_allowed(expected_tools)
-        svc = RBACService(db=db)
-        result = await svc.get_allowed_tools(
-            agent_id=agent_id,
-            mcp_server_id=server_id,
-        )
-        assert result == expected_tools
-
-    @pytest.mark.asyncio
-    async def test_returns_empty_list_when_no_permissions(self):
-        from app.services.rbac.rbac_service import RBACService
-
-        db = _make_db_for_get_allowed([])
-        svc = RBACService(db=db)
-        result = await svc.get_allowed_tools(
-            agent_id=uuid.uuid4(),
-            mcp_server_id=uuid.uuid4(),
-        )
-        assert result == []
-
-    @pytest.mark.asyncio
-    async def test_wildcard_returned_as_is(self):
-        """get_allowed_tools returns "*" literally when wildcard is granted."""
-        from app.services.rbac.rbac_service import RBACService
-
-        db = _make_db_for_get_allowed(["*"])
-        svc = RBACService(db=db)
-        result = await svc.get_allowed_tools(
-            agent_id=uuid.uuid4(),
-            mcp_server_id=uuid.uuid4(),
-        )
-        assert "*" in result
 
 
 class TestFilterToolsList:
