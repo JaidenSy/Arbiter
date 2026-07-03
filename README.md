@@ -65,7 +65,7 @@ Arbiter is an MCP gateway that sits between your AI agents and your MCP servers.
 }
 ```
 
-Works with Claude Code, Claude Desktop, Cursor, VS Code — anything that speaks MCP. All your registered MCP servers appear as one connection, tools namespaced as `server__tool`, RBAC-filtered per agent. See [docs/mcp-endpoint.md](./docs/mcp-endpoint.md).
+Works with Claude Code, Claude Desktop, Cursor, VS Code — anything that speaks MCP. All your registered MCP servers appear as one connection, tools namespaced as `server__tool`. Every tool is advertised; RBAC is enforced at call time, so a denied call returns a spec-compliant `isError` result and lands in the audit log. See [docs/mcp-endpoint.md](./docs/mcp-endpoint.md).
 
 ### Self-hosted
 

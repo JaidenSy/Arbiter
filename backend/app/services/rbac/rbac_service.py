@@ -147,9 +147,7 @@ class RBACService:
                 tool_name=tool_name,
                 granted_by=granted_by,
             )
-            .on_conflict_do_nothing(
-                index_elements=["agent_id", "mcp_server_id", "tool_name"]
-            )
+            .on_conflict_do_nothing(index_elements=["agent_id", "mcp_server_id", "tool_name"])
         )
         await self.db.execute(stmt)
         await self.db.commit()
@@ -275,21 +273,21 @@ class RBACService:
         tools: list[dict],
     ) -> list[dict]:
         """
-        Filter a tools/list response to only include RBAC-permitted tools.
+        Return all tools from the upstream server regardless of RBAC permissions.
 
-        If the agent has a wildcard ``"*"`` permission, all tools are returned.
-        Otherwise only tools whose name appears in tool_permissions are kept.
+        Advertising every tool — including ones the agent cannot call — lets the
+        agent attempt the call and receive a clean denial at invocation time
+        (HTTP 403 with an explicit message). This makes RBAC enforcement visible
+        in traces and audit logs rather than silently hiding tools.
+
+        Enforcement happens in ``forward_tool_call`` via ``check_permission``.
 
         Args:
-            agent_id:      UUID of the agent.
-            mcp_server_id: UUID of the MCP server.
+            agent_id:      UUID of the agent (unused; kept for signature stability).
+            mcp_server_id: UUID of the MCP server (unused; kept for signature stability).
             tools:         List of tool dicts from the upstream tools/list response.
 
         Returns:
-            list[dict]: Filtered list of tool dicts.
+            list[dict]: All tools from the upstream server.
         """
-        allowed = await self.get_allowed_tools(agent_id, mcp_server_id)
-        if "*" in allowed:
-            return tools
-        allowed_set = set(allowed)
-        return [t for t in tools if t.get("name") in allowed_set]
+        return tools
