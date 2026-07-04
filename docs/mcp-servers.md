@@ -229,8 +229,8 @@ curl -s -X DELETE https://your-arbiter.example.com/api/v1/mcp-servers/<id> \
 
 ---
 
-## `tools/list` filtering
+## `tools/list` behavior
 
-When an agent calls `tools/list`, Arbiter filters the response to only include tools that agent is permitted to call — preventing information leakage about capabilities the agent cannot access.
+When an agent calls `tools/list`, Arbiter advertises every tool from the agent's registered servers, including ones the agent is not permitted to call. RBAC is enforced at call time instead: an unpermitted `tools/call` is denied with a 403 and recorded in the audit log, so enforcement stays visible in traces rather than silently hiding tools.
 
 See [rbac.md](./rbac.md) for how to grant tool permissions to agents.
