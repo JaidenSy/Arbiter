@@ -11,7 +11,7 @@ import { ArbiterMark } from '../components/ArbiterLogo'
 import AuthModal, { type AuthMode } from '../components/AuthModal'
 import HeroBackground from '../components/HeroBackground'
 import HeroArchDiagram from '../components/HeroArchDiagram'
-import HeroDashboardSim from '../components/HeroDashboardSim'
+import HeroProductTour from '../components/HeroProductTour'
 import DashboardPreview from '../components/DashboardPreview'
 import WorksWith from '../components/WorksWith'
 import FeatureShowcase from '../components/FeatureShowcase'
@@ -34,17 +34,19 @@ function GitHubIcon({ size = 15 }: { size?: number }): React.ReactElement {
 }
 
 /**
- * Above-the-fold proof: a simulated, interactive Arbiter dashboard that auto-plays
- * a real session (open a session -> see the trace -> the RBAC denial) and becomes
- * clickable on hover. See HeroDashboardSim.
+ * Above-the-fold proof: a Railway-style product tour. Five real Arbiter
+ * surfaces live on one board and a camera glides between them while a
+ * scripted session registers an agent, wires a server, stores a secret,
+ * grants a permission, then runs an allowed plus a denied call.
+ * See HeroProductTour.
  */
 function HeroDemo(): React.ReactElement {
   return (
     <figure
-      className="mt-14 max-w-3xl mx-auto animate-fade-in"
+      className="mt-14 max-w-4xl mx-auto animate-fade-in"
       style={{ animationDelay: '260ms' }}
     >
-      <HeroDashboardSim />
+      <HeroProductTour />
     </figure>
   )
 }
