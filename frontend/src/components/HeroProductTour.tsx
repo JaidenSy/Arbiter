@@ -525,7 +525,7 @@ const STEPS: Step[] = [
   // 3: Vault
   { tab: 2, chapter: 2, phase: 'empty', camera: focus(2), cursor: at(2, 640, 82), hold: 1400, caption: 'Store secrets in the per-agent vault.' },
   { tab: 2, chapter: 2, phase: 'modal', camera: modalRect(2), cursor: at(2, 500, 322, true), hold: 1900, caption: 'Encrypted with AES-256-GCM before it ever touches disk.' },
-  { tab: 2, chapter: 2, phase: 'added', camera: focus(2), cursor: at(2, 210, 215), hold: 1900, caption: 'Injected at the gateway as {{NAME}}, never returned to the agent.' },
+  { tab: 2, chapter: 2, phase: 'added', camera: focus(2), cursor: at(2, 210, 215), hold: 1900, caption: 'Injected at the gateway as {{DATABASE_URL}}, never returned to the agent.' },
 
   // 4: Access
   { tab: 3, chapter: 3, phase: 'select', camera: focus(3), cursor: at(3, 185, 190, true), hold: 1600, caption: 'Grant exactly which tools the agent may call.' },
