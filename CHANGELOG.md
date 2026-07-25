@@ -5,6 +5,7 @@ All notable changes to Arbiter are documented here.
 ## [Unreleased]
 
 ### Added
+- **Vercel Web Analytics** — The frontend now loads `@vercel/analytics` (`<Analytics />` at the app root), auto-tracking page views across SPA route changes. No config needed; data appears in the Vercel project's Analytics tab.
 - **Native MCP endpoint** — The gateway is now itself an MCP server. Any MCP client (Claude Code, Claude Desktop, Cursor, VS Code) connects with one URL: `POST /mcp` with `Authorization: Bearer nxai_...`, or `POST /mcp/{api_key}` for clients that cannot set headers. All registered MCP servers in the org are aggregated into one virtual server with tools namespaced as `server__tool`, RBAC-filtered per agent (60s per-agent cache). Every `tools/call` runs the full gateway pipeline — RBAC, vault injection, semantic cache, quotas, budgets, audit log. Gateway denials are returned as JSON-RPC errors with the HTTP status in `error.data.http_status`. See `docs/mcp-endpoint.md`.
 
 ### Fixed

@@ -19,6 +19,7 @@
 
 import React, { Suspense, lazy } from 'react'
 import { Routes, Route, Link, useLocation } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import Sidebar from './components/Sidebar'
 import ProtectedRoute from './components/ProtectedRoute'
 import UpgradeModal from './components/UpgradeModal'
@@ -150,6 +151,8 @@ function App(): React.ReactElement {
     <RouteMeta />
     <UpgradeModal />
     <CommandPalette />
+    <Analytics />
+    {/* Vercel Web Analytics — auto-tracks SPA route changes */}
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* ── Public routes (no sidebar) ──────────────────────────────────── */}
