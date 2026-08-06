@@ -24,7 +24,7 @@ Register two agents, each gets its own `nxai_` key. Store their secrets in the v
 
 The `.env` file now contains `VAULT_ENCRYPTION_KEY` and Postgres credentials. Nothing GitHub- or Notion-specific.
 
-**Which tier fits**: Free. 3 agents and 5 MCP servers cover a solo developer's full setup. 1,000 tool calls/month is generous for personal use.
+**Which tier fits**: Free. 2 agents and 3 MCP servers cover a solo developer's full setup. 5,000 tool calls/month is generous for personal use.
 
 ---
 

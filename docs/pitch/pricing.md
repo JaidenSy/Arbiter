@@ -5,12 +5,12 @@
 | | Free | Pro | Team | Enterprise |
 |---|---|---|---|---|
 | **Price** | $0/mo | $29/mo | $99/mo | Custom |
-| **Agents** | 3 | 25 | Unlimited | Unlimited |
-| **MCP servers** | 5 | 50 | Unlimited | Unlimited |
-| **Tool calls/month** | 1,000 | 100,000 | 1,000,000 | Unlimited |
+| **Agents** | 2 | 25 | Unlimited | Unlimited |
+| **MCP servers** | 3 | 50 | Unlimited | Unlimited |
+| **Tool calls/month** | 5,000 | 100,000 | 1,000,000 | Unlimited |
 | **Vault secrets** | 10 | 500 | Unlimited | Unlimited |
 | **Audit log retention** | 7 days | 30 days | 90 days | Custom |
-| **Semantic cache** | Yes | Yes | Yes | Yes |
+| **Semantic cache** | Exact-match only | Yes | Yes | Yes |
 | **RBAC** | Yes | Yes | Yes | Yes |
 | **Self-hosted** | Yes | Yes | Yes | Yes |
 | **Priority support** | No | No | Yes | Yes |
@@ -23,14 +23,14 @@
 
 ## Free tier
 
-The free tier is not a crippled trial. 3 agents, 5 MCP servers, and 1,000 tool calls per month covers:
+The free tier is not a crippled trial. 2 agents, 3 MCP servers, and 5,000 tool calls per month covers:
 
 - A solo developer's personal agent setup
 - A team evaluating Arbiter before committing
 - An open source project with a small number of automated agents
 - A student or hobbyist building agent tooling
 
-The free tier includes the full feature set: semantic cache, RBAC, encrypted vault, audit log. The only limits are volume-based.
+The free tier includes RBAC, the encrypted vault, and the audit log. Caching is exact-match only — the semantic cache is a Pro feature, which keeps the embedding model out of RAM for free orgs.
 
 There is no time limit on the free tier. You do not get downgraded after 14 or 30 days.
 
