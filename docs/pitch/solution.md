@@ -52,7 +52,7 @@ grant(agent="research", server="filesystem", tool="list_directory")
 grant(agent="ops", server="filesystem", tool="*")
 ```
 
-Agents that call tools they are not permitted to use receive `403 Forbidden`. The tool call is logged. The tool name is also hidden from `tools/list` responses, so agents cannot enumerate tools they cannot call.
+Agents that call tools they are not permitted to use receive `403 Forbidden`. The tool call is logged. `tools/list` advertises every tool in the org — permission is enforced at call time, not by hiding names from discovery.
 
 ### Observability: gapless audit log
 

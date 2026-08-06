@@ -24,7 +24,7 @@ Register two agents, each gets its own `nxai_` key. Store their secrets in the v
 
 The `.env` file now contains `VAULT_ENCRYPTION_KEY` and Postgres credentials. Nothing GitHub- or Notion-specific.
 
-**Which tier fits**: Free. 3 agents and 5 MCP servers cover a solo developer's full setup. 1,000 tool calls/month is generous for personal use.
+**Which tier fits**: Free. 2 agents and 3 MCP servers cover a solo developer's full setup. 5,000 tool calls/month is generous for personal use.
 
 ---
 
@@ -46,7 +46,7 @@ Now the answer to the prospect's security team: "Customer A's credentials are AE
 
 The semantic cache also matters here: when multiple customers query similar data from a shared read-only MCP server, cache hits reduce per-customer upstream API costs. At 30% cache hit rate, costs drop by roughly 30%.
 
-**Which tier fits**: Pro ($29/month) to start. When customer count grows past 25 agents, Team ($99/month). The math: the cache alone likely saves more than the tier cost in upstream API fees.
+**Which tier fits**: Pro ($29/month) to start. When customer count grows past 25 agents, Enterprise. The math: the cache alone likely saves more than the tier cost in upstream API fees.
 
 ---
 
@@ -74,7 +74,7 @@ The compliance report that used to take two days to compile now takes 5 minutes.
 
 The semantic cache cuts internal infrastructure costs: if four teams' agents are all running similar database queries through a shared MCP server, L3 similarity cache hits eliminate redundant query load.
 
-**Which tier fits**: Team ($99/month). Unlimited agents and servers, 1 million tool calls/month, 90-day audit log retention. The audit log retention matters. Compliance teams typically want 90 days of tool call history.
+**Which tier fits**: Enterprise. Unlimited agents, servers, and tool calls, plus custom audit log retention. The retention matters here — compliance teams typically want 90 days of tool call history, and Pro retains 30.
 
 ---
 
