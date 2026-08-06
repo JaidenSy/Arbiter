@@ -2,22 +2,22 @@
 
 ## Tiers
 
-| | Free | Pro | Team | Enterprise |
-|---|---|---|---|---|
-| **Price** | $0/mo | $29/mo | $99/mo | Custom |
-| **Agents** | 2 | 25 | Unlimited | Unlimited |
-| **MCP servers** | 3 | 50 | Unlimited | Unlimited |
-| **Tool calls/month** | 5,000 | 100,000 | 1,000,000 | Unlimited |
-| **Vault secrets** | 10 | 500 | Unlimited | Unlimited |
-| **Audit log retention** | 7 days | 30 days | 90 days | Custom |
-| **Semantic cache** | Exact-match only | Yes | Yes | Yes |
-| **RBAC** | Yes | Yes | Yes | Yes |
-| **Self-hosted** | Yes | Yes | Yes | Yes |
-| **Priority support** | No | No | Yes | Yes |
-| **SSO (Okta / Entra)** | No | No | No | Yes |
-| **SLA** | No | No | No | Yes |
-| **Audit log export** | No | No | No | Yes |
-| **Dedicated infra** | No | No | No | Yes |
+| | Free | Pro | Enterprise |
+|---|---|---|---|
+| **Price** | $0/mo | $29/mo | Custom |
+| **Agents** | 2 | 25 | Unlimited |
+| **MCP servers** | 3 | 50 | Unlimited |
+| **Tool calls/month** | 5,000 | 100,000 | Unlimited |
+| **Vault secrets** | 10 | 100 | Unlimited |
+| **Audit log retention** | 7 days | 30 days | Custom |
+| **Semantic cache** | Exact-match only | Yes | Yes |
+| **RBAC** | Yes | Yes | Yes |
+| **Self-hosted** | Yes | Yes | Yes |
+| **Priority support** | No | Yes | Yes |
+| **SSO (Okta / Entra)** | No | No | Yes |
+| **SLA** | No | No | Yes |
+| **Audit log export** | No | No | Yes |
+| **Dedicated infra** | No | No | Yes |
 
 ---
 
@@ -58,17 +58,17 @@ The Pro tier costs $29/month. The cache pays for itself at roughly 3,000 avoided
 
 ## Comparison
 
-| | Arbiter Free | Arbiter Pro | Arbiter Team | LiteLLM OSS | LiteLLM Enterprise | Portkey Production | Kong AI |
-|---|---|---|---|---|---|---|---|
-| **Price** | $0 | $29/mo | $99/mo | $0 | $250/mo | $49/mo | $2,500+/mo |
-| **MCP-native** | Yes | Yes | Yes | Partial | Partial | Partial | Add-on |
-| **Encrypted vault** | Yes | Yes | Yes | No | No | No | External only |
-| **Per-agent API keys** | Yes | Yes | Yes | No | No | No | No |
-| **Tool call semantic cache** | Yes | Yes | Yes | No | No | No | No |
-| **RBAC** | Yes | Yes | Yes | No | Yes | Yes | Yes |
-| **Gapless audit log** | Yes | Yes | Yes | No | Yes | Partial | Yes |
-| **Self-hosted** | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| **Single Docker Compose** | Yes | Yes | Yes | Yes | No | No | No |
+| | Arbiter Free | Arbiter Pro | LiteLLM OSS | LiteLLM Enterprise | Portkey Production | Kong AI |
+|---|---|---|---|---|---|---|
+| **Price** | $0 | $29/mo | $0 | $250/mo | $49/mo | $2,500+/mo |
+| **MCP-native** | Yes | Yes | Partial | Partial | Partial | Add-on |
+| **Encrypted vault** | Yes | Yes | No | No | No | External only |
+| **Per-agent API keys** | Yes | Yes | No | No | No | No |
+| **Tool call semantic cache** | Exact-match only | Yes | No | No | No | No |
+| **RBAC** | Yes | Yes | No | Yes | Yes | Yes |
+| **Gapless audit log** | Yes | Yes | No | Yes | Partial | Yes |
+| **Self-hosted** | Yes | Yes | Yes | Yes | Yes | Yes |
+| **Single Docker Compose** | Yes | Yes | Yes | No | No | No |
 
 LiteLLM requires the $250/month Enterprise plan for RBAC and audit logs. Portkey's $49/month plan includes RBAC but has no encrypted vault and caches LLM completions (not tool call results). Kong's entry price for AI agent features is north of $2,500/month and requires Kubernetes expertise.
 
@@ -96,5 +96,5 @@ Enterprise is the right choice for teams with data residency requirements, SOC2 
 - All plans are month-to-month. No annual commitment required.
 - Tool call counts reset at the start of each billing cycle.
 - Overages on the Free tier result in rate limiting (not charges).
-- Overages on Pro and Team result in per-call charges at $0.0005/call above the limit, or you can upgrade tiers mid-cycle.
-- Self-hosted deployments on any tier do not report usage to Arbiter servers. Honor system for Free; Pro and Team self-hosted plans use a license key.
+- Overages on Pro result in per-call charges at $0.0005/call above the limit, or you can upgrade tiers mid-cycle.
+- Self-hosted deployments on any tier do not report usage to Arbiter servers. Honor system for Free; Pro self-hosted plans use a license key.
