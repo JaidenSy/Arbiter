@@ -80,6 +80,8 @@ Generate a vault key (64 hex chars = 256-bit AES): `python -c "import secrets; p
 
 The container runs `alembic upgrade head` on start, so the schema is always current. The example config enables self-serve signup (`ALLOW_PUBLIC_REGISTRATION=true`) so you can create the first account at the frontend — set an `INVITE_CODE` instead to gate it.
 
+Once the containers are healthy, open **http://localhost:3000** to create the first account, then verify the API with `curl http://localhost:8000/health`. The `curl` examples below use the hosted URL `https://api.arbiterai.dev`; when self-hosting, swap it for `http://localhost:8000`.
+
 Full env var reference in `.env.example`.
 
 ---
@@ -249,7 +251,7 @@ cd backend && pytest
 
 ## Security
 
-Responsible disclosure: **security@arbiterai.dev**
+Found something? See the [security policy](./SECURITY.md). Responsible disclosure: **security@arbiterai.dev**
 
 ---
 
