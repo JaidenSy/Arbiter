@@ -21,8 +21,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.services.mcp.upstream import UpstreamTarget
 from app.services.plan.plan_limits import SessionBudgetExceededError
 from app.services.proxy.proxy_service import ProxyService
+
+# Legacy upstream with no session: requests go out with only the base headers.
+_LEGACY_TARGET = UpstreamTarget(era="legacy", protocol_version=None, base_headers={})
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -100,7 +104,7 @@ def _apply_deps(
     )
     stack.enter_context(patch.object(service, "intercept_request", new=AsyncMock(return_value={})))
     stack.enter_context(
-        patch.object(service, "_ensure_mcp_session", new=AsyncMock(return_value={}))
+        patch.object(service, "_prepare_upstream", new=AsyncMock(return_value=_LEGACY_TARGET))
     )
     stack.enter_context(
         patch.object(service, "_ensure_session", new=AsyncMock(return_value=session))
