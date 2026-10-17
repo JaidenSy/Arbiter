@@ -47,9 +47,9 @@ billing_service = BillingService()
 class BillingStatus(BaseModel):
     """Current billing state and resource usage for an org."""
 
-    plan: str                         # "free" | "pro" | "enterprise"
+    plan: str  # "free" | "pro" | "enterprise"
     tool_calls_month: int
-    tool_calls_limit: int | None      # None = unlimited (enterprise)
+    tool_calls_limit: int | None  # None = unlimited (enterprise)
     agents_count: int
     agents_limit: int | None
     servers_count: int
@@ -68,14 +68,20 @@ class CheckoutRequest(BaseModel):
 class PortalRequest(BaseModel):
     """Request body for POST /billing/portal."""
 
-    return_url: str  # where Stripe portal sends user back: must be a valid https:// or http://localhost URL
+    return_url: (
+        str  # where Stripe portal sends user back: must be a valid https:// or http://localhost URL
+    )
 
     @field_validator("return_url")
     @classmethod
     def validate_return_url(cls, v: str) -> str:
         """Prevent open redirect: only allow http(s) URLs, no javascript: or data: schemes."""
         stripped = v.strip().lower()
-        if not (stripped.startswith("https://") or stripped.startswith("http://localhost") or stripped.startswith("http://127.0.0.1")):
+        if not (
+            stripped.startswith("https://")
+            or stripped.startswith("http://localhost")
+            or stripped.startswith("http://127.0.0.1")
+        ):
             raise ValueError("return_url must be a valid https:// URL")
         return v
 
@@ -107,37 +113,51 @@ async def get_billing_status(
     """
     org = await db.get(Organization, current_user.org_id)
     if org is None:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found"
+        )
 
     # Monthly tool calls: sum UsageEvent rows for current month
     month_start = func.date_trunc("month", func.now())
-    tool_calls_month: int = await db.scalar(
-        select(func.coalesce(func.sum(UsageEvent.tool_calls), 0)).where(
-            UsageEvent.org_id == org.id,
-            UsageEvent.event_date >= month_start,
+    tool_calls_month: int = (
+        await db.scalar(
+            select(func.coalesce(func.sum(UsageEvent.tool_calls), 0)).where(
+                UsageEvent.org_id == org.id,
+                UsageEvent.event_date >= month_start,
+            )
         )
-    ) or 0
+        or 0
+    )
 
     # Resource counts: active agents / servers, all vault secrets
-    agents_count: int = await db.scalar(
-        select(func.count(Agent.id)).where(
-            Agent.org_id == org.id,
-            Agent.is_active.is_(True),
+    agents_count: int = (
+        await db.scalar(
+            select(func.count(Agent.id)).where(
+                Agent.org_id == org.id,
+                Agent.is_active.is_(True),
+            )
         )
-    ) or 0
+        or 0
+    )
 
-    servers_count: int = await db.scalar(
-        select(func.count(MCPServer.id)).where(
-            MCPServer.org_id == org.id,
-            MCPServer.is_active.is_(True),
+    servers_count: int = (
+        await db.scalar(
+            select(func.count(MCPServer.id)).where(
+                MCPServer.org_id == org.id,
+                MCPServer.is_active.is_(True),
+            )
         )
-    ) or 0
+        or 0
+    )
 
-    vault_secrets_count: int = await db.scalar(
-        select(func.count(VaultSecret.id)).where(
-            VaultSecret.org_id == org.id,
+    vault_secrets_count: int = (
+        await db.scalar(
+            select(func.count(VaultSecret.id)).where(
+                VaultSecret.org_id == org.id,
+            )
         )
-    ) or 0
+        or 0
+    )
 
     limits = PLAN_LIMITS[org.plan_tier]
 
@@ -194,7 +214,9 @@ async def create_checkout(
 
     org = await db.get(Organization, current_user.org_id)
     if org is None:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found"
+        )
 
     if org.plan_tier == "pro":
         raise HTTPException(
@@ -265,7 +287,9 @@ async def create_portal(
 
     org = await db.get(Organization, current_user.org_id)
     if org is None:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Org not found"
+        )
 
     if not org.stripe_customer_id:
         raise HTTPException(
@@ -330,7 +354,7 @@ async def stripe_webhook(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid Stripe signature",
-        )
+        ) from None
 
     event_id: str = event["id"]
     dedup_key = f"stripe_event:{event_id}"

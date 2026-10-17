@@ -132,9 +132,7 @@ async def run_health_checks(redis: object | None = None) -> None:
                         await redis.delete(circuit_key)  # type: ignore[union-attr]
                     else:
                         fail_count = await redis.incr(circuit_key)  # type: ignore[union-attr]
-                        await redis.expire(
-                            circuit_key, 86400 * 7
-                        )  # 7 day TTL (safety valve)  # type: ignore[union-attr]
+                        await redis.expire(circuit_key, 86400 * 7)  # 7 day TTL (safety valve)  # type: ignore[union-attr]
                         if fail_count >= CIRCUIT_BREAKER_THRESHOLD:
                             await db.execute(
                                 update(MCPServer)

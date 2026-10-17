@@ -39,6 +39,7 @@ class Base(DeclarativeBase):
 
 # ── Engine ────────────────────────────────────────────────────────────────────
 
+
 def _normalize_db_url(url: str) -> str:
     """Ensure the URL uses the postgresql+asyncpg:// scheme Railway provides postgresql://."""
     if url.startswith("postgresql://") or url.startswith("postgres://"):

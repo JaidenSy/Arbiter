@@ -62,8 +62,12 @@ class Organization(Base):
         server_default="free",
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    quota_alert_80_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
-    quota_alert_100_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    quota_alert_80_sent: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    quota_alert_100_sent: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     stripe_customer_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     stripe_subscription_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -79,13 +83,11 @@ class Organization(Base):
     )
 
     # ── Relationships ─────────────────────────────────────────────────────────
-    users: Mapped[list["User"]] = relationship(
+    users: Mapped[list[User]] = relationship(
         "User",
         back_populates="org",
         cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<Organization id={self.id} slug={self.slug!r} plan={self.plan_tier!r}>"
-        )
+        return f"<Organization id={self.id} slug={self.slug!r} plan={self.plan_tier!r}>"

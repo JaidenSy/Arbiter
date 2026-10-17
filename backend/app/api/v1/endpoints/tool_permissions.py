@@ -26,12 +26,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, get_db, require_role
-from app.schemas.pagination import Page
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
-from app.db.models.user import User
 from app.db.models.tool_permission import ToolPermission
 from app.db.models.tool_permission_event import ToolPermissionEvent
+from app.db.models.user import User
+from app.schemas.pagination import Page
 
 router = APIRouter(prefix="/agents", tags=["tool-permissions"])
 
@@ -145,10 +145,14 @@ async def create_tool_permission(
     current_user: User = Depends(require_role("owner", "admin")),
 ) -> ToolPermissionResponse:
     agent_result = await db.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True))
+        select(Agent).where(
+            Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True)
+        )
     )
     if agent_result.scalar_one_or_none() is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found"
+        )
 
     server_result = await db.execute(
         select(MCPServer).where(
@@ -158,7 +162,10 @@ async def create_tool_permission(
         )
     )
     if server_result.scalar_one_or_none() is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"MCP server {body.mcp_server_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"MCP server {body.mcp_server_id} not found",
+        )
 
     permission = ToolPermission(
         org_id=current_user.org_id,
@@ -192,6 +199,7 @@ async def create_tool_permission(
 
 class ToolPermissionBatchCreate(BaseModel):
     """Request body for granting multiple tool permissions at once."""
+
     permissions: list[ToolPermissionCreate] = Field(..., min_length=1)
 
 
@@ -214,10 +222,14 @@ async def batch_create_tool_permissions(
 ) -> ToolPermissionBatchResponse:
     """Grant several tool permissions in a single request. Duplicate entries are skipped."""
     agent_result = await db.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True))
+        select(Agent).where(
+            Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True)
+        )
     )
     if agent_result.scalar_one_or_none() is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found"
+        )
 
     granted: list[ToolPermissionResponse] = []
     skipped = 0
@@ -270,18 +282,20 @@ async def list_permission_history(
     current_user: User = Depends(get_current_user),
 ) -> Page[ToolPermissionEventResponse]:
     agent_result = await db.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True))
+        select(Agent).where(
+            Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True)
+        )
     )
     if agent_result.scalar_one_or_none() is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found"
+        )
 
     where = (
         ToolPermissionEvent.agent_id == agent_id,
         ToolPermissionEvent.org_id == current_user.org_id,
     )
-    total = await db.scalar(
-        select(func.count(ToolPermissionEvent.id)).where(*where)
-    ) or 0
+    total = await db.scalar(select(func.count(ToolPermissionEvent.id)).where(*where)) or 0
     result = await db.execute(
         select(ToolPermissionEvent)
         .where(*where)
@@ -289,7 +303,12 @@ async def list_permission_history(
         .offset(skip)
         .limit(limit)
     )
-    return Page(items=[ToolPermissionEventResponse.model_validate(e) for e in result.scalars().all()], total=total, skip=skip, limit=limit)
+    return Page(
+        items=[ToolPermissionEventResponse.model_validate(e) for e in result.scalars().all()],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get(
@@ -305,17 +324,25 @@ async def list_tool_permissions(
     current_user: User = Depends(get_current_user),
 ) -> Page[ToolPermissionResponse]:
     agent_result = await db.execute(
-        select(Agent).where(Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True))
+        select(Agent).where(
+            Agent.id == agent_id, Agent.org_id == current_user.org_id, Agent.is_active.is_(True)
+        )
     )
     if agent_result.scalar_one_or_none() is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found")
-
-    total = await db.scalar(
-        select(func.count(ToolPermission.id)).where(
-            ToolPermission.agent_id == agent_id,
-            ToolPermission.org_id == current_user.org_id,  # defense-in-depth: enforce org isolation
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Agent {agent_id} not found"
         )
-    ) or 0
+
+    total = (
+        await db.scalar(
+            select(func.count(ToolPermission.id)).where(
+                ToolPermission.agent_id == agent_id,
+                ToolPermission.org_id
+                == current_user.org_id,  # defense-in-depth: enforce org isolation
+            )
+        )
+        or 0
+    )
     result = await db.execute(
         select(ToolPermission)
         .where(
@@ -325,7 +352,12 @@ async def list_tool_permissions(
         .offset(skip)
         .limit(limit)
     )
-    return Page(items=[ToolPermissionResponse.model_validate(p) for p in result.scalars().all()], total=total, skip=skip, limit=limit)
+    return Page(
+        items=[ToolPermissionResponse.model_validate(p) for p in result.scalars().all()],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.patch(
@@ -356,7 +388,10 @@ async def update_tool_permission(
 
     changes: dict[str, Any] = {}
     if permission.rate_limit_per_minute != body.rate_limit_per_minute:
-        changes["rate_limit_per_minute"] = [permission.rate_limit_per_minute, body.rate_limit_per_minute]
+        changes["rate_limit_per_minute"] = [
+            permission.rate_limit_per_minute,
+            body.rate_limit_per_minute,
+        ]
     if permission.cache_ttl_seconds != body.cache_ttl_seconds:
         changes["cache_ttl_seconds"] = [permission.cache_ttl_seconds, body.cache_ttl_seconds]
 
@@ -364,7 +399,9 @@ async def update_tool_permission(
     permission.cache_ttl_seconds = body.cache_ttl_seconds
 
     if changes:
-        await _log_event(db, action="updated", permission=permission, current_user=current_user, changes=changes)
+        await _log_event(
+            db, action="updated", permission=permission, current_user=current_user, changes=changes
+        )
 
     await db.commit()
     await db.refresh(permission)

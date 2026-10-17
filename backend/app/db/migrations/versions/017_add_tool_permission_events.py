@@ -21,7 +21,8 @@ def upgrade() -> None:
     if "tool_permission_events" in inspect(bind).get_table_names():
         return
 
-    op.execute(text("""
+    op.execute(
+        text("""
         CREATE TABLE tool_permission_events (
             id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             org_id               UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -35,15 +36,20 @@ def upgrade() -> None:
             changes              JSONB,
             occurred_at          TIMESTAMPTZ NOT NULL DEFAULT now()
         )
-    """))
-    op.execute(text(
-        "CREATE INDEX ix_tool_permission_events_agent_id "
-        "ON tool_permission_events (agent_id, occurred_at DESC)"
-    ))
-    op.execute(text(
-        "CREATE INDEX ix_tool_permission_events_org_id "
-        "ON tool_permission_events (org_id, occurred_at DESC)"
-    ))
+    """)
+    )
+    op.execute(
+        text(
+            "CREATE INDEX ix_tool_permission_events_agent_id "
+            "ON tool_permission_events (agent_id, occurred_at DESC)"
+        )
+    )
+    op.execute(
+        text(
+            "CREATE INDEX ix_tool_permission_events_org_id "
+            "ON tool_permission_events (org_id, occurred_at DESC)"
+        )
+    )
 
 
 def downgrade() -> None:

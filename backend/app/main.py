@@ -63,10 +63,10 @@ from app.services.plan.plan_limits import (
 from app.services.plan.plan_limits import (
     SessionBudgetExceededError as _SessionBudgetExceededError,
 )
-
-_SBE = _SessionBudgetExceededError  # alias used in exception handler below
 from app.services.quota.quota_alert_service import quota_alert_loop
 from app.tasks.purge_gdpr import gdpr_purge_loop
+
+_SBE = _SessionBudgetExceededError  # alias used in exception handler below
 
 logger = logging.getLogger(__name__)
 
@@ -468,7 +468,7 @@ def create_app() -> FastAPI:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"Database unreachable: {exc}",
-            )
+            ) from exc
 
     @app.get("/health/cache", tags=["meta"])
     async def health_cache(request: Request) -> dict[str, str]:
@@ -502,7 +502,7 @@ def create_app() -> FastAPI:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=f"Redis unreachable: {exc}",
-            )
+            ) from exc
 
     return app
 

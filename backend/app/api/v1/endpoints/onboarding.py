@@ -77,9 +77,7 @@ async def get_onboarding_status(
         )
     )
 
-    permission_count = await db.scalar(
-        select(func.count()).where(ToolPermission.org_id == org_id)
-    )
+    permission_count = await db.scalar(select(func.count()).where(ToolPermission.org_id == org_id))
 
     call_count = await db.scalar(
         select(func.sum(UsageEvent.tool_calls)).where(UsageEvent.org_id == org_id)

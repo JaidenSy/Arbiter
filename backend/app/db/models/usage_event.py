@@ -39,9 +39,7 @@ class UsageEvent(Base):
     """
 
     __tablename__ = "usage_events"
-    __table_args__ = (
-        UniqueConstraint("org_id", "event_date", name="uq_usage_events_org_date"),
-    )
+    __table_args__ = (UniqueConstraint("org_id", "event_date", name="uq_usage_events_org_date"),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -69,7 +67,4 @@ class UsageEvent(Base):
     )
 
     def __repr__(self) -> str:
-        return (
-            f"<UsageEvent org={self.org_id} date={self.event_date} "
-            f"tool_calls={self.tool_calls}>"
-        )
+        return f"<UsageEvent org={self.org_id} date={self.event_date} tool_calls={self.tool_calls}>"

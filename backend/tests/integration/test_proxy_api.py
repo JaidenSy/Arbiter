@@ -12,18 +12,13 @@ Coverage:
 
 from __future__ import annotations
 
-import json
-import os
 import uuid
-from datetime import datetime, timezone
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_mcp_server(server_id: uuid.UUID | None = None, name: str = "test-server") -> MagicMock:
     srv = MagicMock()
@@ -51,6 +46,7 @@ def _make_event(session_id: uuid.UUID, tool_name: str, cache_hit: bool = False) 
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 class TestToolCallBlocked:
     @pytest.mark.asyncio
@@ -193,11 +189,13 @@ class TestSessionEvent:
         call_log: list[dict] = []
 
         async def mock_forward(self_svc, request, agent):
-            call_log.append({
-                "tool_name": request.tool_name,
-                "params": request.params,
-                "agent_id": str(agent.id),
-            })
+            call_log.append(
+                {
+                    "tool_name": request.tool_name,
+                    "params": request.params,
+                    "agent_id": str(agent.id),
+                }
+            )
             return ToolCallResponse(
                 session_id=session_id,
                 event_id=event_id,
@@ -250,9 +248,10 @@ class TestProxyAuth:
     @pytest.mark.asyncio
     async def test_invalid_key_returns_401(self, fake_redis):
         """POST /api/v1/proxy/tool-call with bad key → 401"""
-        from httpx import AsyncClient, ASGITransport
-        from app.main import app
+        from httpx import ASGITransport, AsyncClient
+
         from app.core.dependencies import get_db, get_redis
+        from app.main import app
 
         db = AsyncMock()
 
@@ -282,7 +281,9 @@ class TestProxyAuth:
                         "tool_name": "read_file",
                         "params": {},
                     },
-                    headers={"Authorization": "Bearer nxai_badkey0000000000000000000000000000000000000000000000000000000000"},
+                    headers={
+                        "Authorization": "Bearer nxai_badkey0000000000000000000000000000000000000000000000000000000000"
+                    },
                 )
         finally:
             app.dependency_overrides.clear()

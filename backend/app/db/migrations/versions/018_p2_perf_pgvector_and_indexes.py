@@ -7,8 +7,8 @@ Create Date: 2026-05-20
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision: str = "018"
@@ -35,8 +35,7 @@ def upgrade() -> None:
     )
     # Item-9: cache lookup + eviction queries filtered by org + tool
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_cache_entries_org_tool "
-        "ON cache_entries (org_id, tool_name)"
+        "CREATE INDEX IF NOT EXISTS ix_cache_entries_org_tool ON cache_entries (org_id, tool_name)"
     )
 
 

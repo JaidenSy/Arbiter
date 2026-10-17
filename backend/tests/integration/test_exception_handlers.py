@@ -86,10 +86,11 @@ class TestValidationErrorHandler:
         FastAPI validation errors pass through RequestValidationError handler
         which wraps them in {"detail": "Request validation failed", "errors": ...}.
         """
-        from app.main import app
-        from app.core.dependencies import get_db, get_current_user
-        from tests.conftest import _make_mock_user
         from unittest.mock import AsyncMock
+
+        from app.core.dependencies import get_current_user, get_db
+        from app.main import app
+        from tests.conftest import _make_mock_user
 
         mock_user = _make_mock_user()
 
@@ -117,10 +118,11 @@ class TestValidationErrorHandler:
     @pytest.mark.asyncio
     async def test_422_response_has_detail_key(self, test_client):
         """422 response from custom handler must include 'detail' key."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_current_user
-        from tests.conftest import _make_mock_user
         from unittest.mock import AsyncMock
+
+        from app.core.dependencies import get_current_user, get_db
+        from app.main import app
+        from tests.conftest import _make_mock_user
 
         mock_user = _make_mock_user()
 

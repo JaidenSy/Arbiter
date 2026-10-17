@@ -33,17 +33,17 @@ def _signals(**kwargs):
     """Call _build_signals with sensible defaults, overriding specified fields."""
     from app.api.v1.endpoints.agents import _build_signals
 
-    defaults = dict(
-        total_7d=0,
-        total_24h=0,
-        total_1h=0,
-        errors_7d=0,
-        errors_24h=0,
-        avg_dur_7d=None,
-        avg_dur_24h=None,
-        off_hours_24h=0,
-        novel_count=0,
-    )
+    defaults = {
+        "total_7d": 0,
+        "total_24h": 0,
+        "total_1h": 0,
+        "errors_7d": 0,
+        "errors_24h": 0,
+        "avg_dur_7d": None,
+        "avg_dur_24h": None,
+        "off_hours_24h": 0,
+        "novel_count": 0,
+    }
     defaults.update(kwargs)
     return _build_signals(**defaults)
 

@@ -14,8 +14,6 @@ import hashlib
 import statistics
 import time
 
-import pytest
-
 from app.core.security import generate_api_key, hash_api_key, verify_api_key
 
 
@@ -85,7 +83,6 @@ class TestVerifyApiKey:
 
     def test_returns_false_for_tampered_hash(self):
         key = generate_api_key()
-        h = hash_api_key(key)
         bad_hash = "a" * 64
         assert verify_api_key(key, bad_hash) is False
 
@@ -127,6 +124,6 @@ class TestVerifyApiKey:
         # Allow up to 0.5 ms difference: both paths do the same SHA-256 + compare_digest
         assert diff_ms < 0.5, (
             f"Timing difference too large: {diff_ms:.3f} ms "
-            f"(match={median_match*1000:.3f}ms, nomatch={median_nomatch*1000:.3f}ms). "
+            f"(match={median_match * 1000:.3f}ms, nomatch={median_nomatch * 1000:.3f}ms). "
             "Possible timing oracle."
         )

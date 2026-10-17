@@ -75,7 +75,7 @@ class SocialAccount(Base):
     )
 
     # ── Relationships ─────────────────────────────────────────────────────────
-    user: Mapped["User"] = relationship("User", back_populates="social_accounts")
+    user: Mapped[User] = relationship("User", back_populates="social_accounts")
 
     def __repr__(self) -> str:
         return (

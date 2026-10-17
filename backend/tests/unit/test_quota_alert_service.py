@@ -125,7 +125,7 @@ class TestQuotaAlertService:
             await check_and_send_quota_alerts(db)
 
         mock_send.assert_called_once()
-        subject, html = mock_send.call_args[0][1], mock_send.call_args[0][2]
+        subject = mock_send.call_args[0][1]
         assert "80%" in subject
         db.execute.assert_called()  # flag UPDATE was executed
 

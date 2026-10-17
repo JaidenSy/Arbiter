@@ -29,6 +29,7 @@ depends_on: str | None = None
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _add_col_if_missing(table: str, col_def: str) -> None:
     """ALTER TABLE … ADD COLUMN IF NOT EXISTS …"""
     op.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col_def}")
@@ -52,14 +53,13 @@ def _add_constraint_if_missing(ddl: str) -> None:
 
 
 def _create_index_if_missing(name: str, table: str, cols: str, extra: str = "") -> None:
-    op.execute(
-        f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({cols}) {extra}".rstrip()
-    )
+    op.execute(f"CREATE INDEX IF NOT EXISTS {name} ON {table} ({cols}) {extra}".rstrip())
 
 
 # ---------------------------------------------------------------------------
 # Upgrade: idempotent full schema
 # ---------------------------------------------------------------------------
+
 
 def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
@@ -109,9 +109,7 @@ def upgrade() -> None:
         "ALTER TABLE users ADD CONSTRAINT ck_users_role "
         "CHECK (role IN ('owner', 'admin', 'member'))"
     )
-    _add_constraint_if_missing(
-        "ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE (email)"
-    )
+    _add_constraint_if_missing("ALTER TABLE users ADD CONSTRAINT uq_users_email UNIQUE (email)")
     _add_constraint_if_missing(
         "ALTER TABLE users ADD CONSTRAINT fk_users_org_id "
         "FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE"
@@ -133,8 +131,7 @@ def upgrade() -> None:
         "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
     )
     _add_constraint_if_missing(
-        "ALTER TABLE refresh_tokens ADD CONSTRAINT uq_refresh_tokens_token_hash "
-        "UNIQUE (token_hash)"
+        "ALTER TABLE refresh_tokens ADD CONSTRAINT uq_refresh_tokens_token_hash UNIQUE (token_hash)"
     )
 
     # ── social_accounts ──────────────────────────────────────────────────────
@@ -230,8 +227,7 @@ def upgrade() -> None:
         "FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE"
     )
     _add_constraint_if_missing(
-        "ALTER TABLE mcp_servers ADD CONSTRAINT uq_mcp_server_name_per_org "
-        "UNIQUE (org_id, name)"
+        "ALTER TABLE mcp_servers ADD CONSTRAINT uq_mcp_server_name_per_org UNIQUE (org_id, name)"
     )
 
     # ── tool_permissions ─────────────────────────────────────────────────────
@@ -402,20 +398,23 @@ def upgrade() -> None:
     )
 
     # ── Indexes ───────────────────────────────────────────────────────────────
-    _create_index_if_missing("idx_session_events_session_id",  "session_events", "session_id")
+    _create_index_if_missing("idx_session_events_session_id", "session_events", "session_id")
     _create_index_if_missing("idx_session_events_occurred_at", "session_events", "occurred_at DESC")
-    _create_index_if_missing("idx_sessions_agent_id",          "sessions",       "agent_id")
-    _create_index_if_missing("idx_tool_permissions_agent_id",  "tool_permissions", "agent_id")
-    _create_index_if_missing("idx_cache_entries_expires_at",   "cache_entries",  "expires_at")
-    _create_index_if_missing("idx_cache_entries_org_tool",     "cache_entries",  "org_id, tool_name")
-    _create_index_if_missing("ix_session_events_org_occurred", "session_events", "org_id, occurred_at")
-    _create_index_if_missing("ix_org_invites_token",           "org_invites",    "token")
-    _create_index_if_missing("ix_org_invites_org_id",          "org_invites",    "org_id")
+    _create_index_if_missing("idx_sessions_agent_id", "sessions", "agent_id")
+    _create_index_if_missing("idx_tool_permissions_agent_id", "tool_permissions", "agent_id")
+    _create_index_if_missing("idx_cache_entries_expires_at", "cache_entries", "expires_at")
+    _create_index_if_missing("idx_cache_entries_org_tool", "cache_entries", "org_id, tool_name")
+    _create_index_if_missing(
+        "ix_session_events_org_occurred", "session_events", "org_id, occurred_at"
+    )
+    _create_index_if_missing("ix_org_invites_token", "org_invites", "token")
+    _create_index_if_missing("ix_org_invites_org_id", "org_invites", "org_id")
 
 
 # ---------------------------------------------------------------------------
 # Downgrade: not supported for a squashed baseline
 # ---------------------------------------------------------------------------
+
 
 def downgrade() -> None:
     raise NotImplementedError(

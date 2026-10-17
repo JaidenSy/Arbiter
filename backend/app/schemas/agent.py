@@ -79,6 +79,4 @@ class AgentCreateResponse(AgentResponse):
     it cannot be retrieved again.
     """
 
-    api_key: str = Field(
-        ..., description="Raw API key. Store it now, it will not be shown again"
-    )
+    api_key: str = Field(..., description="Raw API key. Store it now, it will not be shown again")

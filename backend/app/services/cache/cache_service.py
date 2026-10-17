@@ -263,7 +263,6 @@ class CacheService:
             )
 
         # ── Write to Postgres (upsert) ─────────────────────────────────────────
-        now = datetime.now(tz=UTC)
         result = await self.db.execute(
             select(CacheEntry).where(
                 CacheEntry.tool_name == tool_name,

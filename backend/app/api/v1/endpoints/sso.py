@@ -34,7 +34,7 @@ from app.core.config import settings
 from app.core.dependencies import get_current_user, get_db, get_redis
 from app.db.models.social_account import SocialAccount
 from app.db.models.user import User
-from app.schemas.auth import SSOTokenResponse, TokenResponse
+from app.schemas.auth import SSOTokenResponse
 from app.services.auth import sso_service
 
 logger = logging.getLogger(__name__)

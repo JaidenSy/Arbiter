@@ -11,15 +11,14 @@ Coverage:
 
 from __future__ import annotations
 
-import logging
 import os
 import secrets
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_vault_key() -> str:
     """Generate a valid 64-hex-char vault key."""
@@ -45,9 +44,11 @@ def _make_vault_service(key: str | None = None):
 
 # ── Tests: encrypt / decrypt ──────────────────────────────────────────────────
 
+
 class TestEncryptDecrypt:
     def _make_svc(self, key: str | None = None):
         from app.services.vault.vault_service import VaultService
+
         db = AsyncMock()
         env_key = key if key is not None else _make_vault_key()
         with patch.dict(os.environ, {"VAULT_ENCRYPTION_KEY": env_key}, clear=False):
@@ -59,6 +60,7 @@ class TestEncryptDecrypt:
         env_key = _make_vault_key()
         with patch.dict(os.environ, {"VAULT_ENCRYPTION_KEY": env_key}, clear=False):
             from app.services.vault.vault_service import VaultService
+
             svc = VaultService(db=AsyncMock())
             ciphertext = svc.encrypt(plaintext)
             recovered = svc.decrypt(ciphertext)
@@ -68,6 +70,7 @@ class TestEncryptDecrypt:
         env_key = _make_vault_key()
         with patch.dict(os.environ, {"VAULT_ENCRYPTION_KEY": env_key}, clear=False):
             from app.services.vault.vault_service import VaultService
+
             svc = VaultService(db=AsyncMock())
             ct = svc.encrypt("hello")
         assert isinstance(ct, str)
@@ -81,10 +84,13 @@ class TestEncryptDecrypt:
         env_key = _make_vault_key()
         with patch.dict(os.environ, {"VAULT_ENCRYPTION_KEY": env_key}, clear=False):
             from app.services.vault.vault_service import VaultService
+
             svc = VaultService(db=AsyncMock())
             ct1 = svc.encrypt(plaintext)
             ct2 = svc.encrypt(plaintext)
-        assert ct1 != ct2, "Two encryptions of the same plaintext produced identical ciphertext: nonce is not random"
+        assert ct1 != ct2, (
+            "Two encryptions of the same plaintext produced identical ciphertext: nonce is not random"
+        )
 
     def test_decrypt_with_wrong_key_raises(self):
         """Decryption with a different key must raise ValueError (GCM auth tag failure)."""
@@ -94,11 +100,13 @@ class TestEncryptDecrypt:
 
         with patch.dict(os.environ, {"VAULT_ENCRYPTION_KEY": key1}, clear=False):
             from app.services.vault.vault_service import VaultService
+
             svc1 = VaultService(db=AsyncMock())
             ciphertext = svc1.encrypt(plaintext)
 
         with patch.dict(os.environ, {"VAULT_ENCRYPTION_KEY": key2}, clear=False):
             from app.services.vault.vault_service import VaultService
+
             svc2 = VaultService(db=AsyncMock())
             with pytest.raises((ValueError, Exception)):
                 svc2.decrypt(ciphertext)
@@ -107,6 +115,7 @@ class TestEncryptDecrypt:
         env_key = _make_vault_key()
         with patch.dict(os.environ, {"VAULT_ENCRYPTION_KEY": env_key}, clear=False):
             from app.services.vault.vault_service import VaultService
+
             svc = VaultService(db=AsyncMock())
             ciphertext = svc.encrypt("my_secret")
             # Tamper by flipping a character in the middle of the b64 string
@@ -121,6 +130,7 @@ class TestEncryptDecrypt:
         env_key = _make_vault_key()
         with patch.dict(os.environ, {"VAULT_ENCRYPTION_KEY": env_key}, clear=False):
             from app.services.vault.vault_service import VaultService
+
             svc = VaultService(db=AsyncMock())
             with pytest.raises((ValueError, Exception)):
                 svc.decrypt("not-valid-base64!!!")
@@ -128,18 +138,21 @@ class TestEncryptDecrypt:
 
 # ── Tests: VaultService raises RuntimeError if env var unset ──────────────────
 
+
 class TestVaultServiceInit:
     def test_raises_runtime_error_when_key_unset(self):
         """VaultService.__init__ must raise RuntimeError if VAULT_ENCRYPTION_KEY is not set."""
         env = {k: v for k, v in os.environ.items() if k != "VAULT_ENCRYPTION_KEY"}
         with patch.dict(os.environ, env, clear=True):
             from app.services.vault.vault_service import VaultService
+
             with pytest.raises(RuntimeError, match="VAULT_ENCRYPTION_KEY"):
                 VaultService(db=AsyncMock())
 
     def test_raises_runtime_error_when_key_empty_string(self):
         with patch.dict(os.environ, {"VAULT_ENCRYPTION_KEY": ""}, clear=False):
             from app.services.vault.vault_service import VaultService
+
             with pytest.raises(RuntimeError):
                 VaultService(db=AsyncMock())
 
@@ -147,12 +160,14 @@ class TestVaultServiceInit:
         key = _make_vault_key()
         with patch.dict(os.environ, {"VAULT_ENCRYPTION_KEY": key}, clear=False):
             from app.services.vault.vault_service import VaultService
+
             # Should not raise
             svc = VaultService(db=AsyncMock())
         assert svc is not None
 
 
 # ── Tests: plaintext never appears in logs ────────────────────────────────────
+
 
 class TestVaultLogging:
     def test_decrypted_value_not_logged(self):
