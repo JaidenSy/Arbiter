@@ -60,11 +60,59 @@ Server names cannot contain `__` (rejected at registration) so the split is unam
 | Aspect | Behaviour |
 |---|---|
 | Transport | MCP Streamable HTTP — `POST /mcp` with JSON-RPC 2.0 bodies |
-| Protocol versions | `2024-11-05`, `2025-03-26`, `2025-06-18` |
+| Protocol versions | **Modern:** `2026-07-28` (stateless). **Legacy:** `2025-11-25`, `2025-06-18`, `2025-03-26`, `2024-11-05` (initialize-based) |
 | Auth | `Authorization: Bearer nxai_...` (or key-in-URL) |
-| Sessions | `initialize` returns an `Mcp-Session-Id` header that maps 1:1 to an Arbiter audit session — send it back on subsequent requests and every call from your client lands in one session trace |
-| Server-initiated streams | Not offered; `GET /mcp` returns 405 (clients fall back automatically) |
+| Origin | Validated on every request. A present-but-not-allowlisted `Origin` gets `403`. Allowlist = `MCP_ALLOWED_ORIGINS` (comma-separated or JSON array; `*` = any), falling back to `CORS_ORIGINS`. Requests without `Origin` (CLI/desktop clients) are unaffected |
+| Sessions (legacy) | `initialize` returns an `Mcp-Session-Id` header that maps 1:1 to an Arbiter audit session — send it back on subsequent requests and every call from your client lands in one session trace |
+| Sessions (modern) | No protocol sessions. Pass an Arbiter session handle to group calls — see [Audit sessions in the modern era](#audit-sessions-in-the-modern-era) |
+| Server-initiated streams | Not offered; `GET /mcp` and `DELETE /mcp` return 405 |
 | JSON-RPC batching | Rejected (removed from the MCP spec in 2025-06-18) |
+
+### How the era is chosen
+
+Arbiter is a *dual-era* server (MCP 2026-07-28, "Versioning → Backward Compatibility"). Per request:
+
+- If `params._meta["io.modelcontextprotocol/protocolVersion"]` is present (or `MCP-Protocol-Version` names a modern version, or the method is `server/discover`), the request is served **statelessly** under 2026-07-28.
+- Otherwise it is a **legacy** request: `initialize` negotiates the client's version (newest offered: `2025-11-25`), and `MCP-Protocol-Version` is validated when present (absent is treated as `2025-03-26`).
+
+### Modern (2026-07-28) requests
+
+Supported methods: `server/discover`, `tools/list`, `tools/call`. (`ping` and `initialize` are legacy-only and return HTTP 404 / `-32601` in the modern era.)
+
+Every POST must carry headers that match the body:
+
+| Header | Must equal |
+|---|---|
+| `MCP-Protocol-Version` | `params._meta["io.modelcontextprotocol/protocolVersion"]` |
+| `Mcp-Method` | `method` |
+| `Mcp-Name` | `params.name` (for `tools/call`); non-ASCII values use `=?base64?…?=` |
+
+| Condition | HTTP | JSON-RPC error |
+|---|---|---|
+| Header missing, malformed, or different from the body | 400 | `-32020` HeaderMismatch |
+| `_meta` protocol version not supported | 400 | `-32022` UnsupportedProtocolVersion, with `data.supported` / `data.requested` |
+| `_meta` missing `protocolVersion` or `clientCapabilities` | 400 | `-32602` Invalid params |
+| Unknown method | 404 | `-32601` Method not found |
+
+Every result carries `resultType: "complete"` and `_meta["io.modelcontextprotocol/serverInfo"]`. `server/discover` returns `ttlMs: 3600000, cacheScope: "public"`; `tools/list` returns `ttlMs: 60000, cacheScope: "private"`. `tools/list` is sorted by namespaced tool name in both eras, so the order is deterministic.
+
+### Audit sessions in the modern era
+
+2026-07-28 removes `Mcp-Session-Id`. To keep grouping calls into one Arbiter session trace, send an explicit handle on each `tools/call`, either as a `_meta` key or a header:
+
+```json
+"_meta": {
+  "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+  "io.modelcontextprotocol/clientCapabilities": {},
+  "dev.arbiterai/sessionId": "9be2..."
+}
+```
+
+or `X-Arbiter-Session-Id: 9be2...`. Every `tools/call` result returns the session it was recorded under in `_meta["dev.arbiterai/sessionId"]`. Omit the handle on the first call and reuse the returned value. A handle belonging to a different agent is ignored and a new session is created, so a handle is never treated as authentication.
+
+### Upstream servers
+
+When Arbiter calls your registered MCP servers, it detects each server's era the same way a dual-era client should. It probes with `server/discover` first. If that returns a recognised modern response or error, the server is treated as modern and receives stateless requests with `_meta` and `MCP-Protocol-Version` / `Mcp-Method` / `Mcp-Name`. Otherwise Arbiter falls back to `initialize` (offering `2025-11-25`), sends `notifications/initialized`, and then sends `Mcp-Session-Id` plus the negotiated `MCP-Protocol-Version` on every request. A `404` on a legacy session triggers one re-initialize and retry. The detected era is cached per server for an hour.
 
 ## Errors
 
