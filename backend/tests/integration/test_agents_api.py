@@ -14,16 +14,14 @@ Coverage:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_db_for_create_agent(existing_agent=None, created_agent=None):
     """
@@ -49,13 +47,15 @@ def _make_db_for_create_agent(existing_agent=None, created_agent=None):
 
     # db.refresh populates the agent object
     if created_agent is not None:
+
         async def refresh(obj):
             obj.id = created_agent["id"]
             obj.name = created_agent["name"]
             obj.description = created_agent.get("description")
             obj.is_active = True
-            obj.created_at = created_agent.get("created_at", datetime.now(tz=timezone.utc))
-            obj.updated_at = created_agent.get("updated_at", datetime.now(tz=timezone.utc))
+            obj.created_at = created_agent.get("created_at", datetime.now(tz=UTC))
+            obj.updated_at = created_agent.get("updated_at", datetime.now(tz=UTC))
+
         db.refresh = refresh
 
     return db
@@ -63,18 +63,21 @@ def _make_db_for_create_agent(existing_agent=None, created_agent=None):
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
+
 class TestCreateAgent:
     @pytest.mark.asyncio
     async def test_create_agent_returns_201_and_api_key(self, fake_redis):
         """POST /api/v1/agents → 201 with api_key starting with nxai_"""
-        from httpx import AsyncClient, ASGITransport
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_user
-        from tests.conftest import _make_mock_user, _make_mock_org
         from unittest.mock import AsyncMock as _AsyncMock
 
+        from httpx import ASGITransport
+
+        from app.core.dependencies import get_current_user, get_db, get_redis
+        from app.main import app
+        from tests.conftest import _make_mock_org, _make_mock_user
+
         agent_id = uuid.uuid4()
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         mock_user = _make_mock_user()
         mock_org = _make_mock_org()
@@ -124,11 +127,12 @@ class TestCreateAgent:
     @pytest.mark.asyncio
     async def test_create_agent_name_collision_returns_409(self, fake_redis):
         """POST /api/v1/agents with duplicate name → 409"""
-        from httpx import AsyncClient, ASGITransport
+
+        from httpx import ASGITransport
+
+        from app.core.dependencies import get_current_user, get_db, get_redis
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_user
         from tests.conftest import _make_mock_user
-        from unittest.mock import AsyncMock as _AsyncMock
 
         # Simulate existing agent with same name
         existing = MagicMock()
@@ -169,11 +173,11 @@ class TestGetAgents:
         client, raw_key, mock_agent = authed_client
 
         # Override get_db to return list of agents
+        from app.core.dependencies import get_current_agent, get_db
         from app.main import app
-        from app.core.dependencies import get_db, get_current_agent
 
         agent_id = uuid.uuid4()
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         def _make_agent_orm():
             a = MagicMock()
@@ -181,11 +185,15 @@ class TestGetAgents:
             a.name = "listed-agent"
             a.description = None
             a.is_active = True
+            a.scope = "full"
+            a.rate_limit_per_minute = None
+            a.max_calls_per_session = None
             a.created_at = now
             a.updated_at = now
             return a
 
         db = AsyncMock()
+        db.scalar = AsyncMock(return_value=1)  # total count for the Page envelope
 
         async def execute(stmt):
             result = MagicMock()
@@ -215,11 +223,10 @@ class TestGetAgents:
             app.dependency_overrides.pop(get_current_agent, None)
 
         assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
-        agents_list = resp.json()
+        agents_list = resp.json()["items"]  # GET /agents returns a Page envelope
+        assert len(agents_list) == 1
         for agent_item in agents_list:
-            assert "api_key" not in agent_item, (
-                "GET /agents must never return api_key in response"
-            )
+            assert "api_key" not in agent_item, "GET /agents must never return api_key in response"
 
     @pytest.mark.asyncio
     async def test_list_agents_requires_auth(self, test_client):
@@ -235,8 +242,8 @@ class TestDeleteAgent:
         """DELETE /api/v1/agents/{id} should soft-delete (is_active=False) and return 204."""
         client, raw_key, mock_agent = authed_client
 
+        from app.core.dependencies import get_current_agent, get_db
         from app.main import app
-        from app.core.dependencies import get_db, get_current_agent
 
         agent_id = uuid.uuid4()
         target_agent = MagicMock()
@@ -280,8 +287,8 @@ class TestDeleteAgent:
         """DELETE /api/v1/agents/{id} for non-existent agent → 404"""
         client, raw_key, mock_agent = authed_client
 
+        from app.core.dependencies import get_current_agent, get_db
         from app.main import app
-        from app.core.dependencies import get_db, get_current_agent
 
         db = AsyncMock()
 
@@ -323,9 +330,10 @@ class TestAuth:
     @pytest.mark.asyncio
     async def test_invalid_key_returns_401(self, fake_redis):
         """Request with a key that doesn't match any agent → 401"""
-        from httpx import AsyncClient, ASGITransport
-        from app.main import app
+        from httpx import ASGITransport
+
         from app.core.dependencies import get_db, get_redis
+        from app.main import app
 
         # DB returns None for agent lookup (key not found)
         db = AsyncMock()
@@ -351,7 +359,9 @@ class TestAuth:
             async with AsyncClient(transport=transport, base_url="http://test") as client:
                 resp = await client.get(
                     "/api/v1/agents",
-                    headers={"Authorization": "Bearer nxai_invalidkey000000000000000000000000000000000000000000000000000000"},
+                    headers={
+                        "Authorization": "Bearer nxai_invalidkey000000000000000000000000000000000000000000000000000000"
+                    },
                 )
         finally:
             app.dependency_overrides.clear()

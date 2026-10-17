@@ -20,18 +20,16 @@ Coverage:
 
 from __future__ import annotations
 
-import json
 import uuid
-from datetime import datetime, timezone
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-
+from httpx import ASGITransport, AsyncClient
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_mock_user(org_id: uuid.UUID) -> MagicMock:
     user = MagicMock()
@@ -39,6 +37,8 @@ def _make_mock_user(org_id: uuid.UUID) -> MagicMock:
     user.org_id = org_id
     user.is_active = True
     user.email = "test@example.com"
+    user.role = "owner"  # checkout/portal are guarded by require_role("owner")
+    user.is_verified = True  # checkout requires a verified email
     return user
 
 
@@ -96,6 +96,7 @@ def _build_db_for_billing_status(
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+
 @pytest_asyncio.fixture
 async def billing_client(fake_redis) -> AsyncGenerator:
     """
@@ -103,8 +104,8 @@ async def billing_client(fake_redis) -> AsyncGenerator:
     The org fixture is configured per-test via separate DB mock injection.
     Yields (client, mock_user, org_id).
     """
+    from app.core.dependencies import get_current_user, get_redis
     from app.main import app
-    from app.core.dependencies import get_db, get_redis, get_current_user
 
     org_id = uuid.uuid4()
     mock_user = _make_mock_user(org_id=org_id)
@@ -127,6 +128,7 @@ async def billing_client(fake_redis) -> AsyncGenerator:
 
 # ── GET /billing/status tests ─────────────────────────────────────────────────
 
+
 class TestBillingStatus:
     @pytest.mark.asyncio
     async def test_returns_free_plan_defaults(self, billing_client, fake_redis):
@@ -134,8 +136,8 @@ class TestBillingStatus:
         A free org with no resources should return plan=free, all counts=0,
         and limits matching the free tier PLAN_LIMITS constants.
         """
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
         from app.services.plan.plan_limits import PLAN_LIMITS
 
         client, mock_user, org_id = billing_client
@@ -168,8 +170,8 @@ class TestBillingStatus:
     @pytest.mark.asyncio
     async def test_returns_correct_usage_counts(self, billing_client):
         """Org with 2 agents, 3 servers, 5 vault secrets, 200 tool calls."""
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         client, mock_user, org_id = billing_client
         org = _make_mock_org(plan_tier="free", org_id=org_id)
@@ -200,8 +202,8 @@ class TestBillingStatus:
     @pytest.mark.asyncio
     async def test_enterprise_limits_are_null(self, billing_client):
         """Enterprise org should return None for all limit fields."""
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         client, mock_user, org_id = billing_client
         org = _make_mock_org(plan_tier="enterprise", org_id=org_id)
@@ -227,8 +229,8 @@ class TestBillingStatus:
     @pytest.mark.asyncio
     async def test_has_active_subscription_true_when_subscription_set(self, billing_client):
         """Org with a stripe_subscription_id should return has_active_subscription=True."""
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         client, mock_user, org_id = billing_client
         org = _make_mock_org(
@@ -260,6 +262,7 @@ class TestBillingStatus:
 
 # ── POST /billing/checkout tests ──────────────────────────────────────────────
 
+
 class TestBillingCheckout:
     @pytest.mark.asyncio
     async def test_returns_503_when_stripe_not_configured(self, billing_client):
@@ -267,9 +270,9 @@ class TestBillingCheckout:
         When settings.stripe_secret_key is empty, the endpoint must return 503
         before even touching the DB or Stripe SDK.
         """
-        from app.main import app
-        from app.core.dependencies import get_db
         from app.core import config as config_module
+        from app.core.dependencies import get_db
+        from app.main import app
 
         client, mock_user, org_id = billing_client
         org = _make_mock_org(plan_tier="free", org_id=org_id)
@@ -297,9 +300,9 @@ class TestBillingCheckout:
         """
         Org already on pro plan → 400 Bad Request.
         """
-        from app.main import app
-        from app.core.dependencies import get_db
         from app.core import config as config_module
+        from app.core.dependencies import get_db
+        from app.main import app
 
         client, mock_user, org_id = billing_client
         org = _make_mock_org(plan_tier="pro", org_id=org_id)
@@ -325,9 +328,9 @@ class TestBillingCheckout:
     @pytest.mark.asyncio
     async def test_returns_400_when_on_enterprise(self, billing_client):
         """Enterprise orgs should be told to contact sales → 400."""
-        from app.main import app
-        from app.core.dependencies import get_db
         from app.core import config as config_module
+        from app.core.dependencies import get_db
+        from app.main import app
 
         client, mock_user, org_id = billing_client
         org = _make_mock_org(plan_tier="enterprise", org_id=org_id)
@@ -356,9 +359,9 @@ class TestBillingCheckout:
         endpoint returns {"url": "..."}.
         Stripe SDK is mocked: no real API key needed.
         """
-        from app.main import app
-        from app.core.dependencies import get_db
         from app.core import config as config_module
+        from app.core.dependencies import get_db
+        from app.main import app
 
         client, mock_user, org_id = billing_client
         org = _make_mock_org(plan_tier="free", org_id=org_id)
@@ -373,8 +376,12 @@ class TestBillingCheckout:
 
         app.dependency_overrides[get_db] = override_get_db
         try:
-            with patch.object(config_module.settings, "stripe_secret_key", "sk_test_fake"), \
-                 patch("stripe.checkout.Session.create", return_value=fake_session):
+            # The endpoint always uses the server-side price id, never the client's.
+            with (
+                patch.object(config_module.settings, "stripe_secret_key", "sk_test_fake"),
+                patch.object(config_module.settings, "stripe_pro_price_id", "price_pro_monthly"),
+                patch("stripe.checkout.Session.create", return_value=fake_session),
+            ):
                 resp = await client.post(
                     "/api/v1/billing/checkout",
                     json={"price_id": "price_pro_monthly"},
@@ -390,15 +397,16 @@ class TestBillingCheckout:
 
 # ── POST /billing/portal tests ────────────────────────────────────────────────
 
+
 class TestBillingPortal:
     @pytest.mark.asyncio
     async def test_returns_400_when_no_stripe_customer_id(self, billing_client):
         """
         Org has no stripe_customer_id (never subscribed) → 400 Bad Request.
         """
-        from app.main import app
-        from app.core.dependencies import get_db
         from app.core import config as config_module
+        from app.core.dependencies import get_db
+        from app.main import app
 
         client, mock_user, org_id = billing_client
         org = _make_mock_org(plan_tier="pro", org_id=org_id, stripe_customer_id=None)
@@ -424,9 +432,9 @@ class TestBillingPortal:
     @pytest.mark.asyncio
     async def test_returns_503_when_stripe_not_configured(self, billing_client):
         """Portal also returns 503 when Stripe is not configured."""
-        from app.main import app
-        from app.core.dependencies import get_db
         from app.core import config as config_module
+        from app.core.dependencies import get_db
+        from app.main import app
 
         client, mock_user, org_id = billing_client
         org = _make_mock_org(plan_tier="pro", org_id=org_id, stripe_customer_id="cus_abc")
@@ -454,9 +462,9 @@ class TestBillingPortal:
         Org with stripe_customer_id → BillingService creates portal session,
         endpoint returns {"url": "..."}.
         """
-        from app.main import app
-        from app.core.dependencies import get_db
         from app.core import config as config_module
+        from app.core.dependencies import get_db
+        from app.main import app
 
         client, mock_user, org_id = billing_client
         org = _make_mock_org(
@@ -475,8 +483,10 @@ class TestBillingPortal:
 
         app.dependency_overrides[get_db] = override_get_db
         try:
-            with patch.object(config_module.settings, "stripe_secret_key", "sk_test_fake"), \
-                 patch("stripe.billing_portal.Session.create", return_value=fake_session):
+            with (
+                patch.object(config_module.settings, "stripe_secret_key", "sk_test_fake"),
+                patch("stripe.billing_portal.Session.create", return_value=fake_session),
+            ):
                 resp = await client.post(
                     "/api/v1/billing/portal",
                     json={"return_url": "https://app.example.com/settings"},
@@ -491,6 +501,7 @@ class TestBillingPortal:
 
 
 # ── POST /billing/webhook tests ───────────────────────────────────────────────
+
 
 class TestBillingWebhook:
     @pytest.mark.asyncio
@@ -525,14 +536,16 @@ class TestBillingWebhook:
         A valid signature with an unhandled event type (e.g., payment_intent.created)
         should return 200 {"status": "ok"} silently.
         """
-        from httpx import AsyncClient, ASGITransport
-        from app.main import app
+        from httpx import ASGITransport, AsyncClient
+
         from app.core.dependencies import get_db, get_redis
+        from app.main import app
 
         org_id = str(uuid.uuid4())
 
         # Build a minimal Stripe event dict for a no-op type
         fake_event = {
+            "id": "evt_test_1",
             "type": "payment_intent.created",
             "data": {"object": {"metadata": {"org_id": org_id}}},
         }
@@ -555,7 +568,7 @@ class TestBillingWebhook:
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     resp = await client.post(
                         "/api/v1/billing/webhook",
-                        content=b'{}',
+                        content=b"{}",
                         headers={
                             "stripe-signature": "t=123,v1=fakesig",
                             "Content-Type": "application/json",
@@ -576,15 +589,17 @@ class TestBillingWebhook:
         - Set stripe_customer_id and stripe_subscription_id
         - Commit the session
         """
-        from httpx import AsyncClient, ASGITransport
-        from app.main import app
+        from httpx import ASGITransport, AsyncClient
+
         from app.core.dependencies import get_db, get_redis
+        from app.main import app
 
         org_id = str(uuid.uuid4())
         org = _make_mock_org(plan_tier="free", org_id=uuid.UUID(org_id))
         org.stripe_subscription_id = None  # not yet set → idempotency guard passes
 
         fake_event = {
+            "id": "evt_test_2",
             "type": "checkout.session.completed",
             "data": {
                 "object": {
@@ -614,7 +629,7 @@ class TestBillingWebhook:
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     resp = await client.post(
                         "/api/v1/billing/webhook",
-                        content=b'{}',
+                        content=b"{}",
                         headers={
                             "stripe-signature": "t=123,v1=fakesig",
                             "Content-Type": "application/json",
@@ -636,9 +651,10 @@ class TestBillingWebhook:
         On the second call, the org.stripe_subscription_id already equals the event's
         subscription ID: the handler should skip without committing.
         """
-        from httpx import AsyncClient, ASGITransport
-        from app.main import app
+        from httpx import ASGITransport, AsyncClient
+
         from app.core.dependencies import get_db, get_redis
+        from app.main import app
 
         org_id = str(uuid.uuid4())
         sub_id = "sub_alreadyset"
@@ -646,6 +662,7 @@ class TestBillingWebhook:
         org.stripe_subscription_id = sub_id  # already set = idempotency guard fires
 
         fake_event = {
+            "id": "evt_test_3",
             "type": "checkout.session.completed",
             "data": {
                 "object": {
@@ -675,7 +692,7 @@ class TestBillingWebhook:
                 async with AsyncClient(transport=transport, base_url="http://test") as client:
                     resp = await client.post(
                         "/api/v1/billing/webhook",
-                        content=b'{}',
+                        content=b"{}",
                         headers={
                             "stripe-signature": "t=123,v1=fakesig",
                             "Content-Type": "application/json",
