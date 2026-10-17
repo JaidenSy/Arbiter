@@ -24,6 +24,7 @@ WEBHOOK_EVENTS = frozenset(
         "error_rate.spike",
         "mcp_server.offline",
         "permission.denied",
+        "tool.definition_changed",
     ]
 )
 

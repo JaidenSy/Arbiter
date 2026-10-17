@@ -10,14 +10,16 @@ Routes:
     PATCH  /mcp-servers/{id}         : update name, url, description, or cache_enabled
     DELETE /mcp-servers/{id}         : soft-delete
     POST   /mcp-servers/{id}/test    : test connectivity
-    GET    /mcp-servers/{id}/tools   : discover available tools
+    GET    /mcp-servers/{id}/tools   : discover available tools (also pins definitions)
 """
 
 from __future__ import annotations
 
 import json as _json
+import logging
 import re
 import uuid
+from typing import Literal
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -32,7 +34,10 @@ from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.schemas.pagination import Page
 from app.services.plan.plan_service import check_resource_limit
+from app.services.tool_pin.tool_pin_service import ToolPinService
 from app.services.vault.vault_service import VaultService
+
+logger = logging.getLogger(__name__)
 
 _MCP_HEADERS = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
 
@@ -132,6 +137,13 @@ class MCPServerCreate(BaseModel):
         None,
         description="Optional per-call cost in USD for cost tracking; omit to disable",
     )
+    tool_change_policy: Literal["allow", "block"] | None = Field(
+        None,
+        description=(
+            "Calls to tools whose definition changed since approval: 'allow' (log + webhook) "
+            "or 'block'. Omit to inherit the org default."
+        ),
+    )
 
     @field_validator("base_url")
     @classmethod
@@ -164,6 +176,9 @@ class MCPServerUpdate(BaseModel):
     cache_enabled: bool | None = None
     cost_per_call_usd: float | None = None
     is_active: bool | None = None
+    tool_change_policy: Literal["allow", "block", "inherit"] | None = Field(
+        None, description="'inherit' clears the server override and uses the org default"
+    )
 
     @field_validator("base_url")
     @classmethod
@@ -221,6 +236,9 @@ class MCPServerResponse(BaseModel):
         description="Set False for side-effectful servers that must never serve cached responses",
     )
     cost_per_call_usd: float | None = None
+    tool_change_policy: str | None = Field(
+        None, description="Server override for changed tools; null = org default"
+    )
 
     model_config = {"from_attributes": True}
 
@@ -296,6 +314,7 @@ async def create_mcp_server(
         headers=body.headers,
         cache_enabled=body.cache_enabled,
         cost_per_call_usd=body.cost_per_call_usd,
+        tool_change_policy=body.tool_change_policy,
         is_active=True,
     )
     db.add(server)
@@ -461,6 +480,10 @@ async def update_mcp_server(
         server.cost_per_call_usd = body.cost_per_call_usd
     if body.is_active is not None:
         server.is_active = body.is_active
+    if body.tool_change_policy is not None:
+        server.tool_change_policy = (
+            None if body.tool_change_policy == "inherit" else body.tool_change_policy
+        )
 
     await db.commit()
     await db.refresh(server)
@@ -572,13 +595,19 @@ async def list_mcp_server_tools(
     try:
         auth_headers = await _resolve_server_headers(server, db)
         tools = await _mcp_tools_list(server.base_url, extra_headers=auth_headers)
-        return [
-            MCPToolInfo(name=t.get("name", ""), description=t.get("description")) for t in tools
-        ]
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not fetch tools: {exc}"
         ) from exc
+
+    # Discovery is a listing too: pin/compare definitions, never fail the response.
+    try:
+        await ToolPinService(db).record_tools(server, tools)
+    except Exception as exc:
+        logger.warning("mcp_servers: tool-definition pinning failed for %r: %s", server.name, exc)
+        await db.rollback()
+
+    return [MCPToolInfo(name=t.get("name", ""), description=t.get("description")) for t in tools]
 
 
 # ── Health history endpoint ───────────────────────────────────────────────────

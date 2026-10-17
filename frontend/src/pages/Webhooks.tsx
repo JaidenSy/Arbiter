@@ -21,6 +21,7 @@ const WEBHOOK_EVENTS = [
   "permission.denied",
   "quota.exceeded",
   "mcp_server.offline",
+  "tool.definition_changed",
 ] as const;
 
 // ── Data fetchers / mutators ──────────────────────────────────────────────────

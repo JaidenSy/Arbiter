@@ -43,6 +43,7 @@ from app.api.v1.endpoints import (
     sessions,
     sso,
     stats,
+    tool_definitions,
     tool_permissions,
     traces,
     vault,
@@ -415,6 +416,7 @@ def create_app() -> FastAPI:
     app.include_router(proxy.router, prefix=settings.api_prefix)
     app.include_router(vault.router, prefix=settings.api_prefix)
     app.include_router(tool_permissions.router, prefix=settings.api_prefix)
+    app.include_router(tool_definitions.router, prefix=settings.api_prefix)
     app.include_router(stats.router, prefix=settings.api_prefix)
     app.include_router(analytics.router, prefix=settings.api_prefix)
     app.include_router(audit.router, prefix=settings.api_prefix)
