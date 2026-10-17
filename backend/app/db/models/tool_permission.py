@@ -8,7 +8,7 @@ The wildcard tool_name ``"*"`` grants access to all tools on the server.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -61,7 +61,7 @@ class ToolPermission(Base):
     granted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
     )
     granted_by: Mapped[str | None] = mapped_column(Text, nullable=True)

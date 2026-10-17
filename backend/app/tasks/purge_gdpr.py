@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 
 from app.db.base import async_session_factory
 from app.db.models.user import User
@@ -39,7 +39,7 @@ async def purge_anonymized_users() -> None:
 
     Each matching User row is deleted; DB cascades handle child tables.
     """
-    cutoff = datetime.now(tz=timezone.utc) - timedelta(days=_GDPR_GRACE_DAYS)
+    cutoff = datetime.now(tz=UTC) - timedelta(days=_GDPR_GRACE_DAYS)
 
     async with async_session_factory() as db:
         result = await db.execute(
@@ -52,7 +52,9 @@ async def purge_anonymized_users() -> None:
         count = result.rowcount
 
     if count:
-        logger.info("gdpr_purge: hard-deleted %d anonymized user(s) past 30-day grace window", count)
+        logger.info(
+            "gdpr_purge: hard-deleted %d anonymized user(s) past 30-day grace window", count
+        )
     else:
         logger.info("gdpr_purge: no anonymized users eligible for purge")
 

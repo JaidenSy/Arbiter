@@ -17,14 +17,15 @@ Coverage:
 from __future__ import annotations
 
 import uuid
+from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock
-from sqlalchemy.exc import IntegrityError
 
 import pytest
-from httpx import AsyncClient, ASGITransport
-
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.exc import IntegrityError
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_agent_orm(agent_id: uuid.UUID, is_active: bool = True) -> MagicMock:
     a = MagicMock()
@@ -46,14 +47,14 @@ def _make_permission_orm(
     mcp_server_id: uuid.UUID,
     tool_name: str,
 ) -> MagicMock:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     p = MagicMock()
     p.id = perm_id
     p.agent_id = agent_id
     p.mcp_server_id = mcp_server_id
     p.tool_name = tool_name
-    p.granted_at = datetime.now(timezone.utc)
+    p.granted_at = datetime.now(UTC)
     p.granted_by = None
     return p
 
@@ -88,10 +89,10 @@ def _make_db_for_create(agent=None, server=None, raises_integrity=False):
         db.commit.return_value = None
 
     async def refresh(obj):
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         obj.id = uuid.uuid4()
-        obj.granted_at = datetime.now(timezone.utc)
+        obj.granted_at = datetime.now(UTC)
         obj.granted_by = None
 
     db.refresh = refresh
@@ -116,6 +117,7 @@ def _make_db_for_list(agent=None, permissions=None):
         return result
 
     db.execute = execute
+    db.scalar = AsyncMock(return_value=len(permissions or []))  # Page total
     return db
 
 
@@ -134,14 +136,15 @@ def _make_db_for_delete(permission=None):
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
+
 class TestCreateToolPermission:
     @pytest.mark.asyncio
     async def test_create_permission_returns_201(self, fake_redis):
         """POST /agents/{id}/permissions → 201 with permission record."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -190,10 +193,10 @@ class TestCreateToolPermission:
     @pytest.mark.asyncio
     async def test_create_permission_wildcard_tool_name(self, fake_redis):
         """POST /agents/{id}/permissions with tool_name='*' → 201."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -240,10 +243,10 @@ class TestCreateToolPermission:
     @pytest.mark.asyncio
     async def test_create_permission_nonexistent_agent_returns_404(self, fake_redis):
         """POST /agents/{non_existent_id}/permissions → 404."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -284,10 +287,10 @@ class TestCreateToolPermission:
     @pytest.mark.asyncio
     async def test_create_permission_nonexistent_server_returns_404(self, fake_redis):
         """POST /agents/{id}/permissions with non-existent mcp_server_id → 404."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -330,10 +333,10 @@ class TestCreateToolPermission:
     @pytest.mark.asyncio
     async def test_create_duplicate_permission_returns_409(self, fake_redis):
         """POST duplicate (same agent+server+tool) → 409 Conflict."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -382,8 +385,8 @@ class TestListToolPermissions:
         """GET /agents/{id}/permissions → 200 with list."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         agent_id = uuid.uuid4()
         server_id = uuid.uuid4()
@@ -407,7 +410,9 @@ class TestListToolPermissions:
             app.dependency_overrides.pop(get_db, None)
 
         assert resp.status_code == 200, resp.text
-        items = resp.json()
+        body = resp.json()  # Page envelope
+        assert body["total"] == 1
+        items = body["items"]
         assert len(items) == 1
         assert items[0]["tool_name"] == "search"
 
@@ -416,8 +421,8 @@ class TestListToolPermissions:
         """GET /agents/{non_existent}/permissions → 404."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         db = _make_db_for_list(agent=None)
 
@@ -443,8 +448,8 @@ class TestDeleteToolPermission:
         """DELETE /agents/{id}/permissions/{perm_id} → 204."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         agent_id = uuid.uuid4()
         server_id = uuid.uuid4()
@@ -473,8 +478,8 @@ class TestDeleteToolPermission:
         """DELETE /agents/{id}/permissions/{non_existent_perm} → 404."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         db = _make_db_for_delete(permission=None)
 

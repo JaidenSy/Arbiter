@@ -79,7 +79,7 @@ class VaultSecret(Base):
     )
 
     # ── Relationships ─────────────────────────────────────────────────────────
-    agent: Mapped["Agent | None"] = relationship("Agent", back_populates="vault_secrets")
+    agent: Mapped[Agent | None] = relationship("Agent", back_populates="vault_secrets")
 
     def __repr__(self) -> str:
         return f"<VaultSecret id={self.id} name={self.name!r} agent_id={self.agent_id}>"

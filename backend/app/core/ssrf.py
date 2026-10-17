@@ -53,7 +53,7 @@ async def assert_ssrf_safe(
         raise HTTPException(
             status_code=error_status,
             detail=f"MCP server hostname {hostname!r} could not be resolved",
-        )
+        ) from None
     for _family, _type, _proto, _canonname, sockaddr in infos:
         addr = ipaddress.ip_address(sockaddr[0])
         if any(addr in net for net in _PRIVATE_NETS):

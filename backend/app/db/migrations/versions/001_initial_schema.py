@@ -1,7 +1,7 @@
 """[stub] initial_schema
 
 Revision ID: 001
-Revises: 
+Revises:
 Create Date: squashed
 
 No-op stub retained so Alembic can navigate from any old DB version

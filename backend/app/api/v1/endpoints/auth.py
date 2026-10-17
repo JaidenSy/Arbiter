@@ -418,7 +418,7 @@ async def delete_me(
     # subscription (plans attach to orgs, never to people).
     memberships = await org_service.list_memberships(db, user_id)
     doomed_orgs: list[Organization] = []
-    surviving_org_ids: list[uuid.UUID] = []
+    surviving_org_ids: list[_uuid.UUID] = []
     for membership in memberships:
         org = await db.get(Organization, membership.org_id)
         if org is None:
@@ -664,11 +664,11 @@ async def confirm_email_change(
     except SignatureExpired:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation link has expired"
-        )
+        ) from None
     except BadSignature:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid confirmation token"
-        )
+        ) from None
 
     user_id: str = payload.get("uid", "")
     new_email: str = payload.get("email", "")
@@ -767,9 +767,11 @@ async def reset_password(
     except SignatureExpired:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Reset link has expired"
-        )
+        ) from None
     except BadSignature:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token"
+        ) from None
     user = await db.get(User, user_id)
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

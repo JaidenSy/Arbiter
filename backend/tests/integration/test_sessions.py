@@ -12,21 +12,20 @@ Coverage:
     - GET /sessions/{non_existent}/events → 404
 
     Empty state:
-    - GET /sessions → [] when no sessions
+    - GET /sessions → empty Page when no sessions
     - GET /sessions/{id} → events: [] when session has no events
 """
 
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import AsyncClient, ASGITransport
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_session_event(
     event_id: uuid.UUID | None = None,
@@ -48,7 +47,7 @@ def _make_session_event(
     e.cache_hit = cache_hit
     e.duration_ms = 42
     e.error = error
-    e.occurred_at = datetime.now(tz=timezone.utc)
+    e.occurred_at = datetime.now(tz=UTC)
     return e
 
 
@@ -60,25 +59,35 @@ def _make_session(
     s = MagicMock()
     s.id = session_id or uuid.uuid4()
     s.agent_id = agent_id or uuid.uuid4()
-    s.started_at = datetime.now(tz=timezone.utc)
+    s.started_at = datetime.now(tz=UTC)
     s.ended_at = None
     s.metadata_ = {}
+    s.parent_session_id = None
+    s.trace_id = None
     s.events = events if events is not None else []
+    s.children = []
+    # Aggregates the list endpoint selects alongside the row.
+    s.event_count = len(s.events)
+    s.has_error = False
     return s
 
 
 def _make_db_list(sessions_list=None):
-    """DB mock for GET /sessions."""
+    """DB mock for GET /sessions.
+
+    The list endpoint selects column tuples plus aggregates (``result.all()``)
+    and a separate COUNT for the Page total (``db.scalar``).
+    """
     db = AsyncMock()
+    rows = sessions_list or []
 
     async def execute(stmt):
         result = MagicMock()
-        scalars_mock = MagicMock()
-        scalars_mock.all.return_value = sessions_list or []
-        result.scalars.return_value = scalars_mock
+        result.all.return_value = rows
         return result
 
     db.execute = execute
+    db.scalar = AsyncMock(return_value=len(rows))
     return db
 
 
@@ -110,10 +119,12 @@ def _make_db_get_session(session=None, events_list=None):
         return result
 
     db.execute = execute
+    db.scalar = AsyncMock(return_value=len(events_list or []))  # Page total
     return db
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 class TestListSessions:
     @pytest.mark.asyncio
@@ -121,8 +132,8 @@ class TestListSessions:
         """GET /sessions → 200 with list of sessions."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         session = _make_session(agent_id=mock_agent.id)
         db = _make_db_list(sessions_list=[session])
@@ -141,7 +152,7 @@ class TestListSessions:
             app.dependency_overrides.pop(get_db, None)
 
         assert resp.status_code == 200, resp.text
-        items = resp.json()
+        items = resp.json()["items"]
         assert len(items) == 1
 
     @pytest.mark.asyncio
@@ -149,8 +160,8 @@ class TestListSessions:
         """GET /sessions → [] when no sessions exist."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         db = _make_db_list(sessions_list=[])
 
@@ -168,15 +179,16 @@ class TestListSessions:
             app.dependency_overrides.pop(get_db, None)
 
         assert resp.status_code == 200, resp.text
-        assert resp.json() == []
+        assert resp.json()["items"] == []
+        assert resp.json()["total"] == 0
 
     @pytest.mark.asyncio
     async def test_list_sessions_filter_by_agent_id(self, authed_client):
         """GET /sessions?agent_id={id} passes filter to query."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         target_agent_id = uuid.uuid4()
         session = _make_session(agent_id=target_agent_id)
@@ -196,7 +208,7 @@ class TestListSessions:
             app.dependency_overrides.pop(get_db, None)
 
         assert resp.status_code == 200, resp.text
-        items = resp.json()
+        items = resp.json()["items"]
         assert len(items) == 1
         assert items[0]["agent_id"] == str(target_agent_id)
 
@@ -213,8 +225,8 @@ class TestGetSession:
         """GET /sessions/{id} → 200 with events array."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         session_id = uuid.uuid4()
         event = _make_session_event(session_id=session_id)
@@ -245,8 +257,8 @@ class TestGetSession:
         """GET /sessions/{id} → events: [] when session has no events."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         session_id = uuid.uuid4()
         session = _make_session(session_id=session_id, events=[])
@@ -273,8 +285,8 @@ class TestGetSession:
         """GET /sessions/{non_existent_id} → 404."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         db = _make_db_get_session(session=None)
 
@@ -300,8 +312,8 @@ class TestListSessionEvents:
         """GET /sessions/{id}/events → 200 with events list."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         session_id = uuid.uuid4()
         session = _make_session(session_id=session_id)
@@ -323,7 +335,7 @@ class TestListSessionEvents:
             app.dependency_overrides.pop(get_db, None)
 
         assert resp.status_code == 200, resp.text
-        events = resp.json()
+        events = resp.json()["items"]
         assert len(events) == 2
 
     @pytest.mark.asyncio
@@ -331,8 +343,8 @@ class TestListSessionEvents:
         """GET /sessions/{non_existent_id}/events → 404."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         db = _make_db_get_session(session=None)
 

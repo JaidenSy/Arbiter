@@ -21,10 +21,24 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
+
+
+@pytest.fixture(autouse=True)
+def _skip_ssrf_dns(monkeypatch):
+    """Stub the SSRF guard so tests don't depend on live DNS.
+
+    ``assert_ssrf_safe`` resolves the hostname; the fixture URLs
+    (mcp.example.com) don't resolve, so without this every create/patch with a
+    base_url fails with 422.  The guard itself is covered in test_ssrf_check.py.
+    """
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.mcp_servers.assert_ssrf_safe", AsyncMock(return_value=None)
+    )
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_mcp_server(
     server_id: uuid.UUID | None = None,
@@ -41,6 +55,8 @@ def _make_mcp_server(
     s.description = description
     s.is_active = is_active
     s.cache_enabled = cache_enabled
+    s.headers = {}
+    s.cost_per_call_usd = None
     return s
 
 
@@ -62,6 +78,7 @@ def _make_db_for_create(existing_server=None, created_server=None):
     db.execute = execute
 
     if created_server is not None:
+
         async def refresh(obj):
             obj.id = created_server.id
             obj.name = created_server.name
@@ -88,6 +105,7 @@ def _make_db_for_get(server=None):
         return result
 
     db.execute = execute
+    db.scalar = AsyncMock(return_value=1 if server else 0)  # Page total count
 
     async def refresh(obj):
         pass
@@ -98,14 +116,15 @@ def _make_db_for_get(server=None):
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
+
 class TestCreateMCPServer:
     @pytest.mark.asyncio
     async def test_create_mcp_server_returns_201_with_cache_enabled_true(self, fake_redis):
         """POST /mcp-servers → 201, cache_enabled defaults to True."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user, _make_mock_org
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_org, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -115,6 +134,7 @@ class TestCreateMCPServer:
         created = _make_mcp_server(server_id=server_id, name="my-mcp", cache_enabled=True)
         db = _make_db_for_create(existing_server=None, created_server=created)
         from unittest.mock import AsyncMock as _AsyncMock
+
         db.get = _AsyncMock(return_value=mock_org)
         db.scalar = _AsyncMock(return_value=0)
 
@@ -154,10 +174,10 @@ class TestCreateMCPServer:
     @pytest.mark.asyncio
     async def test_create_mcp_server_cache_enabled_false(self, fake_redis):
         """POST /mcp-servers with cache_enabled=False → persisted as False."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user, _make_mock_org
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_org, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -167,6 +187,7 @@ class TestCreateMCPServer:
         created = _make_mcp_server(server_id=server_id, name="side-effectful", cache_enabled=False)
         db = _make_db_for_create(existing_server=None, created_server=created)
         from unittest.mock import AsyncMock as _AsyncMock
+
         db.get = _AsyncMock(return_value=mock_org)
         db.scalar = _AsyncMock(return_value=0)
 
@@ -192,7 +213,11 @@ class TestCreateMCPServer:
             async with AsyncClient(transport=transport, base_url="http://test") as client:
                 resp = await client.post(
                     "/api/v1/mcp-servers",
-                    json={"name": "side-effectful", "base_url": "http://mcp2.example.com", "cache_enabled": False},
+                    json={
+                        "name": "side-effectful",
+                        "base_url": "http://mcp2.example.com",
+                        "cache_enabled": False,
+                    },
                     headers={"Authorization": f"Bearer {raw_key}"},
                 )
         finally:
@@ -204,10 +229,10 @@ class TestCreateMCPServer:
     @pytest.mark.asyncio
     async def test_create_duplicate_name_returns_409(self, fake_redis):
         """POST /mcp-servers with duplicate name → 409 Conflict."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user, _make_mock_org
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -248,10 +273,10 @@ class TestCreateMCPServer:
     @pytest.mark.asyncio
     async def test_create_name_with_double_underscore_returns_422(self, fake_redis):
         """'__' is the MCP endpoint's server__tool separator: reject it in names."""
-        from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent, get_current_user
-        from tests.conftest import _make_mock_agent, _make_mock_user
+        from app.core.dependencies import get_current_agent, get_current_user, get_db, get_redis
         from app.core.security import generate_api_key
+        from app.main import app
+        from tests.conftest import _make_mock_agent, _make_mock_user
 
         raw_key = generate_api_key()
         mock_agent = _make_mock_agent(raw_key)
@@ -292,12 +317,16 @@ class TestCreateMCPServer:
 
 class TestListMCPServers:
     @pytest.mark.asyncio
-    async def test_list_mcp_servers_returns_active_only(self, authed_client):
-        """GET /mcp-servers returns only active servers."""
+    async def test_list_mcp_servers_returns_page(self, authed_client):
+        """GET /mcp-servers returns a Page envelope.
+
+        Since 502438e the list includes inactive servers too (ordered active
+        first), so this asserts the envelope shape rather than "active only".
+        """
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         active_server = _make_mcp_server(name="active-mcp", is_active=True)
         db = _make_db_for_get(server=active_server)
@@ -316,7 +345,9 @@ class TestListMCPServers:
             app.dependency_overrides.pop(get_db, None)
 
         assert resp.status_code == 200, resp.text
-        items = resp.json()
+        body = resp.json()
+        assert body["total"] == 1
+        items = body["items"]
         assert len(items) == 1
         assert items[0]["name"] == "active-mcp"
 
@@ -327,8 +358,8 @@ class TestGetMCPServer:
         """GET /mcp-servers/{id} → 200 with server data."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         server_id = uuid.uuid4()
         server = _make_mcp_server(server_id=server_id, name="my-server")
@@ -355,8 +386,8 @@ class TestGetMCPServer:
         """GET /mcp-servers/{non_existent} → 404."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         db = _make_db_for_get(server=None)
 
@@ -382,8 +413,8 @@ class TestPatchMCPServer:
         """PATCH /mcp-servers/{id} with only name → partial update applied."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         server_id = uuid.uuid4()
         server = _make_mcp_server(
@@ -419,8 +450,8 @@ class TestPatchMCPServer:
         """PATCH with cache_enabled=False preserved (not overwritten to True)."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         server_id = uuid.uuid4()
         server = _make_mcp_server(server_id=server_id, cache_enabled=True)
@@ -448,8 +479,8 @@ class TestPatchMCPServer:
         """PATCH /mcp-servers/{non_existent} → 404."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         db = _make_db_for_get(server=None)
 
@@ -472,12 +503,16 @@ class TestPatchMCPServer:
 
 class TestDeleteMCPServer:
     @pytest.mark.asyncio
-    async def test_delete_mcp_server_soft_deletes_and_returns_204(self, authed_client):
-        """DELETE /mcp-servers/{id} → 204, is_active set to False (soft delete)."""
+    async def test_delete_mcp_server_hard_deletes_and_returns_204(self, authed_client):
+        """DELETE /mcp-servers/{id} → 204 and the row is deleted.
+
+        DELETE became a hard delete in 502438e (session events keep history via
+        ON DELETE SET NULL; disabling is PATCH is_active=false).
+        """
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         server_id = uuid.uuid4()
         server = _make_mcp_server(server_id=server_id, name="to-delete", is_active=True)
@@ -497,16 +532,16 @@ class TestDeleteMCPServer:
             app.dependency_overrides.pop(get_db, None)
 
         assert resp.status_code == 204, resp.text
-        # Soft delete: is_active set to False on the ORM object
-        assert server.is_active is False, "Soft delete must set is_active=False"
+        db.delete.assert_awaited_once_with(server)
+        db.commit.assert_awaited()
 
     @pytest.mark.asyncio
     async def test_delete_nonexistent_mcp_server_returns_404(self, authed_client):
         """DELETE /mcp-servers/{non_existent} → 404."""
         client, raw_key, mock_agent = authed_client
 
-        from app.main import app
         from app.core.dependencies import get_db
+        from app.main import app
 
         db = _make_db_for_get(server=None)
 

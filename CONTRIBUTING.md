@@ -32,7 +32,9 @@ git clone https://github.com/JaidenSy/Arbiter.git && cd Arbiter
 
 # backend
 cd backend && python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+# requirements-dev.txt = requirements.txt + test/lint tools (what CI installs).
+# The CPU torch index keeps sentence-transformers from pulling CUDA wheels.
+pip install -r requirements-dev.txt --extra-index-url https://download.pytorch.org/whl/cpu
 cp .env.example .env && alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 
@@ -40,8 +42,8 @@ uvicorn app.main:app --reload --port 8000
 cd frontend && pnpm install
 cp .env.example .env.local && pnpm dev
 
-# tests
-cd backend && pytest
+# tests + lint (the same gates as .github/workflows/backend-ci.yml)
+cd backend && pytest --cov && ruff check . && ruff format --check .
 ```
 
 ## Pull request guidelines
@@ -50,7 +52,8 @@ cd backend && pytest
 - Keep PRs focused — one logical change per PR. Small PRs get reviewed faster.
 - Include tests for new behavior. Backend changes that touch the proxy, RBAC, vault, or cache paths
   should have unit coverage; raw SQL needs at least one route-level test.
-- Run `ruff` and `pytest` locally before pushing.
+- Run `ruff check`, `ruff format --check` and `pytest` locally before pushing. Backend CI blocks on
+  all three, plus an import smoke test and a single-Alembic-head check.
 - Describe **what** changed and **why** in the PR body. Link the issue you opened.
 
 ## Licensing of your contributions (the CLA)

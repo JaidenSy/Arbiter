@@ -31,21 +31,23 @@ def upgrade() -> None:
     cols = _col_names()
 
     if "org_id" not in cols:
-        op.execute(text(
-            "ALTER TABLE tool_permissions "
-            "ADD COLUMN org_id UUID REFERENCES organizations(id) ON DELETE CASCADE"
-        ))
+        op.execute(
+            text(
+                "ALTER TABLE tool_permissions "
+                "ADD COLUMN org_id UUID REFERENCES organizations(id) ON DELETE CASCADE"
+            )
+        )
 
     if "granted_by" not in cols:
-        op.execute(text(
-            "ALTER TABLE tool_permissions ADD COLUMN granted_by TEXT"
-        ))
+        op.execute(text("ALTER TABLE tool_permissions ADD COLUMN granted_by TEXT"))
 
     if "granted_by_user_id" not in cols:
-        op.execute(text(
-            "ALTER TABLE tool_permissions "
-            "ADD COLUMN granted_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL"
-        ))
+        op.execute(
+            text(
+                "ALTER TABLE tool_permissions "
+                "ADD COLUMN granted_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL"
+            )
+        )
 
 
 def downgrade() -> None:

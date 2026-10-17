@@ -17,8 +17,6 @@ import uuid
 from collections.abc import AsyncGenerator, Callable
 
 from fastapi import Depends, Header, HTTPException, Request, Security, status
-
-_logger = logging.getLogger(__name__)
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +26,8 @@ from app.core.config import settings
 from app.db.base import async_session_factory
 from app.db.models.agent import Agent
 from app.db.models.user import User
+
+_logger = logging.getLogger(__name__)
 
 # ── Database ─────────────────────────────────────────────────────────────────
 
@@ -57,9 +57,14 @@ async def get_redis(request: Request):  # type: ignore[return]
     app.state.redis.  This dependency retrieves it for the current request.
 
     Returns:
-        redis.asyncio.Redis: connected Redis client.
+        redis.asyncio.Redis | None: connected Redis client, or None when the
+        lifespan never attached one (startup failure, or an app driven without
+        its lifespan, e.g. ASGITransport in tests).  Callers already guard Redis
+        use with try/except or ``is not None`` and apply their fail-open /
+        fail-closed policy, so this turns a bare AttributeError (HTTP 500) into
+        that policy, and lets missing-credential checks return 401 first.
     """
-    return request.app.state.redis
+    return getattr(request.app.state, "redis", None)
 
 
 # ── Authentication ────────────────────────────────────────────────────────────
@@ -178,7 +183,7 @@ async def get_current_user(
     if jti:
         try:
             is_blocked = await redis.exists(f"jti_blocklist:{jti}")
-        except Exception:
+        except Exception as exc:
             if settings.jwt_blocklist_fail_open:
                 _logger.warning(
                     "Redis unavailable for JWT blocklist check: failing open (JWT_BLOCKLIST_FAIL_OPEN=true)"
@@ -192,7 +197,7 @@ async def get_current_user(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail="Authentication service temporarily unavailable",
                     headers={"WWW-Authenticate": "Bearer"},
-                )
+                ) from exc
         if is_blocked:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

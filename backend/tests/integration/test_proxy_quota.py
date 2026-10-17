@@ -4,21 +4,27 @@ Integration tests for proxy quota enforcement on POST /api/v1/proxy/tool-call
 Coverage:
     - Tool call from an org that has exceeded its monthly quota returns HTTP 429
     - Tool call from an enterprise org (unlimited) is never blocked by quota
-    - Quota check fires BEFORE ProxyService (ProxyService is never reached on 429)
-    - Under-quota org passes through quota check and reaches ProxyService normally
+    - Quota check fires BEFORE the upstream forward (never reached on 429)
+    - Under-quota org passes through quota check and reaches the upstream normally
+
+The quota check used to run in the endpoint, before ProxyService.  It now runs
+inside ProxyService.forward_tool_call (pipeline step 4, after the cache lookup,
+so cache hits don't consume quota).  These tests stub forward_tool_call, so the
+stub replays step 4 with the real ``check_tool_call_quota`` before "forwarding".
+That keeps the real quota logic, the real Redis cache key format and the real
+QuotaExceededError → HTTP 429 handler under test.
 """
 
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_org(plan_tier: str = "free", org_id: uuid.UUID | None = None) -> MagicMock:
     org = MagicMock()
@@ -40,7 +46,17 @@ def _make_mock_agent(org_id: uuid.UUID) -> MagicMock:
     return agent, raw_key
 
 
+async def _replay_quota_step(proxy_service, agent) -> None:
+    """Run ProxyService pipeline step 4 (org load + quota check) for real."""
+    from app.db.models.organization import Organization
+    from app.services.plan.plan_service import check_tool_call_quota
+
+    org = await proxy_service.db.get(Organization, agent.org_id)
+    await check_tool_call_quota(proxy_service.redis, proxy_service.db, org)
+
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 class TestProxyQuotaEnforcement:
     @pytest.mark.asyncio
@@ -50,23 +66,29 @@ class TestProxyQuotaEnforcement:
 
         Strategy:
             - Inject an agent belonging to a free org
-            - Pre-load Redis cache with usage = 1050 (free limit = 1000, grace = 1050)
+            - Pre-load Redis cache with usage at the free tier's effective limit
+              (PLAN_LIMITS["free"]["max_tool_calls_mo"] * OVERAGE_GRACE_FACTOR)
             - ProxyService.forward_tool_call is mocked: it must NOT be called
         """
-        from httpx import AsyncClient, ASGITransport
+        from httpx import ASGITransport, AsyncClient
+
+        from app.core.dependencies import get_current_agent, get_db, get_redis
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
 
         org_id = uuid.uuid4()
         org = _make_org(plan_tier="free", org_id=org_id)
         mock_agent, raw_key = _make_mock_agent(org_id=org_id)
 
         # Pre-load the quota cache key so Redis returns over-limit usage
-        from datetime import datetime, timezone
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         month_key = now.strftime("%Y-%m")
         cache_key = f"quota:{org_id}:tool_calls:{month_key}"
-        await fake_redis.set(cache_key, b"1050")  # at effective limit (1000 * 1.05)
+        # Derive from the source of truth: the free limit has changed before
+        # (1,000 → 5,000), and a hardcoded 1050 silently stopped hitting it.
+        from app.services.plan.plan_limits import OVERAGE_GRACE_FACTOR, PLAN_LIMITS
+
+        effective_limit = int(PLAN_LIMITS["free"]["max_tool_calls_mo"] * OVERAGE_GRACE_FACTOR)
+        await fake_redis.set(cache_key, str(effective_limit).encode())
 
         db = AsyncMock()
         db.get = AsyncMock(return_value=org)  # db.get(Organization, agent.org_id) → org
@@ -87,8 +109,10 @@ class TestProxyQuotaEnforcement:
         proxy_called = []
 
         async def mock_forward(self, request, agent):
+            await _replay_quota_step(self, agent)
             proxy_called.append(True)
             from app.schemas.proxy import ToolCallResponse
+
             return ToolCallResponse(
                 session_id=uuid.uuid4(),
                 event_id=uuid.uuid4(),
@@ -120,9 +144,9 @@ class TestProxyQuotaEnforcement:
         assert resp.status_code == 429, (
             f"Expected HTTP 429 for over-quota org, got {resp.status_code}: {resp.text}"
         )
-        # ProxyService must NOT have been invoked: quota guard fires first
+        # The upstream forward must NOT be reached: the quota guard fires first
         assert len(proxy_called) == 0, (
-            "ProxyService.forward_tool_call was called despite org being over quota"
+            "Tool call was forwarded upstream despite org being over quota"
         )
 
     @pytest.mark.asyncio
@@ -131,9 +155,10 @@ class TestProxyQuotaEnforcement:
         Enterprise org has unlimited quota (None limit).
         Even with absurdly high usage in Redis, it must pass through to ProxyService.
         """
-        from httpx import AsyncClient, ASGITransport
+        from httpx import ASGITransport, AsyncClient
+
+        from app.core.dependencies import get_current_agent, get_db, get_redis
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
         from app.schemas.proxy import ToolCallResponse
 
         org_id = uuid.uuid4()
@@ -141,8 +166,7 @@ class TestProxyQuotaEnforcement:
         mock_agent, raw_key = _make_mock_agent(org_id=org_id)
 
         # Put absurdly high usage in Redis: enterprise should ignore it
-        from datetime import datetime, timezone
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         month_key = now.strftime("%Y-%m")
         cache_key = f"quota:{org_id}:tool_calls:{month_key}"
         await fake_redis.set(cache_key, b"99999999")
@@ -168,6 +192,7 @@ class TestProxyQuotaEnforcement:
         session_id = uuid.uuid4()
 
         async def mock_forward(self, request, agent):
+            await _replay_quota_step(self, agent)
             proxy_call_count[0] += 1
             return ToolCallResponse(
                 session_id=session_id,
@@ -209,17 +234,17 @@ class TestProxyQuotaEnforcement:
         """
         Org with usage well under its limit must reach ProxyService normally.
         """
-        from httpx import AsyncClient, ASGITransport
+        from httpx import ASGITransport, AsyncClient
+
+        from app.core.dependencies import get_current_agent, get_db, get_redis
         from app.main import app
-        from app.core.dependencies import get_db, get_redis, get_current_agent
         from app.schemas.proxy import ToolCallResponse
 
         org_id = uuid.uuid4()
         org = _make_org(plan_tier="pro", org_id=org_id)  # limit = 100_000
         mock_agent, raw_key = _make_mock_agent(org_id=org_id)
 
-        from datetime import datetime, timezone
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         month_key = now.strftime("%Y-%m")
         cache_key = f"quota:{org_id}:tool_calls:{month_key}"
         await fake_redis.set(cache_key, b"500")  # 500 << 100_000
@@ -245,6 +270,7 @@ class TestProxyQuotaEnforcement:
         proxy_called = [False]
 
         async def mock_forward(self, request, agent):
+            await _replay_quota_step(self, agent)
             proxy_called[0] = True
             return ToolCallResponse(
                 session_id=session_id,

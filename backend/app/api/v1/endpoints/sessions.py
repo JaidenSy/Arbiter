@@ -287,7 +287,7 @@ async def get_session(
 
     session_data = SessionResponse.model_validate(session)
     enriched_events: list[SessionEventResponse] = []
-    for event, schema_event in zip(session.events, session_data.events):
+    for event, schema_event in zip(session.events, session_data.events, strict=True):
         schema_event.mcp_server_name = server_map.get(event.mcp_server_id)
         enriched_events.append(schema_event)
     session_data.events = enriched_events

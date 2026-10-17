@@ -8,7 +8,7 @@ Routes:
     GET    /mcp-servers              : list all active MCP servers
     GET    /mcp-servers/{id}         : get a single server
     PATCH  /mcp-servers/{id}         : update name, url, description, or cache_enabled
-    DELETE /mcp-servers/{id}         : soft-delete
+    DELETE /mcp-servers/{id}         : hard delete (disable via PATCH is_active)
     POST   /mcp-servers/{id}/test    : test connectivity
     GET    /mcp-servers/{id}/tools   : discover available tools
 """
@@ -316,7 +316,7 @@ async def list_mcp_servers(
     current_user: User = Depends(get_current_user),
 ) -> Page[MCPServerResponse]:
     """
-    Return a paginated list of active MCP servers.
+    Return a paginated list of MCP servers (active and disabled).
 
     Args:
         skip:     Number of records to skip (offset).
@@ -325,7 +325,7 @@ async def list_mcp_servers(
         _current: Auth guard.
 
     Returns:
-        Page[MCPServerResponse]: Active servers ordered by created_at DESC.
+        Page[MCPServerResponse]: Active servers first, then by created_at DESC.
     """
     limit = min(limit, 200)
     total = (
@@ -478,9 +478,10 @@ async def delete_mcp_server(
     current_user: User = Depends(require_role("owner", "admin")),
 ) -> Response:
     """
-    Soft-delete an MCP server by setting is_active=False.
+    Permanently delete an MCP server (disable it with PATCH is_active=false).
 
-    Historical sessions and events referencing this server are preserved.
+    Historical session events keep their rows (the FK is ON DELETE SET NULL);
+    tool permissions for the server cascade-delete.
 
     Args:
         server_id: UUID of the MCP server to deactivate.

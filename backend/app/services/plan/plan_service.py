@@ -15,7 +15,7 @@ responses with the canonical JSON shape.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -103,7 +103,7 @@ async def check_tool_call_quota(
     if limit is None:
         return  # enterprise = unlimited
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     month_key = now.strftime("%Y-%m")
     cache_key = f"quota:{org.id}:tool_calls:{month_key}"
 

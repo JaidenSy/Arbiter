@@ -268,7 +268,7 @@ class TestAuditExportFormatValidation:
             app.dependency_overrides.clear()
 
         assert resp.status_code == 200
-        lines = [l for l in resp.text.strip().splitlines() if l]
+        lines = [ln for ln in resp.text.strip().splitlines() if ln]
         assert len(lines) == 2
         for line in lines:
             obj = json.loads(line)

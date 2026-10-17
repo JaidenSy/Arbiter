@@ -14,15 +14,15 @@ RISK-4 (JWT TTL):
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone, timedelta
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # RISK-4: JWT TTL ≤ 60 minutes
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestJwtTtl:
     def test_config_ttl_is_at_most_60_minutes(self):
@@ -43,10 +43,11 @@ class TestJwtTtl:
         of now (extra minute for test execution tolerance).
         """
         import jwt as pyjwt
+
         from app.core.config import settings
         from app.core.security import create_access_token
 
-        before = datetime.now(tz=timezone.utc)
+        before = datetime.now(tz=UTC)
         token = create_access_token(
             user_id=uuid.uuid4(),
             org_id=uuid.uuid4(),
@@ -57,18 +58,18 @@ class TestJwtTtl:
             settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm],
         )
-        exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+        exp = datetime.fromtimestamp(payload["exp"], tz=UTC)
         delta = exp - before
 
         assert delta <= timedelta(minutes=61), (
-            f"RISK-4: token exp is {delta.total_seconds() / 60:.1f} min from now: "
-            "must be ≤ 61 min"
+            f"RISK-4: token exp is {delta.total_seconds() / 60:.1f} min from now: must be ≤ 61 min"
         )
         assert delta > timedelta(minutes=0), "Token is already expired"
 
     def test_access_token_type_claim(self):
         """Token type claim must be 'access' so decode_access_token() accepts it."""
         import jwt as pyjwt
+
         from app.core.config import settings
         from app.core.security import create_access_token
 
@@ -88,6 +89,7 @@ class TestJwtTtl:
 # ─────────────────────────────────────────────────────────────────────────────
 # RISK-2: _persist_event() writes to usage_events
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _make_session(org_id: uuid.UUID | None = None) -> MagicMock:
     session = MagicMock()
@@ -130,16 +132,18 @@ class TestPersistEventUsageUpsert:
         """
         db, redis = _make_proxy_service_mocks()
 
-        with patch("app.services.proxy.proxy_service.SessionEvent") as mock_se, \
-             patch("app.services.proxy.proxy_service.pg_insert") as mock_pg_insert:
+        with (
+            patch("app.services.proxy.proxy_service.SessionEvent") as mock_se,
+            patch("app.services.proxy.proxy_service.pg_insert") as mock_pg_insert,
+        ):
             mock_se.return_value = MagicMock()
             mock_stmt = MagicMock()
             mock_pg_insert.return_value.values.return_value.on_conflict_do_update.return_value = (
                 mock_stmt
             )
 
-            from app.services.proxy.proxy_service import ProxyService
             from app.db.models.usage_event import UsageEvent
+            from app.services.proxy.proxy_service import ProxyService
 
             svc = ProxyService(db=db, redis=redis)
             session = _make_session()
@@ -174,8 +178,10 @@ class TestPersistEventUsageUpsert:
         """cache_hit=True must set cache_hits=1 in the insert values."""
         db, redis = _make_proxy_service_mocks()
 
-        with patch("app.services.proxy.proxy_service.SessionEvent") as mock_se, \
-             patch("app.services.proxy.proxy_service.pg_insert") as mock_pg_insert:
+        with (
+            patch("app.services.proxy.proxy_service.SessionEvent") as mock_se,
+            patch("app.services.proxy.proxy_service.pg_insert") as mock_pg_insert,
+        ):
             mock_se.return_value = MagicMock()
             mock_stmt = MagicMock()
             mock_pg_insert.return_value.values.return_value.on_conflict_do_update.return_value = (
@@ -209,8 +215,10 @@ class TestPersistEventUsageUpsert:
         """cache_hit=False must set cache_hits=0 in the insert values."""
         db, redis = _make_proxy_service_mocks()
 
-        with patch("app.services.proxy.proxy_service.SessionEvent") as mock_se, \
-             patch("app.services.proxy.proxy_service.pg_insert") as mock_pg_insert:
+        with (
+            patch("app.services.proxy.proxy_service.SessionEvent") as mock_se,
+            patch("app.services.proxy.proxy_service.pg_insert") as mock_pg_insert,
+        ):
             mock_se.return_value = MagicMock()
             mock_stmt = MagicMock()
             mock_pg_insert.return_value.values.return_value.on_conflict_do_update.return_value = (
@@ -247,8 +255,10 @@ class TestPersistEventUsageUpsert:
         """
         db, redis = _make_proxy_service_mocks()
 
-        with patch("app.services.proxy.proxy_service.SessionEvent") as mock_se, \
-             patch("app.services.proxy.proxy_service.pg_insert") as mock_pg_insert:
+        with (
+            patch("app.services.proxy.proxy_service.SessionEvent") as mock_se,
+            patch("app.services.proxy.proxy_service.pg_insert") as mock_pg_insert,
+        ):
             mock_se.return_value = MagicMock()
             mock_values = MagicMock()
             mock_pg_insert.return_value.values.return_value = mock_values

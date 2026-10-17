@@ -40,6 +40,17 @@ def _make_vault_secret(
     return s
 
 
+def _membership(role: str) -> MagicMock:
+    """OrgMembership stand-in.
+
+    GET /vault/secrets reads the caller's role via org_service.get_membership,
+    which is a plain ``db.scalar(...)`` call, so tests feed it through db.scalar.
+    """
+    m = MagicMock()
+    m.role = role
+    return m
+
+
 def _make_authed_db(secret_obj=None, scalars_list=None):
     """
     Build a mock DB where:
@@ -167,7 +178,7 @@ class TestListSecrets:
             return result
 
         db.execute = execute
-        db.scalar = AsyncMock(return_value=1)
+        db.scalar = AsyncMock(return_value=_membership("owner"))
 
         async def override_get_db():
             yield db
@@ -197,6 +208,7 @@ class TestListSecrets:
         from app.main import app
 
         db = _make_authed_db(scalars_list=[])
+        db.scalar = AsyncMock(return_value=_membership("owner"))
 
         async def override_get_db():
             yield db
@@ -483,7 +495,9 @@ class TestCrossAgentIsolation:
             return result
 
         db.execute = execute
-        db.scalar = AsyncMock(return_value=0)
+        # Caller is a plain member who owns no agents: the member-scoping path
+        # (get_agent_ids_by_owner → []) must return nothing.
+        db.scalar = AsyncMock(return_value=_membership("member"))
 
         async def override_get_db():
             yield db
@@ -674,7 +688,6 @@ class TestRoleBasedSecretEnumeration:
 
         # Member owns agent_a; agent_b belongs to another user.
         member_agent_id = uuid.UUID("aaaaaaaa-0000-0000-0000-000000000001")
-        other_agent_id = uuid.UUID("bbbbbbbb-0000-0000-0000-000000000002")
         member_secret = _make_vault_secret(uuid.uuid4(), "MY_OWN_TOKEN", member_agent_id)
         # other_secret is NOT returned: filtered out by vault_service
 

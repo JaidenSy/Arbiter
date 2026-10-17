@@ -1,0 +1,17 @@
+# Backend dev / CI dependencies. CI installs exactly this file, so a local
+# `pip install -r requirements-dev.txt` matches what GitHub Actions runs.
+#
+# sentence-transformers pulls torch; use the CPU-only wheel index to avoid
+# ~2.5 GB of CUDA libraries:
+#   uv pip install -r requirements-dev.txt \
+#     --extra-index-url https://download.pytorch.org/whl/cpu \
+#     --index-strategy unsafe-best-match
+-r requirements.txt
+
+# ── Test doubles / coverage ───────────────────────────────────────────────────
+fakeredis==2.40.0
+pytest-cov==7.1.0
+
+# ── Lint / type check (CI reads the ruff pin from this line) ──────────────────
+ruff==0.17.0
+mypy==2.4.0
