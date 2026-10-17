@@ -1,0 +1,65 @@
+# Dev container stack. Reuses the postgres (pgvector pg16) and redis (7) services
+# from the root docker-compose.yml through `extends`, so the database and cache
+# images never drift from what self-hosters run. Only the credentials are
+# overridden with fixed, dev-only values, so the stack starts with no .env file
+# (Codespaces, CI). The services live in their own compose project with their
+# own volumes, so they never touch a self-host `docker compose up` stack.
+services:
+  workspace:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/arbiter:cached
+      # Claude Code state (auth, settings, sessions). CLAUDE_CONFIG_DIR points here.
+      - claude-config:/home/dev/.claude
+      # Linux node_modules kept off the bind mount (fast on macOS/Windows hosts,
+      # and never mixed with a host-side install).
+      - frontend-node-modules:/workspaces/arbiter/frontend/node_modules
+    # Needed only by the opt-in egress firewall (init-firewall.sh). They apply
+    # to the container's own network namespace, not the host.
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      # Non-secret wiring to the sibling services. Secrets (VAULT_ENCRYPTION_KEY,
+      # APP_SECRET_KEY, JWT_SECRET_KEY) come from Codespaces secrets / the
+      # environment, or from backend/.env, which post-create.sh generates with
+      # random values when it does not exist.
+      APP_ENV: development
+      DATABASE_URL: postgresql+asyncpg://arbiter:arbiter_dev@postgres:5432/arbiter
+      REDIS_URL: redis://:arbiter_dev@redis:6379/0
+      # Opt-in egress lockdown. Set on the host before opening the container.
+      ARBITER_DEVCONTAINER_FIREWALL: ${ARBITER_DEVCONTAINER_FIREWALL:-0}
+      ARBITER_FIREWALL_EXTRA_DOMAINS: ${ARBITER_FIREWALL_EXTRA_DOMAINS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    extends:
+      file: ../docker-compose.yml
+      service: postgres
+    environment:
+      POSTGRES_DB: arbiter
+      POSTGRES_USER: arbiter
+      POSTGRES_PASSWORD: arbiter_dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arbiter -d arbiter"]
+
+  redis:
+    extends:
+      file: ../docker-compose.yml
+      service: redis
+    command: redis-server --requirepass arbiter_dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "arbiter_dev", "ping"]
+
+volumes:
+  postgres_data:
+  redis_data:
+  claude-config:
+  frontend-node-modules:

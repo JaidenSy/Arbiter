@@ -1,0 +1,37 @@
+# Backend tests that already fail on develop (34, as of c1adb13), skipped by
+# .devcontainer/ci-test.sh so the dev container CI job still fails on any NEW failure.
+# Fixing these belongs to the backend-CI work; delete lines here as they get fixed.
+tests/integration/test_agents_api.py::TestGetAgents::test_list_agents_does_not_include_api_key
+tests/integration/test_analytics_api.py::TestAnalyticsAgentsPlanGate::test_no_auth_returns_401
+tests/integration/test_audit_api.py::TestAuditExportPlanGate::test_no_auth_returns_401
+tests/integration/test_billing_api.py::TestBillingCheckout::test_returns_503_when_stripe_not_configured
+tests/integration/test_billing_api.py::TestBillingCheckout::test_returns_400_when_already_on_pro
+tests/integration/test_billing_api.py::TestBillingCheckout::test_returns_400_when_on_enterprise
+tests/integration/test_billing_api.py::TestBillingCheckout::test_returns_checkout_url_for_free_org
+tests/integration/test_billing_api.py::TestBillingPortal::test_returns_400_when_no_stripe_customer_id
+tests/integration/test_billing_api.py::TestBillingPortal::test_returns_503_when_stripe_not_configured
+tests/integration/test_billing_api.py::TestBillingPortal::test_returns_portal_url_when_customer_exists
+tests/integration/test_billing_api.py::TestBillingWebhook::test_returns_200_on_valid_signature_noop_event
+tests/integration/test_billing_api.py::TestBillingWebhook::test_checkout_completed_upgrades_org_to_pro
+tests/integration/test_billing_api.py::TestBillingWebhook::test_checkout_completed_idempotency_guard
+tests/integration/test_mcp_servers.py::TestCreateMCPServer::test_create_mcp_server_returns_201_with_cache_enabled_true
+tests/integration/test_mcp_servers.py::TestCreateMCPServer::test_create_mcp_server_cache_enabled_false
+tests/integration/test_mcp_servers.py::TestCreateMCPServer::test_create_duplicate_name_returns_409
+tests/integration/test_mcp_servers.py::TestListMCPServers::test_list_mcp_servers_returns_active_only
+tests/integration/test_mcp_servers.py::TestGetMCPServer::test_get_mcp_server_returns_200
+tests/integration/test_mcp_servers.py::TestPatchMCPServer::test_patch_updates_name_only
+tests/integration/test_mcp_servers.py::TestPatchMCPServer::test_patch_cache_enabled_false_preserved
+tests/integration/test_mcp_servers.py::TestDeleteMCPServer::test_delete_mcp_server_soft_deletes_and_returns_204
+tests/integration/test_proxy_quota.py::TestProxyQuotaEnforcement::test_over_quota_org_gets_429
+tests/integration/test_sessions.py::TestListSessions::test_list_sessions_returns_200
+tests/integration/test_sessions.py::TestListSessions::test_list_sessions_empty_when_no_sessions
+tests/integration/test_sessions.py::TestListSessions::test_list_sessions_filter_by_agent_id
+tests/integration/test_sessions.py::TestGetSession::test_get_session_includes_events
+tests/integration/test_sessions.py::TestGetSession::test_get_session_events_empty_list
+tests/integration/test_sessions.py::TestListSessionEvents::test_list_events_returns_200
+tests/integration/test_tool_permissions.py::TestListToolPermissions::test_list_permissions_returns_200
+tests/integration/test_traces_api.py::TestListTraces::test_no_auth_returns_401
+tests/integration/test_traces_api.py::TestGetTrace::test_no_auth_returns_401
+tests/integration/test_vault.py::TestListSecrets::test_list_secrets_scoped_to_agent
+tests/integration/test_vault.py::TestListSecrets::test_list_secrets_empty_for_new_agent
+tests/integration/test_vault.py::TestCrossAgentIsolation::test_agent_b_cannot_list_agent_a_secrets

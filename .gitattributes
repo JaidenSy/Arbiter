@@ -1,0 +1,4 @@
+# Shell scripts and dev container files are bind-mounted into Linux containers;
+# keep them LF even on Windows checkouts (core.autocrlf=true).
+*.sh text eol=lf
+.devcontainer/** text eol=lf

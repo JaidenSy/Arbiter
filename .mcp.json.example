@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "arbiter-local": {
+      "type": "http",
+      "url": "${ARBITER_MCP_URL:-http://localhost:8000/mcp}",
+      "headers": {
+        "Authorization": "Bearer ${ARBITER_AGENT_KEY}"
+      }
+    }
+  }
+}
