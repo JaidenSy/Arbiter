@@ -104,6 +104,15 @@ class Settings(BaseSettings):
     # one-flip rollback.
     account_billing_enabled: bool = False
 
+    # ── OpenTelemetry tracing (opt-in; see app/core/telemetry.py) ─────────────
+    # Off by default. When true AND an OTEL_EXPORTER_OTLP_ENDPOINT is set (and
+    # OTEL_SDK_DISABLED is not true), spans are exported via OTLP/HTTP. The
+    # standard OTEL_* env vars (service name, endpoint, headers) are read by
+    # the OTel SDK directly, not through this class.
+    otel_enabled: bool = False
+    # Opt-in per the GenAI semconv: record tool arguments/results on spans.
+    otel_capture_tool_content: bool = False
+
     # ── OAuth2 Social Login ────────────────────────────────────────────────────
     google_client_id: str = ""
     google_client_secret: str = ""
