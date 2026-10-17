@@ -16,11 +16,13 @@ from __future__ import annotations
 import uuid as _uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from opentelemetry.trace import SpanKind
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_agent, get_db, get_redis, require_org_verified
+from app.core.telemetry import extract_mcp_context, get_tracer
 from app.db.models.agent import Agent
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.services.proxy.proxy_service import ProxyService
@@ -37,6 +39,7 @@ router = APIRouter(prefix="/proxy", tags=["proxy"])
 )
 async def tool_call(
     body: ToolCallRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     redis: object = Depends(get_redis),
     agent: Agent = Depends(get_current_agent),
@@ -63,7 +66,26 @@ async def tool_call(
             pass
 
     service = ProxyService(db=db, redis=redis)
-    return await service.forward_tool_call(request=body, agent=agent)
+    # REST entry point gets its own SERVER span (parented on an inbound HTTP
+    # traceparent, if any) so the pipeline-stage spans share one trace.
+    tool = f"{body.server_name}__{body.tool_name}"
+    parent_ctx, _ = extract_mcp_context(None, request.headers)
+    with get_tracer().start_as_current_span(
+        f"execute_tool {tool}",
+        context=parent_ctx,
+        kind=SpanKind.SERVER,
+        attributes={"gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": tool},
+    ) as span:
+        try:
+            response = await service.forward_tool_call(request=body, agent=agent)
+        except HTTPException as exc:
+            span.set_attribute("error.type", str(exc.status_code))
+            raise
+        except Exception as exc:
+            span.set_attribute("error.type", type(exc).__qualname__)
+            raise
+        span.set_attribute("arbiter.cache_hit", response.cache_hit)
+        return response
 
 
 class ToolsListRequest(BaseModel):
