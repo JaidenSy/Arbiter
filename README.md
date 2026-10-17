@@ -67,6 +67,8 @@ Arbiter is an MCP gateway that sits between your AI agents and your MCP servers.
 
 Works with Claude Code, Claude Desktop, Cursor, VS Code — anything that speaks MCP. All your registered MCP servers appear as one connection, tools namespaced as `server__tool`. Every tool is advertised; RBAC is enforced at call time, so a denied call returns a spec-compliant `isError` result and lands in the audit log. See [docs/mcp-endpoint.md](./docs/mcp-endpoint.md).
 
+**Tracing (optional).** Set `OTEL_ENABLED=true` and `OTEL_EXPORTER_OTLP_ENDPOINT`, and every MCP request becomes an OpenTelemetry trace. The trace follows the GenAI/MCP semantic conventions and has one span per pipeline stage (RBAC, rate limit, cache, vault, upstream call). Claude Code's own traces chain into it through `traceparent`. Works with Jaeger, Honeycomb, Grafana and anything else that accepts OTLP. See [docs/observability.md](./docs/observability.md).
+
 ### Self-hosted
 
 ```bash
