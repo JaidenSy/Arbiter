@@ -31,6 +31,7 @@ The API is available at `http://localhost:8000` and the dashboard at `http://loc
 | [mcp-servers.md](./mcp-servers.md) | How to register MCP servers |
 | [vault.md](./vault.md) | How the secrets vault works and how to use it |
 | [rbac.md](./rbac.md) | Access control: granting and revoking tool permissions |
+| [devcontainer.md](./devcontainer.md) | Contributor dev container: one environment for VS Code, Codespaces, CI and coding agents |
 
 ## Pitch docs
 

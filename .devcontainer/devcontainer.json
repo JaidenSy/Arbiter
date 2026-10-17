@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
+  "name": "Arbiter",
+
+  // One environment for VS Code / Codespaces, CI (.github/workflows/devcontainer-ci.yml)
+  // and coding agents. See docs/devcontainer.md.
+  "dockerComposeFile": ["docker-compose.yml"],
+  "service": "workspace",
+  "runServices": ["workspace", "postgres", "redis"],
+  "workspaceFolder": "/workspaces/arbiter",
+  "shutdownAction": "stopCompose",
+
+  // Non-root. Claude Code refuses --dangerously-skip-permissions as root, and
+  // nothing here needs root at runtime (init-firewall.sh gets a narrow sudo rule).
+  "remoteUser": "dev",
+  "updateRemoteUserUID": true,
+
+  // Features come from OCI registries and are pinned by devcontainer-lock.json.
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "2.102.0"
+    }
+  },
+
+  // Declarative secrets: Codespaces prompts for these; locally, export them on the
+  // host or let post-create.sh generate dev-only values in backend/.env.
+  "secrets": {
+    "ANTHROPIC_API_KEY": {
+      "description": "Anthropic API key for Claude Code inside the container (or sign in with `claude` instead).",
+      "documentationUrl": "https://code.claude.com/docs/en/devcontainer"
+    },
+    "VAULT_ENCRYPTION_KEY": {
+      "description": "64 hex chars (AES-256) for the Arbiter secrets vault. Generate with: python -c \"import secrets; print(secrets.token_hex(32))\". Optional in dev: a random one is generated into backend/.env.",
+      "documentationUrl": "https://github.com/JaidenSy/Arbiter/blob/develop/docs/vault.md"
+    },
+    "APP_SECRET_KEY": {
+      "description": "Application secret, at least 32 random characters. Optional in dev: generated into backend/.env.",
+      "documentationUrl": "https://github.com/JaidenSy/Arbiter/blob/develop/docs/self-hosting.md"
+    },
+    "JWT_SECRET_KEY": {
+      "description": "Signing key for access/refresh tokens, at least 32 random characters. Optional in dev: generated into backend/.env.",
+      "documentationUrl": "https://github.com/JaidenSy/Arbiter/blob/develop/docs/self-hosting.md"
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+  // Tools (and agents) attach only after migrations and the optional firewall ran.
+  "waitFor": "postStartCommand",
+
+  "forwardPorts": [8000, 5173],
+  "portsAttributes": {
+    "8000": { "label": "API (uvicorn)" },
+    "5173": { "label": "Frontend (vite)" }
+  },
+
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "dbaeumer.vscode-eslint"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/home/dev/.venv/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.cwd": "${containerWorkspaceFolder}/backend",
+        "python.testing.pytestArgs": ["tests"]
+      }
+    }
+  }
+}
