@@ -29,6 +29,7 @@ select = [
 ignore = [
     "E501",  # line too long, handled by formatter
     "B008",  # do not perform function calls in default arguments (FastAPI Depends pattern)
+    "UP042", # (str, Enum) -> StrEnum changes str()/format() output; not a safe mechanical rewrite
 ]
 
 [tool.ruff.lint.isort]
@@ -40,6 +41,9 @@ strict = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
 exclude = ["alembic/", "tests/"]
+# app/ has no __init__.py files (namespace packages); without this mypy stops at
+# "Duplicate module named 'cache'" (app/db/models/cache.py vs endpoints/cache.py).
+explicit_package_bases = true
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
@@ -48,6 +52,17 @@ warn_required_dynamic_aliases = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+omit = ["app/db/migrations/*"]
+
+[tool.coverage.report]
+skip_empty = true
+# Ratchet: 62% at the time CI was added. Raise it as coverage grows; never lower it.
+fail_under = 60
