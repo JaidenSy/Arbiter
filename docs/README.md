@@ -26,6 +26,7 @@ The API is available at `http://localhost:8000` and the dashboard at `http://loc
 |-----|-------------|
 | [mcp-endpoint.md](./mcp-endpoint.md) | Connect any MCP client (Claude Code, Cursor, ...) with one URL |
 | [self-hosting.md](./self-hosting.md) | Full setup guide, all environment variables, upgrade instructions |
+| [observability.md](./observability.md) | Opt-in OpenTelemetry tracing (Jaeger, Honeycomb, Grafana) and chaining Claude Code traces through the gateway |
 | [api-reference.md](./api-reference.md) | Every endpoint with request/response schemas and curl examples |
 | [agent-integration.md](./agent-integration.md) | How to connect an AI agent to the gateway |
 | [mcp-servers.md](./mcp-servers.md) | How to register MCP servers |

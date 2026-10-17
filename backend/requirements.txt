@@ -37,6 +37,11 @@ stripe==10.12.0
 # ── Structured Logging ────────────────────────────────────────────────────────
 python-json-logger==2.0.7
 
+# ── Observability (OpenTelemetry tracing, opt-in via OTEL_ENABLED) ────────────
+opentelemetry-api==1.45.1
+opentelemetry-sdk==1.45.1
+opentelemetry-exporter-otlp-proto-http==1.45.1
+
 # ── pgvector (semantic cache ANN search) ──────────────────────────────────────
 pgvector==0.3.5
 

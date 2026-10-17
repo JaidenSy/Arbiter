@@ -42,6 +42,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
+from opentelemetry import trace
+from opentelemetry.trace import Span, SpanKind, StatusCode
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -52,6 +54,12 @@ from app.core.dependencies import (
     get_redis,
     require_org_verified,
     resolve_agent_by_api_key,
+)
+from app.core.telemetry import (
+    current_trace_id_hex,
+    extract_mcp_context,
+    get_tracer,
+    set_content_attribute,
 )
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
@@ -119,6 +127,73 @@ def _tool_error_result(req_id: Any, message: str) -> dict:
         req_id,
         {"content": [{"type": "text", "text": message}], "isError": True},
     )
+
+
+def _span_name(method: str, params: Any) -> str:
+    """``{mcp.method.name} {target}``; target is the tool name for tools/call."""
+    if method == "tools/call" and isinstance(params, dict):
+        name = params.get("name")
+        if isinstance(name, str) and name:
+            return f"{method} {name}"
+    return method
+
+
+def _set_request_attributes(
+    span: Span, request: Request, method: str, req_id: Any, params: Any
+) -> None:
+    """Request-side MCP semconv attributes. Never records headers or secrets."""
+    span.set_attribute("mcp.method.name", method)
+    span.set_attribute("network.transport", "tcp")
+    span.set_attribute("network.protocol.name", "http")
+    if req_id is not None:
+        span.set_attribute("jsonrpc.request.id", str(req_id))
+    protocol_version = request.headers.get("MCP-Protocol-Version")
+    if not protocol_version and method == "initialize" and isinstance(params, dict):
+        protocol_version = params.get("protocolVersion")
+    if isinstance(protocol_version, str) and protocol_version:
+        span.set_attribute("mcp.protocol.version", protocol_version)
+    mcp_session = request.headers.get("Mcp-Session-Id")
+    if mcp_session:
+        span.set_attribute("mcp.session.id", mcp_session)
+    if method == "tools/call" and isinstance(params, dict):
+        span.set_attribute("gen_ai.operation.name", "execute_tool")
+        name = params.get("name")
+        if isinstance(name, str) and name:
+            span.set_attribute("gen_ai.tool.name", name)
+        # Opt-in only (OTEL_CAPTURE_TOOL_CONTENT): the client's raw arguments,
+        # with vault placeholders unresolved.
+        set_content_attribute(span, "gen_ai.tool.call.arguments", params.get("arguments"))
+
+
+def _record_outcome(span: Span, method: str, response: Response) -> None:
+    """Set error.type / rpc.response.status_code / Arbiter attrs from the response."""
+    try:
+        payload = json.loads(bytes(response.body)) if response.body else None
+    except (ValueError, TypeError):
+        return
+    if not isinstance(payload, dict):
+        return
+    error = payload.get("error")
+    if isinstance(error, dict) and "code" in error:
+        code = str(error["code"])
+        span.set_attribute("rpc.response.status_code", code)
+        span.set_attribute("error.type", code)
+        span.set_status(StatusCode.ERROR, str(error.get("message", ""))[:200])
+        return
+    result = payload.get("result")
+    if not isinstance(result, dict):
+        return
+    if result.get("isError") is True:
+        span.set_attribute("error.type", "tool_error")
+        span.set_status(StatusCode.ERROR)
+    arbiter_meta = (result.get("_meta") or {}).get("arbiter")
+    if isinstance(arbiter_meta, dict):
+        span.set_attribute("arbiter.cache_hit", bool(arbiter_meta.get("cache_hit")))
+        for key in ("session_id", "event_id"):
+            if arbiter_meta.get(key):
+                span.set_attribute(f"arbiter.{key}", str(arbiter_meta[key]))
+    if method == "tools/call" and result.get("isError") is not True:
+        set_content_attribute(span, "gen_ai.tool.call.result", result.get("content"))
 
 
 def _session_id_from_header(request: Request) -> _uuid.UUID | None:
@@ -203,6 +278,41 @@ async def _handle_mcp_request(
     req_id = body.get("id")
     params: dict[str, Any] = body.get("params") or {}
 
+    # One SERVER span per MCP message (OTel MCP semconv). Parent comes from
+    # params._meta, falling back to the HTTP traceparent header; a no-op span
+    # when tracing is disabled.
+    parent_ctx, links = extract_mcp_context(
+        params.get("_meta") if isinstance(params, dict) else None, request.headers
+    )
+    with get_tracer().start_as_current_span(
+        _span_name(method, params),
+        context=parent_ctx,
+        kind=SpanKind.SERVER,
+        links=links,
+    ) as span:
+        if span.is_recording():
+            _set_request_attributes(span, request, method, req_id, params)
+        try:
+            response = await _dispatch_mcp(request, method, req_id, params, agent, db, redis)
+        except HTTPException as exc:
+            if span.is_recording():
+                span.set_attribute("error.type", str(exc.status_code))
+            raise
+        if span.is_recording():
+            _record_outcome(span, method, response)
+        return response
+
+
+async def _dispatch_mcp(
+    request: Request,
+    method: str,
+    req_id: Any,
+    params: dict[str, Any],
+    agent: Agent,
+    db: AsyncSession,
+    redis: Any,
+) -> Response:
+    """Dispatch one parsed JSON-RPC message to its handler."""
     # Per JSON-RPC 2.0, a message without an id is a notification: acknowledge
     # with 202 and no body. An id-bearing "notifications/*" message is a
     # malformed request and falls through to method-not-found below.
@@ -223,10 +333,11 @@ async def _handle_mcp_request(
             return await _handle_tools_call(req_id, params, agent, service, mcp_session_id)
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
         # Never leak a bare HTTP 500 to an MCP client: surface a JSON-RPC
         # internal error so the client can show something actionable.
         logger.exception("mcp: unhandled error processing %r", method)
+        trace.get_current_span().record_exception(exc)
         return JSONResponse(_rpc_error(req_id, _INTERNAL_ERROR, "Internal error"))
 
     return JSONResponse(_rpc_error(req_id, _METHOD_NOT_FOUND, f"Method not found: {method!r}"))
@@ -434,6 +545,9 @@ async def _handle_tools_call(
         "cache_hit": proxied.cache_hit,
         "duration_ms": proxied.duration_ms,
     }
+    otel_trace_id = current_trace_id_hex()
+    if otel_trace_id is not None:
+        meta["arbiter"]["trace_id"] = otel_trace_id
     result["_meta"] = meta
 
     return JSONResponse(

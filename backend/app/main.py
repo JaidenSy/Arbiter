@@ -50,6 +50,7 @@ from app.api.v1.endpoints import (
 )
 from app.core.config import settings
 from app.core.request_utils import get_client_ip
+from app.core.telemetry import configure_telemetry, shutdown_telemetry
 from app.db.base import async_session_factory, engine
 from app.db.models.cache import CacheEntry
 from app.db.models.cli_device_code import CliDeviceCode
@@ -206,6 +207,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ── Startup ───────────────────────────────────────────────────────────────
     logger.info("arbiter: starting up")
 
+    # OpenTelemetry tracing: no-op unless OTEL_ENABLED + an OTLP endpoint are set.
+    configure_telemetry(settings.otel_enabled, settings.otel_capture_tool_content)
+
     # Redis
     redis_client = aioredis.from_url(
         settings.redis_url,
@@ -272,6 +276,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("arbiter: shutting down")
     await redis_client.aclose()
     await engine.dispose()
+    shutdown_telemetry()
     logger.info("arbiter: shutdown complete")
 
 

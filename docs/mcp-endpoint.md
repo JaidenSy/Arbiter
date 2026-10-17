@@ -110,11 +110,17 @@ Successful `tools/call` results carry gateway metadata under the spec's `_meta` 
       "session_id": "9be2...",
       "event_id": "77f0...",
       "cache_hit": true,
-      "duration_ms": 3
+      "duration_ms": 3,
+      "trace_id": "4bf9..."
     }
   }
 }
 ```
+
+`trace_id` is present only when OpenTelemetry tracing is enabled. It is the
+trace that served the call. The endpoint also accepts W3C trace context in
+`params._meta` or the `traceparent` header. See
+[observability.md](./observability.md).
 
 ## When to use the REST proxy instead
 

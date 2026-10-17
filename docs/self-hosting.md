@@ -54,6 +54,9 @@ Edit `.env` and fill in every `CHANGE_ME` value:
 | `CACHE_SIMILARITY_THRESHOLD` | No | Cosine similarity threshold (0–1) for L3 cache hits. Default: `0.95`. Lower = more aggressive caching, higher = stricter matching. |
 | `CACHE_TTL_SECONDS` | No | How long cache entries live before expiry. Default: `3600` (1 hour) |
 | `CORS_ORIGINS` | No | Comma-separated list of allowed CORS origins for the dashboard. Default: `http://localhost:3000,http://localhost:5173` |
+| `OTEL_ENABLED` | No | Set `true` to export OpenTelemetry traces. You also need `OTEL_EXPORTER_OTLP_ENDPOINT`. Default: `false`. See [observability.md](./observability.md) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | OTLP/HTTP collector URL, e.g. `http://jaeger:4318`. The standard `OTEL_*` variables (`OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_SDK_DISABLED`) are honoured |
+| `OTEL_CAPTURE_TOOL_CONTENT` | No | Opt-in: record tool arguments and results on spans. Default: `false` |
 | `VITE_API_BASE_URL` | No | Frontend-side API base URL (baked into the React build). Default: `http://localhost:8000/api/v1` |
 
 ### 4. Start all services

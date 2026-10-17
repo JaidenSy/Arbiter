@@ -39,11 +39,15 @@ from typing import Any
 
 import httpx
 from fastapi import HTTPException, status
+from opentelemetry import context as otel_context
+from opentelemetry import trace
+from opentelemetry.trace import SpanKind, StatusCode
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ssrf import assert_ssrf_safe
+from app.core.telemetry import current_trace_id_hex, get_tracer, inject_mcp_meta
 from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
@@ -89,6 +93,57 @@ def _extract_jsonrpc_from_sse(text: str) -> dict:
             except json.JSONDecodeError:
                 pass
     return json_body
+
+
+def _upstream_span_attributes(base_url: str, tool_name: str, request_id: str) -> dict[str, Any]:
+    """MCP CLIENT span attributes for the upstream tools/call. Host/port only, never the URL."""
+    attrs: dict[str, Any] = {
+        "mcp.method.name": "tools/call",
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.name": tool_name,
+        "jsonrpc.request.id": request_id,
+        "network.transport": "tcp",
+        "network.protocol.name": "http",
+    }
+    try:
+        url = httpx.URL(base_url)
+    except Exception:
+        return attrs
+    if url.host:
+        attrs["server.address"] = url.host
+        attrs["server.port"] = url.port or (443 if url.scheme == "https" else 80)
+    return attrs
+
+
+def _jsonrpc_error_code(error_obj: Any) -> str:
+    """String JSON-RPC error code for error.type, or a generic fallback."""
+    if isinstance(error_obj, dict) and "code" in error_obj:
+        return str(error_obj["code"])
+    return "jsonrpc_error"
+
+
+def _finish_upstream_span(
+    span: Any,
+    error_type: str | None,
+    rpc_code: str | None,
+    response_payload: Any,
+) -> None:
+    """Record the upstream outcome (error.type per MCP semconv) and end the span."""
+    if error_type is None and isinstance(response_payload, dict):
+        if response_payload.get("isError") is True:
+            error_type = "tool_error"
+    if error_type is not None and span.is_recording():
+        span.set_attribute("error.type", error_type)
+        if rpc_code is not None:
+            span.set_attribute("rpc.response.status_code", rpc_code)
+        span.set_status(StatusCode.ERROR)
+    span.end()
+
+
+def _session_metadata() -> dict[str, Any]:
+    """Initial Session.metadata: records the OTel trace that created the session, if any."""
+    otel_trace_id = current_trace_id_hex()
+    return {"otel_trace_id": otel_trace_id} if otel_trace_id else {}
 
 
 class ProxyService:
@@ -143,6 +198,8 @@ class ProxyService:
             HTTPException 502: MCP server returned an error.
         """
         start_ms = time.monotonic()
+        # Pipeline-stage child spans (no-op unless tracing is enabled).
+        tracer = get_tracer()
 
         # ── 1. Resolve MCP server (org-scoped) ────────────────────────────────
         mcp_server = await self.resolve_server(request.server_name, agent.org_id)
@@ -163,11 +220,13 @@ class ProxyService:
         )
 
         # ── 2. RBAC check ──────────────────────────────────────────────────────
-        permitted = await self._rbac.check_permission(
-            agent=agent,
-            mcp_server_id=mcp_server.id,
-            tool_name=request.tool_name,
-        )
+        with tracer.start_as_current_span("arbiter.rbac.check") as rbac_span:
+            permitted = await self._rbac.check_permission(
+                agent=agent,
+                mcp_server_id=mcp_server.id,
+                tool_name=request.tool_name,
+            )
+            rbac_span.set_attribute("arbiter.rbac.permitted", bool(permitted))
         if not permitted:
             denial_msg = (
                 f"Agent {agent.name!r} does not have permission to call "
@@ -196,57 +255,61 @@ class ProxyService:
                 detail=denial_msg,
             )
 
-        # ── 2b. Per-tool rate limiting ─────────────────────────────────────────
-        rate_limit = await self._rbac.get_rate_limit(
-            agent_id=agent.id,
-            mcp_server_id=mcp_server.id,
-            tool_name=request.tool_name,
-        )
-        if rate_limit is not None:
-            minute_bucket = int(time.time() // 60)
-            rl_key = f"rl:{agent.id}:{mcp_server.id}:{request.tool_name}:{minute_bucket}"
-            count = await self.redis.incr(rl_key)
-            if count == 1:
-                await self.redis.expire(rl_key, 120)  # TTL 2 min to survive clock edges
-            if count > rate_limit:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=(
-                        f"Rate limit exceeded: agent {agent.name!r} may call "
-                        f"tool {request.tool_name!r} at most {rate_limit} times per minute"
-                    ),
-                )
+        with tracer.start_as_current_span("arbiter.rate_limit"):
+            # ── 2b. Per-tool rate limiting ─────────────────────────────────────────
+            rate_limit = await self._rbac.get_rate_limit(
+                agent_id=agent.id,
+                mcp_server_id=mcp_server.id,
+                tool_name=request.tool_name,
+            )
+            if rate_limit is not None:
+                minute_bucket = int(time.time() // 60)
+                rl_key = f"rl:{agent.id}:{mcp_server.id}:{request.tool_name}:{minute_bucket}"
+                count = await self.redis.incr(rl_key)
+                if count == 1:
+                    await self.redis.expire(rl_key, 120)  # TTL 2 min to survive clock edges
+                if count > rate_limit:
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail=(
+                            f"Rate limit exceeded: agent {agent.name!r} may call "
+                            f"tool {request.tool_name!r} at most {rate_limit} times per minute"
+                        ),
+                    )
 
-        # ── 2c. Agent-level aggregate rate limiting ────────────────────────────
-        if agent.rate_limit_per_minute is not None:
-            minute_bucket = int(time.time() // 60)
-            agent_rl_key = f"rl:agent:{agent.id}:{minute_bucket}"
-            agent_count = await self.redis.incr(agent_rl_key)
-            if agent_count == 1:
-                await self.redis.expire(agent_rl_key, 120)
-            if agent_count > agent.rate_limit_per_minute:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=(
-                        f"Agent rate limit exceeded: {agent.name!r} may make at most "
-                        f"{agent.rate_limit_per_minute} tool calls per minute across all tools"
-                    ),
-                )
+            # ── 2c. Agent-level aggregate rate limiting ────────────────────────────
+            if agent.rate_limit_per_minute is not None:
+                minute_bucket = int(time.time() // 60)
+                agent_rl_key = f"rl:agent:{agent.id}:{minute_bucket}"
+                agent_count = await self.redis.incr(agent_rl_key)
+                if agent_count == 1:
+                    await self.redis.expire(agent_rl_key, 120)
+                if agent_count > agent.rate_limit_per_minute:
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail=(
+                            f"Agent rate limit exceeded: {agent.name!r} may make at most "
+                            f"{agent.rate_limit_per_minute} tool calls per minute across all tools"
+                        ),
+                    )
 
         # ── 3. Load org + determine plan features ─────────────────────────────
         org = await self.db.get(Organization, agent.org_id)
         semantic_cache = PLAN_LIMITS.get(org.plan_tier, {}).get("semantic_cache", False)
 
         # ── 3b. Cache lookup (org-scoped) ──────────────────────────────────────
-        cached_result = None
-        if mcp_server.cache_enabled:
-            cached_result = await self._cache.get_cached(
-                tool_name=request.tool_name,
-                input_payload=request.params,
-                org_id=agent.org_id,
-                mcp_server_id=mcp_server.id,
-                semantic=semantic_cache,
-            )
+        with tracer.start_as_current_span("arbiter.cache.lookup") as cache_span:
+            cached_result = None
+            if mcp_server.cache_enabled:
+                cached_result = await self._cache.get_cached(
+                    tool_name=request.tool_name,
+                    input_payload=request.params,
+                    org_id=agent.org_id,
+                    mcp_server_id=mcp_server.id,
+                    semantic=semantic_cache,
+                )
+            cache_span.set_attribute("arbiter.cache.enabled", bool(mcp_server.cache_enabled))
+            cache_span.set_attribute("arbiter.cache_hit", cached_result is not None)
 
         if cached_result is not None:
             duration_ms = int((time.monotonic() - start_ms) * 1000)
@@ -269,41 +332,46 @@ class ProxyService:
                 duration_ms=duration_ms,
             )
 
-        # ── 4. Quota check (skipped for cache hits) ───────────────────────────
-        try:
-            await check_tool_call_quota(self.redis, self.db, org)
-        except _QuotaExceededError:
-            asyncio.create_task(
-                _dispatch_webhook(
-                    agent.org_id,
-                    "quota.exceeded",
-                    {"agent": agent.name, "plan": org.plan_tier},
+        with tracer.start_as_current_span("arbiter.quota.check"):
+            # ── 4. Quota check (skipped for cache hits) ───────────────────────────
+            try:
+                await check_tool_call_quota(self.redis, self.db, org)
+            except _QuotaExceededError:
+                asyncio.create_task(
+                    _dispatch_webhook(
+                        agent.org_id,
+                        "quota.exceeded",
+                        {"agent": agent.name, "plan": org.plan_tier},
+                    )
                 )
-            )
-            raise
+                raise
 
-        # ── 4b. Per-session budget check (skipped for cache hits) ─────────────
-        if agent.max_calls_per_session is not None:
-            budget_key = f"session_budget:{session.id}"
-            used = await self.redis.incr(budget_key)
-            if used == 1:
-                await self.redis.expire(budget_key, _SESSION_BUDGET_TTL)
-            if used > agent.max_calls_per_session:
-                raise _SessionBudgetExceededError(
-                    session_id=str(session.id),
-                    used=used,
-                    limit=agent.max_calls_per_session,
-                )
+            # ── 4b. Per-session budget check (skipped for cache hits) ─────────────
+            if agent.max_calls_per_session is not None:
+                budget_key = f"session_budget:{session.id}"
+                used = await self.redis.incr(budget_key)
+                if used == 1:
+                    await self.redis.expire(budget_key, _SESSION_BUDGET_TTL)
+                if used > agent.max_calls_per_session:
+                    raise _SessionBudgetExceededError(
+                        session_id=str(session.id),
+                        used=used,
+                        limit=agent.max_calls_per_session,
+                    )
 
         # ── 5. Secret injection ────────────────────────────────────────────────
-        injected_params = await self.intercept_request(
-            tool_name=request.tool_name,
-            params=request.params,
-            agent=agent,
-        )
+        # Span carries no secret names or values, only timing.
+        with tracer.start_as_current_span(
+            "arbiter.vault.inject", attributes={"arbiter.vault.target": "arguments"}
+        ):
+            injected_params = await self.intercept_request(
+                tool_name=request.tool_name,
+                params=request.params,
+                agent=agent,
+            )
 
         # ── 6. Forward to MCP server ──────────────────────────────────────────
-        jsonrpc_body = {
+        jsonrpc_body: dict[str, Any] = {
             "jsonrpc": "2.0",
             "id": str(uuid.uuid4()),
             "method": "tools/call",
@@ -319,14 +387,17 @@ class ProxyService:
         # ── Resolve server-level auth headers from vault first ──────────────
         # Must happen before _ensure_mcp_session so the initialize handshake
         # also carries auth (e.g. GitHub MCP requires auth even for initialize).
-        resolved_server_headers: dict[str, str] = {}
-        if mcp_server.headers:
-            for hdr_name, hdr_value in mcp_server.headers.items():
-                # Use agent_id=None: server headers reference org-level vault secrets
-                # (stored with agent_id=NULL via the dashboard), not agent-scoped ones.
-                resolved_server_headers[hdr_name] = await self._inject_secrets(
-                    hdr_value, agent_id=None, org_id=agent.org_id
-                )
+        with tracer.start_as_current_span(
+            "arbiter.vault.inject", attributes={"arbiter.vault.target": "server_headers"}
+        ):
+            resolved_server_headers: dict[str, str] = {}
+            if mcp_server.headers:
+                for hdr_name, hdr_value in mcp_server.headers.items():
+                    # Use agent_id=None: server headers reference org-level vault secrets
+                    # (stored with agent_id=NULL via the dashboard), not agent-scoped ones.
+                    resolved_server_headers[hdr_name] = await self._inject_secrets(
+                        hdr_value, agent_id=None, org_id=agent.org_id
+                    )
 
         # ── Build outbound headers (initialize upstream session if needed) ────
         # Include a fingerprint of server headers in the cache key so that
@@ -348,6 +419,25 @@ class ProxyService:
             cache_key=upstream_session_key,
             extra_headers=resolved_server_headers,
         )
+
+        # ── Upstream MCP CLIENT span (OTel MCP semconv) ─────────────────────────
+        # Started manually (not a `with`) so the retry/except structure below is
+        # untouched; ended in the `finally`. The trace context is injected into
+        # params._meta so an instrumented upstream server parents its span here.
+        upstream_span = tracer.start_span(
+            f"tools/call {request.tool_name}",
+            kind=SpanKind.CLIENT,
+            attributes=_upstream_span_attributes(
+                mcp_server.base_url, request.tool_name, jsonrpc_body["id"]
+            ),
+        )
+        upstream_ctx_token = otel_context.attach(trace.set_span_in_context(upstream_span))
+        upstream_meta: dict[str, Any] = {}
+        inject_mcp_meta(upstream_meta)
+        if upstream_meta:
+            jsonrpc_body["params"]["_meta"] = upstream_meta
+        upstream_error_type: str | None = None
+        upstream_rpc_code: str | None = None
 
         try:
             # Retry on transient network errors only; never retry upstream 4xx/5xx.
@@ -373,6 +463,7 @@ class ProxyService:
 
             assert http_resp is not None
             if http_resp.status_code >= 400:
+                upstream_error_type = str(http_resp.status_code)
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail=(
@@ -402,6 +493,7 @@ class ProxyService:
                 response_payload = json_body["result"]
             elif "error" in json_body:
                 # JSON-RPC application-level error.
+                upstream_rpc_code = upstream_error_type = _jsonrpc_error_code(json_body["error"])
                 error = json.dumps(json_body["error"])
                 response_payload = json_body["error"]
             else:
@@ -422,6 +514,9 @@ class ProxyService:
             )
             raise
         except (httpx.TimeoutException, httpx.ConnectError) as exc:
+            upstream_error_type = (
+                "timeout" if isinstance(exc, httpx.TimeoutException) else type(exc).__qualname__
+            )
             error = (
                 f"MCP server {request.server_name!r} unreachable after {_MAX_RETRIES + 1} attempts"
             )
@@ -438,6 +533,7 @@ class ProxyService:
             )
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=error) from exc
         except Exception as exc:
+            upstream_error_type = type(exc).__qualname__
             error = str(exc)
             duration_ms = int((time.monotonic() - start_ms) * 1000)
             await self._persist_event(
@@ -454,6 +550,11 @@ class ProxyService:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"MCP server communication error: {exc}",
             ) from exc
+        finally:
+            _finish_upstream_span(
+                upstream_span, upstream_error_type, upstream_rpc_code, response_payload
+            )
+            otel_context.detach(upstream_ctx_token)
 
         duration_ms = int((time.monotonic() - start_ms) * 1000)
 
@@ -801,7 +902,7 @@ class ProxyService:
             id=new_id,
             agent_id=agent.id,
             org_id=agent.org_id,
-            metadata_={},
+            metadata_=_session_metadata(),
             parent_session_id=validated_parent_id,
             trace_id=trace_id if trace_id is not None else new_id,
         )
