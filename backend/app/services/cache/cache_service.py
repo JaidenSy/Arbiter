@@ -19,6 +19,15 @@ servers in the same org may expose tools with identical names ("search",
 "query", ...); without the server id in the key, one server's cached response
 would be served for the other server's call.
 
+Agent scoping: the key is computed over the *pre-injection* arguments, so a
+``{{SECRET}}`` placeholder looks identical for every agent even when it
+resolves to a different, agent-scoped secret.  Callers pass ``agent_id`` for
+such calls (ProxyService does so whenever the arguments reference any vault
+placeholder) and the entry is then private to that agent in all three tiers:
+the Redis key, the Postgres exact match and the pgvector semantic search.
+``agent_id=None`` keeps the entry org-shared, and the hash for that case is
+unchanged so existing org-shared entries stay valid.
+
 Design decisions:
     - Embeddings stored as vector(384) using pgvector; cosine distance (<=>)
       is computed in Postgres, replacing the previous O(n) Python loop.
@@ -76,15 +85,26 @@ def _canonical(tool_name: str, input_payload: dict[str, Any]) -> str:
     return f"{tool_name}:{json.dumps(input_payload, sort_keys=True)}"
 
 
-def _exact_hash(org_id: Any, mcp_server_id: Any, canonical: str) -> str:
+def _exact_hash(org_id: Any, mcp_server_id: Any, canonical: str, agent_id: Any = None) -> str:
     """
-    SHA-256 over org id, MCP server id, and the canonical input string.
+    SHA-256 over org id, MCP server id, optional agent id, and the canonical input.
 
     Folding the tenant and server into the hash guarantees exact-match keys
     never collide across orgs (uq_cache_entry_tool_hash spans all tenants)
-    or across two servers that expose a tool with the same name.
+    or across two servers that expose a tool with the same name.  When
+    ``agent_id`` is set the entry is agent-private; when it is None the
+    pre-existing org-shared hash format is kept.
     """
-    return hashlib.sha256(f"{org_id}:{mcp_server_id}:{canonical}".encode()).hexdigest()
+    if agent_id is None:
+        return hashlib.sha256(f"{org_id}:{mcp_server_id}:{canonical}".encode()).hexdigest()
+    return hashlib.sha256(
+        f"{org_id}:{mcp_server_id}:agent:{agent_id}:{canonical}".encode()
+    ).hexdigest()
+
+
+def _redis_key(org_id: Any, mcp_server_id: Any, tool_name: str, input_hash: str) -> str:
+    """Redis L1 key; the agent scope is already folded into ``input_hash``."""
+    return f"cache:exact:{org_id}:{mcp_server_id}:{tool_name}:{input_hash}"
 
 
 class CacheService:
@@ -120,6 +140,7 @@ class CacheService:
         org_id: Any = None,
         mcp_server_id: Any = None,
         semantic: bool = True,
+        agent_id: Any = None,
     ) -> dict[str, Any] | None:
         """
         Attempt to retrieve a cached response for a tool call.
@@ -135,10 +156,13 @@ class CacheService:
             org_id:        Organization UUID for tenant isolation.
             mcp_server_id: MCP server UUID: entries never cross server boundaries.
             semantic:      When False, skip embedding and pgvector search (free tier).
+            agent_id:      Set for calls whose result may depend on agent-scoped
+                           secrets: only that agent's entries can match.  None
+                           matches org-shared entries only.
         """
         canonical = _canonical(tool_name, input_payload)
-        input_hash = _exact_hash(org_id, mcp_server_id, canonical)
-        redis_key = f"cache:exact:{org_id}:{mcp_server_id}:{tool_name}:{input_hash}"
+        input_hash = _exact_hash(org_id, mcp_server_id, canonical, agent_id)
+        redis_key = _redis_key(org_id, mcp_server_id, tool_name, input_hash)
 
         # ── Phase 1a: Redis exact match ────────────────────────────────────────
         if self.redis is not None:
@@ -158,6 +182,7 @@ class CacheService:
                 CacheEntry.input_hash == input_hash,
                 CacheEntry.org_id == org_id,
                 CacheEntry.mcp_server_id == mcp_server_id,
+                CacheEntry.agent_id == agent_id,  # None compiles to IS NULL
                 CacheEntry.expires_at > now,
             )
         )
@@ -200,6 +225,8 @@ class CacheService:
                 CacheEntry.tool_name == tool_name,
                 CacheEntry.org_id == org_id,
                 CacheEntry.mcp_server_id == mcp_server_id,
+                # A near-match must never cross the agent boundary either.
+                CacheEntry.agent_id == agent_id,
                 CacheEntry.input_embedding.is_not(None),
                 CacheEntry.expires_at > now,
                 CacheEntry.input_embedding.op("<=>")(query_embedding) <= max_distance,
@@ -225,6 +252,7 @@ class CacheService:
         mcp_server_id: Any = None,
         ttl_override: int | None = None,
         semantic: bool = True,
+        agent_id: Any = None,
     ) -> None:
         """
         Store a tool call result in both Redis (L1) and Postgres (L2).
@@ -239,10 +267,11 @@ class CacheService:
             response_payload: The response from the MCP server.
             org_id:           Organization UUID for tenant isolation.
             mcp_server_id:    MCP server UUID: entries never cross server boundaries.
+            agent_id:         Agent UUID for agent-private entries (see get_cached).
         """
         canonical = _canonical(tool_name, input_payload)
-        input_hash = _exact_hash(org_id, mcp_server_id, canonical)
-        redis_key = f"cache:exact:{org_id}:{mcp_server_id}:{tool_name}:{input_hash}"
+        input_hash = _exact_hash(org_id, mcp_server_id, canonical, agent_id)
+        redis_key = _redis_key(org_id, mcp_server_id, tool_name, input_hash)
         ttl_seconds = ttl_override if ttl_override is not None else settings.cache_ttl_seconds
         expires_at = datetime.now(tz=UTC) + timedelta(seconds=ttl_seconds)
 
@@ -270,6 +299,7 @@ class CacheService:
                 CacheEntry.input_hash == input_hash,
                 CacheEntry.org_id == org_id,
                 CacheEntry.mcp_server_id == mcp_server_id,
+                CacheEntry.agent_id == agent_id,
             )
         )
         existing = result.scalar_one_or_none()
@@ -288,6 +318,7 @@ class CacheService:
                 expires_at=expires_at,
                 org_id=org_id,
                 mcp_server_id=mcp_server_id,
+                agent_id=agent_id,
             )
             self.db.add(entry)
 

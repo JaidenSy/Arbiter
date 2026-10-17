@@ -35,7 +35,7 @@ import re
 import time
 import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, NoReturn
 
 import httpx
 from fastapi import HTTPException, status
@@ -48,6 +48,7 @@ from app.db.models.agent import Agent
 from app.db.models.mcp_server import MCPServer
 from app.db.models.organization import Organization
 from app.db.models.session import Session, SessionEvent
+from app.db.models.tool_definition import TOOL_CHANGE_POLICY_BLOCK, TOOL_STATUS_CHANGED
 from app.db.models.usage_event import UsageEvent
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.services.cache.cache_service import CacheService
@@ -58,6 +59,11 @@ from app.services.plan.plan_limits import (
 )
 from app.services.plan.plan_service import check_tool_call_quota
 from app.services.rbac.rbac_service import RBACService
+from app.services.tool_pin.tool_pin_service import (
+    ToolPinService,
+    effective_policy,
+    is_retry_safe,
+)
 from app.services.vault.vault_service import VaultService
 from app.services.webhook.webhook_service import dispatch_event as _dispatch_webhook
 
@@ -65,7 +71,21 @@ logger = logging.getLogger(__name__)
 
 _SECRET_PLACEHOLDER = re.compile(r"\{\{(?:vault:)?([A-Za-z0-9_]+)\}\}")
 _HTTP_TIMEOUT = httpx.Timeout(30.0)
-_MAX_RETRIES = 2  # retries on TimeoutException/ConnectError; backoff 1s then 2s
+_MAX_RETRIES = 2  # backoff 1s then 2s
+# Retry safety: a connect-phase failure means the request never reached the
+# upstream, so retrying cannot double-execute it.  A ReadTimeout (or any other
+# timeout after the request was sent) may mean the tool already ran, e.g.
+# create_issue, so it is retried only when the approved tool definition is
+# annotated readOnlyHint or idempotentHint.
+_CONNECT_PHASE_ERRORS: tuple[type[Exception], ...] = (
+    httpx.ConnectError,
+    httpx.ConnectTimeout,
+    httpx.PoolTimeout,
+)
+_IDEMPOTENT_RETRY_ERRORS: tuple[type[Exception], ...] = (
+    httpx.TimeoutException,
+    httpx.ConnectError,
+)
 _QuotaExceededError = QuotaExceededError  # keep import alive past linter
 _SessionBudgetExceededError = SessionBudgetExceededError  # keep import alive past linter
 _SESSION_BUDGET_TTL = 86_400  # 24 h: sessions don't outlive a day
@@ -91,6 +111,18 @@ def _extract_jsonrpc_from_sse(text: str) -> dict:
     return json_body
 
 
+class SecretResolutionError(ValueError):
+    """A {{SECRET}} placeholder names a secret that does not exist in scope."""
+
+
+def _references_vault(params: dict[str, Any]) -> bool:
+    """True if any argument (at any depth) contains a vault placeholder."""
+    try:
+        return bool(_SECRET_PLACEHOLDER.search(json.dumps(params, default=str)))
+    except (TypeError, ValueError):
+        return True  # unknown: scope conservatively to the agent
+
+
 class ProxyService:
     """
     Orchestrates the full lifecycle of a proxied MCP tool call.
@@ -109,6 +141,7 @@ class ProxyService:
         self._rbac = RBACService(db, redis)
         self._vault = VaultService(db)
         self._cache = CacheService(db, redis)
+        self._pins = ToolPinService(db)
 
     # ── Main entry point ──────────────────────────────────────────────────────
 
@@ -147,20 +180,24 @@ class ProxyService:
         # ── 1. Resolve MCP server (org-scoped) ────────────────────────────────
         mcp_server = await self.resolve_server(request.server_name, agent.org_id)
 
-        # ── 1b. Scope enforcement ──────────────────────────────────────────────
-        if agent.scope == "vault_read_only":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Agent {agent.name!r} has scope 'vault_read_only' and cannot make tool calls",
-            )
-
-        # Session is created before the RBAC check so denied calls still produce
-        # an audit record visible in the dashboard.
+        # Session is created before the scope and RBAC checks so rejected calls
+        # still produce an audit record visible in the dashboard.
         session = await self._ensure_session(
             agent=agent,
             session_id=request.session_id,
             parent_session_id=request.parent_session_id,
         )
+
+        # ── 1b. Scope enforcement ──────────────────────────────────────────────
+        if agent.scope == "vault_read_only":
+            await self._reject(
+                session,
+                mcp_server,
+                request,
+                start_ms,
+                status.HTTP_403_FORBIDDEN,
+                f"Agent {agent.name!r} has scope 'vault_read_only' and cannot make tool calls",
+            )
 
         # ── 2. RBAC check ──────────────────────────────────────────────────────
         permitted = await self._rbac.check_permission(
@@ -209,9 +246,13 @@ class ProxyService:
             if count == 1:
                 await self.redis.expire(rl_key, 120)  # TTL 2 min to survive clock edges
             if count > rate_limit:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=(
+                await self._reject(
+                    session,
+                    mcp_server,
+                    request,
+                    start_ms,
+                    status.HTTP_429_TOO_MANY_REQUESTS,
+                    (
                         f"Rate limit exceeded: agent {agent.name!r} may call "
                         f"tool {request.tool_name!r} at most {rate_limit} times per minute"
                     ),
@@ -225,9 +266,13 @@ class ProxyService:
             if agent_count == 1:
                 await self.redis.expire(agent_rl_key, 120)
             if agent_count > agent.rate_limit_per_minute:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=(
+                await self._reject(
+                    session,
+                    mcp_server,
+                    request,
+                    start_ms,
+                    status.HTTP_429_TOO_MANY_REQUESTS,
+                    (
                         f"Agent rate limit exceeded: {agent.name!r} may make at most "
                         f"{agent.rate_limit_per_minute} tool calls per minute across all tools"
                     ),
@@ -237,7 +282,33 @@ class ProxyService:
         org = await self.db.get(Organization, agent.org_id)
         semantic_cache = PLAN_LIMITS.get(org.plan_tier, {}).get("semantic_cache", False)
 
-        # ── 3b. Cache lookup (org-scoped) ──────────────────────────────────────
+        # ── 3a. Tool-definition pin (rug-pull defense, OWASP MCP03) ───────────
+        tool_pin = await self._pins.get_pin(mcp_server.id, request.tool_name)
+        if tool_pin is not None and tool_pin.status == TOOL_STATUS_CHANGED:
+            if effective_policy(mcp_server, org) == TOOL_CHANGE_POLICY_BLOCK:
+                await self._reject(
+                    session,
+                    mcp_server,
+                    request,
+                    start_ms,
+                    status.HTTP_403_FORBIDDEN,
+                    (
+                        f"Tool {request.tool_name!r} on server {request.server_name!r} changed "
+                        "its definition since it was approved and is blocked pending re-approval"
+                    ),
+                )
+            logger.warning(
+                "proxy: calling tool %r on %r whose definition changed since approval "
+                "(policy=allow)",
+                request.tool_name,
+                request.server_name,
+            )
+
+        # ── 3b. Cache lookup (org-scoped; agent-scoped when secrets are used) ──
+        # The key is computed over pre-injection args, so a {{SECRET}} that
+        # resolves to an agent-scoped secret looks the same for every agent.
+        # Any placeholder makes the entry private to the calling agent.
+        cache_agent_id = agent.id if _references_vault(request.params) else None
         cached_result = None
         if mcp_server.cache_enabled:
             cached_result = await self._cache.get_cached(
@@ -246,6 +317,7 @@ class ProxyService:
                 org_id=agent.org_id,
                 mcp_server_id=mcp_server.id,
                 semantic=semantic_cache,
+                agent_id=cache_agent_id,
             )
 
         if cached_result is not None:
@@ -272,7 +344,8 @@ class ProxyService:
         # ── 4. Quota check (skipped for cache hits) ───────────────────────────
         try:
             await check_tool_call_quota(self.redis, self.db, org)
-        except _QuotaExceededError:
+        except _QuotaExceededError as exc:
+            await self._audit_rejection(session, mcp_server, request, start_ms, str(exc))
             asyncio.create_task(
                 _dispatch_webhook(
                     agent.org_id,
@@ -289,18 +362,27 @@ class ProxyService:
             if used == 1:
                 await self.redis.expire(budget_key, _SESSION_BUDGET_TTL)
             if used > agent.max_calls_per_session:
-                raise _SessionBudgetExceededError(
+                budget_exc = _SessionBudgetExceededError(
                     session_id=str(session.id),
                     used=used,
                     limit=agent.max_calls_per_session,
                 )
+                await self._audit_rejection(session, mcp_server, request, start_ms, str(budget_exc))
+                raise budget_exc
 
         # ── 5. Secret injection ────────────────────────────────────────────────
-        injected_params = await self.intercept_request(
-            tool_name=request.tool_name,
-            params=request.params,
-            agent=agent,
-        )
+        # An unresolvable placeholder is the caller's mistake: audit it and
+        # return a 400 instead of letting the ValueError escape as a 500.
+        try:
+            injected_params = await self.intercept_request(
+                tool_name=request.tool_name,
+                params=request.params,
+                agent=agent,
+            )
+        except SecretResolutionError as exc:
+            await self._reject(
+                session, mcp_server, request, start_ms, status.HTTP_400_BAD_REQUEST, str(exc)
+            )
 
         # ── 6. Forward to MCP server ──────────────────────────────────────────
         jsonrpc_body = {
@@ -324,9 +406,20 @@ class ProxyService:
             for hdr_name, hdr_value in mcp_server.headers.items():
                 # Use agent_id=None: server headers reference org-level vault secrets
                 # (stored with agent_id=NULL via the dashboard), not agent-scoped ones.
-                resolved_server_headers[hdr_name] = await self._inject_secrets(
-                    hdr_value, agent_id=None, org_id=agent.org_id
-                )
+                try:
+                    resolved_server_headers[hdr_name] = await self._inject_secrets(
+                        hdr_value, agent_id=None, org_id=agent.org_id
+                    )
+                except ValueError as exc:
+                    # Server misconfiguration, not the agent's fault: 502.
+                    await self._reject(
+                        session,
+                        mcp_server,
+                        request,
+                        start_ms,
+                        status.HTTP_502_BAD_GATEWAY,
+                        f"MCP server {request.server_name!r} header {hdr_name!r}: {exc}",
+                    )
 
         # ── Build outbound headers (initialize upstream session if needed) ────
         # Include a fingerprint of server headers in the cache key so that
@@ -349,11 +442,16 @@ class ProxyService:
             extra_headers=resolved_server_headers,
         )
 
+        # Connect-phase errors are always safe to retry; post-send timeouts
+        # only for tools whose approved definition is read-only/idempotent.
+        retryable = _IDEMPOTENT_RETRY_ERRORS if is_retry_safe(tool_pin) else _CONNECT_PHASE_ERRORS
+        attempts = 0
         try:
             # Retry on transient network errors only; never retry upstream 4xx/5xx.
             _last_exc: Exception | None = None
             http_resp = None
             for _attempt in range(_MAX_RETRIES + 1):
+                attempts = _attempt + 1
                 try:
                     async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
                         http_resp = await client.post(
@@ -365,6 +463,8 @@ class ProxyService:
                     break
                 except (httpx.TimeoutException, httpx.ConnectError) as exc:
                     _last_exc = exc
+                    if not isinstance(exc, retryable):
+                        break  # the request may have executed upstream: don't resend
                     if _attempt < _MAX_RETRIES:
                         await asyncio.sleep(2**_attempt)  # 1s then 2s
 
@@ -422,9 +522,15 @@ class ProxyService:
             )
             raise
         except (httpx.TimeoutException, httpx.ConnectError) as exc:
-            error = (
-                f"MCP server {request.server_name!r} unreachable after {_MAX_RETRIES + 1} attempts"
-            )
+            if isinstance(exc, _CONNECT_PHASE_ERRORS):
+                error = f"MCP server {request.server_name!r} unreachable after {attempts} attempts"
+            elif attempts == 1:
+                error = (
+                    f"MCP server {request.server_name!r} timed out; not retried because "
+                    "the call may already have executed upstream"
+                )
+            else:
+                error = f"MCP server {request.server_name!r} timed out after {attempts} attempts"
             duration_ms = int((time.monotonic() - start_ms) * 1000)
             await self._persist_event(
                 session=session,
@@ -458,7 +564,12 @@ class ProxyService:
         duration_ms = int((time.monotonic() - start_ms) * 1000)
 
         # ── 7. Store in cache (only on success and if server allows caching) ──
-        if error is None and mcp_server.cache_enabled:
+        # A tool-level failure (result.isError) is a successful JSON-RPC
+        # response but must not be replayed from cache: the next call may work.
+        upstream_is_error = (
+            isinstance(response_payload, dict) and response_payload.get("isError") is True
+        )
+        if error is None and not upstream_is_error and mcp_server.cache_enabled:
             try:
                 cache_ttl = await self._rbac.get_cache_ttl(
                     agent_id=agent.id,
@@ -473,6 +584,7 @@ class ProxyService:
                     mcp_server_id=mcp_server.id,
                     ttl_override=cache_ttl,
                     semantic=semantic_cache,
+                    agent_id=cache_agent_id,
                 )
             except Exception as exc:
                 # Cache write failure must not prevent the response.
@@ -541,8 +653,9 @@ class ProxyService:
           1. Agent-scoped secret  (agent_id, org_id): most specific.
           2. Org-level fallback   (agent_id=None, org_id): shared secrets.
 
-        If neither scope has the secret, a ValueError is raised so the proxy
-        can surface a clear error rather than forwarding the raw placeholder.
+        If neither scope has the secret, a SecretResolutionError (a ValueError)
+        is raised so the proxy can surface a clear error rather than
+        forwarding the raw placeholder.
         """
         matches = _SECRET_PLACEHOLDER.findall(value)
         if not matches:
@@ -569,7 +682,7 @@ class ProxyService:
                     pass
 
             if secret_value is None:
-                raise ValueError(
+                raise SecretResolutionError(
                     f"Secret placeholder {{{{{secret_name}}}}} could not be resolved: "
                     f"no agent-scoped or org-level secret with that name exists "
                     f"(agent_id={agent_id}, org_id={org_id})"
@@ -668,7 +781,9 @@ class ProxyService:
             ) from exc
 
         if "result" in json_body and "tools" in json_body["result"]:
-            return json_body["result"]["tools"]
+            tools = json_body["result"]["tools"]
+            await self.record_tool_definitions(mcp_server, tools)
+            return tools
         if "error" in json_body:
             logger.warning(
                 "proxy: tools/list on %r returned JSON-RPC error: %s",
@@ -676,6 +791,19 @@ class ProxyService:
                 json_body["error"],
             )
         return []
+
+    async def record_tool_definitions(
+        self, mcp_server: MCPServer, tools: list[dict[str, Any]]
+    ) -> None:
+        """Pin/compare tool definitions; never fails the listing that triggered it."""
+        try:
+            await self._pins.record_tools(mcp_server, tools)
+        except Exception as exc:
+            logger.warning("proxy: tool-definition pinning failed for %r: %s", mcp_server.name, exc)
+            try:
+                await self.db.rollback()
+            except Exception:
+                pass
 
     async def _ensure_mcp_session(
         self,
@@ -810,6 +938,51 @@ class ProxyService:
         await self.db.refresh(session)
         return session
 
+    async def _audit_rejection(
+        self,
+        session: Session,
+        mcp_server: MCPServer,
+        request: ToolCallRequest,
+        start_ms: float,
+        message: str,
+    ) -> None:
+        """Persist a SessionEvent for a gateway-side rejection (not billed as a call).
+
+        Best effort: an audit-write failure is logged and must not turn the
+        rejection (429/403/400) the caller is about to raise into a 500.
+        """
+        try:
+            await self._persist_event(
+                session=session,
+                mcp_server=mcp_server,
+                tool_name=request.tool_name,
+                request_payload=request.params,
+                response_payload=None,
+                cache_hit=False,
+                duration_ms=int((time.monotonic() - start_ms) * 1000),
+                error=message,
+                count_usage=False,
+            )
+        except Exception:
+            logger.exception("proxy: failed to audit rejection for %r", request.tool_name)
+            try:
+                await self.db.rollback()
+            except Exception:
+                pass
+
+    async def _reject(
+        self,
+        session: Session,
+        mcp_server: MCPServer,
+        request: ToolCallRequest,
+        start_ms: float,
+        status_code: int,
+        message: str,
+    ) -> NoReturn:
+        """Audit a gateway-side rejection, then raise it as an HTTPException."""
+        await self._audit_rejection(session, mcp_server, request, start_ms, message)
+        raise HTTPException(status_code=status_code, detail=message)
+
     async def _persist_event(
         self,
         session: Session,
@@ -821,10 +994,17 @@ class ProxyService:
         duration_ms: int,
         error: str | None,
         user_id: uuid.UUID | None = None,
+        count_usage: bool = True,
     ) -> SessionEvent:
-        """Append an immutable audit record and increment daily usage counters."""
+        """Append an immutable audit record and increment daily usage counters.
+
+        ``count_usage=False`` records the event without touching usage_events
+        and without a cost, for gateway rejections (rate limit, quota, budget,
+        scope, vault, changed tool) that never reached the upstream and must
+        not count against the monthly quota.
+        """
         cost_usd: float | None = None
-        if not cache_hit and mcp_server.cost_per_call_usd is not None:
+        if count_usage and not cache_hit and mcp_server.cost_per_call_usd is not None:
             cost_usd = float(mcp_server.cost_per_call_usd)
 
         event = SessionEvent(
@@ -841,6 +1021,11 @@ class ProxyService:
             cost_usd=cost_usd,
         )
         self.db.add(event)
+
+        if not count_usage:
+            await self.db.commit()
+            await self.db.refresh(event)
+            return event
 
         # Upsert daily usage counters: enforces quota on subsequent calls.
         today = datetime.now(tz=UTC).date()

@@ -99,6 +99,7 @@ def _apply_deps(
         patch("app.services.proxy.proxy_service.check_tool_call_quota", new=AsyncMock())
     )
     stack.enter_context(patch.object(service, "intercept_request", new=AsyncMock(return_value={})))
+    stack.enter_context(patch.object(service._pins, "get_pin", new=AsyncMock(return_value=None)))
     stack.enter_context(
         patch.object(service, "_ensure_mcp_session", new=AsyncMock(return_value={}))
     )

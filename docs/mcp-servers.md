@@ -156,6 +156,7 @@ The `name` field is the slug agents use when making proxy calls (`"server_name":
 | `base_url` | string | yes | — | Full MCP endpoint URL (e.g. `https://host/mcp`). |
 | `description` | string | no | null | Human-readable label shown in the dashboard. |
 | `cache_enabled` | bool | no | `true` | Set `false` for side-effectful servers (see below). |
+| `tool_change_policy` | `"allow"` \| `"block"` | no | null (org default) | What happens to calls to a tool whose definition changed since approval (see below). On PATCH, `"inherit"` clears the override. |
 
 ---
 
@@ -189,6 +190,39 @@ On success it returns tool count and round-trip latency. On failure it returns t
 **Set `true` (or omit) for read-heavy, idempotent servers** — file reads, database queries, search indexes, knowledge bases.
 
 When `cache_enabled` is `false`, Arbiter skips all cache layers on both reads and writes.
+
+Even with caching on, two kinds of result are never shared:
+
+- **Calls whose arguments contain a vault placeholder** (`{{SECRET}}` / `{{vault:SECRET}}`) are cached privately for the calling agent. The placeholder text is the same for every agent, but it may resolve to a different agent-scoped secret, so another agent must never be served that response.
+- **Tool-level failures** (`result.isError: true`) are not cached, so a transient upstream failure isn't replayed.
+
+---
+
+## Tool-definition pinning
+
+An MCP server can change a tool's description or input schema after you reviewed it. This is the "rug pull" (OWASP MCP03): for example, injected instructions slipped into a description the model reads. Arbiter pins what it saw:
+
+1. Whenever a server's tools are listed (`/mcp` `tools/list`, `POST /proxy/tools-list`, or dashboard discovery), Arbiter hashes each tool's `name` + `description` + `inputSchema` as canonical JSON.
+2. The first definition seen is trusted and becomes the approved pin.
+3. If a later listing shows a different hash, the tool is marked `changed` (pending re-approval). Arbiter logs a warning and fires the `tool.definition_changed` webhook once per new definition. If the server reverts to the approved definition, the flag clears.
+4. Calls to a `changed` tool follow the effective policy: the server's `tool_change_policy`, else the org default (`allow` unless changed). `allow` lets the call through and logs it. `block` rejects it with a 403 tool error, which is recorded in the audit log.
+
+```bash
+# Tools pending re-approval (shows approved vs current definition)
+curl -s "https://your-arbiter.example.com/api/v1/tool-definitions?status=changed" \
+  -H "Authorization: Bearer <token>"
+
+# Approve the new definition (owner/admin)
+curl -s -X POST https://your-arbiter.example.com/api/v1/tool-definitions/<id>/approve \
+  -H "Authorization: Bearer <token>"
+
+# Org default policy (owner/admin to change)
+curl -s -X PUT https://your-arbiter.example.com/api/v1/tool-definitions/policy \
+  -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+  -d '{"policy": "block"}'
+```
+
+Retries depend on the pin too. Arbiter always retries connect-phase failures (connection refused, connect or pool timeout), because the request never reached the server. A timeout *after* the request was sent is retried only if the **approved** definition has `annotations.readOnlyHint` or `annotations.idempotentHint` set to `true`. Otherwise a slow `create_issue` could run twice.
 
 ---
 

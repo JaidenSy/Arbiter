@@ -31,8 +31,12 @@ class CacheEntry(Base):
         mcp_server_id:    FK → mcp_servers.id.  Entries are scoped per server so
                           that two servers exposing a tool with the same name
                           never serve each other's cached responses.
+        agent_id:         FK → agents.id, NULL for org-shared entries.  Set when
+                          the call's arguments referenced vault placeholders,
+                          which may resolve to agent-scoped secrets: such an
+                          entry is only ever served back to the same agent.
         tool_name:        Name of the tool (e.g. "read_file").
-        input_hash:       SHA-256 of org id + server id + the canonical
+        input_hash:       SHA-256 of org id + server id (+ agent id) + the canonical
                           (sorted-key) JSON of the input.  Used for exact-match
                           lookups before embedding search.
         input_embedding:  Float array from the sentence-transformer model,
@@ -61,6 +65,11 @@ class CacheEntry(Base):
     mcp_server_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("mcp_servers.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("agents.id", ondelete="CASCADE"),
         nullable=True,
     )
     tool_name: Mapped[str] = mapped_column(String(255), nullable=False)

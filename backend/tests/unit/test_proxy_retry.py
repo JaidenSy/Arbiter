@@ -103,6 +103,7 @@ def _apply_deps(
         patch("app.services.proxy.proxy_service.check_tool_call_quota", new=AsyncMock())
     )
     stack.enter_context(patch.object(service, "intercept_request", new=AsyncMock(return_value={})))
+    stack.enter_context(patch.object(service._pins, "get_pin", new=AsyncMock(return_value=None)))
     stack.enter_context(
         patch.object(service, "_ensure_mcp_session", new=AsyncMock(return_value={}))
     )
@@ -125,7 +126,7 @@ def _apply_deps(
 class TestProxyRetry:
     @pytest.mark.asyncio
     async def test_succeeds_on_second_attempt_after_timeout(self):
-        """When first attempt times out, second attempt succeeds."""
+        """When the first attempt hits a connect timeout, the second attempt succeeds."""
         service = _make_service()
         agent = _make_agent()
         server = _make_server(agent.org_id)
@@ -146,7 +147,7 @@ class TestProxyRetry:
                 nonlocal call_count
                 call_count += 1
                 if call_count == 1:
-                    raise httpx.TimeoutException("timeout")
+                    raise httpx.ConnectTimeout("timeout")
                 return _make_ok_response()
 
         with ExitStack() as stack:
@@ -185,7 +186,7 @@ class TestProxyRetry:
                 nonlocal call_count
                 call_count += 1
                 if call_count < 3:
-                    raise httpx.TimeoutException("timeout")
+                    raise httpx.ConnectTimeout("timeout")
                 return _make_ok_response()
 
         mock_sleep = AsyncMock()
@@ -226,7 +227,7 @@ class TestProxyRetry:
             async def post(self, *a, **kw):
                 nonlocal call_count
                 call_count += 1
-                raise httpx.TimeoutException("always fails")
+                raise httpx.ConnectTimeout("always fails")
 
         with ExitStack() as stack:
             stack.enter_context(

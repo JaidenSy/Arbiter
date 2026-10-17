@@ -68,6 +68,11 @@ class MCPServer(Base):
         default=True,
         comment="Set False for side-effectful servers that must never serve cached responses",
     )
+    tool_change_policy: Mapped[str | None] = mapped_column(
+        String(10),
+        nullable=True,
+        comment="'allow' | 'block' calls to tools whose definition changed; NULL = org default",
+    )
     cost_per_call_usd: Mapped[float | None] = mapped_column(
         Numeric(precision=10, scale=8),
         nullable=True,
