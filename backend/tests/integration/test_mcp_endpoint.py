@@ -194,7 +194,7 @@ class TestInitialize:
                 MCP_URL, json=_rpc("initialize", {"protocolVersion": "1999-01-01"})
             )
 
-        assert resp.json()["result"]["protocolVersion"] == "2025-06-18"
+        assert resp.json()["result"]["protocolVersion"] == "2025-11-25"
 
     @pytest.mark.asyncio
     async def test_ping_returns_empty_result(self, authed_client):

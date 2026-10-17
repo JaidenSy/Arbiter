@@ -51,6 +51,8 @@ from app.db.models.session import Session, SessionEvent
 from app.db.models.usage_event import UsageEvent
 from app.schemas.proxy import ToolCallRequest, ToolCallResponse
 from app.services.cache.cache_service import CacheService
+from app.services.mcp.protocol import extract_jsonrpc_from_sse as _extract_jsonrpc_from_sse
+from app.services.mcp.upstream import UpstreamMCPClient, UpstreamTarget
 from app.services.plan.plan_limits import (
     PLAN_LIMITS,
     QuotaExceededError,
@@ -71,24 +73,17 @@ _SessionBudgetExceededError = SessionBudgetExceededError  # keep import alive pa
 _SESSION_BUDGET_TTL = 86_400  # 24 h: sessions don't outlive a day
 
 
-def _extract_jsonrpc_from_sse(text: str) -> dict:
+def _headers_fingerprint(mcp_server: MCPServer) -> str:
     """
-    Return the last complete JSON-RPC message from an SSE response body.
+    Short fingerprint of a server's (unresolved) header config.
 
-    Upstream servers may emit keepalives or partial events before the final
-    response: breaking on the first event silently drops data, so we keep
-    the last frame that carries a ``result`` or ``error``.
+    Part of upstream cache keys so that changing auth config (e.g. rotating
+    a vault secret reference) invalidates cached sessions and era probes.
     """
-    json_body: dict = {}
-    for line in text.splitlines():
-        if line.startswith("data: "):
-            try:
-                candidate = json.loads(line[6:])
-                if "result" in candidate or "error" in candidate:
-                    json_body = candidate
-            except json.JSONDecodeError:
-                pass
-    return json_body
+    import hashlib
+
+    raw = str(sorted((mcp_server.headers or {}).items())).encode()
+    return hashlib.md5(raw).hexdigest()[:8]
 
 
 class ProxyService:
@@ -109,6 +104,7 @@ class ProxyService:
         self._rbac = RBACService(db, redis)
         self._vault = VaultService(db)
         self._cache = CacheService(db, redis)
+        self._upstream = UpstreamMCPClient(redis, _HTTP_TIMEOUT)
 
     # ── Main entry point ──────────────────────────────────────────────────────
 
@@ -303,22 +299,19 @@ class ProxyService:
         )
 
         # ── 6. Forward to MCP server ──────────────────────────────────────────
-        jsonrpc_body = {
-            "jsonrpc": "2.0",
-            "id": str(uuid.uuid4()),
-            "method": "tools/call",
-            "params": {
-                "name": request.tool_name,
-                "arguments": injected_params,
-            },
+        call_id = str(uuid.uuid4())
+        call_params: dict[str, Any] = {
+            "name": request.tool_name,
+            "arguments": injected_params,
         }
 
         error: str | None = None
         response_payload: dict[str, Any] = {}
 
         # ── Resolve server-level auth headers from vault first ──────────────
-        # Must happen before _ensure_mcp_session so the initialize handshake
-        # also carries auth (e.g. GitHub MCP requires auth even for initialize).
+        # Must happen before _prepare_upstream so the discover probe and the
+        # legacy initialize handshake also carry auth (e.g. GitHub MCP
+        # requires auth even for initialize).
         resolved_server_headers: dict[str, str] = {}
         if mcp_server.headers:
             for hdr_name, hdr_value in mcp_server.headers.items():
@@ -332,9 +325,7 @@ class ProxyService:
         # Include a fingerprint of server headers in the cache key so that
         # changing auth config (e.g. rotating a vault secret) invalidates
         # any previously cached unauthorized session IDs.
-        import hashlib as _hl
-
-        _headers_fp = _hl.md5(str(sorted(mcp_server.headers.items())).encode()).hexdigest()[:8]
+        _headers_fp = _headers_fingerprint(mcp_server)
         upstream_session_key = f"mcp_sessions:{session.id}:{request.server_name}:{_headers_fp}"
 
         # Re-validate DNS at request time to guard against DNS rebinding (#182):
@@ -343,13 +334,17 @@ class ProxyService:
         # handshake and the tool call so neither can be redirected internally.
         await assert_ssrf_safe(mcp_server.base_url, error_status=status.HTTP_502_BAD_GATEWAY)
 
-        outbound_headers = await self._ensure_mcp_session(
-            mcp_server=mcp_server,
-            cache_key=upstream_session_key,
-            extra_headers=resolved_server_headers,
-        )
-
         try:
+            # Era detection + legacy handshake. Inside the try so a 502 here
+            # (e.g. no mutually supported protocol version) is still audited.
+            target = await self._prepare_upstream(
+                mcp_server=mcp_server,
+                cache_key=upstream_session_key,
+                extra_headers=resolved_server_headers,
+                headers_fp=_headers_fp,
+            )
+            jsonrpc_body, outbound_headers = target.build("tools/call", call_params, call_id)
+
             # Retry on transient network errors only; never retry upstream 4xx/5xx.
             _last_exc: Exception | None = None
             http_resp = None
@@ -373,6 +368,24 @@ class ProxyService:
 
             assert http_resp is not None
             if http_resp.status_code >= 400:
+                # One recovery attempt: legacy session expired (404) ->
+                # re-initialize; cached-modern server stopped answering as
+                # modern -> re-probe and fall back.
+                retry_target = await self._upstream.recover(
+                    mcp_server.base_url, f"{mcp_server.id}:{_headers_fp}", target, http_resp
+                )
+                if retry_target is not None:
+                    target = retry_target
+                    jsonrpc_body, outbound_headers = target.build(
+                        "tools/call", call_params, call_id
+                    )
+                    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+                        http_resp = await client.post(
+                            mcp_server.base_url,
+                            json=jsonrpc_body,
+                            headers=outbound_headers,
+                        )
+            if http_resp.status_code >= 400:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
                     detail=(
@@ -380,13 +393,10 @@ class ProxyService:
                     ),
                 )
 
-            # Persist upstream MCP session ID for subsequent requests.
-            upstream_session_id = http_resp.headers.get("Mcp-Session-Id")
-            if upstream_session_id:
-                try:
-                    await self.redis.set(upstream_session_key, upstream_session_id, ex=3600)
-                except Exception as exc:
-                    logger.warning("proxy: Redis session store failed: %s", exc)
+            # Persist an upstream-(re)assigned legacy session ID.
+            await self._upstream.remember_session_id(
+                target, http_resp.headers.get("Mcp-Session-Id")
+            )
 
             try:
                 if "text/event-stream" in http_resp.headers.get("content-type", ""):
@@ -626,30 +636,42 @@ class ProxyService:
             HTTPException 502: upstream returned an error or was unreachable.
         """
         resolved_headers = await self.resolve_server_headers(mcp_server)
-        request_headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-            **resolved_headers,
-        }
-
-        jsonrpc_body = {
-            "jsonrpc": "2.0",
-            "id": "tools-list",
-            "method": "tools/list",
-            "params": {},
-        }
 
         # Same DNS-rebinding guard as forward_tool_call: re-validate at
         # request time, not just at server registration.
         await assert_ssrf_safe(mcp_server.base_url, error_status=status.HTTP_502_BAD_GATEWAY)
 
+        headers_fp = _headers_fingerprint(mcp_server)
+        server_key = f"{mcp_server.id}:{headers_fp}"
+
         try:
+            target = await self._prepare_upstream(
+                mcp_server=mcp_server,
+                cache_key=f"mcp_sessions:tools_list:{server_key}",
+                extra_headers=resolved_headers,
+                headers_fp=headers_fp,
+            )
+            jsonrpc_body, request_headers = target.build("tools/list", {}, "tools-list")
             async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
                 resp = await client.post(
                     mcp_server.base_url,
                     json=jsonrpc_body,
                     headers=request_headers,
                 )
+            if resp.status_code >= 400:
+                retry_target = await self._upstream.recover(
+                    mcp_server.base_url, server_key, target, resp
+                )
+                if retry_target is not None:
+                    jsonrpc_body, request_headers = retry_target.build(
+                        "tools/list", {}, "tools-list"
+                    )
+                    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+                        resp = await client.post(
+                            mcp_server.base_url,
+                            json=jsonrpc_body,
+                            headers=request_headers,
+                        )
             if resp.status_code >= 400:
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
@@ -677,72 +699,29 @@ class ProxyService:
             )
         return []
 
-    async def _ensure_mcp_session(
+    async def _prepare_upstream(
         self,
         mcp_server: MCPServer,
         cache_key: str,
         extra_headers: dict[str, str] | None = None,
-    ) -> dict[str, str]:
+        headers_fp: str = "",
+    ) -> UpstreamTarget:
         """
-        Return outbound headers for an upstream MCP server request.
+        Resolve how to address ``mcp_server`` (modern or legacy era).
 
-        If a session ID is cached in Redis for this server, attach it.
-        Otherwise, perform the MCP initialize handshake to obtain one,
-        cache it, and attach it.  This handles the Streamable HTTP transport
-        which requires an initialize before any tool calls.
-
-        extra_headers are merged in before any request: including the
-        initialize handshake: so auth headers reach the upstream server
-        on every call, not just tool calls.
+        Modern (2026-07-28) servers get stateless requests with per-request
+        ``_meta`` and ``MCP-Protocol-Version``/``Mcp-Method``/``Mcp-Name``
+        headers. Legacy servers get a proper handshake (negotiated version,
+        ``notifications/initialized``) and a cached ``Mcp-Session-Id`` under
+        ``cache_key``. ``extra_headers`` (resolved auth) ride on every
+        request, including the probe and the handshake.
         """
-        headers: dict[str, str] = {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream",
-        }
-        if extra_headers:
-            headers.update(extra_headers)
-
-        # Check cache first.
-        try:
-            stored_id = await self.redis.get(cache_key)
-            if stored_id:
-                if isinstance(stored_id, bytes):
-                    stored_id = stored_id.decode()
-                headers["Mcp-Session-Id"] = stored_id
-                return headers
-        except Exception as exc:
-            logger.warning("proxy: Redis session lookup failed: %s", exc)
-
-        # No cached session: do MCP initialize handshake (with auth headers).
-        init_body = {
-            "jsonrpc": "2.0",
-            "id": "arbiter-init",
-            "method": "initialize",
-            "params": {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {},
-                "clientInfo": {"name": "arbiter-gateway", "version": "1.0"},
-            },
-        }
-        try:
-            async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-                resp = await client.post(mcp_server.base_url, json=init_body, headers=headers)
-            session_id = resp.headers.get("Mcp-Session-Id")
-            if session_id:
-                try:
-                    await self.redis.set(cache_key, session_id, ex=3600)
-                except Exception as exc:
-                    logger.warning("proxy: Redis session store (init) failed: %s", exc)
-                headers["Mcp-Session-Id"] = session_id
-                logger.debug(
-                    "proxy: initialized upstream MCP session %r for %s", session_id, mcp_server.name
-                )
-        except Exception as exc:
-            logger.warning(
-                "proxy: MCP initialize handshake failed for %s: %s", mcp_server.name, exc
-            )
-
-        return headers
+        return await self._upstream.prepare(
+            base_url=mcp_server.base_url,
+            server_key=f"{mcp_server.id}:{headers_fp}",
+            extra_headers=extra_headers,
+            session_cache_key=cache_key,
+        )
 
     async def create_session(self, agent: Agent) -> Session:
         """

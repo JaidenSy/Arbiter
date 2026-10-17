@@ -146,6 +146,28 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in stripped.split(",")]
         return value
 
+    # ── Native MCP endpoint ───────────────────────────────────────────────────
+    # Browser origins allowed to call POST /mcp. The MCP Streamable HTTP spec
+    # requires servers to validate Origin (DNS-rebinding defence) and answer
+    # 403 when it is present and invalid. Requests without an Origin header
+    # (CLI / desktop MCP clients) are unaffected. Comma-separated or a JSON
+    # array; empty → fall back to cors_origins; "*" allows any origin.
+    # Stored as a plain string: pydantic-settings 2.5 JSON-decodes list fields
+    # before validators run, which rejects comma-separated values.
+    mcp_allowed_origins: str = ""
+
+    @property
+    def mcp_allowed_origin_list(self) -> list[str]:
+        """Parsed MCP Origin allowlist (falls back to cors_origins when unset)."""
+        raw = self.mcp_allowed_origins.strip()
+        if not raw:
+            return list(self.cors_origins)
+        if raw.startswith("["):
+            import json
+
+            return [str(o).strip() for o in json.loads(raw) if str(o).strip()]
+        return [o.strip() for o in raw.split(",") if o.strip()]
+
     @field_validator("vault_encryption_key")
     @classmethod
     def validate_encryption_key(cls, value: str) -> str:
